@@ -1,0 +1,26 @@
+[package]
+name = "pfcp-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.98"
+bitflags = "2.4.0"
+clap = { version = "4.5.43", features = ["derive"] }
+network-interface = "2.0.3"
+
+[[example]]
+name = "heartbeat-client"
+path = "examples/heartbeat-client/main.rs"
+
+[[example]]
+name = "heartbeat-server"
+path = "examples/heartbeat-server/main.rs"
+
+[[example]]
+name = "session-client"
+path = "examples/session-client/main.rs"
+
+[[example]]
+name = "session-server"
+path = "examples/session-server/main.rs"

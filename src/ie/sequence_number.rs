@@ -1,0 +1,53 @@
+// src/ie/sequence_number.rs
+
+//! Sequence Number Information Element.
+
+use std::io;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SequenceNumber {
+    pub value: u32,
+}
+
+impl SequenceNumber {
+    pub fn new(value: u32) -> Self {
+        SequenceNumber { value }
+    }
+
+    pub fn marshal(&self) -> [u8; 3] {
+        let bytes = self.value.to_be_bytes();
+        [bytes[1], bytes[2], bytes[3]]
+    }
+
+    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+        if data.len() < 3 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Not enough data for SequenceNumber",
+            ));
+        }
+        Ok(SequenceNumber {
+            value: u32::from_be_bytes([0, data[0], data[1], data[2]]),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sequence_number_marshal_unmarshal() {
+        let sn = SequenceNumber::new(123456);
+        let marshaled = sn.marshal();
+        let unmarshaled = SequenceNumber::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled, sn);
+    }
+
+    #[test]
+    fn test_sequence_number_unmarshal_invalid_data() {
+        let data = [0; 2];
+        let result = SequenceNumber::unmarshal(&data);
+        assert!(result.is_err());
+    }
+}
