@@ -2,6 +2,7 @@
 
 use std::io;
 
+pub mod activate_predefined_rules;
 pub mod application_id;
 pub mod application_ids_pfds;
 pub mod apply_action;
@@ -12,6 +13,8 @@ pub mod create_bar;
 pub mod create_far;
 pub mod create_urr;
 pub mod create_qer;
+pub mod create_pdr;
+pub mod created_pdr;
 pub mod destination_interface;
 pub mod dl_buffering_duration;
 pub mod downlink_data_notification_delay;
@@ -33,6 +36,7 @@ pub mod monitoring_time;
 pub mod network_instance;
 pub mod node_id;
 pub mod offending_ie;
+pub mod outer_header_removal;
 pub mod pdi;
 pub mod pdr_id;
 pub mod pfcpsm_req_flags;
@@ -127,14 +131,18 @@ pub enum IeType {
     MeasurementMethod = 62,
     UrrId = 81,
     UeIpAddress = 93,
+    OuterHeaderRemoval = 95,
     CreateBar = 115,
     UpdateBar = 116,
     RemoveBar = 117,
     BarId = 118,
+    FarId = 108,
+    QerId = 109,
     CreateTrafficEndpoint = 131,
     UpdateTrafficEndpoint = 132,
     RemoveTrafficEndpoint = 133,
     RecoveryTimeStamp = 96,
+    ActivatePredefinedRules = 106,
     CpFunctionFeatures = 89,
     SourceIPAddress = 192,
     Unknown = 0,
@@ -207,12 +215,16 @@ impl From<u16> for IeType {
             62 => IeType::MeasurementMethod,
             81 => IeType::UrrId,
             93 => IeType::UeIpAddress,
+            95 => IeType::OuterHeaderRemoval,
             96 => IeType::RecoveryTimeStamp,
+            106 => IeType::ActivatePredefinedRules,
             89 => IeType::CpFunctionFeatures,
             115 => IeType::CreateBar,
             116 => IeType::UpdateBar,
             117 => IeType::RemoveBar,
             118 => IeType::BarId,
+            108 => IeType::FarId,
+            109 => IeType::QerId,
             131 => IeType::CreateTrafficEndpoint,
             132 => IeType::UpdateTrafficEndpoint,
             133 => IeType::RemoveTrafficEndpoint,

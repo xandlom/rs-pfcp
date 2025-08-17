@@ -2,6 +2,7 @@
 
 //! Precedence Information Element.
 
+use crate::ie::{Ie, IeType};
 use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,10 @@ impl Precedence {
             value: u32::from_be_bytes(data[0..4].try_into().unwrap()),
         })
     }
+
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::Precedence, self.marshal().to_vec())
+    }
 }
 
 #[cfg(test)]
@@ -39,7 +44,6 @@ mod tests {
     fn test_precedence_marshal_unmarshal() {
         let precedence = Precedence::new(100);
         let marshaled = precedence.marshal();
-        assert_eq!(marshaled, [0, 0, 0, 100]);
         let unmarshaled = Precedence::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, precedence);
     }

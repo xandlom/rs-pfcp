@@ -2,6 +2,7 @@
 
 //! PDR ID Information Element.
 
+use crate::ie::{Ie, IeType};
 use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +29,10 @@ impl PdrId {
         Ok(PdrId {
             value: u16::from_be_bytes(data[0..2].try_into().unwrap()),
         })
+    }
+
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::PdrId, self.marshal().to_vec())
     }
 }
 

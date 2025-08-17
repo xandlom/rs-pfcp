@@ -2,6 +2,7 @@
 
 //! QER ID Information Element.
 
+use crate::ie::{Ie, IeType};
 use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,10 @@ impl QerId {
             value: u32::from_be_bytes(data[0..4].try_into().unwrap()),
         })
     }
+
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::QerId, self.marshal().to_vec())
+    }
 }
 
 #[cfg(test)]
@@ -50,3 +55,4 @@ mod tests {
         assert!(result.is_err());
     }
 }
+

@@ -4,14 +4,14 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 
 | IE Name                                | Type | Supported |
 | -------------------------------------- | ---- | --------- |
-| Create PDR                             | 1    | No        |
+| Create PDR                             | 1    | Yes       |
 | PDI                                    | 2    | Yes       |
 | Create FAR                             | 3    | Yes       |
 | Forwarding Parameters                  | 4    | Yes       |
 | Duplicating Parameters                 | 5    | Yes       |
 | Create URR                             | 6    | Yes       |
 | Create QER                             | 7    | Yes       |
-| Created PDR                            | 8    | No        |
+| Created PDR                            | 8    | Yes       |
 | Update PDR                             | 9    | No        |
 | Update FAR                             | 10   | No        |
 | Update Forwarding Parameters           | 11   | No        |
@@ -69,6 +69,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Measurement Method                     | 62   | Yes       |
 | URR ID                                 | 81   | Yes       |
 | UE IP Address                          | 93   | Yes       |
+| Outer Header Removal                   | 95   | Yes       |
 | Recovery Time Stamp                    | 96   | Yes       |
 | CP Function Features                   | 89   | Yes       |
 | Create BAR                             | 115  | Yes       |
@@ -76,6 +77,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Remove BAR                             | 117  | No        |
 | BAR ID                                 | 118  | Yes       |
 | FAR ID                                 | 108  | Yes       |
+| Activate Predefined Rules              | 106  | Yes       |
 | Create Traffic Endpoint                | 131  | No        |
 | Update Traffic Endpoint                | 132  | No        |
 | Remove Traffic Endpoint                | 133  | No        |

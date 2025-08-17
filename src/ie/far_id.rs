@@ -2,6 +2,7 @@
 
 //! FAR ID Information Element.
 
+use crate::ie::{Ie, IeType};
 use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +29,10 @@ impl FarId {
         Ok(FarId {
             value: u32::from_be_bytes(data[0..4].try_into().unwrap()),
         })
+    }
+
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::FarId, self.marshal().to_vec())
     }
 }
 
