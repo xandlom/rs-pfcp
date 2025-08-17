@@ -282,7 +282,17 @@ fn test_session_deletion_request_marshal_unmarshal() {
         vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
     );
 
-    let req = SessionDeletionRequest::new(0x1122334455667788, 0x112233, fseid_ie.clone(), vec![]);
+    let req = SessionDeletionRequest::new(
+        0x1122334455667788,
+        0x112233,
+        fseid_ie.clone(),
+        None,
+        None,
+        None,
+        vec![],
+        vec![],
+        vec![],
+    );
 
     let serialized = req.marshal();
     let unmarshaled = SessionDeletionRequest::unmarshal(&serialized).unwrap();
