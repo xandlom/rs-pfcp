@@ -64,6 +64,7 @@ pub mod timer;
 pub mod transport_level_marking;
 pub mod ue_ip_address;
 pub mod urr_id;
+pub mod usage_report;
 pub mod volume_threshold;
 pub mod update_pdr;
 pub mod update_urr;
@@ -71,6 +72,7 @@ pub mod update_qer;
 pub mod update_far;
 pub mod update_bar;
 pub mod deactivate_predefined_rules;
+pub mod usage_report_trigger;
 
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -139,6 +141,7 @@ pub enum IeType {
     PfdContents = 61,
     MeasurementMethod = 62,
     UsageReport = 74,
+    UsageReportTrigger = 75,
     UrrId = 81,
     UeIpAddress = 93,
     OuterHeaderRemoval = 95,
@@ -225,6 +228,7 @@ impl From<u16> for IeType {
             61 => IeType::PfdContents,
             62 => IeType::MeasurementMethod,
             74 => IeType::UsageReport,
+            75 => IeType::UsageReportTrigger,
             81 => IeType::UrrId,
             93 => IeType::UeIpAddress,
             95 => IeType::OuterHeaderRemoval,

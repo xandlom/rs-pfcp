@@ -2,6 +2,7 @@
 
 //! Sequence Number Information Element.
 
+use crate::ie::Ie;
 use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,6 +30,10 @@ impl SequenceNumber {
         Ok(SequenceNumber {
             value: u32::from_be_bytes([0, data[0], data[1], data[2]]),
         })
+    }
+
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(super::IeType::SequenceNumber, self.marshal().to_vec())
     }
 }
 
