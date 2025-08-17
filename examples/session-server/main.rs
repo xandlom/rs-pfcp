@@ -2,8 +2,8 @@
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
-use pfcp_rust::ie::{cause::CauseValue, Ie, IeType};
-use pfcp_rust::message::{
+use rs_pfcp::ie::{cause::CauseValue, Ie, IeType};
+use rs_pfcp::message::{
     association_setup_response::AssociationSetupResponse, header::Header,
     session_deletion_response::SessionDeletionResponse,
     session_modification_response::SessionModificationResponse, Message, MsgType,
@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let (len, src) = socket.recv_from(&mut buf)?;
         let data = &buf[..len];
 
-        match pfcp_rust::message::parse(data) {
+        match rs_pfcp::message::parse(data) {
             Ok(msg) => {
                 println!("Received {} from {}", msg.msg_name(), src);
                 match msg.msg_type() {
@@ -91,7 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
                         let created_pdr = Ie::new(IeType::CreatedPdr, vec![]);
-                        let res = pfcp_rust::message::session_establishment_response::SessionEstablishmentResponse {
+                        let res = rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse {
                             header: Header::new(MsgType::SessionEstablishmentResponse, true, msg.seid().unwrap(), msg.sequence()),
                             cause: cause_ie,
                             offending_ie: None,

@@ -6,11 +6,11 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | -------------------------------------- | ---- | --------- |
 | Create PDR                             | 1    | No        |
 | PDI                                    | 2    | Yes       |
-| Create FAR                             | 3    | No        |
+| Create FAR                             | 3    | Yes       |
 | Forwarding Parameters                  | 4    | Yes       |
 | Duplicating Parameters                 | 5    | Yes       |
 | Create URR                             | 6    | Yes       |
-| Create QER                             | 7    | No        |
+| Create QER                             | 7    | Yes       |
 | Created PDR                            | 8    | No        |
 | Update PDR                             | 9    | No        |
 | Update FAR                             | 10   | No        |
@@ -32,6 +32,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | MBR                                    | 26   | Yes       |
 | GBR                                    | 27   | Yes       |
 | QER Correlation ID                     | 28   | Yes       |
+| QER ID                                 | 109  | Yes       |
 | Precedence                             | 29   | Yes       |
 | Transport Level Marking                | 30   | Yes       |
 | Volume Threshold                       | 31   | Yes       |
@@ -70,10 +71,11 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | UE IP Address                          | 93   | Yes       |
 | Recovery Time Stamp                    | 96   | Yes       |
 | CP Function Features                   | 89   | Yes       |
-| Create BAR                             | 115  | No        |
+| Create BAR                             | 115  | Yes       |
 | Update BAR                             | 116  | No        |
 | Remove BAR                             | 117  | No        |
 | BAR ID                                 | 118  | Yes       |
+| FAR ID                                 | 108  | Yes       |
 | Create Traffic Endpoint                | 131  | No        |
 | Update Traffic Endpoint                | 132  | No        |
 | Remove Traffic Endpoint                | 133  | No        |

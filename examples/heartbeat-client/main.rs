@@ -1,9 +1,9 @@
-use pfcp_rust::ie::recovery_time_stamp::RecoveryTimeStamp;
-use pfcp_rust::ie::source_ip_address::SourceIpAddress;
-use pfcp_rust::ie::{Ie, IeType};
-use pfcp_rust::message::heartbeat_request::HeartbeatRequest;
-use pfcp_rust::message::heartbeat_response::HeartbeatResponse;
-use pfcp_rust::message::Message;
+use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
+use rs_pfcp::ie::source_ip_address::SourceIpAddress;
+use rs_pfcp::ie::{Ie, IeType};
+use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
+use rs_pfcp::message::heartbeat_response::HeartbeatResponse;
+use rs_pfcp::message::Message;
 use std::net::{Ipv4Addr, Ipv6Addr, UdpSocket};
 use std::time::SystemTime;
 

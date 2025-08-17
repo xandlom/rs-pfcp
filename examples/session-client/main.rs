@@ -1,8 +1,8 @@
 // examples/session-client/main.rs
 
 use clap::Parser;
-use pfcp_rust::ie::{Ie, IeType};
-use pfcp_rust::message::{
+use rs_pfcp::ie::{Ie, IeType};
+use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequest,
     session_deletion_request::SessionDeletionRequest,
     session_establishment_request::SessionEstablishmentRequestBuilder,

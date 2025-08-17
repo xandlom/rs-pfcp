@@ -1,7 +1,7 @@
 // tests/messages.rs
 
-use pfcp_rust::ie::{Ie, IeType};
-use pfcp_rust::message::{header::Header, Message, MsgType};
+use rs_pfcp::ie::{Ie, IeType};
+use rs_pfcp::message::{header::Header, Message, MsgType};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[test]
@@ -16,7 +16,7 @@ fn test_heartbeat_request_marshal_unmarshal() {
     ip_payload.extend_from_slice(&ipv6_addr.octets());
     let ip_ie = Ie::new(IeType::SourceIPAddress, ip_payload);
 
-    let req = pfcp_rust::message::heartbeat_request::HeartbeatRequest::new(
+    let req = rs_pfcp::message::heartbeat_request::HeartbeatRequest::new(
         0x112233,
         Some(ts_ie.clone()),
         Some(ip_ie.clone()),
@@ -27,7 +27,7 @@ fn test_heartbeat_request_marshal_unmarshal() {
 
     // Unmarshal and compare
     let unmarshaled_req =
-        pfcp_rust::message::heartbeat_request::HeartbeatRequest::unmarshal(&serialized).unwrap();
+        rs_pfcp::message::heartbeat_request::HeartbeatRequest::unmarshal(&serialized).unwrap();
     assert_eq!(unmarshaled_req, req);
 }
 
@@ -37,7 +37,7 @@ fn test_heartbeat_response_marshal_unmarshal() {
     let ts_payload = 3755289600_u32.to_be_bytes().to_vec();
     let ts_ie = Ie::new(IeType::RecoveryTimeStamp, ts_payload);
 
-    let res = pfcp_rust::message::heartbeat_response::HeartbeatResponse::new(
+    let res = rs_pfcp::message::heartbeat_response::HeartbeatResponse::new(
         0x112233,
         Some(ts_ie.clone()),
         vec![],
@@ -47,15 +47,15 @@ fn test_heartbeat_response_marshal_unmarshal() {
 
     // Unmarshal and compare
     let unmarshaled_res =
-        pfcp_rust::message::heartbeat_response::HeartbeatResponse::unmarshal(&serialized).unwrap();
+        rs_pfcp::message::heartbeat_response::HeartbeatResponse::unmarshal(&serialized).unwrap();
     assert_eq!(unmarshaled_res, res);
 }
 
 #[test]
 fn test_association_setup_response_marshal_unmarshal() {
-    use pfcp_rust::ie::cause::CauseValue;
-    use pfcp_rust::ie::node_id::NodeId;
-    use pfcp_rust::message::association_setup_response::AssociationSetupResponse;
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::message::association_setup_response::AssociationSetupResponse;
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
@@ -93,10 +93,10 @@ fn test_association_setup_response_marshal_unmarshal() {
 
 #[test]
 fn test_association_setup_response_from_request() {
-    use pfcp_rust::ie::cause::CauseValue;
-    use pfcp_rust::ie::node_id::NodeId;
-    use pfcp_rust::message::association_setup_request::AssociationSetupRequest;
-    use pfcp_rust::message::association_setup_response::AssociationSetupResponse;
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::message::association_setup_request::AssociationSetupRequest;
+    use rs_pfcp::message::association_setup_response::AssociationSetupResponse;
 
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
     let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
@@ -147,8 +147,8 @@ fn test_association_setup_response_from_request() {
 
 #[test]
 fn test_association_update_request_marshal_unmarshal() {
-    use pfcp_rust::ie::node_id::NodeId;
-    use pfcp_rust::message::association_update_request::AssociationUpdateRequest;
+    use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::message::association_update_request::AssociationUpdateRequest;
 
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
     let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
@@ -175,8 +175,8 @@ fn test_association_update_request_marshal_unmarshal() {
 
 #[test]
 fn test_association_release_request_marshal_unmarshal() {
-    use pfcp_rust::ie::node_id::NodeId;
-    use pfcp_rust::message::association_release_request::AssociationReleaseRequest;
+    use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::message::association_release_request::AssociationReleaseRequest;
 
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
     let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
@@ -198,9 +198,9 @@ fn test_association_release_request_marshal_unmarshal() {
 
 #[test]
 fn test_association_release_response_marshal_unmarshal() {
-    use pfcp_rust::ie::cause::CauseValue;
-    use pfcp_rust::ie::node_id::NodeId;
-    use pfcp_rust::message::association_release_response::AssociationReleaseResponse;
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::message::association_release_response::AssociationReleaseResponse;
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
@@ -224,8 +224,8 @@ fn test_association_release_response_marshal_unmarshal() {
 
 #[test]
 fn test_pfd_management_response_marshal_unmarshal() {
-    use pfcp_rust::ie::cause::CauseValue;
-    use pfcp_rust::message::pfd_management_response::PfdManagementResponse;
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::pfd_management_response::PfdManagementResponse;
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
     let offending_ie = Ie::new(IeType::OffendingIe, vec![0x01, 0x02, 0x03, 0x04]);
@@ -245,8 +245,8 @@ fn test_pfd_management_response_marshal_unmarshal() {
 
 #[test]
 fn test_session_establishment_request_marshal_unmarshal() {
-    use pfcp_rust::ie::node_id::NodeId;
-    use pfcp_rust::message::session_establishment_request::{
+    use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::message::session_establishment_request::{
         SessionEstablishmentRequest, SessionEstablishmentRequestBuilder,
     };
 
@@ -275,7 +275,7 @@ fn test_session_establishment_request_marshal_unmarshal() {
 
 #[test]
 fn test_session_deletion_request_marshal_unmarshal() {
-    use pfcp_rust::message::session_deletion_request::SessionDeletionRequest;
+    use rs_pfcp::message::session_deletion_request::SessionDeletionRequest;
 
     let fseid_ie = Ie::new(
         IeType::Fseid,
@@ -292,8 +292,8 @@ fn test_session_deletion_request_marshal_unmarshal() {
 
 #[test]
 fn test_session_deletion_response_marshal_unmarshal() {
-    use pfcp_rust::ie::cause::CauseValue;
-    use pfcp_rust::message::session_deletion_response::SessionDeletionResponse;
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_deletion_response::SessionDeletionResponse;
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
@@ -308,7 +308,7 @@ fn test_session_deletion_response_marshal_unmarshal() {
 
 #[test]
 fn test_session_modification_request_marshal_unmarshal() {
-    use pfcp_rust::message::session_modification_request::{
+    use rs_pfcp::message::session_modification_request::{
         SessionModificationRequest, SessionModificationRequestBuilder,
     };
 
@@ -332,8 +332,8 @@ fn test_session_modification_request_marshal_unmarshal() {
 
 #[test]
 fn test_session_modification_response_marshal_unmarshal() {
-    use pfcp_rust::ie::cause::CauseValue;
-    use pfcp_rust::message::session_modification_response::SessionModificationResponse;
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_modification_response::SessionModificationResponse;
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
     let pdr_ie = Ie::new(IeType::CreatedPdr, vec![0x01, 0x02, 0x03, 0x04]);
