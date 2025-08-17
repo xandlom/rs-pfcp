@@ -57,10 +57,7 @@ impl CreatePdr {
         ];
 
         if let Some(ohr) = &self.outer_header_removal {
-            ies.push(Ie::new(
-                IeType::OuterHeaderRemoval,
-                ohr.marshal().to_vec(),
-            ));
+            ies.push(Ie::new(IeType::OuterHeaderRemoval, ohr.marshal().to_vec()));
         }
         if let Some(far_id) = &self.far_id {
             ies.push(far_id.to_ie());
@@ -72,10 +69,7 @@ impl CreatePdr {
             ies.push(qer_id.to_ie());
         }
         if let Some(apr) = &self.activate_predefined_rules {
-            ies.push(Ie::new(
-                IeType::ActivatePredefinedRules,
-                apr.marshal(),
-            ));
+            ies.push(Ie::new(IeType::ActivatePredefinedRules, apr.marshal()));
         }
 
         let mut data = Vec::new();
@@ -145,7 +139,14 @@ mod tests {
     fn test_create_pdr_marshal_unmarshal() {
         let pdr_id = PdrId::new(1);
         let precedence = Precedence::new(100);
-        let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access), None, None, None, None, None);
+        let pdi = Pdi::new(
+            SourceInterface::new(SourceInterfaceValue::Access),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         let create_pdr = CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None);
 
         let marshaled = create_pdr.marshal();
@@ -158,7 +159,14 @@ mod tests {
     fn test_create_pdr_marshal_unmarshal_with_optionals() {
         let pdr_id = PdrId::new(1);
         let precedence = Precedence::new(100);
-        let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access), None, None, None, None, None);
+        let pdi = Pdi::new(
+            SourceInterface::new(SourceInterfaceValue::Access),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         let ohr = OuterHeaderRemoval::new(0);
         let far_id = FarId::new(1);
         let urr_id = UrrId::new(1);

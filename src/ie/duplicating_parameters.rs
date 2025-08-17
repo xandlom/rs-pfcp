@@ -64,8 +64,7 @@ impl DuplicatingParameters {
                     destination_interface = Some(DestinationInterface::unmarshal(&ie.payload)?);
                 }
                 IeType::TransportLevelMarking => {
-                    transport_level_marking =
-                        Some(TransportLevelMarking::unmarshal(&ie.payload)?);
+                    transport_level_marking = Some(TransportLevelMarking::unmarshal(&ie.payload)?);
                 }
                 IeType::ForwardingPolicy => {
                     forwarding_policy = Some(ForwardingPolicy::unmarshal(&ie.payload)?);

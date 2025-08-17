@@ -25,10 +25,7 @@ impl LoadControlInformation {
             IeType::SequenceNumber,
             self.sequence_number.marshal().to_vec(),
         ));
-        ies.push(Ie::new(
-            IeType::Metric,
-            self.metric.marshal().to_vec(),
-        ));
+        ies.push(Ie::new(IeType::Metric, self.metric.marshal().to_vec()));
 
         let mut data = Vec::new();
         for ie in ies {
@@ -57,8 +54,9 @@ impl LoadControlInformation {
         }
 
         Ok(LoadControlInformation {
-            sequence_number: sequence_number
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Sequence Number"))?,
+            sequence_number: sequence_number.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "Missing Sequence Number")
+            })?,
             metric: metric
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Metric"))?,
         })

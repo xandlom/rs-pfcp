@@ -6,7 +6,7 @@ use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DownlinkDataServiceInformation {
-    pub ppi: bool, // Paging Policy Indication
+    pub ppi: bool,  // Paging Policy Indication
     pub qfii: bool, // QoS Flow Identifier Indication
 }
 

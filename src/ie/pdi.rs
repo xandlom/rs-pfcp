@@ -55,10 +55,7 @@ impl Pdi {
             ies.push(sdf.to_ie());
         }
         if let Some(app_id) = &self.application_id {
-            ies.push(Ie::new(
-                IeType::ApplicationId,
-                app_id.as_bytes().to_vec(),
-            ));
+            ies.push(Ie::new(IeType::ApplicationId, app_id.as_bytes().to_vec()));
         }
 
         let mut data = Vec::new();
