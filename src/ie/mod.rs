@@ -65,6 +65,12 @@ pub mod transport_level_marking;
 pub mod ue_ip_address;
 pub mod urr_id;
 pub mod volume_threshold;
+pub mod update_pdr;
+pub mod update_urr;
+pub mod update_qer;
+pub mod update_far;
+pub mod update_bar;
+pub mod deactivate_predefined_rules;
 
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -146,6 +152,7 @@ pub enum IeType {
     RemoveTrafficEndpoint = 133,
     RecoveryTimeStamp = 96,
     ActivatePredefinedRules = 106,
+    DeactivatePredefinedRules = 107,
     CpFunctionFeatures = 89,
     SourceIPAddress = 192,
     Unknown = 0,
@@ -221,6 +228,7 @@ impl From<u16> for IeType {
             95 => IeType::OuterHeaderRemoval,
             96 => IeType::RecoveryTimeStamp,
             106 => IeType::ActivatePredefinedRules,
+            107 => IeType::DeactivatePredefinedRules,
             89 => IeType::CpFunctionFeatures,
             115 => IeType::CreateBar,
             116 => IeType::UpdateBar,

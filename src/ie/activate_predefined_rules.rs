@@ -2,6 +2,7 @@
 
 //! Activate Predefined Rules Information Element.
 
+use crate::ie::{Ie, IeType};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +26,10 @@ impl ActivatePredefinedRules {
             rule_name: String::from_utf8(data.to_vec())
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
         })
+    }
+
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::ActivatePredefinedRules, self.marshal())
     }
 }
 
