@@ -16,6 +16,7 @@ pub mod session_establishment_request;
 pub mod session_establishment_response;
 pub mod session_modification_request;
 pub mod session_modification_response;
+pub mod session_report_request;
 
 use crate::ie::Ie;
 use crate::message::association_release_request::AssociationReleaseRequest;
@@ -33,6 +34,7 @@ use crate::message::session_establishment_request::SessionEstablishmentRequest;
 use crate::message::session_establishment_response::SessionEstablishmentResponse;
 use crate::message::session_modification_request::SessionModificationRequest;
 use crate::message::session_modification_response::SessionModificationResponse;
+use crate::message::session_report_request::SessionReportRequest;
 use std::io;
 
 // Message Type definitions.
@@ -204,6 +206,7 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
         MsgType::SessionEstablishmentResponse => {
             Ok(Box::new(SessionEstablishmentResponse::unmarshal(data)?))
         }
+        MsgType::SessionReportRequest => Ok(Box::new(SessionReportRequest::unmarshal(data)?)),
         _ => Ok(Box::new(Generic::unmarshal(data)?)),
     }
 }
