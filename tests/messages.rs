@@ -2,6 +2,7 @@
 
 use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::{header::Header, Message, MsgType};
+use rs_pfcp::message::session_report_response::SessionReportResponse;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[test]
@@ -369,4 +370,260 @@ fn test_session_modification_response_marshal_unmarshal() {
     let unmarshaled = SessionModificationResponse::unmarshal(&serialized).unwrap();
 
     assert_eq!(res, unmarshaled);
+}
+
+// Session Report Response tests
+#[test]
+fn test_session_report_response_marshal_unmarshal_minimal() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponse;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+
+    let res = SessionReportResponse::new(
+        seid,
+        sequence,
+        cause_ie.clone(),
+        None,
+        vec![],
+        vec![],
+    );
+
+    let serialized = res.marshal();
+    let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
+
+    assert_eq!(res, unmarshaled);
+    assert_eq!(res.msg_type(), MsgType::SessionReportResponse);
+    assert_eq!(res.seid(), Some(seid));
+    assert_eq!(res.sequence(), sequence);
+    assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
+}
+
+#[test]
+fn test_session_report_response_marshal_unmarshal_with_offending_ie() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponse;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::MandatoryIeMissing as u8]);
+    let offending_ie = Ie::new(IeType::OffendingIe, vec![0x01, 0x02, 0x03, 0x04]);
+
+    let res = SessionReportResponse::new(
+        seid,
+        sequence,
+        cause_ie.clone(),
+        Some(offending_ie.clone()),
+        vec![],
+        vec![],
+    );
+
+    let serialized = res.marshal();
+    let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
+
+    assert_eq!(res, unmarshaled);
+    assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
+    assert_eq!(res.find_ie(IeType::OffendingIe), Some(&offending_ie));
+}
+
+#[test]
+fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::ie::sequence_number::SequenceNumber;
+    use rs_pfcp::ie::urr_id::UrrId;
+    use rs_pfcp::ie::usage_report::UsageReport;
+    use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
+    use rs_pfcp::message::session_report_response::SessionReportResponse;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+
+    // Create usage report IE
+    let urr_id = UrrId::new(1);
+    let ur_seqn = SequenceNumber::new(1);
+    let usage_report_trigger = UsageReportTrigger::new(1);
+    let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
+    let usage_report_ie = usage_report.to_ie();
+
+    let usage_reports = vec![usage_report_ie.clone()];
+
+    let res = SessionReportResponse::new(
+        seid,
+        sequence,
+        cause_ie.clone(),
+        None,
+        usage_reports.clone(),
+        vec![],
+    );
+
+    let serialized = res.marshal();
+    let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
+
+    assert_eq!(res, unmarshaled);
+    assert_eq!(res.usage_reports.len(), 1);
+    assert_eq!(res.find_ie(IeType::UsageReport), Some(&usage_report_ie));
+}
+
+#[test]
+fn test_session_report_response_builder() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+    let usage_report_ie = Ie::new(IeType::UsageReport, vec![0x01, 0x02, 0x03, 0x04]);
+    let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x05, 0x06]);
+
+    let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
+        .usage_reports(vec![usage_report_ie.clone()])
+        .cp_function_features(cp_features_ie.clone())
+        .build()
+        .unwrap();
+
+    assert_eq!(res.msg_type(), MsgType::SessionReportResponse);
+    assert_eq!(res.seid(), Some(seid));
+    assert_eq!(res.sequence(), sequence);
+    assert_eq!(res.cause, cause_ie);
+    assert_eq!(res.usage_reports, vec![usage_report_ie]);
+    assert_eq!(res.cp_function_features, Some(cp_features_ie));
+
+    let serialized = res.marshal();
+    let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
+    assert_eq!(res, unmarshaled);
+}
+
+#[test]
+fn test_session_report_response_builder_comprehensive() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+    let offending_ie = Ie::new(IeType::OffendingIe, vec![0x01, 0x02, 0x03, 0x04]);
+    let update_bar_ie = Ie::new(IeType::UpdateBar, vec![0x05, 0x06]);
+    let pfcpsrrsp_flags_ie = Ie::new(IeType::PfcpsrrspFlags, vec![0x07]);
+    let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x08, 0x09]);
+
+    // Create multiple usage reports
+    let usage_report1 = Ie::new(IeType::UsageReport, vec![0x0A, 0x0B, 0x0C]);
+    let usage_report2 = Ie::new(IeType::UsageReport, vec![0x0D, 0x0E, 0x0F]);
+    let usage_reports = vec![usage_report1, usage_report2];
+
+    let additional_ie = Ie::new(IeType::Timer, vec![0x10, 0x11, 0x12, 0x13]);
+
+    let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
+        .offending_ie(offending_ie.clone())
+        .update_bar(update_bar_ie.clone())
+        .pfcpsrrsp_flags(pfcpsrrsp_flags_ie.clone())
+        .cp_function_features(cp_features_ie.clone())
+        .usage_reports(usage_reports.clone())
+        .ies(vec![additional_ie.clone()])
+        .build()
+        .unwrap();
+
+    assert_eq!(res.cause, cause_ie);
+    assert_eq!(res.offending_ie, Some(offending_ie));
+    assert_eq!(res.update_bar, Some(update_bar_ie));
+    assert_eq!(res.pfcpsrrsp_flags, Some(pfcpsrrsp_flags_ie));
+    assert_eq!(res.cp_function_features, Some(cp_features_ie));
+    assert_eq!(res.usage_reports, usage_reports);
+    assert_eq!(res.ies, vec![additional_ie]);
+
+    let serialized = res.marshal();
+    let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
+    assert_eq!(res, unmarshaled);
+}
+
+#[test]
+fn test_session_report_response_set_sequence() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponse;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let new_sequence = 0x445566;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+
+    let mut res = SessionReportResponse::new(
+        seid,
+        sequence,
+        cause_ie,
+        None,
+        vec![],
+        vec![],
+    );
+
+    assert_eq!(res.sequence(), sequence);
+    res.set_sequence(new_sequence);
+    assert_eq!(res.sequence(), new_sequence);
+}
+
+#[test]
+fn test_session_report_response_find_ie() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+    let usage_report_ie = Ie::new(IeType::UsageReport, vec![0x01, 0x02]);
+    let unknown_ie = Ie::new(IeType::Timer, vec![0x03, 0x04]);
+
+    let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
+        .usage_reports(vec![usage_report_ie.clone()])
+        .ies(vec![unknown_ie.clone()])
+        .build()
+        .unwrap();
+
+    assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
+    assert_eq!(res.find_ie(IeType::UsageReport), Some(&usage_report_ie));
+    assert_eq!(res.find_ie(IeType::Timer), Some(&unknown_ie));
+    assert_eq!(res.find_ie(IeType::NodeId), None);
+}
+
+#[test]
+fn test_session_report_response_empty_unmarshal() {
+    use rs_pfcp::ie::cause::CauseValue;
+    use rs_pfcp::message::session_report_response::SessionReportResponse;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+
+    let mut header = Header::new(MsgType::SessionReportResponse, true, seid, sequence);
+    header.length = cause_ie.len() + (header.len() - 4);
+    
+    let mut serialized = header.marshal();
+    serialized.extend_from_slice(&cause_ie.marshal());
+
+    let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
+
+    assert_eq!(unmarshaled.msg_type(), MsgType::SessionReportResponse);
+    assert_eq!(unmarshaled.seid(), Some(seid));
+    assert_eq!(unmarshaled.sequence(), sequence);
+    assert_eq!(unmarshaled.cause, cause_ie);
+    assert!(unmarshaled.offending_ie.is_none());
+    assert!(unmarshaled.usage_reports.is_empty());
+    assert!(unmarshaled.ies.is_empty());
+}
+
+#[test] 
+fn test_session_report_response_unmarshal_missing_cause() {
+    use rs_pfcp::message::session_report_response::SessionReportResponse;
+
+    let seid = 0x1122334455667788;
+    let sequence = 0x112233;
+
+    // Create header without cause IE
+    let header = Header::new(MsgType::SessionReportResponse, true, seid, sequence);
+    let serialized = header.marshal();
+
+    let result = SessionReportResponse::unmarshal(&serialized);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
 }

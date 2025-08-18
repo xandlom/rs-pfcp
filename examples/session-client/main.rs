@@ -1,14 +1,16 @@
 // examples/session-client/main.rs
 
 use clap::Parser;
-use rs_pfcp::ie::{Ie, IeType};
+use rs_pfcp::ie::{cause::CauseValue, Ie, IeType};
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequest,
     session_deletion_request::SessionDeletionRequest,
     session_establishment_request::SessionEstablishmentRequestBuilder,
-    session_modification_request::SessionModificationRequestBuilder, Message,
+    session_modification_request::SessionModificationRequestBuilder,
+    session_report_response::SessionReportResponseBuilder, Message, MsgType,
 };
 use std::net::{Ipv4Addr, UdpSocket};
+use std::time::Duration;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -16,6 +18,38 @@ struct Args {
     /// Number of sessions to create
     #[arg(short, long, default_value_t = 1)]
     sessions: u64,
+}
+
+// Helper function to handle incoming Session Report Requests
+fn handle_session_report_request(socket: &UdpSocket, msg: &dyn Message, src: std::net::SocketAddr) -> std::io::Result<()> {
+    println!("  Received Session Report Request");
+    
+    // Check what type of report
+    if let Some(report_type_ie) = msg.find_ie(IeType::ReportType) {
+        let report_type = report_type_ie.payload[0];
+        match report_type {
+            0x02 => println!("    Report Type: Usage Report (USAR)"),
+            _ => println!("    Report Type: Unknown (0x{:02x})", report_type),
+        }
+    }
+    
+    // Check for usage reports
+    if let Some(_usage_report_ie) = msg.find_ie(IeType::UsageReport) {
+        println!("    Contains Usage Report - quota exhausted!");
+    }
+    
+    // Send Session Report Response with RequestAccepted
+    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
+    let response = SessionReportResponseBuilder::new(
+        msg.seid().unwrap(),
+        msg.sequence(),
+        cause_ie,
+    ).build().unwrap();
+    
+    socket.send_to(&response.marshal(), src)?;
+    println!("  Sent Session Report Response (RequestAccepted)");
+    
+    Ok(())
 }
 
 fn main() -> std::io::Result<()> {
@@ -69,6 +103,45 @@ fn main() -> std::io::Result<()> {
         socket.send(&session_req.marshal())?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Establishment Response.");
+        
+        // Listen for Session Report Requests (quota exhaustion notifications)
+        println!("[{seid}] Listening for Session Report Requests...");
+        socket.set_read_timeout(Some(Duration::from_secs(5)))?;
+        
+        loop {
+            match socket.recv_from(&mut buf) {
+                Ok((len, src)) => {
+                    let data = &buf[..len];
+                    match rs_pfcp::message::parse(data) {
+                        Ok(msg) => {
+                            match msg.msg_type() {
+                                MsgType::SessionReportRequest => {
+                                    handle_session_report_request(&socket, msg.as_ref(), src)?;
+                                    break; // Exit listening loop after handling report
+                                }
+                                _ => {
+                                    println!("[{seid}] Received unexpected message: {}", msg.msg_name());
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("[{seid}] Failed to parse message: {e}");
+                        }
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                    println!("[{seid}] No Session Report Request received within timeout");
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("[{seid}] Error receiving: {e}");
+                    break;
+                }
+            }
+        }
+        
+        // Reset socket timeout for subsequent operations
+        socket.set_read_timeout(None)?;
 
         // 3. Session Modification
         println!("[{seid}] Sending Session Modification Request...");
