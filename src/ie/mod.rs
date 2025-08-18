@@ -159,6 +159,12 @@ pub enum IeType {
     DeactivatePredefinedRules = 107,
     CpFunctionFeatures = 89,
     SourceIPAddress = 192,
+    PdnType = 99,
+    UserId = 100,
+    Snssai = 101,
+    TraceInformation = 102,
+    ApnDnn = 103,
+    UserPlaneInactivityTimer = 104,
     Unknown = 0,
 }
 
@@ -246,6 +252,12 @@ impl From<u16> for IeType {
             132 => IeType::UpdateTrafficEndpoint,
             133 => IeType::RemoveTrafficEndpoint,
             192 => IeType::SourceIPAddress,
+            99 => IeType::PdnType,
+            100 => IeType::UserId,
+            101 => IeType::Snssai,
+            102 => IeType::TraceInformation,
+            103 => IeType::ApnDnn,
+            104 => IeType::UserPlaneInactivityTimer,
             _ => IeType::Unknown,
         }
     }

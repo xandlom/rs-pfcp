@@ -20,9 +20,6 @@ impl Message for AssociationReleaseRequest {
     fn marshal(&self) -> Vec<u8> {
         let mut data = self.header.marshal();
         data.extend_from_slice(&self.node_id.marshal());
-        // Update length
-        let len = (data.len() - 4) as u16;
-        data[2..4].copy_from_slice(&len.to_be_bytes());
         data
     }
 
@@ -37,8 +34,9 @@ impl Message for AssociationReleaseRequest {
         while offset < buf.len() {
             let ie = Ie::unmarshal(&buf[offset..])?;
             let ie_len = ie.len() as usize;
-            if ie.ie_type == IeType::NodeId {
-                node_id = Some(ie);
+            match ie.ie_type {
+                IeType::NodeId => node_id = Some(ie),
+                _ => (),
             }
             offset += ie_len;
         }
@@ -68,10 +66,17 @@ impl Message for AssociationReleaseRequest {
     }
 
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        if ie_type == IeType::NodeId {
-            Some(&self.node_id)
-        } else {
-            None
+        match ie_type {
+            IeType::NodeId => Some(&self.node_id),
+            _ => None,
         }
+    }
+}
+
+impl AssociationReleaseRequest {
+    pub fn new(seq: u32, node_id: Ie) -> Self {
+        let mut header = Header::new(MsgType::AssociationReleaseRequest, false, 0, seq);
+        header.length = node_id.len() + (header.len() - 4);
+        AssociationReleaseRequest { header, node_id }
     }
 }
