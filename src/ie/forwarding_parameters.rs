@@ -101,6 +101,6 @@ impl ForwardingParameters {
 
     /// Wraps the Forwarding Parameters in a ForwardingParameters IE.
     pub fn to_ie(&self) -> Ie {
-        Ie::new_grouped(IeType::ForwardingParameters, vec![])
+        Ie::new(IeType::ForwardingParameters, self.marshal())
     }
 }

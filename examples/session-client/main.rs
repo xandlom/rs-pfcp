@@ -92,7 +92,12 @@ fn main() -> std::io::Result<()> {
         fseid_payload.extend_from_slice(&seid.to_be_bytes());
         let fseid_ie = Ie::new(IeType::Fseid, fseid_payload);
         let pdr_ie = Ie::new(IeType::CreatePdr, vec![0x01, 0x02, 0x03, 0x04]);
-        let far_ie = Ie::new(IeType::CreateFar, vec![0x05, 0x06, 0x07, 0x08]);
+        // Create structured FAR for uplink traffic forwarding to core
+        let uplink_far = rs_pfcp::ie::create_far::CreateFar::uplink_forward(
+            rs_pfcp::ie::far_id::FarId::new(1),
+            rs_pfcp::ie::destination_interface::Interface::Core,
+        );
+        let far_ie = uplink_far.to_ie();
         let session_req = SessionEstablishmentRequestBuilder::new(seid, 2)
             .node_id(node_id_ie.clone())
             .fseid(fseid_ie.clone())

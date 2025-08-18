@@ -82,6 +82,11 @@ impl DuplicatingParameters {
             forwarding_policy,
         })
     }
+
+    /// Converts to IE.
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::DuplicatingParameters, self.marshal())
+    }
 }
 
 #[cfg(test)]

@@ -95,7 +95,7 @@ impl From<Interface> for u8 {
 /// Represents a Destination Interface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DestinationInterface {
-    interface: Interface,
+    pub interface: Interface,
 }
 
 impl DestinationInterface {
