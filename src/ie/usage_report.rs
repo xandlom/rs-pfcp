@@ -14,7 +14,11 @@ pub struct UsageReport {
 }
 
 impl UsageReport {
-    pub fn new(urr_id: UrrId, ur_seqn: SequenceNumber, usage_report_trigger: UsageReportTrigger) -> Self {
+    pub fn new(
+        urr_id: UrrId,
+        ur_seqn: SequenceNumber,
+        usage_report_trigger: UsageReportTrigger,
+    ) -> Self {
         UsageReport {
             urr_id,
             ur_seqn,

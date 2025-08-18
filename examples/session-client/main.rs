@@ -82,8 +82,17 @@ fn main() -> std::io::Result<()> {
 
         // 4. Session Deletion
         println!("[{seid}] Sending Session Deletion Request...");
-        let session_del_req =
-            SessionDeletionRequest::new(seid, 4, fseid_ie.clone(), None, None, None, vec![], vec![], vec![]);
+        let session_del_req = SessionDeletionRequest::new(
+            seid,
+            4,
+            fseid_ie.clone(),
+            None,
+            None,
+            None,
+            vec![],
+            vec![],
+            vec![],
+        );
         socket.send(&session_del_req.marshal())?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Deletion Response.");
