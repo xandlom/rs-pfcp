@@ -5,6 +5,7 @@ pub mod association_release_response;
 pub mod association_setup_request;
 pub mod association_setup_response;
 pub mod association_update_request;
+pub mod display;
 pub mod header;
 pub mod heartbeat_request;
 pub mod heartbeat_response;

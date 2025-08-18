@@ -8,7 +8,7 @@ use rs_pfcp::ie::{
     usage_report_trigger::UsageReportTrigger,
 };
 use rs_pfcp::message::{
-    association_setup_response::AssociationSetupResponse, header::Header,
+    association_setup_response::AssociationSetupResponse, display::MessageDisplay, header::Header,
     session_deletion_response::SessionDeletionResponse,
     session_modification_response::SessionModificationResponse,
     session_report_request::SessionReportRequestBuilder, Message, MsgType,
@@ -93,6 +93,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         match rs_pfcp::message::parse(data) {
             Ok(msg) => {
                 println!("Received {} from {}", msg.msg_name(), src);
+                
+                // Print message content in YAML format
+                println!("=== Message Content (YAML) ===");
+                match msg.to_yaml() {
+                    Ok(yaml) => println!("{}", yaml),
+                    Err(e) => println!("Failed to serialize to YAML: {}", e),
+                }
+                println!("============================");
                 match msg.msg_type() {
                     MsgType::AssociationSetupRequest => {
                         let node_id_ie = Ie::new(IeType::NodeId, vec![127, 0, 0, 1]);
