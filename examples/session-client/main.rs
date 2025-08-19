@@ -1,7 +1,7 @@
 // examples/session-client/main.rs
 
 use clap::Parser;
-use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
+use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, node_id::NodeId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequest,
     session_deletion_request::SessionDeletionRequest,
@@ -58,10 +58,8 @@ fn main() -> std::io::Result<()> {
     let socket = UdpSocket::bind("127.0.0.1:0")?;
     socket.connect("127.0.0.1:8805")?;
 
-    let node_id_ie = Ie::new(
-        IeType::NodeId,
-        Ipv4Addr::new(127, 0, 0, 1).octets().to_vec(),
-    );
+    let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
+    let node_id_ie = node_id.to_ie();
     let recovery_ts_ie = Ie::new(
         IeType::RecoveryTimeStamp,
         3755289600_u32.to_be_bytes().to_vec(),
@@ -99,7 +97,7 @@ fn main() -> std::io::Result<()> {
         let pdr_ie = uplink_pdr.to_ie();
         
         // Alternative: Create downlink PDR using builder for more complex scenarios
-        let _downlink_pdr = CreatePdrBuilder::new(PdrId::new(2))
+        let downlink_pdr = CreatePdrBuilder::new(PdrId::new(2))
             .precedence(Precedence::new(200))
             .pdi(rs_pfcp::ie::pdi::Pdi::new(
                 rs_pfcp::ie::source_interface::SourceInterface::new(
@@ -119,7 +117,7 @@ fn main() -> std::io::Result<()> {
         let session_req = SessionEstablishmentRequestBuilder::new(seid, 2)
             .node_id(node_id_ie.clone())
             .fseid(fseid_ie.clone())
-            .create_pdrs(vec![pdr_ie.clone()])
+            .create_pdrs(vec![pdr_ie.clone(), downlink_pdr.to_ie().clone()])
             .create_fars(vec![far_ie.clone()])
             .build()
             .unwrap();

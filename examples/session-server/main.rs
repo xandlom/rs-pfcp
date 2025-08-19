@@ -2,7 +2,7 @@
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
-use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
+use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, node_id::NodeId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
 use rs_pfcp::ie::{
     sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReport,
     usage_report_trigger::UsageReportTrigger,
@@ -112,7 +112,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 println!("===========================");
                 match msg.msg_type() {
                     MsgType::AssociationSetupRequest => {
-                        let node_id_ie = Ie::new(IeType::NodeId, vec![127, 0, 0, 1]);
+                        let node_id = NodeId::new_ipv4(std::net::Ipv4Addr::new(127, 0, 0, 1));
+                        let node_id_ie = node_id.to_ie();
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let res = AssociationSetupResponse {
