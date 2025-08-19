@@ -1,7 +1,15 @@
 // examples/session-client/main.rs
 
 use clap::Parser;
-use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, node_id::NodeId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
+use rs_pfcp::ie::{
+    cause::CauseValue,
+    create_pdr::{CreatePdr, CreatePdrBuilder},
+    far_id::FarId,
+    node_id::NodeId,
+    pdr_id::PdrId,
+    precedence::Precedence,
+    Ie, IeType,
+};
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequest,
     session_deletion_request::SessionDeletionRequest,
@@ -21,9 +29,13 @@ struct Args {
 }
 
 // Helper function to handle incoming Session Report Requests
-fn handle_session_report_request(socket: &UdpSocket, msg: &dyn Message, src: std::net::SocketAddr) -> std::io::Result<()> {
+fn handle_session_report_request(
+    socket: &UdpSocket,
+    msg: &dyn Message,
+    src: std::net::SocketAddr,
+) -> std::io::Result<()> {
     println!("  Received Session Report Request");
-    
+
     // Check what type of report
     if let Some(report_type_ie) = msg.find_ie(IeType::ReportType) {
         let report_type = report_type_ie.payload[0];
@@ -32,23 +44,21 @@ fn handle_session_report_request(socket: &UdpSocket, msg: &dyn Message, src: std
             _ => println!("    Report Type: Unknown (0x{:02x})", report_type),
         }
     }
-    
+
     // Check for usage reports
     if let Some(_usage_report_ie) = msg.find_ie(IeType::UsageReport) {
         println!("    Contains Usage Report - quota exhausted!");
     }
-    
+
     // Send Session Report Response with RequestAccepted
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-    let response = SessionReportResponseBuilder::new(
-        msg.seid().unwrap(),
-        msg.sequence(),
-        cause_ie,
-    ).build().unwrap();
-    
+    let response = SessionReportResponseBuilder::new(msg.seid().unwrap(), msg.sequence(), cause_ie)
+        .build()
+        .unwrap();
+
     socket.send_to(&response.marshal(), src)?;
     println!("  Sent Session Report Response (RequestAccepted)");
-    
+
     Ok(())
 }
 
@@ -60,10 +70,10 @@ fn main() -> std::io::Result<()> {
 
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
     let node_id_ie = node_id.to_ie();
-    let recovery_ts_ie = Ie::new(
-        IeType::RecoveryTimeStamp,
-        3755289600_u32.to_be_bytes().to_vec(),
-    );
+    // Create current recovery timestamp using proper RecoveryTimeStamp struct
+    let recovery_ts =
+        rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp::new(std::time::SystemTime::now());
+    let recovery_ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
     // 1. Association Setup
     println!("Sending Association Setup Request...");
@@ -90,20 +100,21 @@ fn main() -> std::io::Result<()> {
         fseid_payload.extend_from_slice(&seid.to_be_bytes());
         let fseid_ie = Ie::new(IeType::Fseid, fseid_payload);
         // Create structured PDR for uplink traffic detection using builder pattern
-        let uplink_pdr = CreatePdr::uplink_access(
-            PdrId::new(1),
-            Precedence::new(100),
-        );
+        let uplink_pdr = CreatePdr::uplink_access(PdrId::new(1), Precedence::new(100));
         let pdr_ie = uplink_pdr.to_ie();
-        
+
         // Alternative: Create downlink PDR using builder for more complex scenarios
         let downlink_pdr = CreatePdrBuilder::new(PdrId::new(2))
             .precedence(Precedence::new(200))
             .pdi(rs_pfcp::ie::pdi::Pdi::new(
                 rs_pfcp::ie::source_interface::SourceInterface::new(
-                    rs_pfcp::ie::source_interface::SourceInterfaceValue::Core
+                    rs_pfcp::ie::source_interface::SourceInterfaceValue::Core,
                 ),
-                None, None, None, None, None
+                None,
+                None,
+                None,
+                None,
+                None,
             ))
             .far_id(FarId::new(1))
             .build()
@@ -124,11 +135,11 @@ fn main() -> std::io::Result<()> {
         socket.send(&session_req.marshal())?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Establishment Response.");
-        
+
         // Listen for Session Report Requests (quota exhaustion notifications)
         println!("[{seid}] Listening for Session Report Requests...");
         socket.set_read_timeout(Some(Duration::from_secs(5)))?;
-        
+
         loop {
             match socket.recv_from(&mut buf) {
                 Ok((len, src)) => {
@@ -141,7 +152,10 @@ fn main() -> std::io::Result<()> {
                                     break; // Exit listening loop after handling report
                                 }
                                 _ => {
-                                    println!("[{seid}] Received unexpected message: {}", msg.msg_name());
+                                    println!(
+                                        "[{seid}] Received unexpected message: {}",
+                                        msg.msg_name()
+                                    );
                                 }
                             }
                         }
@@ -160,7 +174,7 @@ fn main() -> std::io::Result<()> {
                 }
             }
         }
-        
+
         // Reset socket timeout for subsequent operations
         socket.set_read_timeout(None)?;
 

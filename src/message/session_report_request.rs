@@ -10,7 +10,7 @@ pub struct SessionReportRequest {
     pub header: Header,
     // Optional IEs
     pub report_type: Option<Ie>,
-    pub downlink_data_report: Option<Ie>, 
+    pub downlink_data_report: Option<Ie>,
     pub usage_reports: Vec<Ie>,
     pub load_control_information: Option<Ie>,
     pub overload_control_information: Option<Ie>,
@@ -22,7 +22,7 @@ pub struct SessionReportRequest {
 impl Message for SessionReportRequest {
     fn marshal(&self) -> Vec<u8> {
         let mut data = self.header.marshal();
-        
+
         if let Some(ie) = &self.report_type {
             data.extend_from_slice(&ie.marshal());
         }
@@ -222,7 +222,10 @@ impl SessionReportRequestBuilder {
         self
     }
 
-    pub fn additional_usage_reports_information(mut self, additional_usage_reports_information: Ie) -> Self {
+    pub fn additional_usage_reports_information(
+        mut self,
+        additional_usage_reports_information: Ie,
+    ) -> Self {
         self.additional_usage_reports_information = Some(additional_usage_reports_information);
         self
     }
@@ -294,14 +297,7 @@ mod tests {
         let seid = 0x1122334455667788;
         let sequence = 0x112233;
 
-        let req = SessionReportRequest::new(
-            seid,
-            sequence,
-            None,
-            None,
-            vec![],
-            vec![],
-        );
+        let req = SessionReportRequest::new(seid, sequence, None, None, vec![], vec![]);
 
         let serialized = req.marshal();
         let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
@@ -350,14 +346,8 @@ mod tests {
 
         let usage_reports = vec![usage_report_ie.clone()];
 
-        let req = SessionReportRequest::new(
-            seid,
-            sequence,
-            None,
-            None,
-            usage_reports.clone(),
-            vec![],
-        );
+        let req =
+            SessionReportRequest::new(seid, sequence, None, None, usage_reports.clone(), vec![]);
 
         let serialized = req.marshal();
         let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
@@ -375,14 +365,7 @@ mod tests {
         // Create load control information IE
         let load_control_ie = Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02, 0x03]);
 
-        let mut req = SessionReportRequest::new(
-            seid,
-            sequence,
-            None,
-            None,
-            vec![],
-            vec![],
-        );
+        let mut req = SessionReportRequest::new(seid, sequence, None, None, vec![], vec![]);
         req.load_control_information = Some(load_control_ie.clone());
         // Recalculate header length
         let mut payload_len = 0;
@@ -395,7 +378,10 @@ mod tests {
         let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
 
         assert_eq!(req, unmarshaled);
-        assert_eq!(req.find_ie(IeType::LoadControlInformation), Some(&load_control_ie));
+        assert_eq!(
+            req.find_ie(IeType::LoadControlInformation),
+            Some(&load_control_ie)
+        );
     }
 
     #[test]
@@ -431,7 +417,10 @@ mod tests {
         let sequence = 0x112233;
 
         let report_type_ie = Ie::new(IeType::ReportType, vec![0x06]); // EVIR
-        let downlink_data_report_ie = Ie::new(IeType::DownlinkDataServiceInformation, vec![0x01, 0x02, 0x03]);
+        let downlink_data_report_ie = Ie::new(
+            IeType::DownlinkDataServiceInformation,
+            vec![0x01, 0x02, 0x03],
+        );
 
         // Create multiple usage reports
         let usage_report1 = Ie::new(IeType::UsageReport, vec![0x01, 0x02, 0x03]);
@@ -469,14 +458,7 @@ mod tests {
         let sequence = 0x112233;
         let new_sequence = 0x445566;
 
-        let mut req = SessionReportRequest::new(
-            seid,
-            sequence,
-            None,
-            None,
-            vec![],
-            vec![],
-        );
+        let mut req = SessionReportRequest::new(seid, sequence, None, None, vec![], vec![]);
 
         assert_eq!(req.sequence(), sequence);
         req.set_sequence(new_sequence);

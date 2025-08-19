@@ -1,8 +1,8 @@
 // tests/messages.rs
 
 use rs_pfcp::ie::{Ie, IeType};
-use rs_pfcp::message::{header::Header, Message, MsgType};
 use rs_pfcp::message::session_report_response::SessionReportResponse;
+use rs_pfcp::message::{header::Header, Message, MsgType};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[test]
@@ -382,14 +382,7 @@ fn test_session_report_response_marshal_unmarshal_minimal() {
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-    let res = SessionReportResponse::new(
-        seid,
-        sequence,
-        cause_ie.clone(),
-        None,
-        vec![],
-        vec![],
-    );
+    let res = SessionReportResponse::new(seid, sequence, cause_ie.clone(), None, vec![], vec![]);
 
     let serialized = res.marshal();
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
@@ -549,14 +542,7 @@ fn test_session_report_response_set_sequence() {
     let new_sequence = 0x445566;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-    let mut res = SessionReportResponse::new(
-        seid,
-        sequence,
-        cause_ie,
-        None,
-        vec![],
-        vec![],
-    );
+    let mut res = SessionReportResponse::new(seid, sequence, cause_ie, None, vec![], vec![]);
 
     assert_eq!(res.sequence(), sequence);
     res.set_sequence(new_sequence);
@@ -597,7 +583,7 @@ fn test_session_report_response_empty_unmarshal() {
 
     let mut header = Header::new(MsgType::SessionReportResponse, true, seid, sequence);
     header.length = cause_ie.len() + (header.len() - 4);
-    
+
     let mut serialized = header.marshal();
     serialized.extend_from_slice(&cause_ie.marshal());
 
@@ -612,7 +598,7 @@ fn test_session_report_response_empty_unmarshal() {
     assert!(unmarshaled.ies.is_empty());
 }
 
-#[test] 
+#[test]
 fn test_session_report_response_unmarshal_missing_cause() {
     use rs_pfcp::message::session_report_response::SessionReportResponse;
 

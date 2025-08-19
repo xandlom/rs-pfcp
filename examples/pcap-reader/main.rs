@@ -12,11 +12,11 @@ struct Args {
     /// Path to the pcap file to read
     #[arg(short, long)]
     pcap: String,
-    
+
     /// Show only PFCP messages (filter out non-PFCP traffic)
     #[arg(short = 'f', long)]
     pfcp_only: bool,
-    
+
     /// Output format: yaml or json
     #[arg(long, default_value = "yaml")]
     format: String,
@@ -47,17 +47,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(Ok(pkt)) => {
                 packet_count += 1;
                 let data = pkt.data;
-        
+
                 // Skip non-Ethernet packets
                 if data.len() < 14 {
                     continue;
                 }
-        
+
                 // Parse Ethernet header (14 bytes)
                 let eth_type = u16::from_be_bytes([data[12], data[13]]);
-                if eth_type != 0x0800 { // IPv4
+                if eth_type != 0x0800 {
+                    // IPv4
                     if !args.pfcp_only {
-                        println!("Packet {}: Non-IPv4 (EtherType: 0x{:04x})", packet_count, eth_type);
+                        println!(
+                            "Packet {}: Non-IPv4 (EtherType: 0x{:04x})",
+                            packet_count, eth_type
+                        );
                     }
                     continue;
                 }
@@ -71,10 +75,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let ip_version = ip_data[0] >> 4;
                 let ip_ihl = (ip_data[0] & 0x0f) * 4;
                 let ip_protocol = ip_data[9];
-        
-                if ip_version != 4 || ip_protocol != 17 { // Not UDP
+
+                if ip_version != 4 || ip_protocol != 17 {
+                    // Not UDP
                     if !args.pfcp_only {
-                        println!("Packet {}: Not UDP (protocol: {})", packet_count, ip_protocol);
+                        println!(
+                            "Packet {}: Not UDP (protocol: {})",
+                            packet_count, ip_protocol
+                        );
                     }
                     continue;
                 }
@@ -92,10 +100,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Check if it's PFCP (port 8805)
                 if src_port != 8805 && dst_port != 8805 {
                     if !args.pfcp_only {
-                        println!("Packet {}: Non-PFCP UDP ({}:{} -> {}:{})", 
-                            packet_count, 
-                            extract_ip_address(&ip_data[12..16]), src_port,
-                            extract_ip_address(&ip_data[16..20]), dst_port
+                        println!(
+                            "Packet {}: Non-PFCP UDP ({}:{} -> {}:{})",
+                            packet_count,
+                            extract_ip_address(&ip_data[12..16]),
+                            src_port,
+                            extract_ip_address(&ip_data[16..20]),
+                            dst_port
                         );
                     }
                     continue;
@@ -111,42 +122,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 pfcp_count += 1;
-        
+
                 // Parse PFCP message
                 match rs_pfcp::message::parse(pfcp_data) {
                     Ok(pfcp_msg) => {
-                        println!("Packet {}: PFCP {} ({}:{} -> {}:{})", 
+                        println!(
+                            "Packet {}: PFCP {} ({}:{} -> {}:{})",
                             packet_count,
                             pfcp_msg.msg_name(),
-                            extract_ip_address(&ip_data[12..16]), src_port,
-                            extract_ip_address(&ip_data[16..20]), dst_port
+                            extract_ip_address(&ip_data[12..16]),
+                            src_port,
+                            extract_ip_address(&ip_data[16..20]),
+                            dst_port
                         );
-                
+
                         match args.format.as_str() {
-                            "yaml" => {
-                                match pfcp_msg.to_yaml() {
-                                    Ok(yaml) => {
-                                        println!("--- PFCP Message (YAML) ---");
-                                        println!("{}", yaml);
-                                        println!("---------------------------");
-                                    }
-                                    Err(e) => {
-                                        println!("Error serializing to YAML: {}", e);
-                                    }
+                            "yaml" => match pfcp_msg.to_yaml() {
+                                Ok(yaml) => {
+                                    println!("--- PFCP Message (YAML) ---");
+                                    println!("{}", yaml);
+                                    println!("---------------------------");
                                 }
-                            }
-                            "json" => {
-                                match pfcp_msg.to_json_pretty() {
-                                    Ok(json) => {
-                                        println!("--- PFCP Message (JSON) ---");
-                                        println!("{}", json);
-                                        println!("---------------------------");
-                                    }
-                                    Err(e) => {
-                                        println!("Error serializing to JSON: {}", e);
-                                    }
+                                Err(e) => {
+                                    println!("Error serializing to YAML: {}", e);
                                 }
-                            }
+                            },
+                            "json" => match pfcp_msg.to_json_pretty() {
+                                Ok(json) => {
+                                    println!("--- PFCP Message (JSON) ---");
+                                    println!("{}", json);
+                                    println!("---------------------------");
+                                }
+                                Err(e) => {
+                                    println!("Error serializing to JSON: {}", e);
+                                }
+                            },
                             _ => {
                                 println!("Unknown format: {}", args.format);
                             }
@@ -154,10 +164,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!();
                     }
                     Err(e) => {
-                        println!("Packet {}: Failed to parse PFCP message: {}", packet_count, e);
+                        println!(
+                            "Packet {}: Failed to parse PFCP message: {}",
+                            packet_count, e
+                        );
                         if pfcp_data.len() >= 4 {
-                            println!("  Raw header: {:02x} {:02x} {:02x} {:02x}", 
-                                pfcp_data[0], pfcp_data[1], pfcp_data[2], pfcp_data[3]);
+                            println!(
+                                "  Raw header: {:02x} {:02x} {:02x} {:02x}",
+                                pfcp_data[0], pfcp_data[1], pfcp_data[2], pfcp_data[3]
+                            );
                         }
                         println!("  Payload length: {}", pfcp_data.len());
                         println!();

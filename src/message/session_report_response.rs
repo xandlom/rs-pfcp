@@ -25,7 +25,7 @@ pub struct SessionReportResponse {
 impl Message for SessionReportResponse {
     fn marshal(&self) -> Vec<u8> {
         let mut data = self.header.marshal();
-        
+
         data.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {
             data.extend_from_slice(&ie.marshal());
@@ -88,9 +88,8 @@ impl Message for SessionReportResponse {
 
         Ok(SessionReportResponse {
             header,
-            cause: cause.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found")
-            })?,
+            cause: cause
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
             offending_ie,
             update_bar,
             pfcpsrrsp_flags,
@@ -245,7 +244,10 @@ impl SessionReportResponseBuilder {
         self
     }
 
-    pub fn additional_usage_reports_information(mut self, additional_usage_reports_information: Ie) -> Self {
+    pub fn additional_usage_reports_information(
+        mut self,
+        additional_usage_reports_information: Ie,
+    ) -> Self {
         self.additional_usage_reports_information = Some(additional_usage_reports_information);
         self
     }
@@ -261,9 +263,9 @@ impl SessionReportResponseBuilder {
     }
 
     pub fn build(self) -> Result<SessionReportResponse, io::Error> {
-        let cause = self.cause.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Cause IE is required")
-        })?;
+        let cause = self
+            .cause
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE is required"))?;
 
         let mut payload_len = cause.len();
         if let Some(ie) = &self.offending_ie {

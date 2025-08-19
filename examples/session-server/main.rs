@@ -2,7 +2,15 @@
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
-use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, node_id::NodeId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
+use rs_pfcp::ie::{
+    cause::CauseValue,
+    create_pdr::{CreatePdr, CreatePdrBuilder},
+    far_id::FarId,
+    node_id::NodeId,
+    pdr_id::PdrId,
+    precedence::Precedence,
+    Ie, IeType,
+};
 use rs_pfcp::ie::{
     sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReport,
     usage_report_trigger::UsageReportTrigger,
@@ -34,10 +42,10 @@ struct Args {
 fn create_quota_exhausted_usage_report() -> Ie {
     let urr_id = UrrId::new(1);
     let ur_seqn = SequenceNumber::new(1);
-    
+
     // Usage Report Trigger: Volume Threshold exhausted
     let usage_report_trigger = UsageReportTrigger::VOLTH; // Volume Threshold
-    
+
     let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
     usage_report.to_ie()
 }
@@ -94,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         match rs_pfcp::message::parse(data) {
             Ok(msg) => {
                 println!("Received {} from {}", msg.msg_name(), src);
-                
+
                 // Print message content in YAML format
                 println!("=== Message Content (YAML) ===");
                 match msg.to_yaml() {
@@ -102,7 +110,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Err(e) => println!("Failed to serialize to YAML: {}", e),
                 }
                 println!("============================");
-                
+
                 // Print message content in JSON format
                 println!("=== Message Content (JSON) ===");
                 match msg.to_json_pretty() {
@@ -135,7 +143,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     MsgType::SessionEstablishmentRequest => {
                         let seid = msg.seid().unwrap();
                         println!("  Session ID: 0x{:016x}", seid);
-                        
+
                         // Demonstrate PDR processing - analyze received PDRs
                         if let Some(create_pdr_ie) = msg.find_ie(IeType::CreatePdr) {
                             match CreatePdr::unmarshal(&create_pdr_ie.payload) {
@@ -143,7 +151,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     println!("  Received CreatePdr:");
                                     println!("    PDR ID: {}", received_pdr.pdr_id.value);
                                     println!("    Precedence: {}", received_pdr.precedence.value);
-                                    
+
                                     // Example: Server could create additional PDRs for the session
                                     let _server_created_pdr = CreatePdrBuilder::new(PdrId::new(100))
                                         .precedence(Precedence::new(50))
@@ -163,38 +171,46 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 }
                             }
                         }
-                        
+
                         // Store session information
-                        sessions.insert(seid, SessionInfo {
+                        sessions.insert(
                             seid,
-                            client_addr: src,
-                            sequence: next_sequence,
-                        });
-                        
+                            SessionInfo {
+                                seid,
+                                client_addr: src,
+                                sequence: next_sequence,
+                            },
+                        );
+
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
                         let created_pdr = Ie::new(IeType::CreatedPdr, vec![]);
-                        let res = SessionEstablishmentResponseBuilder::new(seid, msg.sequence(), cause_ie)
-                            .fseid(fseid_ie)
-                            .created_pdr(created_pdr)
-                            .build()
-                            .unwrap();
+                        let res = SessionEstablishmentResponseBuilder::new(
+                            seid,
+                            msg.sequence(),
+                            cause_ie,
+                        )
+                        .fseid(fseid_ie)
+                        .created_pdr(created_pdr)
+                        .build()
+                        .unwrap();
                         socket.send_to(&res.marshal(), src)?;
-                        
+
                         // Simulate quota exhaustion after 2 seconds
                         thread::sleep(Duration::from_secs(2));
                         println!("  [QUOTA EXHAUSTED] Sending Session Report Request for session 0x{:016x}", seid);
-                        
+
                         // Create and send Session Report Request with quota exhausted usage report
                         let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // USAR (Usage Report)
                         let usage_report_ie = create_quota_exhausted_usage_report();
-                        
-                        let session_report_req = SessionReportRequestBuilder::new(seid, next_sequence)
-                            .report_type(report_type_ie)
-                            .usage_reports(vec![usage_report_ie])
-                            .build();
-                        
+
+                        let session_report_req =
+                            SessionReportRequestBuilder::new(seid, next_sequence)
+                                .report_type(report_type_ie)
+                                .usage_reports(vec![usage_report_ie])
+                                .build();
+
                         socket.send_to(&session_report_req.marshal(), src)?;
                         next_sequence += 1;
                     }
@@ -232,7 +248,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionReportResponse => {
-                        println!("  Received Session Report Response - quota exhaustion acknowledged");
+                        println!(
+                            "  Received Session Report Response - quota exhaustion acknowledged"
+                        );
                         if let Some(cause_ie) = msg.find_ie(IeType::Cause) {
                             let cause_value = CauseValue::from(cause_ie.payload[0]);
                             println!("  Response cause: {:?}", cause_value);

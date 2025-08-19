@@ -185,17 +185,23 @@ impl CreatePdrBuilder {
         self
     }
 
-    pub fn activate_predefined_rules(mut self, activate_predefined_rules: ActivatePredefinedRules) -> Self {
+    pub fn activate_predefined_rules(
+        mut self,
+        activate_predefined_rules: ActivatePredefinedRules,
+    ) -> Self {
         self.activate_predefined_rules = Some(activate_predefined_rules);
         self
     }
 
     pub fn build(self) -> Result<CreatePdr, io::Error> {
-        let pdr_id = self.pdr_id
+        let pdr_id = self
+            .pdr_id
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "PDR ID is required"))?;
-        let precedence = self.precedence
+        let precedence = self
+            .precedence
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Precedence is required"))?;
-        let pdi = self.pdi
+        let pdi = self
+            .pdi
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "PDI is required"))?;
 
         Ok(CreatePdr {
@@ -214,7 +220,7 @@ impl CreatePdrBuilder {
 impl CreatePdr {
     pub fn uplink_access(pdr_id: PdrId, precedence: Precedence) -> CreatePdr {
         use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
-        
+
         let pdi = Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Access),
             None,
@@ -223,13 +229,13 @@ impl CreatePdr {
             None,
             None,
         );
-        
+
         CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None)
     }
 
     pub fn downlink_core(pdr_id: PdrId, precedence: Precedence) -> CreatePdr {
         use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
-        
+
         let pdi = Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Core),
             None,
@@ -238,7 +244,7 @@ impl CreatePdr {
             None,
             None,
         );
-        
+
         CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None)
     }
 }
@@ -314,7 +320,7 @@ mod tests {
             None,
             None,
         );
-        
+
         let create_pdr = CreatePdrBuilder::new(pdr_id)
             .precedence(precedence)
             .pdi(pdi)
@@ -342,7 +348,7 @@ mod tests {
         let urr_id = UrrId::new(20);
         let qer_id = QerId::new(30);
         let apr = ActivatePredefinedRules::new("test-rule");
-        
+
         let create_pdr = CreatePdrBuilder::new(pdr_id)
             .precedence(precedence)
             .pdi(pdi)
@@ -366,17 +372,15 @@ mod tests {
     #[test]
     fn test_create_pdr_builder_missing_required() {
         let pdr_id = PdrId::new(1);
-        
+
         // Missing precedence
         let result = CreatePdrBuilder::new(pdr_id).build();
         assert!(result.is_err());
-        
+
         // Missing PDI
         let pdr_id = PdrId::new(1);
         let precedence = Precedence::new(100);
-        let result = CreatePdrBuilder::new(pdr_id)
-            .precedence(precedence)
-            .build();
+        let result = CreatePdrBuilder::new(pdr_id).precedence(precedence).build();
         assert!(result.is_err());
     }
 
@@ -384,9 +388,9 @@ mod tests {
     fn test_create_pdr_uplink_access() {
         let pdr_id = PdrId::new(1);
         let precedence = Precedence::new(100);
-        
+
         let create_pdr = CreatePdr::uplink_access(pdr_id, precedence);
-        
+
         assert_eq!(create_pdr.pdr_id.value, 1);
         assert_eq!(create_pdr.precedence.value, 100);
     }
@@ -395,9 +399,9 @@ mod tests {
     fn test_create_pdr_downlink_core() {
         let pdr_id = PdrId::new(2);
         let precedence = Precedence::new(200);
-        
+
         let create_pdr = CreatePdr::downlink_core(pdr_id, precedence);
-        
+
         assert_eq!(create_pdr.pdr_id.value, 2);
         assert_eq!(create_pdr.precedence.value, 200);
     }

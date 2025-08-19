@@ -89,7 +89,7 @@ impl CreateFar {
     pub fn uplink_forward(far_id: FarId, destination: Interface) -> Self {
         let dest_interface = DestinationInterface::new(destination);
         let forwarding_params = ForwardingParameters::new(dest_interface);
-        
+
         CreateFar::with_action(far_id, FarAction::Forward)
             .with_forwarding_parameters(forwarding_params)
     }
@@ -98,7 +98,7 @@ impl CreateFar {
     pub fn downlink_forward(far_id: FarId, destination: Interface) -> Self {
         let dest_interface = DestinationInterface::new(destination);
         let forwarding_params = ForwardingParameters::new(dest_interface);
-        
+
         CreateFar::with_action(far_id, FarAction::Forward)
             .with_forwarding_parameters(forwarding_params)
     }
@@ -110,20 +110,22 @@ impl CreateFar {
 
     /// Creates a buffer FAR with BAR ID.
     pub fn buffer(far_id: FarId, bar_id: BarId) -> Self {
-        CreateFar::with_action(far_id, FarAction::Buffer)
-            .with_bar_id(bar_id)
+        CreateFar::with_action(far_id, FarAction::Buffer).with_bar_id(bar_id)
     }
 
     /// Marshals the Create FAR into bytes.
     pub fn marshal(&self) -> Vec<u8> {
         let mut ies = Vec::new();
-        
+
         // FAR ID is mandatory
         ies.push(self.far_id.to_ie());
-        
-        // Apply Action is mandatory  
-        ies.push(Ie::new(IeType::ApplyAction, self.apply_action.marshal().to_vec()));
-        
+
+        // Apply Action is mandatory
+        ies.push(Ie::new(
+            IeType::ApplyAction,
+            self.apply_action.marshal().to_vec(),
+        ));
+
         // Optional IEs
         if let Some(ref fp) = self.forwarding_parameters {
             ies.push(fp.to_ie());
@@ -134,7 +136,7 @@ impl CreateFar {
         if let Some(ref bar_id) = self.bar_id {
             ies.push(bar_id.to_ie());
         }
-        
+
         // Serialize all IEs
         let mut data = Vec::new();
         for ie in ies {
@@ -150,7 +152,7 @@ impl CreateFar {
         let mut forwarding_parameters = None;
         let mut duplicating_parameters = None;
         let mut bar_id = None;
-        
+
         let mut cursor = 0;
         while cursor < data.len() {
             let ie = Ie::unmarshal(&data[cursor..])?;
@@ -168,11 +170,10 @@ impl CreateFar {
             }
             cursor += ie.len() as usize;
         }
-        
+
         Ok(CreateFar {
-            far_id: far_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "FAR ID not found")
-            })?,
+            far_id: far_id
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "FAR ID not found"))?,
             apply_action: apply_action.ok_or_else(|| {
                 io::Error::new(io::ErrorKind::InvalidData, "Apply Action not found")
             })?,
@@ -237,10 +238,14 @@ impl CreateFarBuilder {
     }
 
     /// Quick method to add forwarding with network instance.
-    pub fn forward_to_network(mut self, destination: Interface, network_instance: NetworkInstance) -> Self {
+    pub fn forward_to_network(
+        mut self,
+        destination: Interface,
+        network_instance: NetworkInstance,
+    ) -> Self {
         let dest_interface = DestinationInterface::new(destination);
-        let forwarding_params = ForwardingParameters::new(dest_interface)
-            .with_network_instance(network_instance);
+        let forwarding_params =
+            ForwardingParameters::new(dest_interface).with_network_instance(network_instance);
         self.forwarding_parameters = Some(forwarding_params);
         self.apply_action = Some(ApplyAction::FORW);
         self
@@ -284,9 +289,9 @@ mod tests {
     fn test_create_far_basic_construction() {
         let far_id = FarId::new(1);
         let apply_action = ApplyAction::FORW;
-        
+
         let far = CreateFar::new(far_id, apply_action);
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, apply_action);
         assert!(far.forwarding_parameters.is_none());
@@ -297,51 +302,60 @@ mod tests {
     #[test]
     fn test_create_far_with_action_enum() {
         let far_id = FarId::new(2);
-        
+
         let forward_far = CreateFar::with_action(far_id, FarAction::Forward);
         assert_eq!(forward_far.apply_action, ApplyAction::FORW);
-        
+
         let drop_far = CreateFar::with_action(far_id, FarAction::Drop);
         assert_eq!(drop_far.apply_action, ApplyAction::DROP);
-        
+
         let buffer_far = CreateFar::with_action(far_id, FarAction::Buffer);
         assert_eq!(buffer_far.apply_action, ApplyAction::BUFF);
-        
+
         let forward_dup_far = CreateFar::with_action(far_id, FarAction::ForwardAndDuplicate);
-        assert_eq!(forward_dup_far.apply_action, ApplyAction::FORW | ApplyAction::DUPL);
+        assert_eq!(
+            forward_dup_far.apply_action,
+            ApplyAction::FORW | ApplyAction::DUPL
+        );
     }
 
     #[test]
     fn test_create_far_uplink_forward() {
         let far_id = FarId::new(1);
         let far = CreateFar::uplink_forward(far_id, Interface::Core);
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
         assert!(far.forwarding_parameters.is_some());
-        
+
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Core);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Core
+        );
     }
 
     #[test]
     fn test_create_far_downlink_forward() {
         let far_id = FarId::new(2);
         let far = CreateFar::downlink_forward(far_id, Interface::Access);
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
         assert!(far.forwarding_parameters.is_some());
-        
+
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Access);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Access
+        );
     }
 
     #[test]
     fn test_create_far_drop() {
         let far_id = FarId::new(3);
         let far = CreateFar::drop(far_id);
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::DROP);
         assert!(far.forwarding_parameters.is_none());
@@ -352,7 +366,7 @@ mod tests {
         let far_id = FarId::new(4);
         let bar_id = BarId::new(1);
         let far = CreateFar::buffer(far_id, bar_id.clone());
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::BUFF);
         assert_eq!(far.bar_id, Some(bar_id));
@@ -365,7 +379,7 @@ mod tests {
             .action(FarAction::Forward)
             .build()
             .unwrap();
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
     }
@@ -374,13 +388,13 @@ mod tests {
     fn test_create_far_builder_comprehensive() {
         let far_id = FarId::new(6);
         let bar_id = BarId::new(2);
-        
+
         let far = CreateFarBuilder::new(far_id)
             .forward_to(Interface::Core)
             .bar_id(bar_id.clone())
             .build()
             .unwrap();
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
         assert!(far.forwarding_parameters.is_some());
@@ -391,18 +405,21 @@ mod tests {
     fn test_create_far_builder_forward_to_network() {
         let far_id = FarId::new(7);
         let network_instance = NetworkInstance::new("internet");
-        
+
         let far = CreateFarBuilder::new(far_id)
             .forward_to_network(Interface::Dn, network_instance.clone())
             .build()
             .unwrap();
-        
+
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
         assert!(far.forwarding_parameters.is_some());
-        
+
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Dn);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Dn
+        );
         assert_eq!(forwarding_params.network_instance, Some(network_instance));
     }
 
@@ -410,7 +427,7 @@ mod tests {
     fn test_create_far_builder_missing_action() {
         let far_id = FarId::new(8);
         let result = CreateFarBuilder::new(far_id).build();
-        
+
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
     }
@@ -419,10 +436,10 @@ mod tests {
     fn test_create_far_marshal_unmarshal() {
         let far_id = FarId::new(9);
         let far = CreateFar::uplink_forward(far_id, Interface::Core);
-        
+
         let marshaled = far.marshal();
         let unmarshaled = CreateFar::unmarshal(&marshaled).unwrap();
-        
+
         assert_eq!(far, unmarshaled);
     }
 
@@ -431,10 +448,10 @@ mod tests {
         let far_id = FarId::new(10);
         let bar_id = BarId::new(3);
         let far = CreateFar::buffer(far_id, bar_id);
-        
+
         let marshaled = far.marshal();
         let unmarshaled = CreateFar::unmarshal(&marshaled).unwrap();
-        
+
         assert_eq!(far, unmarshaled);
     }
 
@@ -442,11 +459,11 @@ mod tests {
     fn test_create_far_to_ie() {
         let far_id = FarId::new(11);
         let far = CreateFar::drop(far_id);
-        
+
         let ie = far.to_ie();
         assert_eq!(ie.ie_type, IeType::CreateFar);
         assert!(!ie.payload.is_empty());
-        
+
         // Test round-trip through IE
         let unmarshaled = CreateFar::unmarshal(&ie.payload).unwrap();
         assert_eq!(far, unmarshaled);
@@ -457,12 +474,12 @@ mod tests {
         // Test with empty data
         let result = CreateFar::unmarshal(&[]);
         assert!(result.is_err());
-        
+
         // Test with only FAR ID (missing apply action)
         let far_id = FarId::new(12);
         let far_id_ie = far_id.to_ie();
         let data = far_id_ie.marshal();
-        
+
         let result = CreateFar::unmarshal(&data);
         assert!(result.is_err());
     }
@@ -473,7 +490,10 @@ mod tests {
         assert_eq!(FarAction::Drop.to_apply_action(), ApplyAction::DROP);
         assert_eq!(FarAction::Buffer.to_apply_action(), ApplyAction::BUFF);
         assert_eq!(FarAction::Duplicate.to_apply_action(), ApplyAction::DUPL);
-        assert_eq!(FarAction::ForwardAndDuplicate.to_apply_action(), ApplyAction::FORW | ApplyAction::DUPL);
+        assert_eq!(
+            FarAction::ForwardAndDuplicate.to_apply_action(),
+            ApplyAction::FORW | ApplyAction::DUPL
+        );
     }
 
     #[test]
@@ -481,7 +501,7 @@ mod tests {
         // Test that TrafficDirection enum works (even though not used in current implementation)
         let uplink = TrafficDirection::Uplink;
         let downlink = TrafficDirection::Downlink;
-        
+
         assert_ne!(uplink, downlink);
         assert_eq!(uplink, TrafficDirection::Uplink);
         assert_eq!(downlink, TrafficDirection::Downlink);
