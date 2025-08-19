@@ -101,6 +101,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Err(e) => println!("Failed to serialize to YAML: {}", e),
                 }
                 println!("============================");
+                
+                // Print message content in JSON format
+                println!("=== Message Content (JSON) ===");
+                match msg.to_json_pretty() {
+                    Ok(json) => println!("{}", json),
+                    Err(e) => println!("Failed to serialize to JSON: {}", e),
+                }
+                println!("===========================");
                 match msg.msg_type() {
                     MsgType::AssociationSetupRequest => {
                         let node_id_ie = Ie::new(IeType::NodeId, vec![127, 0, 0, 1]);
