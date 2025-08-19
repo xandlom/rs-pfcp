@@ -1,7 +1,7 @@
 // examples/session-client/main.rs
 
 use clap::Parser;
-use rs_pfcp::ie::{cause::CauseValue, Ie, IeType};
+use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequest,
     session_deletion_request::SessionDeletionRequest,
@@ -91,7 +91,25 @@ fn main() -> std::io::Result<()> {
         let mut fseid_payload = vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
         fseid_payload.extend_from_slice(&seid.to_be_bytes());
         let fseid_ie = Ie::new(IeType::Fseid, fseid_payload);
-        let pdr_ie = Ie::new(IeType::CreatePdr, vec![0x01, 0x02, 0x03, 0x04]);
+        // Create structured PDR for uplink traffic detection using builder pattern
+        let uplink_pdr = CreatePdr::uplink_access(
+            PdrId::new(1),
+            Precedence::new(100),
+        );
+        let pdr_ie = uplink_pdr.to_ie();
+        
+        // Alternative: Create downlink PDR using builder for more complex scenarios
+        let _downlink_pdr = CreatePdrBuilder::new(PdrId::new(2))
+            .precedence(Precedence::new(200))
+            .pdi(rs_pfcp::ie::pdi::Pdi::new(
+                rs_pfcp::ie::source_interface::SourceInterface::new(
+                    rs_pfcp::ie::source_interface::SourceInterfaceValue::Core
+                ),
+                None, None, None, None, None
+            ))
+            .far_id(FarId::new(1))
+            .build()
+            .unwrap();
         // Create structured FAR for uplink traffic forwarding to core
         let uplink_far = rs_pfcp::ie::create_far::CreateFar::uplink_forward(
             rs_pfcp::ie::far_id::FarId::new(1),
@@ -150,9 +168,14 @@ fn main() -> std::io::Result<()> {
 
         // 3. Session Modification
         println!("[{seid}] Sending Session Modification Request...");
+        // Create modified PDR with higher precedence
+        let modified_pdr = CreatePdr::uplink_access(
+            PdrId::new(1),
+            Precedence::new(150), // Higher precedence
+        );
         let session_mod_req = SessionModificationRequestBuilder::new(seid, 3)
             .fseid(fseid_ie.clone())
-            .update_pdrs(vec![pdr_ie.clone()])
+            .update_pdrs(vec![modified_pdr.to_ie()])
             .build();
         socket.send(&session_mod_req.marshal())?;
         let (_len, _) = socket.recv_from(&mut buf)?;

@@ -2,7 +2,7 @@
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
-use rs_pfcp::ie::{cause::CauseValue, Ie, IeType};
+use rs_pfcp::ie::{cause::CauseValue, create_pdr::{CreatePdr, CreatePdrBuilder}, far_id::FarId, pdr_id::PdrId, precedence::Precedence, Ie, IeType};
 use rs_pfcp::ie::{
     sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReport,
     usage_report_trigger::UsageReportTrigger,
@@ -10,6 +10,7 @@ use rs_pfcp::ie::{
 use rs_pfcp::message::{
     association_setup_response::AssociationSetupResponse, display::MessageDisplay, header::Header,
     session_deletion_response::SessionDeletionResponse,
+    session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_response::SessionModificationResponse,
     session_report_request::SessionReportRequestBuilder, Message, MsgType,
 };
@@ -134,6 +135,34 @@ fn main() -> Result<(), Box<dyn Error>> {
                         let seid = msg.seid().unwrap();
                         println!("  Session ID: 0x{:016x}", seid);
                         
+                        // Demonstrate PDR processing - analyze received PDRs
+                        if let Some(create_pdr_ie) = msg.find_ie(IeType::CreatePdr) {
+                            match CreatePdr::unmarshal(&create_pdr_ie.payload) {
+                                Ok(received_pdr) => {
+                                    println!("  Received CreatePdr:");
+                                    println!("    PDR ID: {}", received_pdr.pdr_id.value);
+                                    println!("    Precedence: {}", received_pdr.precedence.value);
+                                    
+                                    // Example: Server could create additional PDRs for the session
+                                    let _server_created_pdr = CreatePdrBuilder::new(PdrId::new(100))
+                                        .precedence(Precedence::new(50))
+                                        .pdi(rs_pfcp::ie::pdi::Pdi::new(
+                                            rs_pfcp::ie::source_interface::SourceInterface::new(
+                                                rs_pfcp::ie::source_interface::SourceInterfaceValue::Core
+                                            ),
+                                            None, None, None, None, None
+                                        ))
+                                        .far_id(FarId::new(2))
+                                        .build()
+                                        .unwrap();
+                                    println!("  Server would create additional PDR ID: 100");
+                                }
+                                Err(e) => {
+                                    println!("  Failed to parse CreatePdr: {}", e);
+                                }
+                            }
+                        }
+                        
                         // Store session information
                         sessions.insert(seid, SessionInfo {
                             seid,
@@ -145,16 +174,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
                         let created_pdr = Ie::new(IeType::CreatedPdr, vec![]);
-                        let res = rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse {
-                            header: Header::new(MsgType::SessionEstablishmentResponse, true, seid, msg.sequence()),
-                            cause: cause_ie,
-                            offending_ie: None,
-                            fseid: fseid_ie,
-                            created_pdr: Some(created_pdr),
-                            load_control_information: None,
-                            overload_control_information: None,
-                            ies: vec![],
-                        };
+                        let res = SessionEstablishmentResponseBuilder::new(seid, msg.sequence(), cause_ie)
+                            .fseid(fseid_ie)
+                            .created_pdr(created_pdr)
+                            .build()
+                            .unwrap();
                         socket.send_to(&res.marshal(), src)?;
                         
                         // Simulate quota exhaustion after 2 seconds

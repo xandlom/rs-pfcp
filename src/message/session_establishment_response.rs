@@ -112,3 +112,106 @@ impl Message for SessionEstablishmentResponse {
         }
     }
 }
+
+pub struct SessionEstablishmentResponseBuilder {
+    seid: u64,
+    seq: u32,
+    cause: Option<Ie>,
+    offending_ie: Option<Ie>,
+    fseid: Option<Ie>,
+    created_pdr: Option<Ie>,
+    load_control_information: Option<Ie>,
+    overload_control_information: Option<Ie>,
+    ies: Vec<Ie>,
+}
+
+impl SessionEstablishmentResponseBuilder {
+    pub fn new(seid: u64, seq: u32, cause: Ie) -> Self {
+        SessionEstablishmentResponseBuilder {
+            seid,
+            seq,
+            cause: Some(cause),
+            offending_ie: None,
+            fseid: None,
+            created_pdr: None,
+            load_control_information: None,
+            overload_control_information: None,
+            ies: Vec::new(),
+        }
+    }
+
+    pub fn offending_ie(mut self, offending_ie: Ie) -> Self {
+        self.offending_ie = Some(offending_ie);
+        self
+    }
+
+    pub fn fseid(mut self, fseid: Ie) -> Self {
+        self.fseid = Some(fseid);
+        self
+    }
+
+    pub fn created_pdr(mut self, created_pdr: Ie) -> Self {
+        self.created_pdr = Some(created_pdr);
+        self
+    }
+
+    pub fn load_control_information(mut self, load_control_information: Ie) -> Self {
+        self.load_control_information = Some(load_control_information);
+        self
+    }
+
+    pub fn overload_control_information(mut self, overload_control_information: Ie) -> Self {
+        self.overload_control_information = Some(overload_control_information);
+        self
+    }
+
+    pub fn ies(mut self, ies: Vec<Ie>) -> Self {
+        self.ies = ies;
+        self
+    }
+
+    pub fn build(self) -> Result<SessionEstablishmentResponse, io::Error> {
+        let cause = self
+            .cause
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE required"))?;
+        let fseid = self
+            .fseid
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE required"))?;
+
+        let mut payload_len = cause.len() + fseid.len();
+        if let Some(ie) = &self.offending_ie {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.created_pdr {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.overload_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.ies {
+            payload_len += ie.len();
+        }
+
+        let mut header = Header::new(
+            MsgType::SessionEstablishmentResponse,
+            true,
+            self.seid,
+            self.seq,
+        );
+        header.length = payload_len + (header.len() - 4);
+
+        Ok(SessionEstablishmentResponse {
+            header,
+            cause,
+            offending_ie: self.offending_ie,
+            fseid,
+            created_pdr: self.created_pdr,
+            load_control_information: self.load_control_information,
+            overload_control_information: self.overload_control_information,
+            ies: self.ies,
+        })
+    }
+}
