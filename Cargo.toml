@@ -8,6 +8,7 @@ anyhow = "1.0.98"
 bitflags = "2.4.0"
 clap = { version = "4.5.43", features = ["derive"] }
 network-interface = "2.0.3"
+pcap-file = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
@@ -27,3 +28,7 @@ path = "examples/session-client/main.rs"
 [[example]]
 name = "session-server"
 path = "examples/session-server/main.rs"
+
+[[example]]
+name = "pcap-reader"
+path = "examples/pcap-reader/main.rs"
