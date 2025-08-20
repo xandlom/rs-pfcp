@@ -2,6 +2,7 @@
 
 use clap::Parser;
 use pcap_file::pcap::PcapReader;
+use pcap_file::DataLink;
 use rs_pfcp::message::display::MessageDisplay;
 use std::fs::File;
 use std::path::Path;
@@ -35,7 +36,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut packet_count = 0;
     let mut pfcp_count = 0;
 
+    // Detect link type from pcap header
+    let datalink = pcap_reader.header().datalink;
     println!("Reading PCAP file: {}", args.pcap);
+    println!("Datalink type: {:?}", datalink);
     println!("Format: {}", args.format.to_uppercase());
     if args.pfcp_only {
         println!("Filtering: PFCP messages only");
@@ -48,26 +52,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 packet_count += 1;
                 let data = pkt.data;
 
-                // Skip non-Ethernet packets
-                if data.len() < 14 {
-                    continue;
+                // Debug: print first few packets to understand format
+                if packet_count <= 3 {
+                    println!("Packet {} data length: {}, first 20 bytes: {:?}", 
+                        packet_count, data.len(), 
+                        &data[..data.len().min(20)]);
                 }
 
-                // Parse Ethernet header (14 bytes)
-                let eth_type = u16::from_be_bytes([data[12], data[13]]);
-                if eth_type != 0x0800 {
-                    // IPv4
-                    if !args.pfcp_only {
-                        println!(
-                            "Packet {}: Non-IPv4 (EtherType: 0x{:04x})",
-                            packet_count, eth_type
-                        );
+                let (ip_data, header_type) = match datalink {
+                    DataLink::ETHERNET => {
+                        // Ethernet (DLT_EN10MB)
+                        if data.len() < 14 {
+                            continue;
+                        }
+                        let eth_type = u16::from_be_bytes([data[12], data[13]]);
+                        if eth_type != 0x0800 {
+                            if !args.pfcp_only {
+                                println!(
+                                    "Packet {}: Non-IPv4 (EtherType: 0x{:04x})",
+                                    packet_count, eth_type
+                                );
+                            }
+                            continue;
+                        }
+                        (&data[14..], "Ethernet")
+                    },
+                    DataLink::LINUX_SLL2 => {
+                        // Linux cooked v2 (DLT_LINUX_SLL2)
+                        if data.len() < 20 {
+                            continue;
+                        }
+                        // In Linux cooked v2, protocol type is at offset 0-1
+                        let protocol_type = u16::from_be_bytes([data[0], data[1]]);
+                        if protocol_type != 0x0800 {
+                            if !args.pfcp_only {
+                                println!(
+                                    "Packet {}: Non-IPv4 (Protocol: 0x{:04x})",
+                                    packet_count, protocol_type
+                                );
+                            }
+                            continue;
+                        }
+                        (&data[20..], "Linux cooked v2")
+                    },
+                    _ => {
+                        if !args.pfcp_only {
+                            println!("Packet {}: Unsupported datalink type: {:?}", packet_count, datalink);
+                        }
+                        continue;
                     }
-                    continue;
-                }
+                };
 
                 // Parse IPv4 header
-                let ip_data = &data[14..];
                 if ip_data.len() < 20 {
                     continue;
                 }
@@ -126,15 +162,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Parse PFCP message
                 match rs_pfcp::message::parse(pfcp_data) {
                     Ok(pfcp_msg) => {
-                        println!(
-                            "Packet {}: PFCP {} ({}:{} -> {}:{})",
-                            packet_count,
-                            pfcp_msg.msg_name(),
-                            extract_ip_address(&ip_data[12..16]),
-                            src_port,
-                            extract_ip_address(&ip_data[16..20]),
-                            dst_port
-                        );
+                        // Show raw PFCP header for debugging
+                        if pfcp_data.len() >= 16 {
+                            let version = pfcp_data[0] >> 5;
+                            let s_flag = (pfcp_data[0] & 0x01) != 0;
+                            let msg_type = pfcp_data[1];
+                            let length = u16::from_be_bytes([pfcp_data[2], pfcp_data[3]]);
+                            let seid_or_seq_start = if s_flag { 4 } else { 4 };
+                            let seq_offset = if s_flag { 12 } else { 4 };
+                            let sequence = if pfcp_data.len() > seq_offset + 2 {
+                                u32::from_be_bytes([0, pfcp_data[seq_offset], pfcp_data[seq_offset + 1], pfcp_data[seq_offset + 2]])
+                            } else { 0 };
+                            
+                            println!(
+                                "Packet {}: PFCP {} ({}:{} -> {}:{}) [{}]",
+                                packet_count,
+                                pfcp_msg.msg_name(),
+                                extract_ip_address(&ip_data[12..16]),
+                                src_port,
+                                extract_ip_address(&ip_data[16..20]),
+                                dst_port,
+                                header_type
+                            );
+                            println!("  PFCP Header: version={}, S={}, msg_type={}, length={}, seq={}", 
+                                version, s_flag, msg_type, length, sequence);
+                            println!("  Raw PFCP bytes: {:02x?}", &pfcp_data[..pfcp_data.len().min(20)]);
+                        }
 
                         match args.format.as_str() {
                             "yaml" => match pfcp_msg.to_yaml() {

@@ -16,7 +16,21 @@ pub struct SessionModificationResponse {
 
 impl Message for SessionModificationResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
+        let mut header = self.header.clone();
+        // Recalculate length to include all IEs
+        let mut payload_len = self.cause.len();
+        if let Some(ie) = &self.offending_ie {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.created_pdr {
+            payload_len += ie.len();
+        }
+        for ie in &self.ies {
+            payload_len += ie.len();
+        }
+        header.length = payload_len + header.len() - 4;
+        
+        let mut data = header.marshal();
         data.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {
             data.extend_from_slice(&ie.marshal());
@@ -86,6 +100,30 @@ impl Message for SessionModificationResponse {
             IeType::OffendingIe => self.offending_ie.as_ref(),
             IeType::CreatedPdr => self.created_pdr.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
+        }
+    }
+}
+
+impl SessionModificationResponse {
+    pub fn new(seid: u64, seq: u32, cause_ie: Ie, offending_ie: Option<Ie>, created_pdr: Option<Ie>, ies: Vec<Ie>) -> Self {
+        let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
+        let mut payload_len = cause_ie.len();
+        if let Some(ie) = &offending_ie {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &created_pdr {
+            payload_len += ie.len();
+        }
+        for ie in &ies {
+            payload_len += ie.len();
+        }
+        header.length = payload_len + header.len() - 4;
+        SessionModificationResponse {
+            header,
+            cause: cause_ie,
+            offending_ie,
+            created_pdr,
+            ies,
         }
     }
 }

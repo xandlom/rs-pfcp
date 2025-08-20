@@ -13,7 +13,18 @@ pub struct SessionDeletionResponse {
 
 impl Message for SessionDeletionResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut buffer = self.header.marshal();
+        let mut header = self.header.clone();
+        // Recalculate length to include all IEs
+        let mut payload_len = self.cause.len();
+        if let Some(ie) = &self.offending_ie {
+            payload_len += ie.len();
+        }
+        for ie in &self.ies {
+            payload_len += ie.len();
+        }
+        header.length = payload_len + header.len() - 4;
+        
+        let mut buffer = header.marshal();
         buffer.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {
             buffer.extend_from_slice(&ie.marshal());

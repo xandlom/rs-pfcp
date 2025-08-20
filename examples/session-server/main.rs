@@ -4,11 +4,10 @@ use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::ie::{
     cause::CauseValue,
-    create_pdr::{CreatePdr, CreatePdrBuilder},
-    far_id::FarId,
+    create_pdr::CreatePdr,
+    created_pdr::CreatedPdr,
+    f_teid::Fteid,
     node_id::NodeId,
-    pdr_id::PdrId,
-    precedence::Precedence,
     Ie, IeType,
 };
 use rs_pfcp::ie::{
@@ -18,6 +17,7 @@ use rs_pfcp::ie::{
 use rs_pfcp::message::{
     association_setup_response::AssociationSetupResponse, display::MessageDisplay, header::Header,
     session_deletion_response::SessionDeletionResponse,
+    session_establishment_request::SessionEstablishmentRequest,
     session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_response::SessionModificationResponse,
     session_report_request::SessionReportRequestBuilder, Message, MsgType,
@@ -144,30 +144,45 @@ fn main() -> Result<(), Box<dyn Error>> {
                         let seid = msg.seid().unwrap();
                         println!("  Session ID: 0x{:016x}", seid);
 
-                        // Demonstrate PDR processing - analyze received PDRs
-                        if let Some(create_pdr_ie) = msg.find_ie(IeType::CreatePdr) {
+                        // Parse the full SessionEstablishmentRequest to access create_pdrs
+                        let establishment_req = match SessionEstablishmentRequest::unmarshal(data) {
+                            Ok(req) => req,
+                            Err(e) => {
+                                eprintln!("Failed to parse SessionEstablishmentRequest: {}", e);
+                                continue;
+                            }
+                        };
+
+                        // Extract PDR IDs from all Create PDR IEs and create Created PDR IEs
+                        let mut created_pdrs = Vec::new();
+                        println!("  Processing {} Create PDR IEs:", establishment_req.create_pdrs.len());
+                        
+                        for (index, create_pdr_ie) in establishment_req.create_pdrs.iter().enumerate() {
                             match CreatePdr::unmarshal(&create_pdr_ie.payload) {
                                 Ok(received_pdr) => {
-                                    println!("  Received CreatePdr:");
-                                    println!("    PDR ID: {}", received_pdr.pdr_id.value);
-                                    println!("    Precedence: {}", received_pdr.precedence.value);
+                                    println!("    CreatePdr {}: PDR ID: {}, Precedence: {}", 
+                                        index + 1, received_pdr.pdr_id.value, received_pdr.precedence.value);
 
-                                    // Example: Server could create additional PDRs for the session
-                                    let _server_created_pdr = CreatePdrBuilder::new(PdrId::new(100))
-                                        .precedence(Precedence::new(50))
-                                        .pdi(rs_pfcp::ie::pdi::Pdi::new(
-                                            rs_pfcp::ie::source_interface::SourceInterface::new(
-                                                rs_pfcp::ie::source_interface::SourceInterfaceValue::Core
-                                            ),
-                                            None, None, None, None, None
-                                        ))
-                                        .far_id(FarId::new(2))
-                                        .build()
-                                        .unwrap();
-                                    println!("  Server would create additional PDR ID: 100");
+                                    // Create a Created PDR with the same PDR ID and a local F-TEID
+                                    // Using a dummy F-TEID for demonstration (in real implementation, 
+                                    // this would be allocated from the UPF's F-TEID pool)
+                                    let local_f_teid = Fteid::new(
+                                        true,  // IPv4 flag
+                                        false, // IPv6 flag  
+                                        0x12345678 + received_pdr.pdr_id.value as u32, // TEID (unique per PDR)
+                                        Some(std::net::Ipv4Addr::new(192, 168, 1, 100)), // UPF IP
+                                        None,  // No IPv6
+                                        0,     // No UDP port
+                                    );
+                                    
+                                    let created_pdr = CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
+                                    created_pdrs.push(created_pdr.to_ie());
+                                    
+                                    println!("      → Created PDR: PDR ID {}, F-TEID: 0x{:08x}@192.168.1.100", 
+                                        received_pdr.pdr_id.value, 0x12345678 + received_pdr.pdr_id.value as u32);
                                 }
                                 Err(e) => {
-                                    println!("  Failed to parse CreatePdr: {}", e);
+                                    println!("    Failed to parse CreatePdr {}: {}", index + 1, e);
                                 }
                             }
                         }
@@ -185,16 +200,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
-                        let created_pdr = Ie::new(IeType::CreatedPdr, vec![]);
-                        let res = SessionEstablishmentResponseBuilder::new(
+                        
+                        // Build response with all created PDRs
+                        let mut response_builder = SessionEstablishmentResponseBuilder::new(
                             seid,
                             msg.sequence(),
                             cause_ie,
                         )
-                        .fseid(fseid_ie)
-                        .created_pdr(created_pdr)
-                        .build()
-                        .unwrap();
+                        .fseid(fseid_ie);
+                        
+                        // Add all created PDRs to the response
+                        for created_pdr in created_pdrs {
+                            response_builder = response_builder.created_pdr(created_pdr);
+                        }
+                        
+                        let res = response_builder.build().unwrap();
                         socket.send_to(&res.marshal(), src)?;
 
                         // Simulate quota exhaustion after 2 seconds
@@ -217,34 +237,26 @@ fn main() -> Result<(), Box<dyn Error>> {
                     MsgType::SessionModificationRequest => {
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-                        let res = SessionModificationResponse {
-                            header: Header::new(
-                                MsgType::SessionModificationResponse,
-                                true,
-                                msg.seid().unwrap(),
-                                msg.sequence(),
-                            ),
-                            cause: cause_ie,
-                            offending_ie: None,
-                            created_pdr: None,
-                            ies: vec![],
-                        };
+                        let res = SessionModificationResponse::new(
+                            msg.seid().unwrap(),
+                            msg.sequence(),
+                            cause_ie,
+                            None,
+                            None,
+                            vec![],
+                        );
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionDeletionRequest => {
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-                        let res = SessionDeletionResponse {
-                            header: Header::new(
-                                MsgType::SessionDeletionResponse,
-                                true,
-                                msg.seid().unwrap(),
-                                msg.sequence(),
-                            ),
-                            cause: cause_ie,
-                            offending_ie: None,
-                            ies: vec![],
-                        };
+                        let res = SessionDeletionResponse::new(
+                            msg.seid().unwrap(),
+                            msg.sequence(),
+                            cause_ie,
+                            None,
+                            vec![],
+                        );
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionReportResponse => {
