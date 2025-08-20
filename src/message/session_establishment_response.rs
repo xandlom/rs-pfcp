@@ -11,7 +11,7 @@ pub struct SessionEstablishmentResponse {
     pub cause: Ie,
     pub offending_ie: Option<Ie>,
     pub fseid: Ie,
-    pub created_pdr: Option<Ie>,
+    pub created_pdrs: Vec<Ie>,
     pub load_control_information: Option<Ie>,
     pub overload_control_information: Option<Ie>,
     pub ies: Vec<Ie>,
@@ -19,13 +19,34 @@ pub struct SessionEstablishmentResponse {
 
 impl Message for SessionEstablishmentResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
+        let mut header = self.header.clone();
+        // Recalculate length to include all IEs
+        let mut payload_len = self.cause.len();
+        if let Some(ie) = &self.offending_ie {
+            payload_len += ie.len();
+        }
+        payload_len += self.fseid.len();
+        for ie in &self.created_pdrs {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.overload_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.ies {
+            payload_len += ie.len();
+        }
+        header.length = payload_len + header.len() - 4;
+        
+        let mut data = header.marshal();
         data.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {
             data.extend_from_slice(&ie.marshal());
         }
         data.extend_from_slice(&self.fseid.marshal());
-        if let Some(ie) = &self.created_pdr {
+        for ie in &self.created_pdrs {
             data.extend_from_slice(&ie.marshal());
         }
         if let Some(ie) = &self.load_control_information {
@@ -45,7 +66,7 @@ impl Message for SessionEstablishmentResponse {
         let mut cause = None;
         let mut offending_ie = None;
         let mut fseid = None;
-        let mut created_pdr = None;
+        let mut created_pdrs = Vec::new();
         let mut load_control_information = None;
         let mut overload_control_information = None;
         let mut ies = Vec::new();
@@ -58,7 +79,7 @@ impl Message for SessionEstablishmentResponse {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
                 IeType::Fseid => fseid = Some(ie),
-                IeType::CreatedPdr => created_pdr = Some(ie),
+                IeType::CreatedPdr => created_pdrs.push(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 _ => ies.push(ie),
@@ -73,7 +94,7 @@ impl Message for SessionEstablishmentResponse {
             offending_ie,
             fseid: fseid
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?,
-            created_pdr,
+            created_pdrs,
             load_control_information,
             overload_control_information,
             ies,
@@ -105,7 +126,7 @@ impl Message for SessionEstablishmentResponse {
             IeType::Cause => Some(&self.cause),
             IeType::Fseid => Some(&self.fseid),
             IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::CreatedPdr => self.created_pdr.as_ref(),
+            IeType::CreatedPdr => self.created_pdrs.first(),
             IeType::LoadControlInformation => self.load_control_information.as_ref(),
             IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
@@ -119,7 +140,7 @@ pub struct SessionEstablishmentResponseBuilder {
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     fseid: Option<Ie>,
-    created_pdr: Option<Ie>,
+    created_pdrs: Vec<Ie>,
     load_control_information: Option<Ie>,
     overload_control_information: Option<Ie>,
     ies: Vec<Ie>,
@@ -133,7 +154,7 @@ impl SessionEstablishmentResponseBuilder {
             cause: Some(cause),
             offending_ie: None,
             fseid: None,
-            created_pdr: None,
+            created_pdrs: Vec::new(),
             load_control_information: None,
             overload_control_information: None,
             ies: Vec::new(),
@@ -151,7 +172,7 @@ impl SessionEstablishmentResponseBuilder {
     }
 
     pub fn created_pdr(mut self, created_pdr: Ie) -> Self {
-        self.created_pdr = Some(created_pdr);
+        self.created_pdrs.push(created_pdr);
         self
     }
 
@@ -182,7 +203,7 @@ impl SessionEstablishmentResponseBuilder {
         if let Some(ie) = &self.offending_ie {
             payload_len += ie.len();
         }
-        if let Some(ie) = &self.created_pdr {
+        for ie in &self.created_pdrs {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.load_control_information {
@@ -208,7 +229,7 @@ impl SessionEstablishmentResponseBuilder {
             cause,
             offending_ie: self.offending_ie,
             fseid,
-            created_pdr: self.created_pdr,
+            created_pdrs: self.created_pdrs,
             load_control_information: self.load_control_information,
             overload_control_information: self.overload_control_information,
             ies: self.ies,

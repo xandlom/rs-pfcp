@@ -613,3 +613,66 @@ fn test_session_report_response_unmarshal_missing_cause() {
     assert!(result.is_err());
     assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
 }
+
+#[test]
+fn test_session_establishment_response_multiple_created_pdrs() {
+    use rs_pfcp::ie::{cause::Cause, created_pdr::CreatedPdr, f_teid::Fteid, pdr_id::PdrId, fseid::Fseid};
+    use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+
+    // Test SessionEstablishmentResponse with multiple Created PDR IEs
+    let seid = 0x0000000000000001;
+    let sequence = 2;
+    
+    // Create cause IE
+    let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
+    
+    // Create F-SEID IE
+    let fseid = Fseid::new(0x0102030405060709u64, Some(Ipv4Addr::new(127, 0, 0, 1)), None);
+    let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+    
+    // Create two Created PDR IEs with different PDR IDs and F-TEIDs
+    let fteid1 = Fteid::new(true, false, 0x12345679, Some(Ipv4Addr::new(192, 168, 1, 100)), None, 0);
+    let created_pdr1 = CreatedPdr::new(PdrId::new(1), fteid1);
+    let created_pdr1_ie = created_pdr1.to_ie();
+    
+    let fteid2 = Fteid::new(true, false, 0x1234567a, Some(Ipv4Addr::new(192, 168, 1, 100)), None, 0);
+    let created_pdr2 = CreatedPdr::new(PdrId::new(2), fteid2);
+    let created_pdr2_ie = created_pdr2.to_ie();
+    
+    // Build SessionEstablishmentResponse with multiple Created PDRs using the builder pattern
+    let response = SessionEstablishmentResponseBuilder::new(seid, sequence, cause_ie)
+        .fseid(fseid_ie)
+        .created_pdr(created_pdr1_ie)
+        .created_pdr(created_pdr2_ie)
+        .build()
+        .unwrap();
+    
+    // Verify the response contains both Created PDR IEs
+    assert_eq!(response.created_pdrs.len(), 2);
+    assert_eq!(response.seid(), Some(seid));
+    assert_eq!(response.sequence(), sequence);
+    
+    // Marshal and unmarshal to test round-trip
+    let marshaled = response.marshal();
+    let unmarshaled = rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(&marshaled).unwrap();
+    
+    // Verify unmarshaled response has both Created PDR IEs
+    assert_eq!(unmarshaled.created_pdrs.len(), 2);
+    assert_eq!(unmarshaled.seid(), Some(seid));
+    assert_eq!(unmarshaled.sequence(), sequence);
+    
+    // Verify the Created PDR contents
+    let created_pdr1_unmarshaled = CreatedPdr::unmarshal(&unmarshaled.created_pdrs[0].payload).unwrap();
+    let created_pdr2_unmarshaled = CreatedPdr::unmarshal(&unmarshaled.created_pdrs[1].payload).unwrap();
+    
+    assert_eq!(created_pdr1_unmarshaled.pdr_id.value, 1);
+    assert_eq!(created_pdr1_unmarshaled.f_teid.teid, 0x12345679);
+    
+    assert_eq!(created_pdr2_unmarshaled.pdr_id.value, 2);
+    assert_eq!(created_pdr2_unmarshaled.f_teid.teid, 0x1234567a);
+    
+    // Verify the length field is correctly calculated
+    let expected_length = marshaled.len() - 4; // Total length minus first 4 header bytes
+    let header_length = u16::from_be_bytes([marshaled[2], marshaled[3]]);
+    assert_eq!(header_length as usize, expected_length);
+}
