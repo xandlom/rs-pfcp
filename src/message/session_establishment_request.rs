@@ -206,6 +206,10 @@ impl Message for SessionEstablishmentRequest {
             IeType::ApnDnn => self.apn_dnn.as_ref(),
             IeType::UserPlaneInactivityTimer => self.user_plane_inactivity_timer.as_ref(),
             IeType::PfcpsmReqFlags => self.pfcpsm_req_flags.as_ref(),
+            IeType::CreatePdr => self.create_pdrs.first(),
+            IeType::CreateFar => self.create_fars.first(),
+            IeType::CreateUrr => self.create_urrs.first(),
+            IeType::CreateQer => self.create_qers.first(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }

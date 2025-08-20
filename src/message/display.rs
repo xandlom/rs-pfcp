@@ -194,6 +194,16 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                 map.extend(fseid_to_structured_data(&fseid));
             }
         }
+        IeType::CreatePdr => {
+            if let Ok(create_pdr) = crate::ie::create_pdr::CreatePdr::unmarshal(&ie.payload) {
+                map.extend(create_pdr_to_structured_data(&create_pdr));
+            }
+        }
+        IeType::CreatedPdr => {
+            if let Ok(created_pdr) = crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload) {
+                map.extend(created_pdr_to_structured_data(&created_pdr));
+            }
+        }
         _ => {
             // For unknown IEs, just show hex payload if it's not too long
             if ie.payload.len() <= 32 {
@@ -231,6 +241,7 @@ fn get_common_ie_types() -> Vec<IeType> {
         IeType::DownlinkDataServiceInformation,
         IeType::Fseid,
         IeType::CreatePdr,
+        IeType::CreatedPdr,
         IeType::CreateFar,
         IeType::CreateUrr,
         IeType::CreateQer,
@@ -482,6 +493,116 @@ fn recovery_timestamp_to_structured_data(
     map
 }
 
+fn create_pdr_to_structured_data(
+    create_pdr: &crate::ie::create_pdr::CreatePdr,
+) -> BTreeMap<String, YamlValue> {
+    let mut map = BTreeMap::new();
+    map.insert(
+        "pdr_id".to_string(),
+        YamlValue::Number(create_pdr.pdr_id.value.into()),
+    );
+    map.insert(
+        "precedence".to_string(),
+        YamlValue::Number(create_pdr.precedence.value.into()),
+    );
+
+    // Add PDI details
+    let mut pdi_map = BTreeMap::new();
+    pdi_map.insert(
+        "source_interface".to_string(),
+        YamlValue::String(format!("{:?}", create_pdr.pdi.source_interface.value)),
+    );
+    
+    map.insert(
+        "pdi".to_string(),
+        YamlValue::Mapping(
+            pdi_map
+                .into_iter()
+                .map(|(k, v)| (YamlValue::String(k), v))
+                .collect(),
+        ),
+    );
+
+    // Add FAR ID if present
+    if let Some(ref far_id) = create_pdr.far_id {
+        map.insert("far_id".to_string(), YamlValue::Number(far_id.value.into()));
+    }
+
+    map
+}
+
+fn created_pdr_to_structured_data(
+    created_pdr: &crate::ie::created_pdr::CreatedPdr,
+) -> BTreeMap<String, YamlValue> {
+    let mut map = BTreeMap::new();
+    map.insert(
+        "pdr_id".to_string(),
+        YamlValue::Number(created_pdr.pdr_id.value.into()),
+    );
+
+    // Add F-TEID details
+    let mut fteid_map = BTreeMap::new();
+    fteid_map.insert(
+        "teid".to_string(),
+        YamlValue::String(format!("0x{:08x}", created_pdr.f_teid.teid)),
+    );
+    fteid_map.insert(
+        "teid_decimal".to_string(),
+        YamlValue::Number(created_pdr.f_teid.teid.into()),
+    );
+
+    if let Some(ipv4) = created_pdr.f_teid.ipv4_address {
+        fteid_map.insert(
+            "ipv4_address".to_string(),
+            YamlValue::String(ipv4.to_string()),
+        );
+    }
+
+    if let Some(ipv6) = created_pdr.f_teid.ipv6_address {
+        fteid_map.insert(
+            "ipv6_address".to_string(),
+            YamlValue::String(ipv6.to_string()),
+        );
+    }
+
+    // Include flags
+    let mut flags = Vec::new();
+    if created_pdr.f_teid.v4 {
+        flags.push("IPv4");
+    }
+    if created_pdr.f_teid.v6 {
+        flags.push("IPv6");
+    }
+    if created_pdr.f_teid.ch {
+        flags.push("CHOOSE");
+    }
+    if created_pdr.f_teid.chid {
+        flags.push("CHOOSE_ID");
+    }
+    
+    fteid_map.insert(
+        "flags".to_string(),
+        YamlValue::Sequence(
+            flags
+                .into_iter()
+                .map(|s| YamlValue::String(s.to_string()))
+                .collect(),
+        ),
+    );
+
+    map.insert(
+        "f_teid".to_string(),
+        YamlValue::Mapping(
+            fteid_map
+                .into_iter()
+                .map(|(k, v)| (YamlValue::String(k), v))
+                .collect(),
+        ),
+    );
+
+    map
+}
+
 fn fseid_to_structured_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, YamlValue> {
     let mut map = BTreeMap::new();
 
@@ -607,6 +728,16 @@ fn ie_to_json_data(ie: &Ie) -> JsonValue {
         IeType::Fseid => {
             if let Ok(fseid) = crate::ie::fseid::Fseid::unmarshal(&ie.payload) {
                 map.extend(fseid_to_json_data(&fseid));
+            }
+        }
+        IeType::CreatePdr => {
+            if let Ok(create_pdr) = crate::ie::create_pdr::CreatePdr::unmarshal(&ie.payload) {
+                map.extend(create_pdr_to_json_data(&create_pdr));
+            }
+        }
+        IeType::CreatedPdr => {
+            if let Ok(created_pdr) = crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload) {
+                map.extend(created_pdr_to_json_data(&created_pdr));
             }
         }
         _ => {
@@ -919,6 +1050,106 @@ fn fseid_to_json_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, JsonV
                 .map(|s| JsonValue::String(s.to_string()))
                 .collect(),
         ),
+    );
+
+    map
+}
+
+fn create_pdr_to_json_data(
+    create_pdr: &crate::ie::create_pdr::CreatePdr,
+) -> BTreeMap<String, JsonValue> {
+    let mut map = BTreeMap::new();
+    map.insert(
+        "pdr_id".to_string(),
+        JsonValue::Number(create_pdr.pdr_id.value.into()),
+    );
+    map.insert(
+        "precedence".to_string(),
+        JsonValue::Number(create_pdr.precedence.value.into()),
+    );
+
+    // Add PDI details
+    let mut pdi_map = BTreeMap::new();
+    pdi_map.insert(
+        "source_interface".to_string(),
+        JsonValue::String(format!("{:?}", create_pdr.pdi.source_interface.value)),
+    );
+    
+    map.insert(
+        "pdi".to_string(),
+        JsonValue::Object(pdi_map.into_iter().collect()),
+    );
+
+    // Add FAR ID if present
+    if let Some(ref far_id) = create_pdr.far_id {
+        map.insert("far_id".to_string(), JsonValue::Number(far_id.value.into()));
+    }
+
+    map
+}
+
+fn created_pdr_to_json_data(
+    created_pdr: &crate::ie::created_pdr::CreatedPdr,
+) -> BTreeMap<String, JsonValue> {
+    let mut map = BTreeMap::new();
+    map.insert(
+        "pdr_id".to_string(),
+        JsonValue::Number(created_pdr.pdr_id.value.into()),
+    );
+
+    // Add F-TEID details
+    let mut fteid_map = BTreeMap::new();
+    fteid_map.insert(
+        "teid".to_string(),
+        JsonValue::String(format!("0x{:08x}", created_pdr.f_teid.teid)),
+    );
+    fteid_map.insert(
+        "teid_decimal".to_string(),
+        JsonValue::Number(created_pdr.f_teid.teid.into()),
+    );
+
+    if let Some(ipv4) = created_pdr.f_teid.ipv4_address {
+        fteid_map.insert(
+            "ipv4_address".to_string(),
+            JsonValue::String(ipv4.to_string()),
+        );
+    }
+
+    if let Some(ipv6) = created_pdr.f_teid.ipv6_address {
+        fteid_map.insert(
+            "ipv6_address".to_string(),
+            JsonValue::String(ipv6.to_string()),
+        );
+    }
+
+    // Include flags
+    let mut flags = Vec::new();
+    if created_pdr.f_teid.v4 {
+        flags.push("IPv4");
+    }
+    if created_pdr.f_teid.v6 {
+        flags.push("IPv6");
+    }
+    if created_pdr.f_teid.ch {
+        flags.push("CHOOSE");
+    }
+    if created_pdr.f_teid.chid {
+        flags.push("CHOOSE_ID");
+    }
+    
+    fteid_map.insert(
+        "flags".to_string(),
+        JsonValue::Array(
+            flags
+                .into_iter()
+                .map(|s| JsonValue::String(s.to_string()))
+                .collect(),
+        ),
+    );
+
+    map.insert(
+        "f_teid".to_string(),
+        JsonValue::Object(fteid_map.into_iter().collect()),
     );
 
     map

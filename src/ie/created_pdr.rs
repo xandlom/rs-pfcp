@@ -71,4 +71,57 @@ mod tests {
 
         assert_eq!(created_pdr, unmarshaled);
     }
+
+    #[test]
+    fn test_created_pdr_with_proper_fteid() {
+        // Test Created PDR with F-TEID that doesn't include choose_id (chid=false)
+        let pdr_id = PdrId::new(42);
+        let f_teid = Fteid::new(
+            true,  // v4
+            false, // v6
+            0x12345678,
+            Some(Ipv4Addr::new(192, 168, 1, 100)),
+            None,
+            0, // choose_id (should be ignored since chid=false by default)
+        );
+        let created_pdr = CreatedPdr::new(pdr_id, f_teid);
+
+        let marshaled = created_pdr.marshal();
+        let unmarshaled = CreatedPdr::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(created_pdr, unmarshaled);
+        assert_eq!(unmarshaled.pdr_id.value, 42);
+        assert_eq!(unmarshaled.f_teid.teid, 0x12345678);
+        assert_eq!(unmarshaled.f_teid.ipv4_address, Some(Ipv4Addr::new(192, 168, 1, 100)));
+        assert!(unmarshaled.f_teid.v4);
+        assert!(!unmarshaled.f_teid.v6);
+        assert!(!unmarshaled.f_teid.ch);
+        assert!(!unmarshaled.f_teid.chid);
+    }
+
+    #[test]
+    fn test_created_pdr_with_choose_id() {
+        // Test Created PDR with F-TEID that includes choose_id (chid=true)
+        let pdr_id = PdrId::new(100);
+        let f_teid = Fteid::new_with_choose(
+            true,  // v4
+            false, // v6
+            false, // ch
+            true,  // chid
+            0x87654321,
+            Some(Ipv4Addr::new(10, 0, 0, 1)),
+            None,
+            200, // choose_id
+        );
+        let created_pdr = CreatedPdr::new(pdr_id, f_teid);
+
+        let marshaled = created_pdr.marshal();
+        let unmarshaled = CreatedPdr::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(created_pdr, unmarshaled);
+        assert_eq!(unmarshaled.pdr_id.value, 100);
+        assert_eq!(unmarshaled.f_teid.teid, 0x87654321);
+        assert_eq!(unmarshaled.f_teid.choose_id, 200);
+        assert!(unmarshaled.f_teid.chid);
+    }
 }
