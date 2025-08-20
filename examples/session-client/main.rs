@@ -1,6 +1,7 @@
 // examples/session-client/main.rs
 
 use clap::Parser;
+use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use rs_pfcp::ie::{
     cause::CauseValue,
     create_pdr::{CreatePdr, CreatePdrBuilder},
@@ -18,7 +19,8 @@ use rs_pfcp::message::{
     session_modification_request::SessionModificationRequestBuilder,
     session_report_response::SessionReportResponseBuilder, Message, MsgType,
 };
-use std::net::{Ipv4Addr, UdpSocket};
+use std::error::Error;
+use std::net::{IpAddr, UdpSocket};
 use std::time::Duration;
 
 #[derive(Parser, Debug)]
@@ -27,6 +29,18 @@ struct Args {
     /// Number of sessions to create
     #[arg(short, long, default_value_t = 1)]
     sessions: u64,
+
+    /// The network interface name (e.g., eth0, lo) to bind to
+    #[arg(short, long, default_value = "lo")]
+    interface: String,
+
+    /// The port to connect to the server
+    #[arg(short, long, default_value_t = 8805)]
+    port: u16,
+
+    /// The server address to connect to (IP or FQDN)
+    #[arg(long, default_value = "127.0.0.1")]
+    address: String,
 }
 
 // Helper function to handle incoming Session Report Requests
@@ -63,13 +77,49 @@ fn handle_session_report_request(
     Ok(())
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let socket = UdpSocket::bind("127.0.0.1:0")?;
-    socket.connect("127.0.0.1:8805")?;
+    // Get all network interfaces available on the system
+    let network_interfaces = NetworkInterface::show()?;
 
-    let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
+    // Find the interface that matches the name from the command line
+    let interface = network_interfaces
+        .iter()
+        .find(|iface| iface.name == args.interface)
+        .ok_or_else(|| format!("Interface '{}' not found", args.interface))?;
+
+    // Find the first IPv4 address of the interface
+    let client_ip: IpAddr = interface
+        .addr
+        .iter()
+        .find_map(|addr| {
+            if let network_interface::Addr::V4(addr) = addr {
+                Some(IpAddr::V4(addr.ip))
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| "No valid IPv4 address found for interface")?;
+
+    // Bind to the interface IP with port 0 (let OS choose)
+    let bind_address = format!("{}:0", client_ip);
+    let socket = UdpSocket::bind(&bind_address)?;
+    
+    // Connect to the server
+    let server_address = format!("{}:{}", args.address, args.port);
+    socket.connect(&server_address)?;
+    
+    println!("Client bound to: {}", socket.local_addr()?);
+    println!("Connecting to server: {}", server_address);
+
+    // Use the interface IP for Node ID
+    let interface_ipv4 = if let IpAddr::V4(ipv4) = client_ip {
+        ipv4
+    } else {
+        return Err("Interface IP is not IPv4".into());
+    };
+    let node_id = NodeId::new_ipv4(interface_ipv4);
     let node_id_ie = node_id.to_ie();
     // Create current recovery timestamp using proper RecoveryTimeStamp struct
     let recovery_ts =
@@ -99,7 +149,7 @@ fn main() -> std::io::Result<()> {
         println!("[{seid}] Sending Session Establishment Request...");
         let fseid = Fseid::new(
             0x0102030405060708u64 + seid,
-            Some(Ipv4Addr::new(127, 0, 0, 1)),
+            Some(interface_ipv4),
             None,
         );
         let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
