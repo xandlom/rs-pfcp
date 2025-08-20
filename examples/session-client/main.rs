@@ -5,6 +5,7 @@ use rs_pfcp::ie::{
     cause::CauseValue,
     create_pdr::{CreatePdr, CreatePdrBuilder},
     far_id::FarId,
+    fseid::Fseid,
     node_id::NodeId,
     pdr_id::PdrId,
     precedence::Precedence,
@@ -96,9 +97,12 @@ fn main() -> std::io::Result<()> {
 
         // 2. Session Establishment
         println!("[{seid}] Sending Session Establishment Request...");
-        let mut fseid_payload = vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
-        fseid_payload.extend_from_slice(&seid.to_be_bytes());
-        let fseid_ie = Ie::new(IeType::Fseid, fseid_payload);
+        let fseid = Fseid::new(
+            0x0102030405060708u64 + seid,
+            Some(Ipv4Addr::new(127, 0, 0, 1)),
+            None,
+        );
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
         // Create structured PDR for uplink traffic detection using builder pattern
         let uplink_pdr = CreatePdr::uplink_access(PdrId::new(1), Precedence::new(100));
         let pdr_ie = uplink_pdr.to_ie();

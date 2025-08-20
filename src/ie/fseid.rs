@@ -28,10 +28,10 @@ impl Fseid {
     pub fn marshal(&self) -> Vec<u8> {
         let mut data = Vec::new();
         let mut flags = 0;
-        if self.v4 {
+        if self.v6 {
             flags |= 0b1;
         }
-        if self.v6 {
+        if self.v4 {
             flags |= 0b10;
         }
         data.push(flags);
@@ -53,8 +53,8 @@ impl Fseid {
             ));
         }
         let flags = data[0];
-        let v4 = (flags & 0b1) == 0b1;
-        let v6 = (flags & 0b10) == 0b10;
+        let v6 = (flags & 0b1) == 0b1;
+        let v4 = (flags & 0b10) == 0b10;
         let seid = u64::from_be_bytes(data[1..9].try_into().unwrap());
 
         let mut offset = 9;
