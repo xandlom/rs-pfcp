@@ -15,7 +15,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Update PDR                             | 9    | Yes       |
 | Update FAR                             | 10   | Yes       |
 | Update Forwarding Parameters           | 11   | Yes       |
-| Update BAR within Session Report Resp. | 12   | No        |
+| Update BAR within Session Report Resp. | 12   | Yes       |
 | Update URR                             | 13   | Yes       |
 | Update QER                             | 14   | Yes       |
 | Remove PDR                             | 15   | Yes       |
@@ -75,7 +75,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Recovery Time Stamp                    | 96   | Yes       |
 | PDN Type                               | 99   | No        |
 | User ID                                | 100  | No        |
-| S-NSSAI                                | 101  | No        |
+| S-NSSAI                                | 101  | Yes       |
 | Trace Information                      | 102  | No        |
 | APN/DNN                                | 103  | No        |
 | User Plane Inactivity Timer           | 104  | No        |
@@ -88,29 +88,30 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Update BAR                             | 116  | Yes       |
 | Remove BAR                             | 117  | Yes       |
 | BAR ID                                 | 118  | Yes       |
-| Create Traffic Endpoint                | 131  | No        |
-| Update Traffic Endpoint                | 132  | No        |
-| Remove Traffic Endpoint                | 133  | No        |
+| Create Traffic Endpoint                | 131  | Yes       |
+| Update Traffic Endpoint                | 132  | Yes       |
+| Remove Traffic Endpoint                | 133  | Yes       |
 | Alternate SMF IP Address               | 141  | Yes       |
 | Source IP Address                      | 192  | Yes       |
 
 ## Implementation Status Summary
 
 **Total IEs Defined**: 69 (excluding Unknown type)  
-**Implemented IEs**: 58  
-**Missing IEs**: 11  
-**Compliance Level**: ~84%
+**Implemented IEs**: 63  
+**Missing IEs**: 6  
+**Compliance Level**: ~91%
 
 ### Recently Added (Phase 1 Critical Compliance)
 - ✅ **Update Forwarding Parameters (Type 11)** - Critical for dynamic traffic steering
 - ✅ **Overload Control Information (Type 54)** - Essential for network resilience
 
-### Priority Missing IEs (Phase 2)
-- **Update BAR within Session Report Response (Type 12)** - Required for buffering control  
-- **Traffic Endpoint Management (Types 131-133)** - Required for multi-access scenarios
-- **Network Slicing Support (Type 101)** - S-NSSAI for 5G network slicing
+### Recently Added (Phase 2 Release 18 Core Features)
+- ✅ **Update BAR within Session Report Response (Type 12)** - Required for buffering control  
+- ✅ **Traffic Endpoint Management (Types 131-133)** - Required for multi-access scenarios
+- ✅ **Network Slicing Support (Type 101)** - S-NSSAI for 5G network slicing
 
-### Standard Priority Missing IEs (Phase 3)
+### Remaining Missing IEs (Phase 3)
+
 - **Enhanced Identification**: PDN Type (99), User ID (100), APN/DNN (103)
 - **Advanced Monitoring**: Trace Information (102), Path Failure Report (105)
 - **Connection Management**: User Plane Inactivity Timer (104)
