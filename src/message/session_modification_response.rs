@@ -11,6 +11,7 @@ pub struct SessionModificationResponse {
     pub cause: Ie,
     pub offending_ie: Option<Ie>,
     pub created_pdr: Option<Ie>,
+    pub pdn_type: Option<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -23,6 +24,9 @@ impl Message for SessionModificationResponse {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.created_pdr {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.pdn_type {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -38,6 +42,9 @@ impl Message for SessionModificationResponse {
         if let Some(ie) = &self.created_pdr {
             data.extend_from_slice(&ie.marshal());
         }
+        if let Some(ie) = &self.pdn_type {
+            data.extend_from_slice(&ie.marshal());
+        }
         for ie in &self.ies {
             data.extend_from_slice(&ie.marshal());
         }
@@ -49,6 +56,7 @@ impl Message for SessionModificationResponse {
         let mut cause = None;
         let mut offending_ie = None;
         let mut created_pdr = None;
+        let mut pdn_type = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -59,6 +67,7 @@ impl Message for SessionModificationResponse {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
                 IeType::CreatedPdr => created_pdr = Some(ie),
+                IeType::PdnType => pdn_type = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -70,6 +79,7 @@ impl Message for SessionModificationResponse {
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
             offending_ie,
             created_pdr,
+            pdn_type,
             ies,
         })
     }
@@ -99,6 +109,7 @@ impl Message for SessionModificationResponse {
             IeType::Cause => Some(&self.cause),
             IeType::OffendingIe => self.offending_ie.as_ref(),
             IeType::CreatedPdr => self.created_pdr.as_ref(),
+            IeType::PdnType => self.pdn_type.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
@@ -111,6 +122,7 @@ impl SessionModificationResponse {
         cause_ie: Ie,
         offending_ie: Option<Ie>,
         created_pdr: Option<Ie>,
+        pdn_type: Option<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
@@ -119,6 +131,9 @@ impl SessionModificationResponse {
             payload_len += ie.len();
         }
         if let Some(ie) = &created_pdr {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &pdn_type {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -130,6 +145,7 @@ impl SessionModificationResponse {
             cause: cause_ie,
             offending_ie,
             created_pdr,
+            pdn_type,
             ies,
         }
     }

@@ -365,6 +365,7 @@ fn test_session_modification_response_marshal_unmarshal() {
         cause: cause_ie.clone(),
         offending_ie: None,
         created_pdr: Some(pdr_ie.clone()),
+        pdn_type: None,
         ies: vec![],
     };
 

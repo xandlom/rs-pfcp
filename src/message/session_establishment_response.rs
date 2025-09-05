@@ -12,6 +12,7 @@ pub struct SessionEstablishmentResponse {
     pub offending_ie: Option<Ie>,
     pub fseid: Ie,
     pub created_pdrs: Vec<Ie>,
+    pub pdn_type: Option<Ie>,
     pub load_control_information: Option<Ie>,
     pub overload_control_information: Option<Ie>,
     pub ies: Vec<Ie>,
@@ -27,6 +28,9 @@ impl Message for SessionEstablishmentResponse {
         }
         payload_len += self.fseid.len();
         for ie in &self.created_pdrs {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.pdn_type {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.load_control_information {
@@ -49,6 +53,9 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.created_pdrs {
             data.extend_from_slice(&ie.marshal());
         }
+        if let Some(ie) = &self.pdn_type {
+            data.extend_from_slice(&ie.marshal());
+        }
         if let Some(ie) = &self.load_control_information {
             data.extend_from_slice(&ie.marshal());
         }
@@ -67,6 +74,7 @@ impl Message for SessionEstablishmentResponse {
         let mut offending_ie = None;
         let mut fseid = None;
         let mut created_pdrs = Vec::new();
+        let mut pdn_type = None;
         let mut load_control_information = None;
         let mut overload_control_information = None;
         let mut ies = Vec::new();
@@ -80,6 +88,7 @@ impl Message for SessionEstablishmentResponse {
                 IeType::OffendingIe => offending_ie = Some(ie),
                 IeType::Fseid => fseid = Some(ie),
                 IeType::CreatedPdr => created_pdrs.push(ie),
+                IeType::PdnType => pdn_type = Some(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 _ => ies.push(ie),
@@ -95,6 +104,7 @@ impl Message for SessionEstablishmentResponse {
             fseid: fseid
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?,
             created_pdrs,
+            pdn_type,
             load_control_information,
             overload_control_information,
             ies,
@@ -127,6 +137,7 @@ impl Message for SessionEstablishmentResponse {
             IeType::Fseid => Some(&self.fseid),
             IeType::OffendingIe => self.offending_ie.as_ref(),
             IeType::CreatedPdr => self.created_pdrs.first(),
+            IeType::PdnType => self.pdn_type.as_ref(),
             IeType::LoadControlInformation => self.load_control_information.as_ref(),
             IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
@@ -141,6 +152,7 @@ pub struct SessionEstablishmentResponseBuilder {
     offending_ie: Option<Ie>,
     fseid: Option<Ie>,
     created_pdrs: Vec<Ie>,
+    pdn_type: Option<Ie>,
     load_control_information: Option<Ie>,
     overload_control_information: Option<Ie>,
     ies: Vec<Ie>,
@@ -155,6 +167,7 @@ impl SessionEstablishmentResponseBuilder {
             offending_ie: None,
             fseid: None,
             created_pdrs: Vec::new(),
+            pdn_type: None,
             load_control_information: None,
             overload_control_information: None,
             ies: Vec::new(),
@@ -173,6 +186,11 @@ impl SessionEstablishmentResponseBuilder {
 
     pub fn created_pdr(mut self, created_pdr: Ie) -> Self {
         self.created_pdrs.push(created_pdr);
+        self
+    }
+
+    pub fn pdn_type(mut self, pdn_type: Ie) -> Self {
+        self.pdn_type = Some(pdn_type);
         self
     }
 
@@ -206,6 +224,9 @@ impl SessionEstablishmentResponseBuilder {
         for ie in &self.created_pdrs {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.pdn_type {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.load_control_information {
             payload_len += ie.len();
         }
@@ -230,6 +251,7 @@ impl SessionEstablishmentResponseBuilder {
             offending_ie: self.offending_ie,
             fseid,
             created_pdrs: self.created_pdrs,
+            pdn_type: self.pdn_type,
             load_control_information: self.load_control_information,
             overload_control_information: self.overload_control_information,
             ies: self.ies,
