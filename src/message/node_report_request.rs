@@ -117,7 +117,7 @@ impl Message for NodeReportRequest {
             match ie.ie_type {
                 IeType::NodeId => node_id = Some(ie),
                 IeType::ReportType => node_report_type = Some(ie),
-                IeType::UserPlanePathFailureReport => user_plane_path_failure_report = Some(ie),
+                IeType::PathFailureReport => user_plane_path_failure_report = Some(ie),
                 _ => ies.push(ie),
             }
             cursor += ie_len;
@@ -155,7 +155,7 @@ impl Message for NodeReportRequest {
         match ie_type {
             IeType::NodeId => Some(&self.node_id),
             IeType::ReportType => self.node_report_type.as_ref(),
-            IeType::UserPlanePathFailureReport => self.user_plane_path_failure_report.as_ref(),
+            IeType::PathFailureReport => self.user_plane_path_failure_report.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
@@ -201,7 +201,7 @@ mod tests {
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
         );
         let report_type_ie = Ie::new(IeType::ReportType, vec![0x01]); // USAR
-        let path_failure_ie = Ie::new(IeType::UserPlanePathFailureReport, vec![0x01, 0x02, 0x03]);
+        let path_failure_ie = Ie::new(IeType::PathFailureReport, vec![0x01, 0x02, 0x03]);
 
         let original =
             NodeReportRequest::new(456, node_id_ie, Some(report_type_ie), Some(path_failure_ie));
@@ -256,7 +256,7 @@ mod tests {
         assert!(message.find_ie(IeType::NodeId).is_some());
         assert!(message.find_ie(IeType::ReportType).is_some());
         assert!(message
-            .find_ie(IeType::UserPlanePathFailureReport)
+            .find_ie(IeType::PathFailureReport)
             .is_none());
         assert!(message.find_ie(IeType::Unknown).is_none());
     }

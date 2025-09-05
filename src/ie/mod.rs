@@ -3,6 +3,7 @@
 use std::io;
 
 pub mod activate_predefined_rules;
+pub mod apn_dnn;
 pub mod application_id;
 pub mod application_ids_pfds;
 pub mod apply_action;
@@ -40,7 +41,9 @@ pub mod node_id;
 pub mod offending_ie;
 pub mod outer_header_removal;
 pub mod overload_control_information;
+pub mod path_failure_report;
 pub mod pdi;
+pub mod pdn_type;
 pub mod pdr_id;
 pub mod pfcpsm_req_flags;
 pub mod pfcpsrrsp_flags;
@@ -66,6 +69,7 @@ pub mod subsequent_volume_threshold;
 pub mod suggested_buffering_packets_count;
 pub mod time_threshold;
 pub mod timer;
+pub mod trace_information;
 pub mod transport_level_marking;
 pub mod ue_ip_address;
 pub mod update_bar;
@@ -78,6 +82,8 @@ pub mod update_traffic_endpoint;
 pub mod update_urr;
 pub mod urr_id;
 pub mod usage_report;
+pub mod user_id;
+pub mod user_plane_inactivity_timer;
 pub mod usage_report_trigger;
 pub mod volume_threshold;
 
@@ -160,7 +166,7 @@ pub enum IeType {
     TraceInformation = 102,
     ApnDnn = 103,
     UserPlaneInactivityTimer = 104,
-    UserPlanePathFailureReport = 105,
+    PathFailureReport = 105,
     ActivatePredefinedRules = 106,
     DeactivatePredefinedRules = 107,
     FarId = 108,
@@ -266,7 +272,7 @@ impl From<u16> for IeType {
             102 => IeType::TraceInformation,
             103 => IeType::ApnDnn,
             104 => IeType::UserPlaneInactivityTimer,
-            105 => IeType::UserPlanePathFailureReport,
+            105 => IeType::PathFailureReport,
             _ => IeType::Unknown,
         }
     }
