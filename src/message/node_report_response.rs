@@ -19,12 +19,7 @@ pub struct NodeReportResponse {
 
 impl NodeReportResponse {
     /// Creates a new Node Report Response message.
-    pub fn new(
-        seq: u32,
-        node_id: Ie,
-        cause: Ie,
-        offending_ie: Option<Ie>,
-    ) -> Self {
+    pub fn new(seq: u32, node_id: Ie, cause: Ie, offending_ie: Option<Ie>) -> Self {
         let mut payload_len = node_id.len() + cause.len();
         if let Some(ref ie) = offending_ie {
             payload_len += ie.len();
@@ -115,12 +110,10 @@ impl Message for NodeReportResponse {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE")
-        })?;
-        let cause = cause.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE")
-        })?;
+        let node_id = node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+        let cause =
+            cause.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE"))?;
 
         Ok(NodeReportResponse {
             header,
@@ -179,8 +172,14 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.node_id, unmarshaled.node_id);
         assert_eq!(original.cause, unmarshaled.cause);
         assert_eq!(original.offending_ie, unmarshaled.offending_ie);
@@ -190,20 +189,19 @@ mod tests {
     fn test_node_report_response_with_offending_ie() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,
-            Cause::new(CauseValue::MandatoryIeMissing).marshal().to_vec(),
+            Cause::new(CauseValue::MandatoryIeMissing)
+                .marshal()
+                .to_vec(),
         );
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x3C]); // IE type 60
 
-        let original = NodeReportResponse::new(
-            456,
-            node_id_ie,
-            cause_ie,
-            Some(offending_ie),
-        );
+        let original = NodeReportResponse::new(456, node_id_ie, cause_ie, Some(offending_ie));
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 
@@ -215,7 +213,9 @@ mod tests {
     fn test_node_report_response_with_additional_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(172, 16, 0, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(172, 16, 0, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,
@@ -226,13 +226,8 @@ mod tests {
             Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02, 0x03]),
         ];
 
-        let original = NodeReportResponse::new_with_ies(
-            789,
-            node_id_ie,
-            cause_ie,
-            None,
-            additional_ies,
-        );
+        let original =
+            NodeReportResponse::new_with_ies(789, node_id_ie, cause_ie, None, additional_ies);
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 
@@ -291,7 +286,7 @@ mod tests {
         );
 
         let message = NodeReportResponse::new(999, node_id_ie, cause_ie, None);
-        
+
         assert_eq!(message.msg_type(), MsgType::NodeReportResponse);
         assert_eq!(message.sequence(), 999);
         assert_eq!(message.seid(), None); // Node reports don't have SEID
@@ -302,7 +297,9 @@ mod tests {
     fn test_node_report_response_round_trip() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(203, 0, 113, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(203, 0, 113, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,

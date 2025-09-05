@@ -512,7 +512,7 @@ fn create_pdr_to_structured_data(
         "source_interface".to_string(),
         YamlValue::String(format!("{:?}", create_pdr.pdi.source_interface.value)),
     );
-    
+
     map.insert(
         "pdi".to_string(),
         YamlValue::Mapping(
@@ -579,7 +579,7 @@ fn created_pdr_to_structured_data(
     if created_pdr.f_teid.chid {
         flags.push("CHOOSE_ID");
     }
-    
+
     fteid_map.insert(
         "flags".to_string(),
         YamlValue::Sequence(
@@ -636,12 +636,7 @@ fn fseid_to_structured_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String,
     if !addr_info.is_empty() {
         map.insert(
             "addresses".to_string(),
-            YamlValue::Sequence(
-                addr_info
-                    .into_iter()
-                    .map(YamlValue::String)
-                    .collect(),
-            ),
+            YamlValue::Sequence(addr_info.into_iter().map(YamlValue::String).collect()),
         );
     }
 
@@ -1025,12 +1020,7 @@ fn fseid_to_json_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, JsonV
     if !addr_info.is_empty() {
         map.insert(
             "addresses".to_string(),
-            JsonValue::Array(
-                addr_info
-                    .into_iter()
-                    .map(JsonValue::String)
-                    .collect(),
-            ),
+            JsonValue::Array(addr_info.into_iter().map(JsonValue::String).collect()),
         );
     }
 
@@ -1074,7 +1064,7 @@ fn create_pdr_to_json_data(
         "source_interface".to_string(),
         JsonValue::String(format!("{:?}", create_pdr.pdi.source_interface.value)),
     );
-    
+
     map.insert(
         "pdi".to_string(),
         JsonValue::Object(pdi_map.into_iter().collect()),
@@ -1136,7 +1126,7 @@ fn created_pdr_to_json_data(
     if created_pdr.f_teid.chid {
         flags.push("CHOOSE_ID");
     }
-    
+
     fteid_map.insert(
         "flags".to_string(),
         JsonValue::Array(

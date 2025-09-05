@@ -1,14 +1,14 @@
 // Quick verification that all new messages can be parsed
-use rs_pfcp::ie::{Ie, IeType};
-use rs_pfcp::ie::node_id::NodeId;
 use rs_pfcp::ie::cause::{Cause, CauseValue};
-use rs_pfcp::message::{parse, Message};
+use rs_pfcp::ie::node_id::NodeId;
+use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
-use rs_pfcp::message::version_not_supported_response::VersionNotSupportedResponse;
 use rs_pfcp::message::node_report_request::NodeReportRequest;
 use rs_pfcp::message::node_report_response::NodeReportResponse;
 use rs_pfcp::message::session_set_deletion_request::SessionSetDeletionRequest;
 use rs_pfcp::message::session_set_deletion_response::SessionSetDeletionResponse;
+use rs_pfcp::message::version_not_supported_response::VersionNotSupportedResponse;
+use rs_pfcp::message::{parse, Message};
 use std::net::Ipv4Addr;
 
 #[test]
@@ -25,16 +25,23 @@ fn test_all_new_pfcp_messages() {
     );
 
     // Test AssociationUpdateResponse (Type 8)
-    let msg1 = AssociationUpdateResponse::new(123, node_id_ie.clone(), cause_ie.clone(), None, None);
+    let msg1 =
+        AssociationUpdateResponse::new(123, node_id_ie.clone(), cause_ie.clone(), None, None);
     let marshaled = msg1.marshal();
     let parsed = parse(&marshaled).unwrap();
-    println!("✓ AssociationUpdateResponse (Type 8): {}", parsed.msg_name());
+    println!(
+        "✓ AssociationUpdateResponse (Type 8): {}",
+        parsed.msg_name()
+    );
 
     // Test VersionNotSupportedResponse (Type 11)
     let msg2 = VersionNotSupportedResponse::new(124);
     let marshaled = msg2.marshal();
     let parsed = parse(&marshaled).unwrap();
-    println!("✓ VersionNotSupportedResponse (Type 11): {}", parsed.msg_name());
+    println!(
+        "✓ VersionNotSupportedResponse (Type 11): {}",
+        parsed.msg_name()
+    );
 
     // Test NodeReportRequest (Type 12)
     let msg3 = NodeReportRequest::new(125, node_id_ie.clone(), None, None);
@@ -52,13 +59,19 @@ fn test_all_new_pfcp_messages() {
     let msg5 = SessionSetDeletionRequest::new(127, node_id_ie.clone(), None);
     let marshaled = msg5.marshal();
     let parsed = parse(&marshaled).unwrap();
-    println!("✓ SessionSetDeletionRequest (Type 14): {}", parsed.msg_name());
+    println!(
+        "✓ SessionSetDeletionRequest (Type 14): {}",
+        parsed.msg_name()
+    );
 
     // Test SessionSetDeletionResponse (Type 15)
     let msg6 = SessionSetDeletionResponse::new(128, node_id_ie, cause_ie, None);
     let marshaled = msg6.marshal();
     let parsed = parse(&marshaled).unwrap();
-    println!("✓ SessionSetDeletionResponse (Type 15): {}", parsed.msg_name());
+    println!(
+        "✓ SessionSetDeletionResponse (Type 15): {}",
+        parsed.msg_name()
+    );
 
     println!("\nAll 6 new PFCP messages implemented and parsing correctly! 🎉");
     println!("PFCP protocol coverage: 100% (21 out of 21 message types implemented)");

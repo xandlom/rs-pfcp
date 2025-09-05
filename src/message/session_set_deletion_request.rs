@@ -18,11 +18,7 @@ pub struct SessionSetDeletionRequest {
 
 impl SessionSetDeletionRequest {
     /// Creates a new Session Set Deletion Request message.
-    pub fn new(
-        seq: u32,
-        node_id: Ie,
-        fseid_set: Option<Ie>,
-    ) -> Self {
+    pub fn new(seq: u32, node_id: Ie, fseid_set: Option<Ie>) -> Self {
         let mut payload_len = node_id.len();
         if let Some(ref ie) = fseid_set {
             payload_len += ie.len();
@@ -40,12 +36,7 @@ impl SessionSetDeletionRequest {
     }
 
     /// Creates a new Session Set Deletion Request with additional IEs.
-    pub fn new_with_ies(
-        seq: u32,
-        node_id: Ie,
-        fseid_set: Option<Ie>,
-        ies: Vec<Ie>,
-    ) -> Self {
+    pub fn new_with_ies(seq: u32, node_id: Ie, fseid_set: Option<Ie>, ies: Vec<Ie>) -> Self {
         let mut payload_len = node_id.len();
         if let Some(ref ie) = fseid_set {
             payload_len += ie.len();
@@ -107,9 +98,8 @@ impl Message for SessionSetDeletionRequest {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE")
-        })?;
+        let node_id = node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
 
         Ok(SessionSetDeletionRequest {
             header,
@@ -161,8 +151,14 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.node_id, unmarshaled.node_id);
         assert_eq!(original.fseid_set, unmarshaled.fseid_set);
     }
@@ -171,9 +167,11 @@ mod tests {
     fn test_session_set_deletion_request_with_fseid() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
+                .marshal()
+                .to_vec(),
         );
-        
+
         // Create a simple F-SEID IE (minimal implementation)
         let fseid_data = {
             let mut data = vec![0x01]; // IPv4 flag
@@ -183,11 +181,7 @@ mod tests {
         };
         let fseid_ie = Ie::new(IeType::Fseid, fseid_data);
 
-        let original = SessionSetDeletionRequest::new(
-            456,
-            node_id_ie,
-            Some(fseid_ie),
-        );
+        let original = SessionSetDeletionRequest::new(456, node_id_ie, Some(fseid_ie));
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 
@@ -199,19 +193,17 @@ mod tests {
     fn test_session_set_deletion_request_with_additional_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(172, 16, 0, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(172, 16, 0, 1))
+                .marshal()
+                .to_vec(),
         );
         let additional_ies = vec![
             Ie::new(IeType::Timer, vec![0x00, 0x00, 0x0A, 0x00]), // 10 minutes
             Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02, 0x03]),
         ];
 
-        let original = SessionSetDeletionRequest::new_with_ies(
-            789,
-            node_id_ie,
-            None,
-            additional_ies,
-        );
+        let original =
+            SessionSetDeletionRequest::new_with_ies(789, node_id_ie, None, additional_ies);
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 
@@ -252,7 +244,7 @@ mod tests {
         );
 
         let message = SessionSetDeletionRequest::new(999, node_id_ie, None);
-        
+
         assert_eq!(message.msg_type(), MsgType::SessionSetDeletionRequest);
         assert_eq!(message.sequence(), 999);
         assert_eq!(message.seid(), None); // Session set operations don't use SEID in header
@@ -263,7 +255,9 @@ mod tests {
     fn test_session_set_deletion_request_round_trip() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(203, 0, 113, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(203, 0, 113, 1))
+                .marshal()
+                .to_vec(),
         );
 
         let original = SessionSetDeletionRequest::new(888, node_id_ie, None);

@@ -105,8 +105,14 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = VersionNotSupportedResponse::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.header.length, unmarshaled.header.length);
         assert_eq!(original.ies.len(), unmarshaled.ies.len());
     }
@@ -122,17 +128,21 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = VersionNotSupportedResponse::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.ies.len(), unmarshaled.ies.len());
         assert_eq!(original.ies, unmarshaled.ies);
     }
 
     #[test]
     fn test_version_not_supported_response_find_ie() {
-        let ies = vec![
-            Ie::new(IeType::OffendingIe, vec![0x00, 0x01]),
-        ];
+        let ies = vec![Ie::new(IeType::OffendingIe, vec![0x00, 0x01])];
 
         let message = VersionNotSupportedResponse::new_with_ies(123, ies);
 
@@ -143,7 +153,7 @@ mod tests {
     #[test]
     fn test_version_not_supported_response_header_validation() {
         let message = VersionNotSupportedResponse::new(789);
-        
+
         assert_eq!(message.msg_type(), MsgType::VersionNotSupportedResponse);
         assert_eq!(message.sequence(), 789);
         assert_eq!(message.seid(), None); // No SEID for this message type

@@ -3,12 +3,8 @@ use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::ie::{
-    cause::CauseValue,
-    create_pdr::CreatePdr,
-    created_pdr::CreatedPdr,
-    f_teid::Fteid,
-    node_id::NodeId,
-    Ie, IeType,
+    cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr, f_teid::Fteid,
+    node_id::NodeId, Ie, IeType,
 };
 use rs_pfcp::ie::{
     sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReport,
@@ -155,29 +151,39 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                         // Extract PDR IDs from all Create PDR IEs and create Created PDR IEs
                         let mut created_pdrs = Vec::new();
-                        println!("  Processing {} Create PDR IEs:", establishment_req.create_pdrs.len());
-                        
-                        for (index, create_pdr_ie) in establishment_req.create_pdrs.iter().enumerate() {
+                        println!(
+                            "  Processing {} Create PDR IEs:",
+                            establishment_req.create_pdrs.len()
+                        );
+
+                        for (index, create_pdr_ie) in
+                            establishment_req.create_pdrs.iter().enumerate()
+                        {
                             match CreatePdr::unmarshal(&create_pdr_ie.payload) {
                                 Ok(received_pdr) => {
-                                    println!("    CreatePdr {}: PDR ID: {}, Precedence: {}", 
-                                        index + 1, received_pdr.pdr_id.value, received_pdr.precedence.value);
+                                    println!(
+                                        "    CreatePdr {}: PDR ID: {}, Precedence: {}",
+                                        index + 1,
+                                        received_pdr.pdr_id.value,
+                                        received_pdr.precedence.value
+                                    );
 
                                     // Create a Created PDR with the same PDR ID and a local F-TEID
-                                    // Using a dummy F-TEID for demonstration (in real implementation, 
+                                    // Using a dummy F-TEID for demonstration (in real implementation,
                                     // this would be allocated from the UPF's F-TEID pool)
                                     let local_f_teid = Fteid::new(
-                                        true,  // IPv4 flag
-                                        false, // IPv6 flag  
+                                        true,                                            // IPv4 flag
+                                        false, // IPv6 flag
                                         0x12345678 + received_pdr.pdr_id.value as u32, // TEID (unique per PDR)
                                         Some(std::net::Ipv4Addr::new(192, 168, 1, 100)), // UPF IP
-                                        None,  // No IPv6
-                                        0,     // No UDP port
+                                        None,                                          // No IPv6
+                                        0, // No UDP port
                                     );
-                                    
-                                    let created_pdr = CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
+
+                                    let created_pdr =
+                                        CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
                                     created_pdrs.push(created_pdr.to_ie());
-                                    
+
                                     println!("      → Created PDR: PDR ID {}, F-TEID: 0x{:08x}@192.168.1.100", 
                                         received_pdr.pdr_id.value, 0x12345678 + received_pdr.pdr_id.value as u32);
                                 }
@@ -200,7 +206,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
-                        
+
                         // Build response with all created PDRs
                         let mut response_builder = SessionEstablishmentResponseBuilder::new(
                             seid,
@@ -208,12 +214,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                             cause_ie,
                         )
                         .fseid(fseid_ie);
-                        
+
                         // Add all created PDRs to the response
                         for created_pdr in created_pdrs {
                             response_builder = response_builder.created_pdr(created_pdr);
                         }
-                        
+
                         let res = response_builder.build().unwrap();
                         socket.send_to(&res.marshal(), src)?;
 

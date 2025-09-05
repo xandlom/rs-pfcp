@@ -105,11 +105,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Bind to the interface IP with port 0 (let OS choose)
     let bind_address = format!("{}:0", client_ip);
     let socket = UdpSocket::bind(&bind_address)?;
-    
+
     // Connect to the server
     let server_address = format!("{}:{}", args.address, args.port);
     socket.connect(&server_address)?;
-    
+
     println!("Client bound to: {}", socket.local_addr()?);
     println!("Connecting to server: {}", server_address);
 
@@ -147,11 +147,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // 2. Session Establishment
         println!("[{seid}] Sending Session Establishment Request...");
-        let fseid = Fseid::new(
-            0x0102030405060708u64 + seid,
-            Some(interface_ipv4),
-            None,
-        );
+        let fseid = Fseid::new(0x0102030405060708u64 + seid, Some(interface_ipv4), None);
         let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
         // Create structured PDR for uplink traffic detection using builder pattern
         let uplink_pdr = CreatePdr::uplink_access(PdrId::new(1), Precedence::new(100));

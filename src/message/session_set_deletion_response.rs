@@ -19,12 +19,7 @@ pub struct SessionSetDeletionResponse {
 
 impl SessionSetDeletionResponse {
     /// Creates a new Session Set Deletion Response message.
-    pub fn new(
-        seq: u32,
-        node_id: Ie,
-        cause: Ie,
-        offending_ie: Option<Ie>,
-    ) -> Self {
+    pub fn new(seq: u32, node_id: Ie, cause: Ie, offending_ie: Option<Ie>) -> Self {
         let mut payload_len = node_id.len() + cause.len();
         if let Some(ref ie) = offending_ie {
             payload_len += ie.len();
@@ -115,12 +110,10 @@ impl Message for SessionSetDeletionResponse {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE")
-        })?;
-        let cause = cause.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE")
-        })?;
+        let node_id = node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+        let cause =
+            cause.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE"))?;
 
         Ok(SessionSetDeletionResponse {
             header,
@@ -179,8 +172,14 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionResponse::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.node_id, unmarshaled.node_id);
         assert_eq!(original.cause, unmarshaled.cause);
         assert_eq!(original.offending_ie, unmarshaled.offending_ie);
@@ -190,7 +189,9 @@ mod tests {
     fn test_session_set_deletion_response_with_offending_ie() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,
@@ -198,12 +199,8 @@ mod tests {
         );
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x39]); // IE type 57 (F-SEID)
 
-        let original = SessionSetDeletionResponse::new(
-            456,
-            node_id_ie,
-            cause_ie,
-            Some(offending_ie),
-        );
+        let original =
+            SessionSetDeletionResponse::new(456, node_id_ie, cause_ie, Some(offending_ie));
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionResponse::unmarshal(&marshaled).unwrap();
 
@@ -215,7 +212,9 @@ mod tests {
     fn test_session_set_deletion_response_with_additional_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(172, 16, 0, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(172, 16, 0, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,
@@ -267,11 +266,14 @@ mod tests {
         );
         let cause_ie = Ie::new(
             IeType::Cause,
-            Cause::new(CauseValue::NoResourcesAvailable).marshal().to_vec(),
+            Cause::new(CauseValue::NoResourcesAvailable)
+                .marshal()
+                .to_vec(),
         );
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x39]);
 
-        let message = SessionSetDeletionResponse::new(123, node_id_ie, cause_ie, Some(offending_ie));
+        let message =
+            SessionSetDeletionResponse::new(123, node_id_ie, cause_ie, Some(offending_ie));
 
         assert!(message.find_ie(IeType::NodeId).is_some());
         assert!(message.find_ie(IeType::Cause).is_some());
@@ -291,7 +293,7 @@ mod tests {
         );
 
         let message = SessionSetDeletionResponse::new(999, node_id_ie, cause_ie, None);
-        
+
         assert_eq!(message.msg_type(), MsgType::SessionSetDeletionResponse);
         assert_eq!(message.sequence(), 999);
         assert_eq!(message.seid(), None); // Session set operations don't use SEID in header
@@ -303,9 +305,11 @@ mod tests {
         // Test various error cause values
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(203, 0, 113, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(203, 0, 113, 1))
+                .marshal()
+                .to_vec(),
         );
-        
+
         let error_causes = vec![
             CauseValue::SessionContextNotFound,
             CauseValue::SystemFailure,
@@ -314,15 +318,12 @@ mod tests {
         ];
 
         for cause_val in error_causes {
-            let cause_ie = Ie::new(
-                IeType::Cause,
-                Cause::new(cause_val).marshal().to_vec(),
-            );
-            
+            let cause_ie = Ie::new(IeType::Cause, Cause::new(cause_val).marshal().to_vec());
+
             let message = SessionSetDeletionResponse::new(555, node_id_ie.clone(), cause_ie, None);
             let marshaled = message.marshal();
             let unmarshaled = SessionSetDeletionResponse::unmarshal(&marshaled).unwrap();
-            
+
             assert_eq!(message, unmarshaled);
         }
     }
@@ -331,7 +332,9 @@ mod tests {
     fn test_session_set_deletion_response_round_trip() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(198, 51, 100, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(198, 51, 100, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,

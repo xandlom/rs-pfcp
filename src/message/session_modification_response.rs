@@ -29,7 +29,7 @@ impl Message for SessionModificationResponse {
             payload_len += ie.len();
         }
         header.length = payload_len + header.len() - 4;
-        
+
         let mut data = header.marshal();
         data.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {
@@ -105,7 +105,14 @@ impl Message for SessionModificationResponse {
 }
 
 impl SessionModificationResponse {
-    pub fn new(seid: u64, seq: u32, cause_ie: Ie, offending_ie: Option<Ie>, created_pdr: Option<Ie>, ies: Vec<Ie>) -> Self {
+    pub fn new(
+        seid: u64,
+        seq: u32,
+        cause_ie: Ie,
+        offending_ie: Option<Ie>,
+        created_pdr: Option<Ie>,
+        ies: Vec<Ie>,
+    ) -> Self {
         let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
         let mut payload_len = cause_ie.len();
         if let Some(ie) = &offending_ie {

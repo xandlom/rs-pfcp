@@ -1,8 +1,8 @@
 // tests/messages.rs
 
 use rs_pfcp::ie::{Ie, IeType};
-use rs_pfcp::message::session_report_response::SessionReportResponse;
 use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
+use rs_pfcp::message::session_report_response::SessionReportResponse;
 use rs_pfcp::message::version_not_supported_response::VersionNotSupportedResponse;
 use rs_pfcp::message::{header::Header, Message, MsgType};
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -618,29 +618,49 @@ fn test_session_report_response_unmarshal_missing_cause() {
 
 #[test]
 fn test_session_establishment_response_multiple_created_pdrs() {
-    use rs_pfcp::ie::{cause::Cause, created_pdr::CreatedPdr, f_teid::Fteid, pdr_id::PdrId, fseid::Fseid};
+    use rs_pfcp::ie::{
+        cause::Cause, created_pdr::CreatedPdr, f_teid::Fteid, fseid::Fseid, pdr_id::PdrId,
+    };
     use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
 
     // Test SessionEstablishmentResponse with multiple Created PDR IEs
     let seid = 0x0000000000000001;
     let sequence = 2;
-    
+
     // Create cause IE
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    
+
     // Create F-SEID IE
-    let fseid = Fseid::new(0x0102030405060709u64, Some(Ipv4Addr::new(127, 0, 0, 1)), None);
+    let fseid = Fseid::new(
+        0x0102030405060709u64,
+        Some(Ipv4Addr::new(127, 0, 0, 1)),
+        None,
+    );
     let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
-    
+
     // Create two Created PDR IEs with different PDR IDs and F-TEIDs
-    let fteid1 = Fteid::new(true, false, 0x12345679, Some(Ipv4Addr::new(192, 168, 1, 100)), None, 0);
+    let fteid1 = Fteid::new(
+        true,
+        false,
+        0x12345679,
+        Some(Ipv4Addr::new(192, 168, 1, 100)),
+        None,
+        0,
+    );
     let created_pdr1 = CreatedPdr::new(PdrId::new(1), fteid1);
     let created_pdr1_ie = created_pdr1.to_ie();
-    
-    let fteid2 = Fteid::new(true, false, 0x1234567a, Some(Ipv4Addr::new(192, 168, 1, 100)), None, 0);
+
+    let fteid2 = Fteid::new(
+        true,
+        false,
+        0x1234567a,
+        Some(Ipv4Addr::new(192, 168, 1, 100)),
+        None,
+        0,
+    );
     let created_pdr2 = CreatedPdr::new(PdrId::new(2), fteid2);
     let created_pdr2_ie = created_pdr2.to_ie();
-    
+
     // Build SessionEstablishmentResponse with multiple Created PDRs using the builder pattern
     let response = SessionEstablishmentResponseBuilder::new(seid, sequence, cause_ie)
         .fseid(fseid_ie)
@@ -648,31 +668,37 @@ fn test_session_establishment_response_multiple_created_pdrs() {
         .created_pdr(created_pdr2_ie)
         .build()
         .unwrap();
-    
+
     // Verify the response contains both Created PDR IEs
     assert_eq!(response.created_pdrs.len(), 2);
     assert_eq!(response.seid(), Some(seid));
     assert_eq!(response.sequence(), sequence);
-    
+
     // Marshal and unmarshal to test round-trip
     let marshaled = response.marshal();
-    let unmarshaled = rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(&marshaled).unwrap();
-    
+    let unmarshaled =
+        rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(
+            &marshaled,
+        )
+        .unwrap();
+
     // Verify unmarshaled response has both Created PDR IEs
     assert_eq!(unmarshaled.created_pdrs.len(), 2);
     assert_eq!(unmarshaled.seid(), Some(seid));
     assert_eq!(unmarshaled.sequence(), sequence);
-    
+
     // Verify the Created PDR contents
-    let created_pdr1_unmarshaled = CreatedPdr::unmarshal(&unmarshaled.created_pdrs[0].payload).unwrap();
-    let created_pdr2_unmarshaled = CreatedPdr::unmarshal(&unmarshaled.created_pdrs[1].payload).unwrap();
-    
+    let created_pdr1_unmarshaled =
+        CreatedPdr::unmarshal(&unmarshaled.created_pdrs[0].payload).unwrap();
+    let created_pdr2_unmarshaled =
+        CreatedPdr::unmarshal(&unmarshaled.created_pdrs[1].payload).unwrap();
+
     assert_eq!(created_pdr1_unmarshaled.pdr_id.value, 1);
     assert_eq!(created_pdr1_unmarshaled.f_teid.teid, 0x12345679);
-    
+
     assert_eq!(created_pdr2_unmarshaled.pdr_id.value, 2);
     assert_eq!(created_pdr2_unmarshaled.f_teid.teid, 0x1234567a);
-    
+
     // Verify the length field is correctly calculated
     let expected_length = marshaled.len() - 4; // Total length minus first 4 header bytes
     let header_length = u16::from_be_bytes([marshaled[2], marshaled[3]]);
@@ -695,23 +721,30 @@ fn test_association_update_response_marshal_unmarshal() {
     // Create UP Function Features IE
     let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03, 0x04]);
 
-    let response = AssociationUpdateResponse::new(
-        0x123456,
-        node_id_ie,
-        cause_ie,
-        Some(up_features_ie),
-        None,
-    );
+    let response =
+        AssociationUpdateResponse::new(0x123456, node_id_ie, cause_ie, Some(up_features_ie), None);
 
     let marshaled = response.marshal();
     let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
 
-    assert_eq!(response.header.message_type, unmarshaled.header.message_type);
-    assert_eq!(response.header.sequence_number, unmarshaled.header.sequence_number);
+    assert_eq!(
+        response.header.message_type,
+        unmarshaled.header.message_type
+    );
+    assert_eq!(
+        response.header.sequence_number,
+        unmarshaled.header.sequence_number
+    );
     assert_eq!(response.node_id, unmarshaled.node_id);
     assert_eq!(response.cause, unmarshaled.cause);
-    assert_eq!(response.up_function_features, unmarshaled.up_function_features);
-    assert_eq!(response.cp_function_features, unmarshaled.cp_function_features);
+    assert_eq!(
+        response.up_function_features,
+        unmarshaled.up_function_features
+    );
+    assert_eq!(
+        response.cp_function_features,
+        unmarshaled.cp_function_features
+    );
 }
 
 #[test]
@@ -721,8 +754,14 @@ fn test_version_not_supported_response_marshal_unmarshal() {
     let marshaled = response.marshal();
     let unmarshaled = VersionNotSupportedResponse::unmarshal(&marshaled).unwrap();
 
-    assert_eq!(response.header.message_type, unmarshaled.header.message_type);
-    assert_eq!(response.header.sequence_number, unmarshaled.header.sequence_number);
+    assert_eq!(
+        response.header.message_type,
+        unmarshaled.header.message_type
+    );
+    assert_eq!(
+        response.header.sequence_number,
+        unmarshaled.header.sequence_number
+    );
     assert_eq!(response.header.length, unmarshaled.header.length);
     assert_eq!(response.ies.len(), unmarshaled.ies.len());
 }
@@ -746,7 +785,10 @@ fn test_association_update_response_parse_integration() {
     // Parse it back using the generic parse function
     let parsed_message = parse(&marshaled).unwrap();
 
-    assert_eq!(parsed_message.msg_type(), MsgType::AssociationUpdateResponse);
+    assert_eq!(
+        parsed_message.msg_type(),
+        MsgType::AssociationUpdateResponse
+    );
     assert_eq!(parsed_message.sequence(), 0xABCDEF);
     assert!(parsed_message.find_ie(IeType::NodeId).is_some());
     assert!(parsed_message.find_ie(IeType::Cause).is_some());
@@ -764,7 +806,10 @@ fn test_version_not_supported_response_parse_integration() {
     // Parse it back using the generic parse function
     let parsed_message = parse(&marshaled).unwrap();
 
-    assert_eq!(parsed_message.msg_type(), MsgType::VersionNotSupportedResponse);
+    assert_eq!(
+        parsed_message.msg_type(),
+        MsgType::VersionNotSupportedResponse
+    );
     assert_eq!(parsed_message.sequence(), 0x654321);
     assert!(parsed_message.find_ie(IeType::OffendingIe).is_some());
 }

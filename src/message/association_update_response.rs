@@ -96,12 +96,10 @@ impl Message for AssociationUpdateResponse {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE")
-        })?;
-        let cause = cause.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE")
-        })?;
+        let node_id = node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+        let cause =
+            cause.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE"))?;
 
         Ok(AssociationUpdateResponse {
             header,
@@ -151,7 +149,9 @@ mod tests {
     fn test_association_update_response_marshal_unmarshal() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,
@@ -162,19 +162,33 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.node_id, unmarshaled.node_id);
         assert_eq!(original.cause, unmarshaled.cause);
-        assert_eq!(original.up_function_features, unmarshaled.up_function_features);
-        assert_eq!(original.cp_function_features, unmarshaled.cp_function_features);
+        assert_eq!(
+            original.up_function_features,
+            unmarshaled.up_function_features
+        );
+        assert_eq!(
+            original.cp_function_features,
+            unmarshaled.cp_function_features
+        );
     }
 
     #[test]
     fn test_association_update_response_with_optional_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,
@@ -211,7 +225,9 @@ mod tests {
     fn test_find_ie() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
+                .marshal()
+                .to_vec(),
         );
         let cause_ie = Ie::new(
             IeType::Cause,

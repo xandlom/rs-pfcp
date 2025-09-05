@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(unmarshaled, fteid);
         assert!(unmarshaled.ch);
         assert!(!unmarshaled.chid);
-        
+
         // Verify marshaled data doesn't include choose_id when chid=false
         assert_eq!(marshaled.len(), 9); // flags(1) + teid(4) + ipv4(4) = 9 bytes
     }
@@ -278,7 +278,7 @@ mod tests {
         assert!(!unmarshaled.ch);
         assert!(unmarshaled.chid);
         assert_eq!(unmarshaled.choose_id, 42);
-        
+
         // Verify marshaled data includes choose_id when chid=true
         assert_eq!(marshaled.len(), 10); // flags(1) + teid(4) + ipv4(4) + choose_id(1) = 10 bytes
         assert_eq!(marshaled[9], 42); // Last byte should be choose_id
@@ -287,20 +287,20 @@ mod tests {
     #[test]
     fn test_fteid_flags_encoding() {
         let fteid = Fteid::new_with_choose(
-            true,  // v4 = true (bit 0)
-            true,  // v6 = true (bit 1)
-            true,  // ch = true (bit 2)
-            true,  // chid = true (bit 3)
+            true, // v4 = true (bit 0)
+            true, // v6 = true (bit 1)
+            true, // ch = true (bit 2)
+            true, // chid = true (bit 3)
             0x12345678,
             Some(Ipv4Addr::new(192, 168, 0, 1)),
             Some(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
             100, // choose_id
         );
         let marshaled = fteid.marshal();
-        
+
         // First byte should have all flags set: 0x01 | 0x02 | 0x04 | 0x08 = 0x0F
         assert_eq!(marshaled[0], 0x0F);
-        
+
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, fteid);
         assert!(unmarshaled.v4);
@@ -322,10 +322,10 @@ mod tests {
             123, // This should be ignored since chid=false
         );
         let marshaled = fteid.marshal();
-        
+
         // Should not include choose_id byte
         assert_eq!(marshaled.len(), 9); // flags(1) + teid(4) + ipv4(4) = 9 bytes
-        
+
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.choose_id, 0); // Should be 0 when chid=false
         assert!(!unmarshaled.chid);

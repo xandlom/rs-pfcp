@@ -123,9 +123,8 @@ impl Message for NodeReportRequest {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE")
-        })?;
+        let node_id = node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
 
         Ok(NodeReportRequest {
             header,
@@ -179,11 +178,20 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(original.header.message_type, unmarshaled.header.message_type);
-        assert_eq!(original.header.sequence_number, unmarshaled.header.sequence_number);
+        assert_eq!(
+            original.header.message_type,
+            unmarshaled.header.message_type
+        );
+        assert_eq!(
+            original.header.sequence_number,
+            unmarshaled.header.sequence_number
+        );
         assert_eq!(original.node_id, unmarshaled.node_id);
         assert_eq!(original.node_report_type, unmarshaled.node_report_type);
-        assert_eq!(original.user_plane_path_failure_report, unmarshaled.user_plane_path_failure_report);
+        assert_eq!(
+            original.user_plane_path_failure_report,
+            unmarshaled.user_plane_path_failure_report
+        );
     }
 
     #[test]
@@ -195,12 +203,8 @@ mod tests {
         let report_type_ie = Ie::new(IeType::ReportType, vec![0x01]); // USAR
         let path_failure_ie = Ie::new(IeType::UserPlanePathFailureReport, vec![0x01, 0x02, 0x03]);
 
-        let original = NodeReportRequest::new(
-            456,
-            node_id_ie,
-            Some(report_type_ie),
-            Some(path_failure_ie),
-        );
+        let original =
+            NodeReportRequest::new(456, node_id_ie, Some(report_type_ie), Some(path_failure_ie));
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
 
@@ -211,20 +215,16 @@ mod tests {
     fn test_node_report_request_with_additional_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 10)).marshal().to_vec(),
+            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 10))
+                .marshal()
+                .to_vec(),
         );
         let additional_ies = vec![
             Ie::new(IeType::Timer, vec![0x00, 0x00, 0x01, 0x00]), // 1 minute
             Ie::new(IeType::Unknown, vec![0xFF, 0xFF]),
         ];
 
-        let original = NodeReportRequest::new_with_ies(
-            789,
-            node_id_ie,
-            None,
-            None,
-            additional_ies,
-        );
+        let original = NodeReportRequest::new_with_ies(789, node_id_ie, None, None, additional_ies);
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
 
@@ -255,7 +255,9 @@ mod tests {
 
         assert!(message.find_ie(IeType::NodeId).is_some());
         assert!(message.find_ie(IeType::ReportType).is_some());
-        assert!(message.find_ie(IeType::UserPlanePathFailureReport).is_none());
+        assert!(message
+            .find_ie(IeType::UserPlanePathFailureReport)
+            .is_none());
         assert!(message.find_ie(IeType::Unknown).is_none());
     }
 
@@ -267,7 +269,7 @@ mod tests {
         );
 
         let message = NodeReportRequest::new(999, node_id_ie, None, None);
-        
+
         assert_eq!(message.msg_type(), MsgType::NodeReportRequest);
         assert_eq!(message.sequence(), 999);
         assert_eq!(message.seid(), None); // Node reports don't have SEID

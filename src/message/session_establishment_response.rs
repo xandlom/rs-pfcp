@@ -39,7 +39,7 @@ impl Message for SessionEstablishmentResponse {
             payload_len += ie.len();
         }
         header.length = payload_len + header.len() - 4;
-        
+
         let mut data = header.marshal();
         data.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {

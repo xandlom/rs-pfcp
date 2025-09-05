@@ -54,9 +54,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Debug: print first few packets to understand format
                 if packet_count <= 3 {
-                    println!("Packet {} data length: {}, first 20 bytes: {:?}", 
-                        packet_count, data.len(), 
-                        &data[..data.len().min(20)]);
+                    println!(
+                        "Packet {} data length: {}, first 20 bytes: {:?}",
+                        packet_count,
+                        data.len(),
+                        &data[..data.len().min(20)]
+                    );
                 }
 
                 let (ip_data, header_type) = match datalink {
@@ -76,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             continue;
                         }
                         (&data[14..], "Ethernet")
-                    },
+                    }
                     DataLink::LINUX_SLL2 => {
                         // Linux cooked v2 (DLT_LINUX_SLL2)
                         if data.len() < 20 {
@@ -94,10 +97,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             continue;
                         }
                         (&data[20..], "Linux cooked v2")
-                    },
+                    }
                     _ => {
                         if !args.pfcp_only {
-                            println!("Packet {}: Unsupported datalink type: {:?}", packet_count, datalink);
+                            println!(
+                                "Packet {}: Unsupported datalink type: {:?}",
+                                packet_count, datalink
+                            );
                         }
                         continue;
                     }
@@ -171,9 +177,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let seid_or_seq_start = if s_flag { 4 } else { 4 };
                             let seq_offset = if s_flag { 12 } else { 4 };
                             let sequence = if pfcp_data.len() > seq_offset + 2 {
-                                u32::from_be_bytes([0, pfcp_data[seq_offset], pfcp_data[seq_offset + 1], pfcp_data[seq_offset + 2]])
-                            } else { 0 };
-                            
+                                u32::from_be_bytes([
+                                    0,
+                                    pfcp_data[seq_offset],
+                                    pfcp_data[seq_offset + 1],
+                                    pfcp_data[seq_offset + 2],
+                                ])
+                            } else {
+                                0
+                            };
+
                             println!(
                                 "Packet {}: PFCP {} ({}:{} -> {}:{}) [{}]",
                                 packet_count,
@@ -184,9 +197,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 dst_port,
                                 header_type
                             );
-                            println!("  PFCP Header: version={}, S={}, msg_type={}, length={}, seq={}", 
-                                version, s_flag, msg_type, length, sequence);
-                            println!("  Raw PFCP bytes: {:02x?}", &pfcp_data[..pfcp_data.len().min(20)]);
+                            println!(
+                                "  PFCP Header: version={}, S={}, msg_type={}, length={}, seq={}",
+                                version, s_flag, msg_type, length, sequence
+                            );
+                            println!(
+                                "  Raw PFCP bytes: {:02x?}",
+                                &pfcp_data[..pfcp_data.len().min(20)]
+                            );
                         }
 
                         match args.format.as_str() {
