@@ -20,12 +20,13 @@ impl LoadControlInformation {
     }
 
     pub fn marshal(&self) -> Vec<u8> {
-        let mut ies = Vec::new();
-        ies.push(Ie::new(
-            IeType::SequenceNumber,
-            self.sequence_number.marshal().to_vec(),
-        ));
-        ies.push(Ie::new(IeType::Metric, self.metric.marshal().to_vec()));
+        let ies = vec![
+            Ie::new(
+                IeType::SequenceNumber,
+                self.sequence_number.marshal().to_vec(),
+            ),
+            Ie::new(IeType::Metric, self.metric.marshal().to_vec()),
+        ];
 
         let mut data = Vec::new();
         for ie in ies {

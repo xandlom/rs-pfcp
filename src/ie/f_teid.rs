@@ -40,6 +40,7 @@ impl Fteid {
     }
 
     /// Creates a new F-TEID with CHOOSE and CHOOSE ID flags.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_choose(
         v4: bool,
         v6: bool,

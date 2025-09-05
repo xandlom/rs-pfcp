@@ -67,7 +67,7 @@ impl<T: Message> MessageDisplay for T {
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
             if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{:?}", ie_type).to_lowercase();
+                let ie_name = format!("{ie_type:?}").to_lowercase();
                 ies_map.insert(ie_name, ie_to_structured_data(ie));
             }
         }
@@ -114,7 +114,7 @@ impl<T: Message> MessageDisplay for T {
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
             if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{:?}", ie_type).to_lowercase();
+                let ie_name = format!("{ie_type:?}").to_lowercase();
                 ies_map.insert(ie_name, ie_to_json_data(ie));
             }
         }
@@ -210,7 +210,7 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                 let hex_payload = ie
                     .payload
                     .iter()
-                    .map(|b| format!("{:02x}", b))
+                    .map(|b| format!("{b:02x}"))
                     .collect::<Vec<_>>()
                     .join(" ");
                 map.insert("payload_hex".to_string(), YamlValue::String(hex_payload));
@@ -486,7 +486,7 @@ fn recovery_timestamp_to_structured_data(
         );
         map.insert(
             "timestamp_description".to_string(),
-            YamlValue::String(format!("{} seconds since Unix epoch", timestamp_secs)),
+            YamlValue::String(format!("{timestamp_secs} seconds since Unix epoch")),
         );
     }
 
@@ -618,7 +618,7 @@ fn fseid_to_structured_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String,
     let mut addr_info = Vec::new();
 
     if let Some(ipv4) = fseid.ipv4_address {
-        addr_info.push(format!("IPv4: {}", ipv4));
+        addr_info.push(format!("IPv4: {ipv4}"));
         map.insert(
             "ipv4_address".to_string(),
             YamlValue::String(ipv4.to_string()),
@@ -626,7 +626,7 @@ fn fseid_to_structured_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String,
     }
 
     if let Some(ipv6) = fseid.ipv6_address {
-        addr_info.push(format!("IPv6: {}", ipv6));
+        addr_info.push(format!("IPv6: {ipv6}"));
         map.insert(
             "ipv6_address".to_string(),
             YamlValue::String(ipv6.to_string()),
@@ -639,7 +639,7 @@ fn fseid_to_structured_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String,
             YamlValue::Sequence(
                 addr_info
                     .into_iter()
-                    .map(|s| YamlValue::String(s))
+                    .map(YamlValue::String)
                     .collect(),
             ),
         );
@@ -746,7 +746,7 @@ fn ie_to_json_data(ie: &Ie) -> JsonValue {
                 let hex_payload = ie
                     .payload
                     .iter()
-                    .map(|b| format!("{:02x}", b))
+                    .map(|b| format!("{b:02x}"))
                     .collect::<Vec<_>>()
                     .join(" ");
                 map.insert("payload_hex".to_string(), JsonValue::String(hex_payload));
@@ -985,7 +985,7 @@ fn recovery_timestamp_to_json_data(
         );
         map.insert(
             "timestamp_description".to_string(),
-            JsonValue::String(format!("{} seconds since Unix epoch", timestamp_secs)),
+            JsonValue::String(format!("{timestamp_secs} seconds since Unix epoch")),
         );
     }
 
@@ -1007,7 +1007,7 @@ fn fseid_to_json_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, JsonV
     let mut addr_info = Vec::new();
 
     if let Some(ipv4) = fseid.ipv4_address {
-        addr_info.push(format!("IPv4: {}", ipv4));
+        addr_info.push(format!("IPv4: {ipv4}"));
         map.insert(
             "ipv4_address".to_string(),
             JsonValue::String(ipv4.to_string()),
@@ -1015,7 +1015,7 @@ fn fseid_to_json_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, JsonV
     }
 
     if let Some(ipv6) = fseid.ipv6_address {
-        addr_info.push(format!("IPv6: {}", ipv6));
+        addr_info.push(format!("IPv6: {ipv6}"));
         map.insert(
             "ipv6_address".to_string(),
             JsonValue::String(ipv6.to_string()),
@@ -1028,7 +1028,7 @@ fn fseid_to_json_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, JsonV
             JsonValue::Array(
                 addr_info
                     .into_iter()
-                    .map(|s| JsonValue::String(s))
+                    .map(JsonValue::String)
                     .collect(),
             ),
         );
@@ -1199,7 +1199,7 @@ impl MessageDisplay for Box<dyn Message> {
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
             if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{:?}", ie_type).to_lowercase();
+                let ie_name = format!("{ie_type:?}").to_lowercase();
                 ies_map.insert(ie_name, ie_to_structured_data(ie));
             }
         }
@@ -1246,7 +1246,7 @@ impl MessageDisplay for Box<dyn Message> {
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
             if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{:?}", ie_type).to_lowercase();
+                let ie_name = format!("{ie_type:?}").to_lowercase();
                 ies_map.insert(ie_name, ie_to_json_data(ie));
             }
         }

@@ -27,7 +27,7 @@ impl DownlinkDataServiceInformation {
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Not enough data for DownlinkDataServiceInformation",

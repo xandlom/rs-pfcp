@@ -141,6 +141,7 @@ impl Message for SessionDeletionRequest {
 }
 
 impl SessionDeletionRequest {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         seid: u64,
         seq: u32,

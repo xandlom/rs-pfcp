@@ -34,9 +34,8 @@ impl Message for AssociationReleaseRequest {
         while offset < buf.len() {
             let ie = Ie::unmarshal(&buf[offset..])?;
             let ie_len = ie.len() as usize;
-            match ie.ie_type {
-                IeType::NodeId => node_id = Some(ie),
-                _ => (),
+            if ie.ie_type == IeType::NodeId {
+                node_id = Some(ie);
             }
             offset += ie_len;
         }
