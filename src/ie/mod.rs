@@ -38,6 +38,7 @@ pub mod network_instance;
 pub mod node_id;
 pub mod offending_ie;
 pub mod outer_header_removal;
+pub mod overload_control_information;
 pub mod pdi;
 pub mod pdr_id;
 pub mod pfcpsm_req_flags;
@@ -66,6 +67,7 @@ pub mod transport_level_marking;
 pub mod ue_ip_address;
 pub mod update_bar;
 pub mod update_far;
+pub mod update_forwarding_parameters;
 pub mod update_pdr;
 pub mod update_qer;
 pub mod update_urr;
@@ -143,22 +145,10 @@ pub enum IeType {
     UsageReport = 74,
     UsageReportTrigger = 75,
     UrrId = 81,
+    CpFunctionFeatures = 89,
     UeIpAddress = 93,
     OuterHeaderRemoval = 95,
-    CreateBar = 115,
-    UpdateBar = 116,
-    RemoveBar = 117,
-    BarId = 118,
-    FarId = 108,
-    QerId = 109,
-    CreateTrafficEndpoint = 131,
-    UpdateTrafficEndpoint = 132,
-    RemoveTrafficEndpoint = 133,
     RecoveryTimeStamp = 96,
-    ActivatePredefinedRules = 106,
-    DeactivatePredefinedRules = 107,
-    CpFunctionFeatures = 89,
-    SourceIPAddress = 192,
     PdnType = 99,
     UserId = 100,
     Snssai = 101,
@@ -166,6 +156,18 @@ pub enum IeType {
     ApnDnn = 103,
     UserPlaneInactivityTimer = 104,
     UserPlanePathFailureReport = 105,
+    ActivatePredefinedRules = 106,
+    DeactivatePredefinedRules = 107,
+    FarId = 108,
+    QerId = 109,
+    CreateBar = 115,
+    UpdateBar = 116,
+    RemoveBar = 117,
+    BarId = 118,
+    CreateTrafficEndpoint = 131,
+    UpdateTrafficEndpoint = 132,
+    RemoveTrafficEndpoint = 133,
+    SourceIPAddress = 192,
     Unknown = 0,
 }
 
