@@ -10,6 +10,8 @@ pub mod display;
 pub mod header;
 pub mod heartbeat_request;
 pub mod heartbeat_response;
+pub mod node_report_request;
+pub mod node_report_response;
 pub mod pfd_management_request;
 pub mod pfd_management_response;
 pub mod session_deletion_request;
@@ -20,6 +22,8 @@ pub mod session_modification_request;
 pub mod session_modification_response;
 pub mod session_report_request;
 pub mod session_report_response;
+pub mod session_set_deletion_request;
+pub mod session_set_deletion_response;
 pub mod version_not_supported_response;
 
 use crate::ie::Ie;
@@ -31,6 +35,8 @@ use crate::message::association_update_request::AssociationUpdateRequest;
 use crate::message::association_update_response::AssociationUpdateResponse;
 use crate::message::heartbeat_request::HeartbeatRequest;
 use crate::message::heartbeat_response::HeartbeatResponse;
+use crate::message::node_report_request::NodeReportRequest;
+use crate::message::node_report_response::NodeReportResponse;
 use crate::message::pfd_management_request::PfdManagementRequest;
 use crate::message::pfd_management_response::PfdManagementResponse;
 use crate::message::session_deletion_request::SessionDeletionRequest;
@@ -41,6 +47,8 @@ use crate::message::session_modification_request::SessionModificationRequest;
 use crate::message::session_modification_response::SessionModificationResponse;
 use crate::message::session_report_request::SessionReportRequest;
 use crate::message::session_report_response::SessionReportResponse;
+use crate::message::session_set_deletion_request::SessionSetDeletionRequest;
+use crate::message::session_set_deletion_response::SessionSetDeletionResponse;
 use crate::message::version_not_supported_response::VersionNotSupportedResponse;
 use std::io;
 
@@ -220,6 +228,14 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
         MsgType::SessionReportResponse => Ok(Box::new(SessionReportResponse::unmarshal(data)?)),
         MsgType::VersionNotSupportedResponse => {
             Ok(Box::new(VersionNotSupportedResponse::unmarshal(data)?))
+        }
+        MsgType::NodeReportRequest => Ok(Box::new(NodeReportRequest::unmarshal(data)?)),
+        MsgType::NodeReportResponse => Ok(Box::new(NodeReportResponse::unmarshal(data)?)),
+        MsgType::SessionSetDeletionRequest => {
+            Ok(Box::new(SessionSetDeletionRequest::unmarshal(data)?))
+        }
+        MsgType::SessionSetDeletionResponse => {
+            Ok(Box::new(SessionSetDeletionResponse::unmarshal(data)?))
         }
         _ => Ok(Box::new(Generic::unmarshal(data)?)),
     }

@@ -165,6 +165,7 @@ pub enum IeType {
     TraceInformation = 102,
     ApnDnn = 103,
     UserPlaneInactivityTimer = 104,
+    UserPlanePathFailureReport = 105,
     Unknown = 0,
 }
 
@@ -258,6 +259,7 @@ impl From<u16> for IeType {
             102 => IeType::TraceInformation,
             103 => IeType::ApnDnn,
             104 => IeType::UserPlaneInactivityTimer,
+            105 => IeType::UserPlanePathFailureReport,
             _ => IeType::Unknown,
         }
     }
