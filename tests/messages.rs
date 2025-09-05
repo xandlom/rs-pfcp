@@ -2,6 +2,8 @@
 
 use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::session_report_response::SessionReportResponse;
+use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
+use rs_pfcp::message::version_not_supported_response::VersionNotSupportedResponse;
 use rs_pfcp::message::{header::Header, Message, MsgType};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -675,4 +677,94 @@ fn test_session_establishment_response_multiple_created_pdrs() {
     let expected_length = marshaled.len() - 4; // Total length minus first 4 header bytes
     let header_length = u16::from_be_bytes([marshaled[2], marshaled[3]]);
     assert_eq!(header_length as usize, expected_length);
+}
+
+#[test]
+fn test_association_update_response_marshal_unmarshal() {
+    // Create Node ID IE
+    let node_id_payload = {
+        let mut payload = vec![0x01]; // IPv4 type
+        payload.extend_from_slice(&Ipv4Addr::new(10, 0, 0, 1).octets());
+        payload
+    };
+    let node_id_ie = Ie::new(IeType::NodeId, node_id_payload);
+
+    // Create Cause IE
+    let cause_ie = Ie::new(IeType::Cause, vec![0x01]); // RequestAccepted
+
+    // Create UP Function Features IE
+    let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03, 0x04]);
+
+    let response = AssociationUpdateResponse::new(
+        0x123456,
+        node_id_ie,
+        cause_ie,
+        Some(up_features_ie),
+        None,
+    );
+
+    let marshaled = response.marshal();
+    let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
+
+    assert_eq!(response.header.message_type, unmarshaled.header.message_type);
+    assert_eq!(response.header.sequence_number, unmarshaled.header.sequence_number);
+    assert_eq!(response.node_id, unmarshaled.node_id);
+    assert_eq!(response.cause, unmarshaled.cause);
+    assert_eq!(response.up_function_features, unmarshaled.up_function_features);
+    assert_eq!(response.cp_function_features, unmarshaled.cp_function_features);
+}
+
+#[test]
+fn test_version_not_supported_response_marshal_unmarshal() {
+    let response = VersionNotSupportedResponse::new(0x789ABC);
+
+    let marshaled = response.marshal();
+    let unmarshaled = VersionNotSupportedResponse::unmarshal(&marshaled).unwrap();
+
+    assert_eq!(response.header.message_type, unmarshaled.header.message_type);
+    assert_eq!(response.header.sequence_number, unmarshaled.header.sequence_number);
+    assert_eq!(response.header.length, unmarshaled.header.length);
+    assert_eq!(response.ies.len(), unmarshaled.ies.len());
+}
+
+#[test]
+fn test_association_update_response_parse_integration() {
+    use rs_pfcp::message::parse;
+
+    // Create an AssociationUpdateResponse
+    let node_id_payload = {
+        let mut payload = vec![0x01]; // IPv4 type
+        payload.extend_from_slice(&Ipv4Addr::new(192, 168, 100, 1).octets());
+        payload
+    };
+    let node_id_ie = Ie::new(IeType::NodeId, node_id_payload);
+    let cause_ie = Ie::new(IeType::Cause, vec![0x01]); // RequestAccepted
+
+    let response = AssociationUpdateResponse::new(0xABCDEF, node_id_ie, cause_ie, None, None);
+    let marshaled = response.marshal();
+
+    // Parse it back using the generic parse function
+    let parsed_message = parse(&marshaled).unwrap();
+
+    assert_eq!(parsed_message.msg_type(), MsgType::AssociationUpdateResponse);
+    assert_eq!(parsed_message.sequence(), 0xABCDEF);
+    assert!(parsed_message.find_ie(IeType::NodeId).is_some());
+    assert!(parsed_message.find_ie(IeType::Cause).is_some());
+}
+
+#[test]
+fn test_version_not_supported_response_parse_integration() {
+    use rs_pfcp::message::parse;
+
+    // Create a VersionNotSupportedResponse with some IEs
+    let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x01]); // Offending IE type 1
+    let response = VersionNotSupportedResponse::new_with_ies(0x654321, vec![offending_ie]);
+    let marshaled = response.marshal();
+
+    // Parse it back using the generic parse function
+    let parsed_message = parse(&marshaled).unwrap();
+
+    assert_eq!(parsed_message.msg_type(), MsgType::VersionNotSupportedResponse);
+    assert_eq!(parsed_message.sequence(), 0x654321);
+    assert!(parsed_message.find_ie(IeType::OffendingIe).is_some());
 }

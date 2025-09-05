@@ -44,9 +44,11 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 - **Key IEs**: Node ID, CP Function Features, Graceful Release Period
 - **Usage**: Modify association settings without re-establishment
 
-#### Association Update Response (Type 8) ❌
-- **Status**: Defined in MsgType enum but not fully implemented
+#### Association Update Response (Type 8) ✅
 - **Purpose**: Response to association update requests
+- **Implementation**: `AssociationUpdateResponse`
+- **Key IEs**: Node ID, Cause, UP Function Features, CP Function Features
+- **Usage**: Confirms association parameter updates or reports errors
 
 #### Association Release Request (Type 9) ✅
 - **Purpose**: Gracefully terminate association
@@ -140,11 +142,18 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 
 The following message types are defined in the MsgType enum but not yet implemented:
 
-- **Version Not Supported Response (Type 11)** ❌
 - **Node Report Request (Type 12)** ❌  
 - **Node Report Response (Type 13)** ❌
 - **Session Set Deletion Request (Type 14)** ❌
 - **Session Set Deletion Response (Type 15)** ❌
+
+### Recently Implemented Messages
+
+#### Version Not Supported Response (Type 11) ✅
+- **Purpose**: Response when PFCP version is not supported
+- **Implementation**: `VersionNotSupportedResponse`
+- **Key IEs**: Optional Offending IE, additional error information
+- **Usage**: Sent when receiving messages with unsupported PFCP versions
 
 ## Message Processing Architecture
 
@@ -238,9 +247,10 @@ The rs-pfcp library implements PFCP messages according to:
 | Category | Implemented | Defined | Coverage |
 |----------|-------------|---------|----------|
 | Node Management | 2/2 | 2 | 100% |
-| Association Management | 4/6 | 6 | 67% |  
+| Association Management | 5/6 | 6 | 83% |  
 | Session Management | 8/8 | 8 | 100% |
 | PFD Management | 2/2 | 2 | 100% |
-| **Total** | **16/18** | **18** | **89%** |
+| Version/Error Management | 1/1 | 1 | 100% |
+| **Total** | **18/19** | **19** | **95%** |
 
-The library provides comprehensive coverage of core PFCP functionality with nearly 90% of defined message types fully implemented and tested.
+The library provides comprehensive coverage of core PFCP functionality with 95% of defined message types fully implemented and tested.

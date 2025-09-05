@@ -5,6 +5,7 @@ pub mod association_release_response;
 pub mod association_setup_request;
 pub mod association_setup_response;
 pub mod association_update_request;
+pub mod association_update_response;
 pub mod display;
 pub mod header;
 pub mod heartbeat_request;
@@ -19,6 +20,7 @@ pub mod session_modification_request;
 pub mod session_modification_response;
 pub mod session_report_request;
 pub mod session_report_response;
+pub mod version_not_supported_response;
 
 use crate::ie::Ie;
 use crate::message::association_release_request::AssociationReleaseRequest;
@@ -26,6 +28,7 @@ use crate::message::association_release_response::AssociationReleaseResponse;
 use crate::message::association_setup_request::AssociationSetupRequest;
 use crate::message::association_setup_response::AssociationSetupResponse;
 use crate::message::association_update_request::AssociationUpdateRequest;
+use crate::message::association_update_response::AssociationUpdateResponse;
 use crate::message::heartbeat_request::HeartbeatRequest;
 use crate::message::heartbeat_response::HeartbeatResponse;
 use crate::message::pfd_management_request::PfdManagementRequest;
@@ -38,6 +41,7 @@ use crate::message::session_modification_request::SessionModificationRequest;
 use crate::message::session_modification_response::SessionModificationResponse;
 use crate::message::session_report_request::SessionReportRequest;
 use crate::message::session_report_response::SessionReportResponse;
+use crate::message::version_not_supported_response::VersionNotSupportedResponse;
 use std::io;
 
 // Message Type definitions.
@@ -189,6 +193,9 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
         MsgType::AssociationUpdateRequest => {
             Ok(Box::new(AssociationUpdateRequest::unmarshal(data)?))
         }
+        MsgType::AssociationUpdateResponse => {
+            Ok(Box::new(AssociationUpdateResponse::unmarshal(data)?))
+        }
         MsgType::AssociationReleaseRequest => {
             Ok(Box::new(AssociationReleaseRequest::unmarshal(data)?))
         }
@@ -211,6 +218,9 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
         }
         MsgType::SessionReportRequest => Ok(Box::new(SessionReportRequest::unmarshal(data)?)),
         MsgType::SessionReportResponse => Ok(Box::new(SessionReportResponse::unmarshal(data)?)),
+        MsgType::VersionNotSupportedResponse => {
+            Ok(Box::new(VersionNotSupportedResponse::unmarshal(data)?))
+        }
         _ => Ok(Box::new(Generic::unmarshal(data)?)),
     }
 }

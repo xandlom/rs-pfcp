@@ -22,6 +22,21 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 - Session server: `cargo run --example session-server --interface lo --port 8805`
 - Session client: `cargo run --example session-client --interface lo --address 127.0.0.1 --port 8805 --sessions 1`
 - PFCP packet analysis: `cargo run --example pcap-reader -- --pcap <file.pcap> --format yaml`
+- Session report demo: `cd examples && ./test_session_report.sh [interface_name]`
+- Header length test: `cargo run --example header-length-test`
+
+### Testing Individual Components
+- **Run all tests**: `cargo test`
+- **Run specific test**: `cargo test test_name`
+- **Run tests for specific module**: `cargo test ie::node_id` or `cargo test message::heartbeat`
+- **Integration tests**: `cargo test --test messages`
+
+### Development and Debugging
+- **Parse messages from hex**: Use `parse()` function with `Box<dyn Message>` for unknown types
+- **Debug message content**: Use `MessageDisplay` trait methods like `.to_yaml()` or `.to_json_pretty()`
+- **Analyze captured traffic**: `cargo run --example pcap-reader -- --pcap file.pcap --format yaml --pfcp-only`
+- **Test round-trip encoding**: All marshal/unmarshal operations are tested for data integrity
+- **Handle vendor IEs**: Use `Ie::new_vendor_specific()` for enterprise-specific extensions
 
 ## Code Architecture
 
@@ -53,6 +68,21 @@ All Information Elements implement:
 - Support for vendor-specific IEs with enterprise IDs
 - 3GPP TS 29.244 compliant F-TEID encoding with proper CHOOSE/CHOOSE_ID flag handling
 - Proper error handling with `std::io::Error`
+
+#### Message Display and Debugging
+The library includes sophisticated display capabilities via `MessageDisplay` trait:
+- **YAML/JSON formatting**: Convert any message to structured format for analysis
+- **Intelligent IE parsing**: Automatically decodes known IE types with semantic information
+- **Flag interpretation**: Bitflags like Usage Report Triggers and Apply Actions shown as readable names
+- **Hex fallback**: Unknown or large IEs displayed as hex dumps
+- **Usage**: `message.to_yaml()`, `message.to_json_pretty()` for debugging
+
+#### Error Handling Patterns
+Consistent error handling throughout the codebase:
+- All marshal/unmarshal operations return `Result<T, std::io::Error>`
+- Invalid data errors use `io::ErrorKind::InvalidData` with descriptive messages
+- Short buffer errors caught early with length validation
+- Grouped IEs parse child IEs lazily via `as_ies()` method
 
 ### Message Types
 The library supports these PFCP message types:
@@ -92,6 +122,7 @@ let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
 4. Implement marshal/unmarshal and any type-specific methods
 5. Add tests following existing patterns
 6. Update `IE_SUPPORT.md`
+7. **Optional**: Add display support in `src/message/display.rs` for structured output
 
 ### Adding New Messages
 1. Create new module in `src/message/`
@@ -100,6 +131,7 @@ let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
 4. Implement `Message` trait
 5. Add to the `parse()` function for message routing
 6. Add comprehensive marshal/unmarshal tests
+7. **Important**: Message automatically gets `MessageDisplay` trait for YAML/JSON formatting
 
 ### Testing Strategy
 - All marshal/unmarshal operations are tested with round-trip tests
@@ -122,3 +154,20 @@ Examples support flexible network configuration:
 - `--address` and `--port` parameters for server connection
 - Automatic IP address detection from specified interface
 - Support for both IPv4 and IPv6 (where implemented)
+
+### Session Report Demo
+A comprehensive demo shows quota exhausted reporting:
+- Located in `examples/SESSION_REPORT_DEMO.md` with detailed architecture
+- Run with `cd examples && ./test_session_report.sh [interface_name]`
+- Demonstrates UPF→SMF quota exhaustion reporting with packet capture
+- Shows Session Report Request/Response message flow with Usage Report triggers
+- Includes automatic packet analysis with the pcap-reader example
+
+### Dependencies and Tools
+Key dependencies used throughout the codebase:
+- **anyhow**: Error handling and context
+- **bitflags**: Flag-based IEs (Apply Action, Reporting Triggers, etc.)
+- **clap**: Command-line parsing for examples
+- **network-interface**: Network interface detection and IP resolution
+- **pcap-file**: PCAP file parsing for traffic analysis
+- **serde**: JSON/YAML serialization for message display
