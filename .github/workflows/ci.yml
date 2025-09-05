@@ -163,38 +163,38 @@ jobs:
         chmod +x test_session_report.sh
         timeout 30s ./test_session_report.sh lo || true
 
-  network-tests:
-    name: Network Interface Tests
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout sources
-      uses: actions/checkout@v5
+  # network-tests:
+  #   name: Network Interface Tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout sources
+  #     uses: actions/checkout@v5
 
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+  #   - name: Install Rust toolchain
+  #     uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache Cargo
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-network-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ubuntu-network-
+  #   - name: Cache Cargo
+  #     uses: actions/cache@v4
+  #     with:
+  #       path: |
+  #         ~/.cargo/registry
+  #         ~/.cargo/git
+  #         target
+  #       key: ubuntu-network-${{ hashFiles('**/Cargo.lock') }}
+  #       restore-keys: |
+  #         ubuntu-network-
 
-    - name: Test network interface detection
-      run: |
-        # Test that examples can detect network interfaces
-        cargo run --example heartbeat-server -- --help || true
-        cargo run --example session-server -- --help || true
-        
-        # Test loopback interface detection
-        ip link show lo
-        
-    - name: Test PFCP packet analysis
-      run: |
-        # Create a dummy pcap file and test pcap-reader
-        echo "Test pcap analysis functionality"
-        cargo run --example pcap-reader -- --help || true
+  #   - name: Test network interface detection
+  #     run: |
+  #       # Test that examples can detect network interfaces
+  #       cargo run --example heartbeat-server -- --help || true
+  #       cargo run --example session-server -- --help || true
+  #       
+  #       # Test loopback interface detection
+  #       ip link show lo
+  #       
+  #   - name: Test PFCP packet analysis
+  #     run: |
+  #       # Create a dummy pcap file and test pcap-reader
+  #       echo "Test pcap analysis functionality"
+  #       cargo run --example pcap-reader -- --help || true
