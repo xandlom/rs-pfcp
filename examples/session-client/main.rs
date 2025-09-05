@@ -56,7 +56,7 @@ fn handle_session_report_request(
         let report_type = report_type_ie.payload[0];
         match report_type {
             0x02 => println!("    Report Type: Usage Report (USAR)"),
-            _ => println!("    Report Type: Unknown (0x{:02x})", report_type),
+            _ => println!("    Report Type: Unknown (0x{report_type:02x})"),
         }
     }
 
@@ -100,10 +100,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 None
             }
         })
-        .ok_or_else(|| "No valid IPv4 address found for interface")?;
+        .ok_or("No valid IPv4 address found for interface")?;
 
     // Bind to the interface IP with port 0 (let OS choose)
-    let bind_address = format!("{}:0", client_ip);
+    let bind_address = format!("{client_ip}:0");
     let socket = UdpSocket::bind(&bind_address)?;
 
     // Connect to the server
@@ -111,7 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     socket.connect(&server_address)?;
 
     println!("Client bound to: {}", socket.local_addr()?);
-    println!("Connecting to server: {}", server_address);
+    println!("Connecting to server: {server_address}");
 
     // Use the interface IP for Node ID
     let interface_ipv4 = if let IpAddr::V4(ipv4) = client_ip {

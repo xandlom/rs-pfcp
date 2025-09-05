@@ -48,6 +48,7 @@ fn create_quota_exhausted_usage_report() -> Ie {
 
 // Structure to track session states
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct SessionInfo {
     seid: u64,
     client_addr: std::net::SocketAddr,
@@ -77,7 +78,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 None
             }
         })
-        .ok_or_else(|| "No valid IPv4 address found for interface")?;
+        .ok_or("No valid IPv4 address found for interface")?;
 
     // Combine the IP address and port to create the bind address string
     let bind_address = format!("{}:{}", ip_address, args.port);
@@ -102,16 +103,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 // Print message content in YAML format
                 println!("=== Message Content (YAML) ===");
                 match msg.to_yaml() {
-                    Ok(yaml) => println!("{}", yaml),
-                    Err(e) => println!("Failed to serialize to YAML: {}", e),
+                    Ok(yaml) => println!("{yaml}"),
+                    Err(e) => println!("Failed to serialize to YAML: {e}"),
                 }
                 println!("============================");
 
                 // Print message content in JSON format
                 println!("=== Message Content (JSON) ===");
                 match msg.to_json_pretty() {
-                    Ok(json) => println!("{}", json),
-                    Err(e) => println!("Failed to serialize to JSON: {}", e),
+                    Ok(json) => println!("{json}"),
+                    Err(e) => println!("Failed to serialize to JSON: {e}"),
                 }
                 println!("===========================");
                 match msg.msg_type() {
@@ -138,13 +139,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                     }
                     MsgType::SessionEstablishmentRequest => {
                         let seid = msg.seid().unwrap();
-                        println!("  Session ID: 0x{:016x}", seid);
+                        println!("  Session ID: 0x{seid:016x}");
 
                         // Parse the full SessionEstablishmentRequest to access create_pdrs
                         let establishment_req = match SessionEstablishmentRequest::unmarshal(data) {
                             Ok(req) => req,
                             Err(e) => {
-                                eprintln!("Failed to parse SessionEstablishmentRequest: {}", e);
+                                eprintln!("Failed to parse SessionEstablishmentRequest: {e}");
                                 continue;
                             }
                         };
@@ -225,7 +226,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                         // Simulate quota exhaustion after 2 seconds
                         thread::sleep(Duration::from_secs(2));
-                        println!("  [QUOTA EXHAUSTED] Sending Session Report Request for session 0x{:016x}", seid);
+                        println!("  [QUOTA EXHAUSTED] Sending Session Report Request for session 0x{seid:016x}");
 
                         // Create and send Session Report Request with quota exhausted usage report
                         let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // USAR (Usage Report)
@@ -271,7 +272,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         );
                         if let Some(cause_ie) = msg.find_ie(IeType::Cause) {
                             let cause_value = CauseValue::from(cause_ie.payload[0]);
-                            println!("  Response cause: {:?}", cause_value);
+                            println!("  Response cause: {cause_value:?}");
                         }
                     }
                     _ => {

@@ -57,14 +57,14 @@ fn test_message_length<T: Message>(message: &T, msg_name: &str) {
             marshaled[seq_offset + 2],
         ]);
 
-        println!("  Message Type: {} ({})", msg_type, msg_name);
-        println!("  Version: {}, S flag: {}", version, s_flag);
-        println!("  Length field: {} bytes", length);
+        println!("  Message Type: {msg_type} ({msg_name})");
+        println!("  Version: {version}, S flag: {s_flag}");
+        println!("  Length field: {length} bytes");
         println!("  Expected length: {} bytes", marshaled.len() - 4);
         if s_flag {
-            println!("  SEID: 0x{:016x}", seid);
+            println!("  SEID: 0x{seid:016x}");
         }
-        println!("  Sequence: {}", sequence);
+        println!("  Sequence: {sequence}");
         println!("  Total packet size: {} bytes", marshaled.len());
         println!(
             "  Raw bytes: {:02x?}",

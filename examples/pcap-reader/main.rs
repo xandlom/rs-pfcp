@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Detect link type from pcap header
     let datalink = pcap_reader.header().datalink;
     println!("Reading PCAP file: {}", args.pcap);
-    println!("Datalink type: {:?}", datalink);
+    println!("Datalink type: {datalink:?}");
     println!("Format: {}", args.format.to_uppercase());
     if args.pfcp_only {
         println!("Filtering: PFCP messages only");
@@ -72,8 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if eth_type != 0x0800 {
                             if !args.pfcp_only {
                                 println!(
-                                    "Packet {}: Non-IPv4 (EtherType: 0x{:04x})",
-                                    packet_count, eth_type
+                                    "Packet {packet_count}: Non-IPv4 (EtherType: 0x{eth_type:04x})"
                                 );
                             }
                             continue;
@@ -90,8 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if protocol_type != 0x0800 {
                             if !args.pfcp_only {
                                 println!(
-                                    "Packet {}: Non-IPv4 (Protocol: 0x{:04x})",
-                                    packet_count, protocol_type
+                                    "Packet {packet_count}: Non-IPv4 (Protocol: 0x{protocol_type:04x})"
                                 );
                             }
                             continue;
@@ -101,8 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     _ => {
                         if !args.pfcp_only {
                             println!(
-                                "Packet {}: Unsupported datalink type: {:?}",
-                                packet_count, datalink
+                                "Packet {packet_count}: Unsupported datalink type: {datalink:?}"
                             );
                         }
                         continue;
@@ -121,10 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if ip_version != 4 || ip_protocol != 17 {
                     // Not UDP
                     if !args.pfcp_only {
-                        println!(
-                            "Packet {}: Not UDP (protocol: {})",
-                            packet_count, ip_protocol
-                        );
+                        println!("Packet {packet_count}: Not UDP (protocol: {ip_protocol})");
                     }
                     continue;
                 }
@@ -158,7 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let pfcp_data = &udp_data[8..];
                 if pfcp_data.is_empty() {
                     if !args.pfcp_only {
-                        println!("Packet {}: Empty PFCP payload", packet_count);
+                        println!("Packet {packet_count}: Empty PFCP payload");
                     }
                     continue;
                 }
@@ -174,7 +168,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let s_flag = (pfcp_data[0] & 0x01) != 0;
                             let msg_type = pfcp_data[1];
                             let length = u16::from_be_bytes([pfcp_data[2], pfcp_data[3]]);
-                            let seid_or_seq_start = if s_flag { 4 } else { 4 };
+                            let _seid_or_seq_start = 4; // Header start for both S flag cases
                             let seq_offset = if s_flag { 12 } else { 4 };
                             let sequence = if pfcp_data.len() > seq_offset + 2 {
                                 u32::from_be_bytes([
@@ -198,8 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 header_type
                             );
                             println!(
-                                "  PFCP Header: version={}, S={}, msg_type={}, length={}, seq={}",
-                                version, s_flag, msg_type, length, sequence
+                                "  PFCP Header: version={version}, S={s_flag}, msg_type={msg_type}, length={length}, seq={sequence}"
                             );
                             println!(
                                 "  Raw PFCP bytes: {:02x?}",
@@ -211,21 +204,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             "yaml" => match pfcp_msg.to_yaml() {
                                 Ok(yaml) => {
                                     println!("--- PFCP Message (YAML) ---");
-                                    println!("{}", yaml);
+                                    println!("{yaml}");
                                     println!("---------------------------");
                                 }
                                 Err(e) => {
-                                    println!("Error serializing to YAML: {}", e);
+                                    println!("Error serializing to YAML: {e}");
                                 }
                             },
                             "json" => match pfcp_msg.to_json_pretty() {
                                 Ok(json) => {
                                     println!("--- PFCP Message (JSON) ---");
-                                    println!("{}", json);
+                                    println!("{json}");
                                     println!("---------------------------");
                                 }
                                 Err(e) => {
-                                    println!("Error serializing to JSON: {}", e);
+                                    println!("Error serializing to JSON: {e}");
                                 }
                             },
                             _ => {
@@ -235,10 +228,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!();
                     }
                     Err(e) => {
-                        println!(
-                            "Packet {}: Failed to parse PFCP message: {}",
-                            packet_count, e
-                        );
+                        println!("Packet {packet_count}: Failed to parse PFCP message: {e}");
                         if pfcp_data.len() >= 4 {
                             println!(
                                 "  Raw header: {:02x} {:02x} {:02x} {:02x}",
@@ -255,7 +245,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
             Some(Err(e)) => {
-                eprintln!("Error reading pcap: {:?}", e);
+                eprintln!("Error reading pcap: {e:?}");
                 break;
             }
         }
@@ -263,8 +253,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", "=".repeat(60));
     println!("Summary:");
-    println!("  Total packets: {}", packet_count);
-    println!("  PFCP messages: {}", pfcp_count);
+    println!("  Total packets: {packet_count}");
+    println!("  PFCP messages: {pfcp_count}");
 
     Ok(())
 }
