@@ -358,7 +358,7 @@ fn test_session_modification_response_marshal_unmarshal() {
         0x112233,
     );
     let payload_len = cause_ie.len() + pdr_ie.len();
-    header.length = (payload_len + header.len() - 4) as u16;
+    header.length = payload_len + header.len() - 4;
 
     let res = SessionModificationResponse {
         header,

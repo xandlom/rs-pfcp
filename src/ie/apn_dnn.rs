@@ -37,7 +37,7 @@ impl ApnDnn {
     /// Encodes the APN/DNN name in DNS label format.
     /// Each label is prefixed with its length (1 byte).
     /// Example: "internet.mnc001.mcc001.gprs" becomes:
-    /// [8]internet[6]mnc001[6]mcc001[4]gprs[0]
+    /// \[8\]internet\[6\]mnc001\[6\]mcc001\[4\]gprs\[0\]
     fn encoded_name(&self) -> Vec<u8> {
         if self.name.is_empty() {
             return vec![0]; // Empty name is encoded as single zero byte
