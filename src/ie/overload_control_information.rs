@@ -109,8 +109,7 @@ mod tests {
         let metric = Metric::new(75); // 75% overload
         let timer = Timer::new(30); // 30 seconds
 
-        let overload_info = OverloadControlInformation::new(sequence.clone(), metric.clone())
-            .with_timer(timer.clone());
+        let overload_info = OverloadControlInformation::new(sequence, metric).with_timer(timer);
 
         let marshaled = overload_info.marshal();
         let unmarshaled = OverloadControlInformation::unmarshal(&marshaled).unwrap();
@@ -126,7 +125,7 @@ mod tests {
         let sequence = SequenceNumber::new(54321);
         let metric = Metric::new(90); // 90% overload
 
-        let overload_info = OverloadControlInformation::new(sequence.clone(), metric.clone());
+        let overload_info = OverloadControlInformation::new(sequence, metric);
 
         let marshaled = overload_info.marshal();
         let unmarshaled = OverloadControlInformation::unmarshal(&marshaled).unwrap();
