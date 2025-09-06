@@ -31,21 +31,15 @@ impl OverloadControlInformation {
     /// Marshals the Overload Control Information into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
         let mut ies = Vec::new();
-        
+
         ies.push(Ie::new(
             IeType::SequenceNumber,
             self.sequence_number.marshal().to_vec(),
         ));
-        ies.push(Ie::new(
-            IeType::Metric,
-            self.metric.marshal().to_vec(),
-        ));
-        
+        ies.push(Ie::new(IeType::Metric, self.metric.marshal().to_vec()));
+
         if let Some(ref timer) = self.timer {
-            ies.push(Ie::new(
-                IeType::Timer,
-                timer.marshal().to_vec(),
-            ));
+            ies.push(Ie::new(IeType::Timer, timer.marshal().to_vec()));
         }
 
         let mut data = Vec::new();
@@ -83,10 +77,7 @@ impl OverloadControlInformation {
             .map(|ie| Metric::unmarshal(&ie.payload))
             .transpose()?
             .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory Metric IE",
-                )
+                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory Metric IE")
             })?;
 
         let timer = ies
@@ -168,7 +159,10 @@ mod tests {
 
         let result = OverloadControlInformation::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Missing mandatory Sequence Number IE"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Missing mandatory Sequence Number IE"));
     }
 
     #[test]
@@ -180,7 +174,10 @@ mod tests {
 
         let result = OverloadControlInformation::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Missing mandatory Metric IE"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Missing mandatory Metric IE"));
     }
 
     #[test]

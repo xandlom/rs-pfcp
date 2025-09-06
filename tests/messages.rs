@@ -501,7 +501,10 @@ fn test_session_report_response_builder_comprehensive() {
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
     let offending_ie = Ie::new(IeType::OffendingIe, vec![0x01, 0x02, 0x03, 0x04]);
-    let update_bar_ie = Ie::new(IeType::UpdateBar, vec![0x05, 0x06]);
+    let update_bar_ie = Ie::new(
+        IeType::UpdateBarWithinSessionReportResponse,
+        vec![0x05, 0x06],
+    );
     let pfcpsrrsp_flags_ie = Ie::new(IeType::PfcpsrrspFlags, vec![0x07]);
     let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x08, 0x09]);
 
@@ -514,7 +517,7 @@ fn test_session_report_response_builder_comprehensive() {
 
     let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
         .offending_ie(offending_ie.clone())
-        .update_bar(update_bar_ie.clone())
+        .update_bar_within_session_report_response(update_bar_ie.clone())
         .pfcpsrrsp_flags(pfcpsrrsp_flags_ie.clone())
         .cp_function_features(cp_features_ie.clone())
         .usage_reports(usage_reports.clone())
@@ -524,7 +527,10 @@ fn test_session_report_response_builder_comprehensive() {
 
     assert_eq!(res.cause, cause_ie);
     assert_eq!(res.offending_ie, Some(offending_ie));
-    assert_eq!(res.update_bar, Some(update_bar_ie));
+    assert_eq!(
+        res.update_bar_within_session_report_response,
+        Some(update_bar_ie)
+    );
     assert_eq!(res.pfcpsrrsp_flags, Some(pfcpsrrsp_flags_ie));
     assert_eq!(res.cp_function_features, Some(cp_features_ie));
     assert_eq!(res.usage_reports, usage_reports);

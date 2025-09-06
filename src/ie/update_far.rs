@@ -6,7 +6,7 @@ use crate::ie::apply_action::ApplyAction;
 use crate::ie::bar_id::BarId;
 use crate::ie::duplicating_parameters::DuplicatingParameters;
 use crate::ie::far_id::FarId;
-use crate::ie::forwarding_parameters::ForwardingParameters;
+use crate::ie::update_forwarding_parameters::UpdateForwardingParameters;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -14,7 +14,7 @@ use std::io;
 pub struct UpdateFar {
     pub far_id: FarId,
     pub apply_action: Option<ApplyAction>,
-    pub forwarding_parameters: Option<ForwardingParameters>,
+    pub update_forwarding_parameters: Option<UpdateForwardingParameters>,
     pub duplicating_parameters: Option<DuplicatingParameters>,
     pub bar_id: Option<BarId>,
 }
@@ -23,14 +23,14 @@ impl UpdateFar {
     pub fn new(
         far_id: FarId,
         apply_action: Option<ApplyAction>,
-        forwarding_parameters: Option<ForwardingParameters>,
+        update_forwarding_parameters: Option<UpdateForwardingParameters>,
         duplicating_parameters: Option<DuplicatingParameters>,
         bar_id: Option<BarId>,
     ) -> Self {
         UpdateFar {
             far_id,
             apply_action,
-            forwarding_parameters,
+            update_forwarding_parameters,
             duplicating_parameters,
             bar_id,
         }
@@ -41,8 +41,8 @@ impl UpdateFar {
         if let Some(aa) = &self.apply_action {
             ies.push(Ie::new(IeType::ApplyAction, aa.marshal().to_vec()));
         }
-        if let Some(fp) = &self.forwarding_parameters {
-            ies.push(Ie::new(IeType::ForwardingParameters, fp.marshal()));
+        if let Some(ufp) = &self.update_forwarding_parameters {
+            ies.push(Ie::new(IeType::UpdateForwardingParameters, ufp.marshal()));
         }
         if let Some(dp) = &self.duplicating_parameters {
             ies.push(Ie::new(IeType::DuplicatingParameters, dp.marshal()));
@@ -60,7 +60,7 @@ impl UpdateFar {
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         let mut far_id = None;
         let mut apply_action = None;
-        let mut forwarding_parameters = None;
+        let mut update_forwarding_parameters = None;
         let mut duplicating_parameters = None;
         let mut bar_id = None;
 
@@ -70,8 +70,9 @@ impl UpdateFar {
             match ie.ie_type {
                 IeType::FarId => far_id = Some(FarId::unmarshal(&ie.payload)?),
                 IeType::ApplyAction => apply_action = Some(ApplyAction::unmarshal(&ie.payload)?),
-                IeType::ForwardingParameters => {
-                    forwarding_parameters = Some(ForwardingParameters::unmarshal(&ie.payload)?)
+                IeType::UpdateForwardingParameters => {
+                    update_forwarding_parameters =
+                        Some(UpdateForwardingParameters::unmarshal(&ie.payload)?)
                 }
                 IeType::DuplicatingParameters => {
                     duplicating_parameters = Some(DuplicatingParameters::unmarshal(&ie.payload)?)
@@ -86,7 +87,7 @@ impl UpdateFar {
             far_id: far_id
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing FAR ID"))?,
             apply_action,
-            forwarding_parameters,
+            update_forwarding_parameters,
             duplicating_parameters,
             bar_id,
         })

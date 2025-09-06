@@ -12,7 +12,7 @@ pub struct SessionReportResponse {
     pub cause: Ie,
     // Optional IEs
     pub offending_ie: Option<Ie>,
-    pub update_bar: Option<Ie>,
+    pub update_bar_within_session_report_response: Option<Ie>,
     pub pfcpsrrsp_flags: Option<Ie>,
     pub cp_function_features: Option<Ie>,
     pub usage_reports: Vec<Ie>,
@@ -30,7 +30,7 @@ impl Message for SessionReportResponse {
         if let Some(ie) = &self.offending_ie {
             data.extend_from_slice(&ie.marshal());
         }
-        if let Some(ie) = &self.update_bar {
+        if let Some(ie) = &self.update_bar_within_session_report_response {
             data.extend_from_slice(&ie.marshal());
         }
         if let Some(ie) = &self.pfcpsrrsp_flags {
@@ -61,7 +61,7 @@ impl Message for SessionReportResponse {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
-        let mut update_bar = None;
+        let mut update_bar_within_session_report_response = None;
         let mut pfcpsrrsp_flags = None;
         let mut cp_function_features = None;
         let mut usage_reports = Vec::new();
@@ -77,7 +77,9 @@ impl Message for SessionReportResponse {
             match ie.ie_type {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
-                IeType::UpdateBar => update_bar = Some(ie),
+                IeType::UpdateBarWithinSessionReportResponse => {
+                    update_bar_within_session_report_response = Some(ie)
+                }
                 IeType::PfcpsrrspFlags => pfcpsrrsp_flags = Some(ie),
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
                 IeType::UsageReport => usage_reports.push(ie),
@@ -91,7 +93,7 @@ impl Message for SessionReportResponse {
             cause: cause
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
             offending_ie,
-            update_bar,
+            update_bar_within_session_report_response,
             pfcpsrrsp_flags,
             cp_function_features,
             usage_reports,
@@ -126,7 +128,9 @@ impl Message for SessionReportResponse {
         match ie_type {
             IeType::Cause => Some(&self.cause),
             IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::UpdateBar => self.update_bar.as_ref(),
+            IeType::UpdateBarWithinSessionReportResponse => {
+                self.update_bar_within_session_report_response.as_ref()
+            }
             IeType::PfcpsrrspFlags => self.pfcpsrrsp_flags.as_ref(),
             IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
             _ => {
@@ -169,7 +173,7 @@ impl SessionReportResponse {
             header,
             cause,
             offending_ie,
-            update_bar: None,
+            update_bar_within_session_report_response: None,
             pfcpsrrsp_flags: None,
             cp_function_features: None,
             usage_reports,
@@ -186,7 +190,7 @@ pub struct SessionReportResponseBuilder {
     seq: u32,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
-    update_bar: Option<Ie>,
+    update_bar_within_session_report_response: Option<Ie>,
     pfcpsrrsp_flags: Option<Ie>,
     cp_function_features: Option<Ie>,
     usage_reports: Vec<Ie>,
@@ -203,7 +207,7 @@ impl SessionReportResponseBuilder {
             seq,
             cause: Some(cause),
             offending_ie: None,
-            update_bar: None,
+            update_bar_within_session_report_response: None,
             pfcpsrrsp_flags: None,
             cp_function_features: None,
             usage_reports: Vec::new(),
@@ -219,8 +223,12 @@ impl SessionReportResponseBuilder {
         self
     }
 
-    pub fn update_bar(mut self, update_bar: Ie) -> Self {
-        self.update_bar = Some(update_bar);
+    pub fn update_bar_within_session_report_response(
+        mut self,
+        update_bar_within_session_report_response: Ie,
+    ) -> Self {
+        self.update_bar_within_session_report_response =
+            Some(update_bar_within_session_report_response);
         self
     }
 
@@ -271,7 +279,7 @@ impl SessionReportResponseBuilder {
         if let Some(ie) = &self.offending_ie {
             payload_len += ie.len();
         }
-        if let Some(ie) = &self.update_bar {
+        if let Some(ie) = &self.update_bar_within_session_report_response {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.pfcpsrrsp_flags {
@@ -303,7 +311,8 @@ impl SessionReportResponseBuilder {
             header,
             cause,
             offending_ie: self.offending_ie,
-            update_bar: self.update_bar,
+            update_bar_within_session_report_response: self
+                .update_bar_within_session_report_response,
             pfcpsrrsp_flags: self.pfcpsrrsp_flags,
             cp_function_features: self.cp_function_features,
             usage_reports: self.usage_reports,

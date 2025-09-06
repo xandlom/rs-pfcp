@@ -325,10 +325,10 @@ mod tests {
 
         // Check marshaling format: count + type + len + address
         let expected = vec![
-            1,                    // 1 peer address
-            0,                    // IPv4 type
-            4,                    // 4 bytes length
-            10, 0, 0, 1,          // IPv4 address
+            1, // 1 peer address
+            0, // IPv4 type
+            4, // 4 bytes length
+            10, 0, 0, 1, // IPv4 address
         ];
         assert_eq!(marshaled, expected);
     }
@@ -406,7 +406,10 @@ mod tests {
     fn test_path_failure_report_unmarshal_empty_payload() {
         let result = PathFailureReport::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Path Failure Report payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Path Failure Report payload too short"));
     }
 
     #[test]
@@ -414,7 +417,10 @@ mod tests {
         let mut offset = 0;
         let result = RemotePeerAddress::unmarshal(&[0], &mut offset);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Remote peer address header too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Remote peer address header too short"));
     }
 
     #[test]
@@ -423,7 +429,10 @@ mod tests {
         // Type=0, Length=4, but only 2 bytes of data
         let result = RemotePeerAddress::unmarshal(&[0, 4, 0x01, 0x02], &mut offset);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Remote peer address data too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Remote peer address data too short"));
     }
 
     #[test]

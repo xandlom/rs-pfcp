@@ -1,17 +1,16 @@
 //! PDN Type IE Integration Demo
-//! 
+//!
 //! This example demonstrates how the PDN Type Information Element (Type 99)
 //! is properly integrated into PFCP messages for 5G network identification.
 
+use rs_pfcp::ie::{cause::Cause, fseid::Fseid, node_id::NodeId};
 use rs_pfcp::ie::{pdn_type::PdnType, Ie, IeType};
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_request::SessionModificationRequestBuilder,
-    session_modification_response::SessionModificationResponse,
-    Message,
+    session_modification_response::SessionModificationResponse, Message,
 };
-use rs_pfcp::ie::{cause::Cause, fseid::Fseid, node_id::NodeId};
 use std::net::Ipv4Addr;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create PDN Type IEs for different connection types
     let ipv4_pdn = PdnType::ipv4().to_ie();
-    let ipv6_pdn = PdnType::ipv6().to_ie(); 
+    let ipv6_pdn = PdnType::ipv6().to_ie();
     let ipv4v6_pdn = PdnType::ipv4v6().to_ie();
     let non_ip_pdn = PdnType::non_ip().to_ie();
     let ethernet_pdn = PdnType::ethernet().to_ie();
@@ -28,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("1. 📋 PDN Type IE Examples:");
     demonstrate_pdn_types(&[
         (&ipv4_pdn, "IPv4"),
-        (&ipv6_pdn, "IPv6"), 
+        (&ipv6_pdn, "IPv6"),
         (&ipv4v6_pdn, "IPv4v6 (Dual Stack)"),
         (&non_ip_pdn, "Non-IP (IoT/SMS)"),
         (&ethernet_pdn, "Ethernet"),
@@ -36,59 +35,73 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Demonstrate Session Establishment Request with PDN Type
     println!("\n2. 📨 Session Establishment Request with PDN Type:");
-    let node_id = Ie::new(IeType::NodeId, NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 10)).marshal());
-    let fseid = Ie::new(IeType::Fseid, Fseid::new(0x123456789ABCDEF0, Some(Ipv4Addr::new(10, 0, 0, 1)), None).marshal());
-    
+    let node_id = Ie::new(
+        IeType::NodeId,
+        NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 10)).marshal(),
+    );
+    let fseid = Ie::new(
+        IeType::Fseid,
+        Fseid::new(0x123456789ABCDEF0, Some(Ipv4Addr::new(10, 0, 0, 1)), None).marshal(),
+    );
+
     let session_req = SessionEstablishmentRequestBuilder::new(0, 1001)
         .node_id(node_id.clone())
         .fseid(fseid.clone())
-        .pdn_type(ipv4v6_pdn.clone())  // ✅ PDN Type included in request
+        .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in request
         .build()?;
-        
+
     println!("   📤 Session Establishment Request created with PDN Type: IPv4v6");
-    println!("   🔍 PDN Type IE found: {:?}", 
-             session_req.find_ie(IeType::PdnType).is_some());
+    println!(
+        "   🔍 PDN Type IE found: {:?}",
+        session_req.find_ie(IeType::PdnType).is_some()
+    );
 
     // Demonstrate Session Establishment Response with PDN Type
     println!("\n3. 📨 Session Establishment Response with PDN Type:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    
+
     let session_resp = SessionEstablishmentResponseBuilder::new(0x987654321, 1001, cause_ie)
         .fseid(fseid.clone())
-        .pdn_type(ipv4v6_pdn.clone())  // ✅ PDN Type included in response for confirmation
+        .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
         .build()?;
-        
+
     println!("   📥 Session Establishment Response created with PDN Type: IPv4v6");
-    println!("   🔍 PDN Type IE found: {:?}",
-             session_resp.find_ie(IeType::PdnType).is_some());
+    println!(
+        "   🔍 PDN Type IE found: {:?}",
+        session_resp.find_ie(IeType::PdnType).is_some()
+    );
 
     // Demonstrate Session Modification Request with PDN Type change
     println!("\n4. 📨 Session Modification Request with PDN Type change:");
     let mod_req = SessionModificationRequestBuilder::new(0x987654321, 1002)
-        .pdn_type(ipv4_pdn.clone())  // ✅ Changing PDN type from IPv4v6 to IPv4
+        .pdn_type(ipv4_pdn.clone()) // ✅ Changing PDN type from IPv4v6 to IPv4
         .build();
-        
+
     println!("   📤 Session Modification Request created with PDN Type change: IPv4v6 → IPv4");
-    println!("   🔍 PDN Type IE found: {:?}",
-             mod_req.find_ie(IeType::PdnType).is_some());
+    println!(
+        "   🔍 PDN Type IE found: {:?}",
+        mod_req.find_ie(IeType::PdnType).is_some()
+    );
 
     // Demonstrate Session Modification Response with PDN Type confirmation
     println!("\n5. 📨 Session Modification Response with PDN Type confirmation:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    
+
     let mod_resp = SessionModificationResponse::new(
         0x987654321,
-        1002, 
+        1002,
         cause_ie,
         None,
         None,
-        Some(ipv4_pdn.clone()),  // ✅ PDN Type included in response to confirm change
-        vec![]
+        Some(ipv4_pdn.clone()), // ✅ PDN Type included in response to confirm change
+        vec![],
     );
-        
+
     println!("   📥 Session Modification Response created with PDN Type confirmation: IPv4");
-    println!("   🔍 PDN Type IE found: {:?}",
-             mod_resp.find_ie(IeType::PdnType).is_some());
+    println!(
+        "   🔍 PDN Type IE found: {:?}",
+        mod_resp.find_ie(IeType::PdnType).is_some()
+    );
 
     // Demonstrate round-trip serialization
     println!("\n6. 🔄 Round-trip Serialization Test:");
@@ -110,38 +123,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn demonstrate_pdn_types(pdn_types: &[(&Ie, &str)]) -> Result<(), Box<dyn std::error::Error>> {
     for (pdn_ie, name) in pdn_types {
         let pdn_type = PdnType::unmarshal(&pdn_ie.payload)?;
-        println!("   • {}: Type={}, Supports IPv4={}, Supports IPv6={}, IP-based={}", 
-                 name,
-                 pdn_ie.payload[0],
-                 pdn_type.supports_ipv4(),
-                 pdn_type.supports_ipv6(),
-                 pdn_type.is_ip_based());
+        println!(
+            "   • {}: Type={}, Supports IPv4={}, Supports IPv6={}, IP-based={}",
+            name,
+            pdn_ie.payload[0],
+            pdn_type.supports_ipv4(),
+            pdn_type.supports_ipv6(),
+            pdn_type.is_ip_based()
+        );
     }
     Ok(())
 }
 
-fn test_round_trip_serialization<T>(message: &T, name: &str) -> Result<(), Box<dyn std::error::Error>>
-where 
-    T: rs_pfcp::message::Message + PartialEq + std::fmt::Debug
+fn test_round_trip_serialization<T>(
+    message: &T,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    T: rs_pfcp::message::Message + PartialEq + std::fmt::Debug,
 {
-    use rs_pfcp::message::Message;
-    
     let serialized = message.marshal();
     let deserialized = T::unmarshal(&serialized)?;
-    
+
     let success = message == &deserialized;
-    let pdn_type_preserved = message.find_ie(IeType::PdnType).is_some() == 
-                            deserialized.find_ie(IeType::PdnType).is_some();
-    
+    let pdn_type_preserved = message.find_ie(IeType::PdnType).is_some()
+        == deserialized.find_ie(IeType::PdnType).is_some();
+
     println!("   🔄 {}: Serialization ✅, PDN Type preserved: ✅", name);
-    
+
     if !success {
         return Err(format!("Round-trip serialization failed for {}", name).into());
     }
-    
+
     if !pdn_type_preserved {
         return Err(format!("PDN Type IE not preserved in {}", name).into());
     }
-    
+
     Ok(())
 }

@@ -151,7 +151,10 @@ mod tests {
     fn test_traffic_endpoint_id_unmarshal_empty() {
         let result = TrafficEndpointId::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Traffic Endpoint ID payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Traffic Endpoint ID payload too short"));
     }
 
     #[test]
@@ -172,13 +175,15 @@ mod tests {
     fn test_create_traffic_endpoint_marshal_unmarshal_with_f_teid() {
         let te_id = TrafficEndpointId::new(20);
         let f_teid = Fteid::new(
-            true, false, 0x12345678,
+            true,
+            false,
+            0x12345678,
             Some(Ipv4Addr::new(192, 168, 1, 100)),
-            None, 0
+            None,
+            0,
         );
-        
-        let create_te = CreateTrafficEndpoint::new(te_id.clone())
-            .with_local_f_teid(f_teid.clone());
+
+        let create_te = CreateTrafficEndpoint::new(te_id.clone()).with_local_f_teid(f_teid.clone());
 
         let marshaled = create_te.marshal();
         let unmarshaled = CreateTrafficEndpoint::unmarshal(&marshaled).unwrap();
@@ -193,9 +198,8 @@ mod tests {
     fn test_create_traffic_endpoint_marshal_unmarshal_with_ue_ip() {
         let te_id = TrafficEndpointId::new(30);
         let ue_ip = UeIpAddress::new(Some(Ipv4Addr::new(10, 0, 0, 1)), None);
-        
-        let create_te = CreateTrafficEndpoint::new(te_id.clone())
-            .with_ue_ip_address(ue_ip.clone());
+
+        let create_te = CreateTrafficEndpoint::new(te_id.clone()).with_ue_ip_address(ue_ip.clone());
 
         let marshaled = create_te.marshal();
         let unmarshaled = CreateTrafficEndpoint::unmarshal(&marshaled).unwrap();

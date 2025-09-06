@@ -82,9 +82,9 @@ pub mod update_traffic_endpoint;
 pub mod update_urr;
 pub mod urr_id;
 pub mod usage_report;
+pub mod usage_report_trigger;
 pub mod user_id;
 pub mod user_plane_inactivity_timer;
-pub mod usage_report_trigger;
 pub mod volume_threshold;
 
 // IE Type definitions.

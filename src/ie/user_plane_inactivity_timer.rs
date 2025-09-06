@@ -211,19 +211,28 @@ mod tests {
         // Test with too short payload
         let result = UserPlaneInactivityTimer::unmarshal(&[0x01, 0x02]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("User Plane Inactivity Timer payload must be 4 bytes"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("User Plane Inactivity Timer payload must be 4 bytes"));
 
         // Test with too long payload
         let result = UserPlaneInactivityTimer::unmarshal(&[0x01, 0x02, 0x03, 0x04, 0x05]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("User Plane Inactivity Timer payload must be 4 bytes"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("User Plane Inactivity Timer payload must be 4 bytes"));
     }
 
     #[test]
     fn test_user_plane_inactivity_timer_unmarshal_empty() {
         let result = UserPlaneInactivityTimer::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("User Plane Inactivity Timer payload must be 4 bytes"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("User Plane Inactivity Timer payload must be 4 bytes"));
     }
 
     #[test]
@@ -254,22 +263,22 @@ mod tests {
 
         assert_eq!(timer.as_seconds(), 3661);
         assert_eq!(timer.as_minutes(), 61); // Rounds down
-        assert_eq!(timer.as_hours(), 1);    // Rounds down
+        assert_eq!(timer.as_hours(), 1); // Rounds down
         assert_eq!(timer.timer_value(), Duration::from_secs(3661));
     }
 
     #[test]
     fn test_user_plane_inactivity_timer_round_trip_various_values() {
         let test_values = vec![
-            0,         // Infinite
-            1,         // 1 second
-            59,        // 59 seconds
-            60,        // 1 minute
-            3599,      // 59 minutes, 59 seconds
-            3600,      // 1 hour
-            86399,     // 23 hours, 59 minutes, 59 seconds
-            86400,     // 24 hours
-            u32::MAX,  // Maximum value
+            0,        // Infinite
+            1,        // 1 second
+            59,       // 59 seconds
+            60,       // 1 minute
+            3599,     // 59 minutes, 59 seconds
+            3600,     // 1 hour
+            86399,    // 23 hours, 59 minutes, 59 seconds
+            86400,    // 24 hours
+            u32::MAX, // Maximum value
         ];
 
         for value in test_values {

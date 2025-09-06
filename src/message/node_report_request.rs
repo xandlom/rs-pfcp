@@ -255,9 +255,7 @@ mod tests {
 
         assert!(message.find_ie(IeType::NodeId).is_some());
         assert!(message.find_ie(IeType::ReportType).is_some());
-        assert!(message
-            .find_ie(IeType::PathFailureReport)
-            .is_none());
+        assert!(message.find_ie(IeType::PathFailureReport).is_none());
         assert!(message.find_ie(IeType::Unknown).is_none());
     }
 

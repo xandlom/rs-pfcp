@@ -169,7 +169,10 @@ mod tests {
         // Empty payload missing mandatory BAR ID
         let result = UpdateBarWithinSessionReportResponse::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Missing mandatory BAR ID IE"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Missing mandatory BAR ID IE"));
     }
 
     #[test]
@@ -182,7 +185,7 @@ mod tests {
     fn test_update_bar_within_session_report_response_with_delay_only() {
         let bar_id = BarId::new(7);
         let delay = DownlinkDataNotificationDelay::new(std::time::Duration::from_millis(2500)); // 2.5 seconds
-        
+
         let update_bar = UpdateBarWithinSessionReportResponse::new(bar_id.clone())
             .with_downlink_data_notification_delay(delay.clone());
 

@@ -73,7 +73,10 @@ mod tests {
     fn test_remove_traffic_endpoint_unmarshal_empty() {
         let result = RemoveTrafficEndpoint::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Traffic Endpoint ID payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Traffic Endpoint ID payload too short"));
     }
 
     #[test]

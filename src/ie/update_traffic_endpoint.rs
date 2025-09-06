@@ -130,13 +130,15 @@ mod tests {
     fn test_update_traffic_endpoint_marshal_unmarshal_with_f_teid() {
         let te_id = TrafficEndpointId::new(25);
         let f_teid = Fteid::new(
-            true, false, 0x87654321,
+            true,
+            false,
+            0x87654321,
             Some(Ipv4Addr::new(172, 16, 1, 50)),
-            None, 0
+            None,
+            0,
         );
-        
-        let update_te = UpdateTrafficEndpoint::new(te_id.clone())
-            .with_local_f_teid(f_teid.clone());
+
+        let update_te = UpdateTrafficEndpoint::new(te_id.clone()).with_local_f_teid(f_teid.clone());
 
         let marshaled = update_te.marshal();
         let unmarshaled = UpdateTrafficEndpoint::unmarshal(&marshaled).unwrap();
@@ -151,12 +153,15 @@ mod tests {
     fn test_update_traffic_endpoint_marshal_unmarshal_complete() {
         let te_id = TrafficEndpointId::new(35);
         let f_teid = Fteid::new(
-            true, false, 0xABCDEF00,
+            true,
+            false,
+            0xABCDEF00,
             Some(Ipv4Addr::new(203, 0, 113, 1)),
-            None, 0
+            None,
+            0,
         );
         let ue_ip = UeIpAddress::new(Some(Ipv4Addr::new(192, 0, 2, 42)), None);
-        
+
         let update_te = UpdateTrafficEndpoint::new(te_id.clone())
             .with_local_f_teid(f_teid.clone())
             .with_ue_ip_address(ue_ip.clone());

@@ -232,7 +232,10 @@ mod tests {
     fn test_pdn_type_unmarshal_empty() {
         let result = PdnType::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("PDN Type payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("PDN Type payload too short"));
     }
 
     #[test]

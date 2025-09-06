@@ -8,10 +8,10 @@ use std::io;
 /// Defined in 3GPP TS 29.244 Section 8.2.102.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraceInformation {
-    pub mcc_mnc: [u8; 3],         // Mobile Country Code and Mobile Network Code (PLMN ID)
-    pub trace_id: [u8; 3],        // Trace ID (24 bits)
+    pub mcc_mnc: [u8; 3],  // Mobile Country Code and Mobile Network Code (PLMN ID)
+    pub trace_id: [u8; 3], // Trace ID (24 bits)
     pub triggering_events: Vec<u8>, // List of triggering events (variable length)
-    pub trace_depth: u8,          // Trace depth
+    pub trace_depth: u8,   // Trace depth
     pub list_of_interfaces: Vec<u8>, // List of interfaces to trace (variable length)
     pub ip_address_of_trace_collection_entity: Option<Vec<u8>>, // IPv4 or IPv6 address
 }
@@ -91,13 +91,13 @@ impl TraceInformation {
         len += self.triggering_events.len();
         len += 1; // list_of_interfaces_len
         len += self.list_of_interfaces.len();
-        
+
         if let Some(ref ip) = self.ip_address_of_trace_collection_entity {
             len += 1 + ip.len(); // ip_address_len + ip_address
         } else {
             len += 1; // ip_address_len = 0
         }
-        
+
         len
     }
 
@@ -393,7 +393,10 @@ mod tests {
     fn test_trace_information_unmarshal_too_short() {
         let result = TraceInformation::unmarshal(&[0x01, 0x02]); // Too short
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Trace Information payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Trace Information payload too short"));
     }
 
     #[test]
@@ -404,7 +407,10 @@ mod tests {
 
         let result = TraceInformation::unmarshal(&payload);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid triggering events length"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid triggering events length"));
     }
 
     #[test]
@@ -412,11 +418,14 @@ mod tests {
         let mut payload = vec![0x12, 0x34, 0x56, 0xAB, 0xCD, 0xEF]; // mcc_mnc + trace_id
         payload.push(2); // triggering_events_len = 2
         payload.extend(vec![0x01, 0x02]); // triggering events data
-        // Missing trace_depth
+                                          // Missing trace_depth
 
         let result = TraceInformation::unmarshal(&payload);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Missing trace depth"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Missing trace depth"));
     }
 
     #[test]

@@ -26,7 +26,10 @@ impl UpdateForwardingParameters {
     }
 
     /// Adds a Destination Interface to the Update Forwarding Parameters.
-    pub fn with_destination_interface(mut self, destination_interface: DestinationInterface) -> Self {
+    pub fn with_destination_interface(
+        mut self,
+        destination_interface: DestinationInterface,
+    ) -> Self {
         self.destination_interface = Some(destination_interface);
         self
     }
@@ -49,7 +52,7 @@ impl UpdateForwardingParameters {
     /// Marshals the Update Forwarding Parameters into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
         let mut ies = Vec::new();
-        
+
         if let Some(ref di) = self.destination_interface {
             ies.push(di.to_ie());
         }
@@ -157,8 +160,7 @@ mod tests {
     #[test]
     fn test_update_forwarding_parameters_to_ie() {
         let dest_interface = DestinationInterface::new(Interface::Access);
-        let params = UpdateForwardingParameters::new()
-            .with_destination_interface(dest_interface);
+        let params = UpdateForwardingParameters::new().with_destination_interface(dest_interface);
 
         let ie = params.to_ie();
         assert_eq!(ie.ie_type, IeType::UpdateForwardingParameters);

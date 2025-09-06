@@ -8,7 +8,7 @@ use std::io;
 /// Contains Slice/Service Type (SST) and optionally Slice Differentiator (SD).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Snssai {
-    pub sst: u8,           // Slice/Service Type (1 byte)
+    pub sst: u8,             // Slice/Service Type (1 byte)
     pub sd: Option<[u8; 3]>, // Slice Differentiator (3 bytes, optional)
 }
 
@@ -20,10 +20,7 @@ impl Snssai {
 
     /// Creates a new S-NSSAI with both SST and SD (Slice Differentiator).
     pub fn with_sd(sst: u8, sd: [u8; 3]) -> Self {
-        Snssai {
-            sst,
-            sd: Some(sd),
-        }
+        Snssai { sst, sd: Some(sd) }
     }
 
     /// Creates a new S-NSSAI with SD from a u32 (convenience method).
@@ -41,20 +38,19 @@ impl Snssai {
 
     /// Gets the Slice Differentiator as a u32.
     pub fn sd_as_u32(&self) -> Option<u32> {
-        self.sd.map(|sd| {
-            ((sd[0] as u32) << 16) | ((sd[1] as u32) << 8) | (sd[2] as u32)
-        })
+        self.sd
+            .map(|sd| ((sd[0] as u32) << 16) | ((sd[1] as u32) << 8) | (sd[2] as u32))
     }
 
     /// Marshals the S-NSSAI into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
         let mut data = Vec::new();
         data.push(self.sst);
-        
+
         if let Some(sd) = self.sd {
             data.extend_from_slice(&sd);
         }
-        
+
         data
     }
 
@@ -92,7 +88,11 @@ impl Snssai {
 
     /// Gets the length of the marshaled S-NSSAI.
     pub fn len(&self) -> usize {
-        if self.sd.is_some() { 4 } else { 1 }
+        if self.sd.is_some() {
+            4
+        } else {
+            1
+        }
     }
 
     /// Checks if the S-NSSAI is empty (this should not happen for valid S-NSSAI).
@@ -106,10 +106,10 @@ impl Snssai {
 impl Snssai {
     /// eMBB (Enhanced Mobile Broadband)
     pub const SST_EMBB: u8 = 1;
-    
+
     /// URLLC (Ultra-Reliable Low-Latency Communications)
     pub const SST_URLLC: u8 = 2;
-    
+
     /// MIoT (Massive IoT)
     pub const SST_MIOT: u8 = 3;
 
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_snssai_with_sd_u32() {
         let snssai = Snssai::with_sd_u32(3, 0x123456);
-        
+
         assert_eq!(snssai.sst, 3);
         assert_eq!(snssai.sd, Some([0x12, 0x34, 0x56]));
         assert_eq!(snssai.sd_as_u32(), Some(0x123456));
@@ -232,9 +232,9 @@ mod tests {
     fn test_snssai_to_ie() {
         let snssai = Snssai::with_sd_u32(2, 0x789ABC);
         let ie = snssai.to_ie();
-        
+
         assert_eq!(ie.ie_type, IeType::Snssai);
-        
+
         let unmarshaled = Snssai::unmarshal(&ie.payload).unwrap();
         assert_eq!(snssai, unmarshaled);
     }
@@ -244,18 +244,27 @@ mod tests {
         // Invalid length (2 or 3 bytes)
         let result = Snssai::unmarshal(&[1, 2]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid S-NSSAI payload length"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid S-NSSAI payload length"));
 
         let result = Snssai::unmarshal(&[1, 2, 3]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid S-NSSAI payload length"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid S-NSSAI payload length"));
     }
 
     #[test]
     fn test_snssai_unmarshal_empty() {
         let result = Snssai::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("S-NSSAI payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("S-NSSAI payload too short"));
     }
 
     #[test]

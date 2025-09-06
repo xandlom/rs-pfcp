@@ -279,7 +279,10 @@ mod tests {
     fn test_user_id_unmarshal_empty() {
         let result = UserId::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("User ID payload too short"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("User ID payload too short"));
     }
 
     #[test]

@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use std::io;
+use std::str::FromStr;
 
 /// Represents the APN/DNN (Access Point Name / Data Network Name) Information Element.
 /// Used to identify the access point or data network in 4G/5G networks.
@@ -15,11 +16,6 @@ impl ApnDnn {
     /// Creates a new APN/DNN IE.
     pub fn new(name: String) -> Self {
         ApnDnn { name }
-    }
-
-    /// Creates an APN/DNN from a string slice.
-    pub fn from_str(name: &str) -> Self {
-        ApnDnn::new(name.to_string())
     }
 
     /// Gets the APN/DNN name.
@@ -93,8 +89,8 @@ impl ApnDnn {
                 ));
             }
 
-            let label = String::from_utf8(encoded[offset..offset + label_len].to_vec())
-                .map_err(|_| {
+            let label =
+                String::from_utf8(encoded[offset..offset + label_len].to_vec()).map_err(|_| {
                     io::Error::new(io::ErrorKind::InvalidData, "Invalid APN/DNN label UTF-8")
                 })?;
 
@@ -122,6 +118,14 @@ impl ApnDnn {
     }
 }
 
+impl FromStr for ApnDnn {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(ApnDnn::new(s.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,7 +138,10 @@ mod tests {
 
         assert_eq!(apn_dnn, unmarshaled);
         assert_eq!(unmarshaled.name(), "internet");
-        assert_eq!(marshaled, vec![8, b'i', b'n', b't', b'e', b'r', b'n', b'e', b't', 0]);
+        assert_eq!(
+            marshaled,
+            vec![8, b'i', b'n', b't', b'e', b'r', b'n', b'e', b't', 0]
+        );
         assert_eq!(apn_dnn.len(), 10);
         assert!(!apn_dnn.is_empty());
     }
@@ -150,11 +157,11 @@ mod tests {
 
         // Check encoding format
         let expected = vec![
-            8, b'i', b'n', b't', b'e', b'r', b'n', b'e', b't',      // "internet"
-            6, b'm', b'n', b'c', b'0', b'0', b'1',                  // "mnc001"
-            6, b'm', b'c', b'c', b'0', b'0', b'1',                  // "mcc001"
-            4, b'g', b'p', b'r', b's',                              // "gprs"
-            0,                                                       // End of name
+            8, b'i', b'n', b't', b'e', b'r', b'n', b'e', b't', // "internet"
+            6, b'm', b'n', b'c', b'0', b'0', b'1', // "mnc001"
+            6, b'm', b'c', b'c', b'0', b'0', b'1', // "mcc001"
+            4, b'g', b'p', b'r', b's', // "gprs"
+            0,    // End of name
         ];
         assert_eq!(marshaled, expected);
     }
@@ -173,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_apn_dnn_from_str() {
-        let apn_dnn = ApnDnn::from_str("ims");
+        let apn_dnn = "ims".parse::<ApnDnn>().unwrap();
         assert_eq!(apn_dnn.name(), "ims");
 
         let marshaled = apn_dnn.marshal();
@@ -194,7 +201,7 @@ mod tests {
         ];
 
         for name in test_cases {
-            let apn_dnn = ApnDnn::from_str(name);
+            let apn_dnn = name.parse::<ApnDnn>().unwrap();
             let marshaled = apn_dnn.marshal();
             let unmarshaled = ApnDnn::unmarshal(&marshaled).unwrap();
 
@@ -229,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_apn_dnn_to_ie() {
-        let apn_dnn = ApnDnn::from_str("test.network");
+        let apn_dnn = "test.network".parse::<ApnDnn>().unwrap();
         let ie = apn_dnn.to_ie();
 
         assert_eq!(ie.ie_type, IeType::ApnDnn);
@@ -244,7 +251,10 @@ mod tests {
         let malformed = vec![10, b'a', b'b', b'c']; // Says 10 bytes but only 3 available
         let result = ApnDnn::unmarshal(&malformed);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid APN/DNN label length"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid APN/DNN label length"));
     }
 
     #[test]
@@ -253,12 +263,15 @@ mod tests {
         let invalid_utf8 = vec![3, 0xFF, 0xFE, 0xFD, 0]; // Invalid UTF-8 sequence
         let result = ApnDnn::unmarshal(&invalid_utf8);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid APN/DNN label UTF-8"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid APN/DNN label UTF-8"));
     }
 
     #[test]
     fn test_apn_dnn_single_label() {
-        let apn_dnn = ApnDnn::from_str("x");
+        let apn_dnn = "x".parse::<ApnDnn>().unwrap();
         let marshaled = apn_dnn.marshal();
         let unmarshaled = ApnDnn::unmarshal(&marshaled).unwrap();
 
@@ -269,21 +282,14 @@ mod tests {
 
     #[test]
     fn test_apn_dnn_multiple_short_labels() {
-        let apn_dnn = ApnDnn::from_str("a.b.c.d.e");
+        let apn_dnn = "a.b.c.d.e".parse::<ApnDnn>().unwrap();
         let marshaled = apn_dnn.marshal();
         let unmarshaled = ApnDnn::unmarshal(&marshaled).unwrap();
 
         assert_eq!(apn_dnn, unmarshaled);
         assert_eq!(unmarshaled.name(), "a.b.c.d.e");
-        
-        let expected = vec![
-            1, b'a',
-            1, b'b', 
-            1, b'c',
-            1, b'd',
-            1, b'e',
-            0,
-        ];
+
+        let expected = vec![1, b'a', 1, b'b', 1, b'c', 1, b'd', 1, b'e', 0];
         assert_eq!(marshaled, expected);
     }
 
@@ -311,7 +317,7 @@ mod tests {
         ];
 
         for name in test_cases {
-            let original = ApnDnn::from_str(name);
+            let original = name.parse::<ApnDnn>().unwrap();
             let marshaled = original.marshal();
             let unmarshaled = ApnDnn::unmarshal(&marshaled).unwrap();
             assert_eq!(original, unmarshaled);
