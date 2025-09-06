@@ -63,7 +63,7 @@ The rs-pfcp library has **78 IE implementation files** covering the core PFCP fu
 
 ### **Phase 1: Critical Compliance (Immediate)**
 1. Implement **Update Forwarding Parameters** (Type 11)
-2. Implement **Overload Control Information** (Type 54) 
+2. Implement **Overload Control Information** (Type 54)
 3. Fix enum ordering for **FarId/QerId** vs **CpFunctionFeatures**
 4. Update **IE_SUPPORT.md** to reflect actual implementation status
 
@@ -145,7 +145,7 @@ Based on 3GPP Release 18 evolution:
 
 ### **Immediate Actions (Week 1-2)**
 1. **Fix Enum Ordering**: Reorder IeType enum for logical consistency
-2. **Update Documentation**: Sync IE_SUPPORT.md with actual implementation  
+2. **Update Documentation**: Sync IE_SUPPORT.md with actual implementation
 3. **Implement Type 11**: Update Forwarding Parameters IE
 4. **Implement Type 54**: Overload Control Information IE
 

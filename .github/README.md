@@ -15,7 +15,7 @@ This directory contains GitHub-specific configurations for automated CI/CD, secu
 - ✅ **Protocol compliance:** PFCP-specific validation tests
 - ✅ **Documentation:** API docs generation and validation
 
-#### `workflows/security.yml`  
+#### `workflows/security.yml`
 **Security & Dependency Monitoring** - Daily scans + PR checks
 - 🔒 **Vulnerability scanning:** `cargo audit` for known CVEs
 - 📋 **Dependency review:** Automated security checks on PRs
@@ -41,7 +41,7 @@ This directory contains GitHub-specific configurations for automated CI/CD, secu
 
 ### `dependabot.yml`
 - **Weekly dependency updates** every Monday
-- **Cargo dependencies** and **GitHub Actions** updates  
+- **Cargo dependencies** and **GitHub Actions** updates
 - **Automatic PR creation** with proper labeling
 - **Review assignment** to maintainers
 
@@ -103,7 +103,7 @@ All PRs must pass:
 4. **CI will automatically run** all quality checks
 5. **Address any failures** before review
 
-### For Maintainers  
+### For Maintainers
 1. **Review PR template** checklist completion
 2. **Check CI status** - all jobs must pass
 3. **Review security scan** results if dependencies changed
@@ -118,7 +118,7 @@ cargo install cargo-audit cargo-deny
 
 # Run full CI-equivalent checks
 cargo check --all-targets --all-features
-cargo test --verbose --all-features  
+cargo test --verbose --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
 cargo doc --no-deps --document-private-items --all-features

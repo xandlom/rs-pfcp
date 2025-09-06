@@ -10,7 +10,7 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 
 ### Build and Test
 - **Build**: `cargo build`
-- **Test**: `cargo test` 
+- **Test**: `cargo test`
 - **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`
 - **Check**: `cargo check`
 - **Format**: `cargo fmt`
