@@ -140,6 +140,18 @@ jobs:
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: always() && github.actor != 'nektos/act'
       with:
         sarif_file: 'trivy-results.sarif'
+
+    - name: Display Trivy scan results (local execution)
+      if: always() && github.actor == 'nektos/act'
+      run: |
+        echo "=== Trivy Security Scan Results ==="
+        if [ -f trivy-results.sarif ]; then
+          echo "SARIF file generated successfully: trivy-results.sarif"
+          echo "File size: $(wc -c < trivy-results.sarif) bytes"
+          echo "Number of results: $(jq '.runs[0].results | length' trivy-results.sarif 2>/dev/null || echo 'N/A')"
+        else
+          echo "No SARIF file generated"
+        fi
