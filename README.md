@@ -23,7 +23,7 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 - 📊 **Production Ready** - YAML/JSON message display, network interface support, and robust examples
 
 ### Protocol Coverage
-- ✅ **18/19 Message Types** (95% coverage) - All core session and association management
+- ✅ **23/23 Message Types** (100% coverage) - All core session and association management
 - ✅ **69/69 Information Elements** (100% coverage) - Complete IE specification
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and usage reporting
