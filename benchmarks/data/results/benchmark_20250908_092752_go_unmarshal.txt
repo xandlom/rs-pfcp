@@ -1,0 +1,14 @@
+goos: linux
+goarch: amd64
+pkg: pfcp-go-benchmarks
+cpu: AMD EPYC-Milan Processor
+BenchmarkUnmarshalSimple/heartbeat_request_simple-4         	 2602136	       499.1 ns/op	     272 B/op	       8 allocs/op
+BenchmarkUnmarshalSimple/session_establishment_simple-4     	  275763	      3942 ns/op	    1928 B/op	      40 allocs/op
+BenchmarkUnmarshalMedium/association_setup_request-4        	 2486488	       499.7 ns/op	     424 B/op	       6 allocs/op
+BenchmarkUnmarshalComplex/session_establishment_complex-4   	  304126	      3680 ns/op	    1928 B/op	      40 allocs/op
+BenchmarkUnmarshalAll/session_establishment_complex-4       	  311763	      3900 ns/op	    1928 B/op	      40 allocs/op
+BenchmarkUnmarshalAll/session_establishment_simple-4        	  331197	      3823 ns/op	    1928 B/op	      40 allocs/op
+BenchmarkUnmarshalAll/association_setup_request-4           	 2557304	       519.3 ns/op	     424 B/op	       6 allocs/op
+BenchmarkUnmarshalAll/heartbeat_request_simple-4            	 2495638	       480.5 ns/op	     272 B/op	       8 allocs/op
+PASS
+ok  	pfcp-go-benchmarks	11.869s

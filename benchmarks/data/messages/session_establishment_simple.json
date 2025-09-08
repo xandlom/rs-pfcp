@@ -1,0 +1,9 @@
+{
+  "name": "session_establishment_simple",
+  "message_type": "SessionEstablishmentRequest",
+  "description": "Simple session establishment with Node ID and F-SEID",
+  "size_bytes": 46,
+  "ie_count": 2,
+  "complexity": "medium",
+  "generated_at": 1757276712
+}

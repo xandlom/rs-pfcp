@@ -1,0 +1,9 @@
+{
+  "name": "heartbeat_request_simple",
+  "message_type": "HeartbeatRequest",
+  "description": "Minimal heartbeat request message",
+  "size_bytes": 16,
+  "ie_count": 0,
+  "complexity": "simple",
+  "generated_at": 1757276712
+}

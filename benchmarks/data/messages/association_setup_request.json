@@ -1,0 +1,9 @@
+{
+  "name": "association_setup_request",
+  "message_type": "AssociationSetupRequest",
+  "description": "Association setup with Node ID and Recovery Time Stamp",
+  "size_bytes": 29,
+  "ie_count": 2,
+  "complexity": "medium",
+  "generated_at": 1757276712
+}

@@ -1,0 +1,9 @@
+{
+  "name": "session_establishment_complex",
+  "message_type": "SessionEstablishmentRequest",
+  "description": "Complex session establishment with Create PDR and Create FAR IEs",
+  "size_bytes": 81,
+  "ie_count": 2,
+  "complexity": "high",
+  "generated_at": 1757276712
+}
