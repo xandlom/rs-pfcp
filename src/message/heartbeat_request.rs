@@ -118,3 +118,163 @@ impl Message for HeartbeatRequest {
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
 }
+
+/// Builder for HeartbeatRequest message.
+#[derive(Debug, Default)]
+pub struct HeartbeatRequestBuilder {
+    sequence: u32,
+    recovery_time_stamp: Option<Ie>,
+    source_ip_address: Option<Ie>,
+    ies: Vec<Ie>,
+}
+
+impl HeartbeatRequestBuilder {
+    /// Creates a new HeartbeatRequest builder.
+    pub fn new(sequence: u32) -> Self {
+        Self {
+            sequence,
+            recovery_time_stamp: None,
+            source_ip_address: None,
+            ies: Vec::new(),
+        }
+    }
+
+    /// Sets the recovery time stamp IE.
+    pub fn recovery_time_stamp(mut self, recovery_time_stamp: Ie) -> Self {
+        self.recovery_time_stamp = Some(recovery_time_stamp);
+        self
+    }
+
+    /// Sets the source IP address IE.
+    pub fn source_ip_address(mut self, source_ip_address: Ie) -> Self {
+        self.source_ip_address = Some(source_ip_address);
+        self
+    }
+
+    /// Adds an additional IE.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
+        self
+    }
+
+    /// Adds multiple IEs.
+    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
+        self.ies.append(&mut ies);
+        self
+    }
+
+    /// Builds the HeartbeatRequest message.
+    pub fn build(self) -> HeartbeatRequest {
+        HeartbeatRequest::new(
+            self.sequence,
+            self.recovery_time_stamp,
+            self.source_ip_address,
+            self.ies,
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ie::{recovery_time_stamp::RecoveryTimeStamp, source_ip_address::SourceIpAddress};
+    use std::net::Ipv4Addr;
+    use std::time::SystemTime;
+
+    #[test]
+    fn test_heartbeat_request_builder_minimal() {
+        let request = HeartbeatRequestBuilder::new(12345).build();
+
+        assert_eq!(request.sequence(), 12345);
+        assert_eq!(request.msg_type(), MsgType::HeartbeatRequest);
+        assert!(request.recovery_time_stamp.is_none());
+        assert!(request.source_ip_address.is_none());
+        assert!(request.ies.is_empty());
+    }
+
+    #[test]
+    fn test_heartbeat_request_builder_with_recovery_timestamp() {
+        let timestamp = SystemTime::now();
+        let recovery_ts = RecoveryTimeStamp::new(timestamp);
+        let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+
+        let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(recovery_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 12345);
+        assert_eq!(request.recovery_time_stamp, Some(recovery_ie));
+        assert!(request.source_ip_address.is_none());
+    }
+
+    #[test]
+    fn test_heartbeat_request_builder_with_source_ip() {
+        let ip = SourceIpAddress::new(Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let ip_ie = Ie::new(IeType::SourceIPAddress, ip.marshal());
+
+        let request = HeartbeatRequestBuilder::new(12345)
+            .source_ip_address(ip_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 12345);
+        assert!(request.recovery_time_stamp.is_none());
+        assert_eq!(request.source_ip_address, Some(ip_ie));
+    }
+
+    #[test]
+    fn test_heartbeat_request_builder_full() {
+        let timestamp = SystemTime::now();
+        let recovery_ts = RecoveryTimeStamp::new(timestamp);
+        let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+
+        let ip = SourceIpAddress::new(Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let ip_ie = Ie::new(IeType::SourceIPAddress, ip.marshal());
+
+        let additional_ie = Ie::new(IeType::Unknown, vec![0x01, 0x02, 0x03]);
+
+        let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(recovery_ie.clone())
+            .source_ip_address(ip_ie.clone())
+            .ie(additional_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 12345);
+        assert_eq!(request.recovery_time_stamp, Some(recovery_ie));
+        assert_eq!(request.source_ip_address, Some(ip_ie));
+        assert_eq!(request.ies.len(), 1);
+        assert_eq!(request.ies[0], additional_ie);
+    }
+
+    #[test]
+    fn test_heartbeat_request_builder_with_multiple_ies() {
+        let ie1 = Ie::new(IeType::Unknown, vec![0x01]);
+        let ie2 = Ie::new(IeType::Unknown, vec![0x02]);
+        let ie3 = Ie::new(IeType::Unknown, vec![0x03]);
+
+        let request = HeartbeatRequestBuilder::new(12345)
+            .ie(ie1.clone())
+            .ies(vec![ie2.clone(), ie3.clone()])
+            .build();
+
+        assert_eq!(request.ies.len(), 3);
+        assert_eq!(request.ies[0], ie1);
+        assert_eq!(request.ies[1], ie2);
+        assert_eq!(request.ies[2], ie3);
+    }
+
+    #[test]
+    fn test_heartbeat_request_roundtrip_via_builder() {
+        let timestamp = SystemTime::now();
+        let recovery_ts = RecoveryTimeStamp::new(timestamp);
+        let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+
+        let original = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(recovery_ie)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+    }
+}

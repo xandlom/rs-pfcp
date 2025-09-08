@@ -95,6 +95,44 @@ impl Message for VersionNotSupportedResponse {
     }
 }
 
+/// Builder for VersionNotSupportedResponse message.
+#[derive(Debug, Default)]
+pub struct VersionNotSupportedResponseBuilder {
+    sequence: u32,
+    ies: Vec<Ie>,
+}
+
+impl VersionNotSupportedResponseBuilder {
+    /// Creates a new VersionNotSupportedResponse builder.
+    pub fn new(sequence: u32) -> Self {
+        Self {
+            sequence,
+            ies: Vec::new(),
+        }
+    }
+
+    /// Adds an IE to the message.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
+        self
+    }
+
+    /// Adds multiple IEs to the message.
+    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
+        self.ies.append(&mut ies);
+        self
+    }
+
+    /// Builds the VersionNotSupportedResponse message.
+    pub fn build(self) -> VersionNotSupportedResponse {
+        if self.ies.is_empty() {
+            VersionNotSupportedResponse::new(self.sequence)
+        } else {
+            VersionNotSupportedResponse::new_with_ies(self.sequence, self.ies)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,5 +206,76 @@ mod tests {
         let unmarshaled = VersionNotSupportedResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_version_not_supported_response_builder_minimal() {
+        let response = VersionNotSupportedResponseBuilder::new(12345).build();
+
+        assert_eq!(response.sequence(), 12345);
+        assert_eq!(response.msg_type(), MsgType::VersionNotSupportedResponse);
+        assert!(response.ies.is_empty());
+        assert_eq!(response.seid(), None);
+    }
+
+    #[test]
+    fn test_version_not_supported_response_builder_with_ie() {
+        let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x01]);
+
+        let response = VersionNotSupportedResponseBuilder::new(12345)
+            .ie(offending_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 12345);
+        assert_eq!(response.ies.len(), 1);
+        assert_eq!(response.ies[0], offending_ie);
+    }
+
+    #[test]
+    fn test_version_not_supported_response_builder_with_multiple_ies() {
+        let ie1 = Ie::new(IeType::OffendingIe, vec![0x00, 0x01]);
+        let ie2 = Ie::new(IeType::Unknown, vec![0x02, 0x03]);
+        let ie3 = Ie::new(IeType::Unknown, vec![0x04, 0x05, 0x06]);
+
+        let response = VersionNotSupportedResponseBuilder::new(98765)
+            .ie(ie1.clone())
+            .ies(vec![ie2.clone(), ie3.clone()])
+            .build();
+
+        assert_eq!(response.sequence(), 98765);
+        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.ies[0], ie1);
+        assert_eq!(response.ies[1], ie2);
+        assert_eq!(response.ies[2], ie3);
+    }
+
+    #[test]
+    fn test_version_not_supported_response_builder_roundtrip() {
+        let ie1 = Ie::new(IeType::OffendingIe, vec![0xFF, 0x01]);
+        let ie2 = Ie::new(IeType::Unknown, vec![0xDE, 0xAD, 0xBE, 0xEF]);
+
+        let original = VersionNotSupportedResponseBuilder::new(54321)
+            .ie(ie1)
+            .ie(ie2)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = VersionNotSupportedResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_version_not_supported_response_builder_empty_vs_with_ies() {
+        // Test builder with no IEs uses new() method
+        let empty_response = VersionNotSupportedResponseBuilder::new(111).build();
+
+        // Test builder with IEs uses new_with_ies() method
+        let ie = Ie::new(IeType::OffendingIe, vec![0x01]);
+        let with_ies_response = VersionNotSupportedResponseBuilder::new(222).ie(ie).build();
+
+        assert!(empty_response.ies.is_empty());
+        assert_eq!(with_ies_response.ies.len(), 1);
+        assert_ne!(empty_response.sequence(), with_ies_response.sequence());
     }
 }
