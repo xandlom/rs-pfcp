@@ -4,7 +4,7 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 
 ## Current Implementation Status
 
-### ✅ Messages WITH Builder Patterns (12/23 = 52%)
+### ✅ Messages WITH Builder Patterns (14/23 = 61%)
 
 | Message Type | Complexity | Justification |
 |--------------|------------|---------------|
@@ -20,14 +20,16 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 | **Association Release Request** | Low | Required node ID IE |
 | **Association Release Response** | Low | Required cause and node ID IEs |
 | **Version Not Supported Response** | Low | Minimal error response with optional IEs |
+| **Session Deletion Request** | Medium-High | F-SEID + multiple optional IEs (node_id, cp_fseid, pfcpsm_req_flags) + URR collections |
+| **Session Deletion Response** | Medium | Cause + optional offending IE + additional IEs |
 
-### ❌ Messages WITHOUT Builder Patterns (11/23 = 48%)
+### ❌ Messages WITHOUT Builder Patterns (9/23 = 39%)
 
 #### **High Priority for Builder Pattern** (Complex Messages)
 | Message Type | Fields | Complexity | Reason for Builder Need | Status |
 |--------------|---------|------------|------------------------|---------|
-| **Session Modification Response** | 10+ | High | Multiple created/updated IEs, offending IE handling | ❌ Pending |
-| **Session Deletion Request** | 5-8 | Medium-High | F-SEID + optional IEs for deletion context | ❌ Pending |
+| **Session Modification Response** | 10+ | High | Multiple created/updated IEs, offending IE handling | ✅ **COMPLETED** |
+| ~~**Session Deletion Request**~~ | 5-8 | Medium-High | F-SEID + optional IEs for deletion context | ✅ **COMPLETED** |
 | ~~**PFD Management Request**~~ | 8+ | High | Application ID + PFD contexts for traffic detection | ✅ **COMPLETED** |
 | ~~**PFD Management Response**~~ | 6+ | Medium-High | Offending IE + cause combinations | ✅ **COMPLETED** |
 
@@ -40,7 +42,7 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 | **Association Update Response** | 4-6 | Medium | Node ID + cause + association setup responses |
 | **Node Report Request** | 6+ | Medium | Node reporting with usage reports and triggers |
 | **Node Report Response** | 4-5 | Medium | Cause + offending IE + optional node ID |
-| **Session Deletion Response** | 5-7 | Medium | Cause + optional usage reports + offending IE |
+| ~~**Session Deletion Response**~~ | 5-7 | Medium | Cause + optional usage reports + offending IE | ✅ **COMPLETED** |
 
 #### **Low Priority for Builder Pattern** (Simple Messages)
 | Message Type | Fields | Complexity | Reason | Status |
@@ -55,12 +57,12 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 
 ## Analysis by PFCP Message Categories
 
-### **Session Messages** (8 total, 3 with builders = 38%)
+### **Session Messages** (8 total, 6 with builders = 75%)
 Session messages are the most complex, dealing with PDR/FAR/QER/URR creation and management.
 
-**✅ Have Builders:** Session Establishment Request/Response, Session Modification Request, Session Report Request/Response
+**✅ Have Builders:** Session Establishment Request/Response, Session Modification Request/Response, Session Report Request/Response, Session Deletion Request/Response
 
-**❌ Missing Builders:** Session Modification Response, Session Deletion Request/Response
+**❌ Missing Builders:** None
 
 ### **Association Messages** (8 total, 2 with builders = 25%)
 Association messages handle CP-UP function relationships and capabilities exchange.
@@ -125,13 +127,16 @@ Add builders for remaining messages for API consistency:
 
 ## Implementation Priority
 
-**Current Coverage: 52% (12/23 messages)** 🎯 **+30% improvement!**
+**Current Coverage: 61% (14/23 messages)** 🎯 **+39% improvement!**
 
 **Recommended Target: 100% (23/23 messages)** for complete API consistency
 
 **Recently Completed (Phase 1 High Priority):** ✅
 1. ~~PFD Management Request~~ - Complex traffic detection rule management
 2. ~~PFD Management Response~~ - Advanced error handling with offending IE support
+3. ~~Session Modification Response~~ - Complex response with multiple created/updated IEs
+4. ~~Session Deletion Request~~ - Session teardown with optional context + URR collections
+5. ~~Session Deletion Response~~ - Response handling with cause + optional offending IE
 
 **Previously Completed (Phase 3):** ✅
 1. ~~Heartbeat Request/Response~~ - Simple node management messages
@@ -139,8 +144,8 @@ Add builders for remaining messages for API consistency:
 3. ~~Version Not Supported Response~~ - Error handling message
 
 **Next High Priority Targets:**
-1. Session Modification Response (high complexity, missing builder)
-2. Session Deletion Request (medium-high complexity, missing builder)
-3. Association Setup Request/Response (medium complexity, frequently used)
+1. Association Setup Request/Response (medium complexity, frequently used)
+2. Association Update Request/Response (medium complexity)
+3. Node Report Request/Response (medium complexity, node-level reporting)
 
 Implementing builders for all message types would create a consistent, ergonomic API that scales well as the PFCP protocol evolves and new IEs are added to existing messages.

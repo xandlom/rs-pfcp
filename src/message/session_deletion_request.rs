@@ -215,3 +215,392 @@ impl SessionDeletionRequest {
             .collect()
     }
 }
+
+/// Builder for SessionDeletionRequest message.
+#[derive(Debug)]
+pub struct SessionDeletionRequestBuilder {
+    seid: u64,
+    sequence: u32,
+    smf_fseid: Option<Ie>,
+    node_id: Option<Ie>,
+    cp_fseid: Option<Ie>,
+    pfcpsm_req_flags: Option<Ie>,
+    urr_ids: Vec<Ie>,
+    usage_reports: Vec<Ie>,
+    ies: Vec<Ie>,
+}
+
+impl SessionDeletionRequestBuilder {
+    /// Creates a new SessionDeletionRequest builder.
+    pub fn new(seid: u64, sequence: u32) -> Self {
+        Self {
+            seid,
+            sequence,
+            smf_fseid: None,
+            node_id: None,
+            cp_fseid: None,
+            pfcpsm_req_flags: None,
+            urr_ids: Vec::new(),
+            usage_reports: Vec::new(),
+            ies: Vec::new(),
+        }
+    }
+
+    /// Sets the SMF F-SEID IE (required).
+    pub fn smf_fseid(mut self, smf_fseid: Ie) -> Self {
+        self.smf_fseid = Some(smf_fseid);
+        self
+    }
+
+    /// Sets the node ID IE (optional).
+    pub fn node_id(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
+        self
+    }
+
+    /// Sets the CP F-SEID IE (optional).
+    pub fn cp_fseid(mut self, cp_fseid: Ie) -> Self {
+        self.cp_fseid = Some(cp_fseid);
+        self
+    }
+
+    /// Sets the PFCPSM request flags IE (optional).
+    pub fn pfcpsm_req_flags(mut self, pfcpsm_req_flags: Ie) -> Self {
+        self.pfcpsm_req_flags = Some(pfcpsm_req_flags);
+        self
+    }
+
+    /// Adds a URR ID IE.
+    pub fn urr_id(mut self, urr_id: Ie) -> Self {
+        self.urr_ids.push(urr_id);
+        self
+    }
+
+    /// Adds multiple URR ID IEs.
+    pub fn urr_ids(mut self, mut urr_ids: Vec<Ie>) -> Self {
+        self.urr_ids.append(&mut urr_ids);
+        self
+    }
+
+    /// Adds a usage report IE.
+    pub fn usage_report(mut self, usage_report: Ie) -> Self {
+        self.usage_reports.push(usage_report);
+        self
+    }
+
+    /// Adds multiple usage report IEs.
+    pub fn usage_reports(mut self, mut usage_reports: Vec<Ie>) -> Self {
+        self.usage_reports.append(&mut usage_reports);
+        self
+    }
+
+    /// Adds an additional IE.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
+        self
+    }
+
+    /// Adds multiple additional IEs.
+    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
+        self.ies.append(&mut ies);
+        self
+    }
+
+    /// Builds the SessionDeletionRequest message.
+    ///
+    /// # Panics
+    /// Panics if the required SMF F-SEID IE is not set.
+    pub fn build(self) -> SessionDeletionRequest {
+        let smf_fseid = self
+            .smf_fseid
+            .expect("SMF F-SEID IE is required for SessionDeletionRequest");
+
+        SessionDeletionRequest::new(
+            self.seid,
+            self.sequence,
+            smf_fseid,
+            self.node_id,
+            self.cp_fseid,
+            self.pfcpsm_req_flags,
+            self.urr_ids,
+            self.usage_reports,
+            self.ies,
+        )
+    }
+
+    /// Tries to build the SessionDeletionRequest message.
+    ///
+    /// # Returns
+    /// Returns an error if the required SMF F-SEID IE is not set.
+    pub fn try_build(self) -> Result<SessionDeletionRequest, &'static str> {
+        let smf_fseid = self
+            .smf_fseid
+            .ok_or("SMF F-SEID IE is required for SessionDeletionRequest")?;
+
+        Ok(SessionDeletionRequest::new(
+            self.seid,
+            self.sequence,
+            smf_fseid,
+            self.node_id,
+            self.cp_fseid,
+            self.pfcpsm_req_flags,
+            self.urr_ids,
+            self.usage_reports,
+            self.ies,
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ie::fseid::Fseid;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn test_session_deletion_request_builder_minimal() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let request = SessionDeletionRequestBuilder::new(12345, 67890)
+            .smf_fseid(fseid_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 67890);
+        assert_eq!(request.seid(), Some(12345));
+        assert_eq!(request.msg_type(), MsgType::SessionDeletionRequest);
+        assert_eq!(request.smf_fseid, fseid_ie);
+        assert!(request.node_id.is_none());
+        assert!(request.cp_fseid.is_none());
+        assert!(request.pfcpsm_req_flags.is_none());
+        assert!(request.urr_ids.is_empty());
+        assert!(request.usage_reports.is_empty());
+        assert!(request.ies.is_empty());
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_with_node_id() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let request = SessionDeletionRequestBuilder::new(11111, 22222)
+            .smf_fseid(fseid_ie.clone())
+            .node_id(node_id_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 22222);
+        assert_eq!(request.seid(), Some(11111));
+        assert_eq!(request.smf_fseid, fseid_ie);
+        assert_eq!(request.node_id, Some(node_id_ie));
+        assert!(request.cp_fseid.is_none());
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_with_cp_fseid() {
+        let smf_fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let smf_fseid_ie = Ie::new(IeType::Fseid, smf_fseid.marshal());
+
+        let cp_fseid = Fseid::new(456, Some(Ipv4Addr::new(192, 168, 1, 2)), None);
+        let cp_fseid_ie = Ie::new(IeType::Fseid, cp_fseid.marshal());
+
+        let request = SessionDeletionRequestBuilder::new(33333, 44444)
+            .smf_fseid(smf_fseid_ie.clone())
+            .cp_fseid(cp_fseid_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 44444);
+        assert_eq!(request.smf_fseid, smf_fseid_ie);
+        assert_eq!(request.cp_fseid, Some(cp_fseid_ie));
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_with_pfcpsm_req_flags() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let pfcpsm_flags = PfcpsmReqFlags::DROBU | PfcpsmReqFlags::QAURR;
+        let pfcpsm_ie = Ie::new(IeType::PfcpsmReqFlags, pfcpsm_flags.marshal().to_vec());
+
+        let request = SessionDeletionRequestBuilder::new(55555, 66666)
+            .smf_fseid(fseid_ie.clone())
+            .pfcpsm_req_flags(pfcpsm_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 66666);
+        assert_eq!(request.smf_fseid, fseid_ie);
+        assert_eq!(request.pfcpsm_req_flags, Some(pfcpsm_ie));
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_with_urr_ids() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let urr_id1 = UrrId::new(1);
+        let urr_id1_ie = Ie::new(IeType::UrrId, urr_id1.marshal().to_vec());
+
+        let urr_id2 = UrrId::new(2);
+        let urr_id2_ie = Ie::new(IeType::UrrId, urr_id2.marshal().to_vec());
+
+        let urr_id3 = UrrId::new(3);
+        let urr_id3_ie = Ie::new(IeType::UrrId, urr_id3.marshal().to_vec());
+
+        let request = SessionDeletionRequestBuilder::new(77777, 88888)
+            .smf_fseid(fseid_ie.clone())
+            .urr_id(urr_id1_ie.clone())
+            .urr_ids(vec![urr_id2_ie.clone(), urr_id3_ie.clone()])
+            .build();
+
+        assert_eq!(request.sequence(), 88888);
+        assert_eq!(request.smf_fseid, fseid_ie);
+        assert_eq!(request.urr_ids.len(), 3);
+        assert_eq!(request.urr_ids[0], urr_id1_ie);
+        assert_eq!(request.urr_ids[1], urr_id2_ie);
+        assert_eq!(request.urr_ids[2], urr_id3_ie);
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_with_usage_reports() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let usage_report1 = Ie::new(IeType::UsageReport, vec![0x01, 0x02, 0x03]);
+        let usage_report2 = Ie::new(IeType::UsageReport, vec![0x04, 0x05, 0x06]);
+
+        let request = SessionDeletionRequestBuilder::new(99999, 11110)
+            .smf_fseid(fseid_ie.clone())
+            .usage_report(usage_report1.clone())
+            .usage_reports(vec![usage_report2.clone()])
+            .build();
+
+        assert_eq!(request.sequence(), 11110);
+        assert_eq!(request.smf_fseid, fseid_ie);
+        assert_eq!(request.usage_reports.len(), 2);
+        assert_eq!(request.usage_reports[0], usage_report1);
+        assert_eq!(request.usage_reports[1], usage_report2);
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_with_additional_ies() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let ie1 = Ie::new(IeType::Unknown, vec![0xAA, 0xBB]);
+        let ie2 = Ie::new(IeType::Unknown, vec![0xCC, 0xDD]);
+
+        let request = SessionDeletionRequestBuilder::new(12121, 34343)
+            .smf_fseid(fseid_ie.clone())
+            .ie(ie1.clone())
+            .ies(vec![ie2.clone()])
+            .build();
+
+        assert_eq!(request.sequence(), 34343);
+        assert_eq!(request.smf_fseid, fseid_ie);
+        assert_eq!(request.ies.len(), 2);
+        assert_eq!(request.ies[0], ie1);
+        assert_eq!(request.ies[1], ie2);
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_full() {
+        let smf_fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let smf_fseid_ie = Ie::new(IeType::Fseid, smf_fseid.marshal());
+
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cp_fseid = Fseid::new(456, Some(Ipv4Addr::new(192, 168, 1, 2)), None);
+        let cp_fseid_ie = Ie::new(IeType::Fseid, cp_fseid.marshal());
+
+        let pfcpsm_flags = PfcpsmReqFlags::DROBU | PfcpsmReqFlags::SNDEM;
+        let pfcpsm_ie = Ie::new(IeType::PfcpsmReqFlags, pfcpsm_flags.marshal().to_vec());
+
+        let urr_id = UrrId::new(42);
+        let urr_id_ie = Ie::new(IeType::UrrId, urr_id.marshal().to_vec());
+
+        let usage_report = Ie::new(IeType::UsageReport, vec![0xFF, 0xEE, 0xDD]);
+        let additional_ie = Ie::new(IeType::Unknown, vec![0x12, 0x34]);
+
+        let request = SessionDeletionRequestBuilder::new(0xABCD, 0x1234)
+            .smf_fseid(smf_fseid_ie.clone())
+            .node_id(node_id_ie.clone())
+            .cp_fseid(cp_fseid_ie.clone())
+            .pfcpsm_req_flags(pfcpsm_ie.clone())
+            .urr_id(urr_id_ie.clone())
+            .usage_report(usage_report.clone())
+            .ie(additional_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 0x1234);
+        assert_eq!(request.seid(), Some(0xABCD));
+        assert_eq!(request.smf_fseid, smf_fseid_ie);
+        assert_eq!(request.node_id, Some(node_id_ie));
+        assert_eq!(request.cp_fseid, Some(cp_fseid_ie));
+        assert_eq!(request.pfcpsm_req_flags, Some(pfcpsm_ie));
+        assert_eq!(request.urr_ids.len(), 1);
+        assert_eq!(request.urr_ids[0], urr_id_ie);
+        assert_eq!(request.usage_reports.len(), 1);
+        assert_eq!(request.usage_reports[0], usage_report);
+        assert_eq!(request.ies.len(), 1);
+        assert_eq!(request.ies[0], additional_ie);
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_try_build_success() {
+        let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+        let result = SessionDeletionRequestBuilder::new(12345, 67890)
+            .smf_fseid(fseid_ie.clone())
+            .try_build();
+
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.sequence(), 67890);
+        assert_eq!(request.seid(), Some(12345));
+        assert_eq!(request.smf_fseid, fseid_ie);
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_try_build_missing_fseid() {
+        let result = SessionDeletionRequestBuilder::new(12345, 67890).try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "SMF F-SEID IE is required for SessionDeletionRequest"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "SMF F-SEID IE is required for SessionDeletionRequest")]
+    fn test_session_deletion_request_builder_build_panic() {
+        SessionDeletionRequestBuilder::new(12345, 67890).build();
+    }
+
+    #[test]
+    fn test_session_deletion_request_builder_roundtrip() {
+        let smf_fseid = Fseid::new(789, Some(Ipv4Addr::new(172, 16, 0, 1)), None);
+        let smf_fseid_ie = Ie::new(IeType::Fseid, smf_fseid.marshal());
+
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 0, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let urr_id = UrrId::new(99);
+        let urr_id_ie = Ie::new(IeType::UrrId, urr_id.marshal().to_vec());
+
+        let original = SessionDeletionRequestBuilder::new(54321, 98765)
+            .smf_fseid(smf_fseid_ie)
+            .node_id(node_id_ie)
+            .urr_id(urr_id_ie)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionDeletionRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+    }
+}
