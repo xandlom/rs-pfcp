@@ -4,7 +4,7 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 
 ## Current Implementation Status
 
-### ✅ Messages WITH Builder Patterns (14/23 = 61%)
+### ✅ Messages WITH Builder Patterns (18/23 = 78%)
 
 | Message Type | Complexity | Justification |
 |--------------|------------|---------------|
@@ -22,8 +22,12 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 | **Version Not Supported Response** | Low | Minimal error response with optional IEs |
 | **Session Deletion Request** | Medium-High | F-SEID + multiple optional IEs (node_id, cp_fseid, pfcpsm_req_flags) + URR collections |
 | **Session Deletion Response** | Medium | Cause + optional offending IE + additional IEs |
+| **Association Setup Request** | Medium | Node ID + recovery timestamp + optional UP/CP features |
+| **Association Setup Response** | Medium | Cause + node ID + optional UP/CP features + recovery timestamp |
+| **Association Update Request** | Medium | Node ID + optional UP/CP features + additional IEs |
+| **Association Update Response** | Medium | Cause + node ID + optional UP/CP features + additional IEs |
 
-### ❌ Messages WITHOUT Builder Patterns (9/23 = 39%)
+### ❌ Messages WITHOUT Builder Patterns (5/23 = 22%)
 
 #### **High Priority for Builder Pattern** (Complex Messages)
 | Message Type | Fields | Complexity | Reason for Builder Need | Status |
@@ -36,10 +40,10 @@ Analysis of builder pattern implementation across all PFCP message types in rs-p
 #### **Medium Priority for Builder Pattern** (Moderate Complexity)
 | Message Type | Fields | Complexity | Reason |
 |--------------|---------|------------|---------|
-| **Association Setup Request** | 4-6 | Medium | Node ID + recovery timestamp + optional features |
-| **Association Setup Response** | 4-6 | Medium | Node ID + cause + UP function features |
-| **Association Update Request** | 5-7 | Medium | Node ID + UP function features + optional IEs |
-| **Association Update Response** | 4-6 | Medium | Node ID + cause + association setup responses |
+| ~~**Association Setup Request**~~ | 4-6 | Medium | Node ID + recovery timestamp + optional features | ✅ **COMPLETED** |
+| ~~**Association Setup Response**~~ | 4-6 | Medium | Node ID + cause + UP function features | ✅ **COMPLETED** |
+| ~~**Association Update Request**~~ | 5-7 | Medium | Node ID + UP function features + optional IEs | ✅ **COMPLETED** |
+| ~~**Association Update Response**~~ | 4-6 | Medium | Node ID + cause + association setup responses | ✅ **COMPLETED** |
 | **Node Report Request** | 6+ | Medium | Node reporting with usage reports and triggers |
 | **Node Report Response** | 4-5 | Medium | Cause + offending IE + optional node ID |
 | ~~**Session Deletion Response**~~ | 5-7 | Medium | Cause + optional usage reports + offending IE | ✅ **COMPLETED** |
@@ -64,11 +68,11 @@ Session messages are the most complex, dealing with PDR/FAR/QER/URR creation and
 
 **❌ Missing Builders:** None
 
-### **Association Messages** (8 total, 2 with builders = 25%)
+### **Association Messages** (8 total, 6 with builders = 75%)
 Association messages handle CP-UP function relationships and capabilities exchange.
 
-**✅ Have Builders:** Association Release Request/Response  
-**❌ Missing Builders:** Association Setup Request/Response, Association Update Request/Response
+**✅ Have Builders:** Association Release Request/Response, Association Setup Request/Response, Association Update Request/Response  
+**❌ Missing Builders:** None
 
 ### **Node Messages** (4 total, 2 with builders = 50%)
 Node-level reporting and management messages.
@@ -127,7 +131,7 @@ Add builders for remaining messages for API consistency:
 
 ## Implementation Priority
 
-**Current Coverage: 61% (14/23 messages)** 🎯 **+39% improvement!**
+**Current Coverage: 78% (18/23 messages)** 🎯 **+56% improvement!**
 
 **Recommended Target: 100% (23/23 messages)** for complete API consistency
 
@@ -144,8 +148,8 @@ Add builders for remaining messages for API consistency:
 3. ~~Version Not Supported Response~~ - Error handling message
 
 **Next High Priority Targets:**
-1. Association Setup Request/Response (medium complexity, frequently used)
-2. Association Update Request/Response (medium complexity)
+1. ~~Association Setup Request/Response~~ ✅ **COMPLETED** (medium complexity, frequently used)
+2. ~~Association Update Request/Response~~ ✅ **COMPLETED** (medium complexity)
 3. Node Report Request/Response (medium complexity, node-level reporting)
 
 Implementing builders for all message types would create a consistent, ergonomic API that scales well as the PFCP protocol evolves and new IEs are added to existing messages.

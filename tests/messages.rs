@@ -728,8 +728,14 @@ fn test_association_update_response_marshal_unmarshal() {
     // Create UP Function Features IE
     let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03, 0x04]);
 
-    let response =
-        AssociationUpdateResponse::new(0x123456, node_id_ie, cause_ie, Some(up_features_ie), None);
+    let response = AssociationUpdateResponse::new(
+        0x123456,
+        node_id_ie,
+        cause_ie,
+        Some(up_features_ie),
+        None,
+        Vec::new(),
+    );
 
     let marshaled = response.marshal();
     let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
@@ -786,7 +792,8 @@ fn test_association_update_response_parse_integration() {
     let node_id_ie = Ie::new(IeType::NodeId, node_id_payload);
     let cause_ie = Ie::new(IeType::Cause, vec![0x01]); // RequestAccepted
 
-    let response = AssociationUpdateResponse::new(0xABCDEF, node_id_ie, cause_ie, None, None);
+    let response =
+        AssociationUpdateResponse::new(0xABCDEF, node_id_ie, cause_ie, None, None, Vec::new());
     let marshaled = response.marshal();
 
     // Parse it back using the generic parse function

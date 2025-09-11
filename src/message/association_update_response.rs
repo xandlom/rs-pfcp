@@ -24,6 +24,7 @@ impl AssociationUpdateResponse {
         cause: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
+        ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len() + cause.len();
         if let Some(ref ie) = up_function_features {
@@ -32,9 +33,12 @@ impl AssociationUpdateResponse {
         if let Some(ref ie) = cp_function_features {
             payload_len += ie.len();
         }
+        for ie in &ies {
+            payload_len += ie.len();
+        }
 
         let mut header = Header::new(MsgType::AssociationUpdateResponse, false, 0, seq);
-        header.length = 4 + payload_len;
+        header.length = payload_len + (header.len() - 4);
 
         AssociationUpdateResponse {
             header,
@@ -42,7 +46,7 @@ impl AssociationUpdateResponse {
             cause,
             up_function_features,
             cp_function_features,
-            ies: Vec::new(),
+            ies,
         }
     }
 }
@@ -158,7 +162,8 @@ mod tests {
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
         );
 
-        let original = AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None);
+        let original =
+            AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None, Vec::new());
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
 
@@ -203,6 +208,7 @@ mod tests {
             cause_ie,
             Some(up_features_ie),
             Some(cp_features_ie),
+            Vec::new(),
         );
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
@@ -234,11 +240,347 @@ mod tests {
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
         );
 
-        let message = AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None);
+        let message =
+            AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None, Vec::new());
 
         assert!(message.find_ie(IeType::NodeId).is_some());
         assert!(message.find_ie(IeType::Cause).is_some());
         assert!(message.find_ie(IeType::UpFunctionFeatures).is_none());
         assert!(message.find_ie(IeType::Unknown).is_none());
+    }
+}
+
+/// Builder for AssociationUpdateResponse message.
+#[derive(Debug)]
+pub struct AssociationUpdateResponseBuilder {
+    sequence: u32,
+    node_id: Option<Ie>,
+    cause: Option<Ie>,
+    up_function_features: Option<Ie>,
+    cp_function_features: Option<Ie>,
+    ies: Vec<Ie>,
+}
+
+impl AssociationUpdateResponseBuilder {
+    /// Creates a new AssociationUpdateResponse builder.
+    pub fn new(sequence: u32) -> Self {
+        Self {
+            sequence,
+            node_id: None,
+            cause: None,
+            up_function_features: None,
+            cp_function_features: None,
+            ies: Vec::new(),
+        }
+    }
+
+    /// Sets the node ID IE (required).
+    pub fn node_id(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
+        self
+    }
+
+    /// Sets the cause IE (required).
+    pub fn cause(mut self, cause: Ie) -> Self {
+        self.cause = Some(cause);
+        self
+    }
+
+    /// Sets the UP function features IE (optional).
+    pub fn up_function_features(mut self, up_function_features: Ie) -> Self {
+        self.up_function_features = Some(up_function_features);
+        self
+    }
+
+    /// Sets the CP function features IE (optional).
+    pub fn cp_function_features(mut self, cp_function_features: Ie) -> Self {
+        self.cp_function_features = Some(cp_function_features);
+        self
+    }
+
+    /// Adds an additional IE.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
+        self
+    }
+
+    /// Adds multiple additional IEs.
+    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
+        self.ies.append(&mut ies);
+        self
+    }
+
+    /// Builds the AssociationUpdateResponse message.
+    ///
+    /// # Panics
+    /// Panics if required node_id or cause IEs are not set.
+    pub fn build(self) -> AssociationUpdateResponse {
+        let node_id = self
+            .node_id
+            .expect("Node ID IE is required for AssociationUpdateResponse");
+        let cause = self
+            .cause
+            .expect("Cause IE is required for AssociationUpdateResponse");
+
+        AssociationUpdateResponse::new(
+            self.sequence,
+            node_id,
+            cause,
+            self.up_function_features,
+            self.cp_function_features,
+            self.ies,
+        )
+    }
+
+    /// Tries to build the AssociationUpdateResponse message.
+    ///
+    /// # Returns
+    /// Returns an error if required IEs are not set.
+    pub fn try_build(self) -> Result<AssociationUpdateResponse, &'static str> {
+        let node_id = self
+            .node_id
+            .ok_or("Node ID IE is required for AssociationUpdateResponse")?;
+        let cause = self
+            .cause
+            .ok_or("Cause IE is required for AssociationUpdateResponse")?;
+
+        Ok(AssociationUpdateResponse::new(
+            self.sequence,
+            node_id,
+            cause,
+            self.up_function_features,
+            self.cp_function_features,
+            self.ies,
+        ))
+    }
+}
+
+#[cfg(test)]
+mod builder_tests {
+    use super::*;
+    use crate::ie::cause::{Cause, CauseValue};
+    use crate::ie::node_id::NodeId;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn test_association_update_response_builder_minimal() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let response = AssociationUpdateResponseBuilder::new(12345)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 12345);
+        assert_eq!(response.seid(), None); // Association messages have no SEID
+        assert_eq!(response.msg_type(), MsgType::AssociationUpdateResponse);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert!(response.up_function_features.is_none());
+        assert!(response.cp_function_features.is_none());
+        assert!(response.ies.is_empty());
+    }
+
+    #[test]
+    fn test_association_update_response_builder_with_up_features() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03]);
+
+        let response = AssociationUpdateResponseBuilder::new(67890)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .up_function_features(up_features_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 67890);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.up_function_features, Some(up_features_ie));
+        assert!(response.cp_function_features.is_none());
+    }
+
+    #[test]
+    fn test_association_update_response_builder_with_cp_features() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x04, 0x05, 0x06]);
+
+        let response = AssociationUpdateResponseBuilder::new(11111)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .cp_function_features(cp_features_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 11111);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert!(response.up_function_features.is_none());
+        assert_eq!(response.cp_function_features, Some(cp_features_ie));
+    }
+
+    #[test]
+    fn test_association_update_response_builder_with_additional_ies() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let ie1 = Ie::new(IeType::Unknown, vec![0xAA, 0xBB]);
+        let ie2 = Ie::new(IeType::Unknown, vec![0xCC, 0xDD]);
+        let ie3 = Ie::new(IeType::Unknown, vec![0xEE, 0xFF]);
+
+        let response = AssociationUpdateResponseBuilder::new(22222)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .ie(ie1.clone())
+            .ies(vec![ie2.clone(), ie3.clone()])
+            .build();
+
+        assert_eq!(response.sequence(), 22222);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.ies[0], ie1);
+        assert_eq!(response.ies[1], ie2);
+        assert_eq!(response.ies[2], ie3);
+    }
+
+    #[test]
+    fn test_association_update_response_builder_full() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(198, 51, 100, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x11, 0x22]);
+        let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x33, 0x44]);
+        let additional_ie = Ie::new(IeType::Unknown, vec![0xFF, 0xEE, 0xDD]);
+
+        let response = AssociationUpdateResponseBuilder::new(33333)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .up_function_features(up_features_ie.clone())
+            .cp_function_features(cp_features_ie.clone())
+            .ie(additional_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 33333);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.up_function_features, Some(up_features_ie));
+        assert_eq!(response.cp_function_features, Some(cp_features_ie));
+        assert_eq!(response.ies.len(), 1);
+        assert_eq!(response.ies[0], additional_ie);
+    }
+
+    #[test]
+    fn test_association_update_response_builder_try_build_success() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 0, 2, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let result = AssociationUpdateResponseBuilder::new(44444)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .try_build();
+
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.sequence(), 44444);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+    }
+
+    #[test]
+    fn test_association_update_response_builder_try_build_missing_node_id() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let result = AssociationUpdateResponseBuilder::new(55555)
+            .cause(cause_ie)
+            .try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Node ID IE is required for AssociationUpdateResponse"
+        );
+    }
+
+    #[test]
+    fn test_association_update_response_builder_try_build_missing_cause() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let result = AssociationUpdateResponseBuilder::new(66666)
+            .node_id(node_id_ie)
+            .try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Cause IE is required for AssociationUpdateResponse"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Node ID IE is required for AssociationUpdateResponse")]
+    fn test_association_update_response_builder_build_panic_missing_node_id() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        AssociationUpdateResponseBuilder::new(77777)
+            .cause(cause_ie)
+            .build();
+    }
+
+    #[test]
+    #[should_panic(expected = "Cause IE is required for AssociationUpdateResponse")]
+    fn test_association_update_response_builder_build_panic_missing_cause() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        AssociationUpdateResponseBuilder::new(88888)
+            .node_id(node_id_ie)
+            .build();
+    }
+
+    #[test]
+    fn test_association_update_response_builder_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 100, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0xAB, 0xCD]);
+
+        let original = AssociationUpdateResponseBuilder::new(99999)
+            .node_id(node_id_ie)
+            .cause(cause_ie)
+            .up_function_features(up_features_ie)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
     }
 }

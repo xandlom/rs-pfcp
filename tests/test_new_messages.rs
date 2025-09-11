@@ -25,8 +25,14 @@ fn test_all_new_pfcp_messages() {
     );
 
     // Test AssociationUpdateResponse (Type 8)
-    let msg1 =
-        AssociationUpdateResponse::new(123, node_id_ie.clone(), cause_ie.clone(), None, None);
+    let msg1 = AssociationUpdateResponse::new(
+        123,
+        node_id_ie.clone(),
+        cause_ie.clone(),
+        None,
+        None,
+        Vec::new(),
+    );
     let marshaled = msg1.marshal();
     let parsed = parse(&marshaled).unwrap();
     println!(
