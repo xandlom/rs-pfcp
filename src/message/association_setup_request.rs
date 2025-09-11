@@ -137,3 +137,339 @@ impl AssociationSetupRequest {
         }
     }
 }
+
+/// Builder for AssociationSetupRequest message.
+#[derive(Debug)]
+pub struct AssociationSetupRequestBuilder {
+    sequence: u32,
+    node_id: Option<Ie>,
+    recovery_time_stamp: Option<Ie>,
+    up_function_features: Option<Ie>,
+    cp_function_features: Option<Ie>,
+    ies: Vec<Ie>,
+}
+
+impl AssociationSetupRequestBuilder {
+    /// Creates a new AssociationSetupRequest builder.
+    pub fn new(sequence: u32) -> Self {
+        Self {
+            sequence,
+            node_id: None,
+            recovery_time_stamp: None,
+            up_function_features: None,
+            cp_function_features: None,
+            ies: Vec::new(),
+        }
+    }
+
+    /// Sets the node ID IE (required).
+    pub fn node_id(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
+        self
+    }
+
+    /// Sets the recovery time stamp IE (required).
+    pub fn recovery_time_stamp(mut self, recovery_time_stamp: Ie) -> Self {
+        self.recovery_time_stamp = Some(recovery_time_stamp);
+        self
+    }
+
+    /// Sets the UP function features IE (optional).
+    pub fn up_function_features(mut self, up_function_features: Ie) -> Self {
+        self.up_function_features = Some(up_function_features);
+        self
+    }
+
+    /// Sets the CP function features IE (optional).
+    pub fn cp_function_features(mut self, cp_function_features: Ie) -> Self {
+        self.cp_function_features = Some(cp_function_features);
+        self
+    }
+
+    /// Adds an additional IE.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
+        self
+    }
+
+    /// Adds multiple additional IEs.
+    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
+        self.ies.append(&mut ies);
+        self
+    }
+
+    /// Builds the AssociationSetupRequest message.
+    ///
+    /// # Panics
+    /// Panics if required node_id or recovery_time_stamp IEs are not set.
+    pub fn build(self) -> AssociationSetupRequest {
+        let node_id = self
+            .node_id
+            .expect("Node ID IE is required for AssociationSetupRequest");
+        let recovery_time_stamp = self
+            .recovery_time_stamp
+            .expect("Recovery Time Stamp IE is required for AssociationSetupRequest");
+
+        AssociationSetupRequest::new(
+            self.sequence,
+            node_id,
+            recovery_time_stamp,
+            self.up_function_features,
+            self.cp_function_features,
+            self.ies,
+        )
+    }
+
+    /// Tries to build the AssociationSetupRequest message.
+    ///
+    /// # Returns
+    /// Returns an error if required IEs are not set.
+    pub fn try_build(self) -> Result<AssociationSetupRequest, &'static str> {
+        let node_id = self
+            .node_id
+            .ok_or("Node ID IE is required for AssociationSetupRequest")?;
+        let recovery_time_stamp = self
+            .recovery_time_stamp
+            .ok_or("Recovery Time Stamp IE is required for AssociationSetupRequest")?;
+
+        Ok(AssociationSetupRequest::new(
+            self.sequence,
+            node_id,
+            recovery_time_stamp,
+            self.up_function_features,
+            self.cp_function_features,
+            self.ies,
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ie::node_id::NodeId;
+    use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+    use std::net::Ipv4Addr;
+    use std::time::SystemTime;
+
+    #[test]
+    fn test_association_setup_request_builder_minimal() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let request = AssociationSetupRequestBuilder::new(12345)
+            .node_id(node_id_ie.clone())
+            .recovery_time_stamp(recovery_time_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 12345);
+        assert_eq!(request.seid(), None); // Association messages have no SEID
+        assert_eq!(request.msg_type(), MsgType::AssociationSetupRequest);
+        assert_eq!(request.node_id, node_id_ie);
+        assert_eq!(request.recovery_time_stamp, recovery_time_ie);
+        assert!(request.up_function_features.is_none());
+        assert!(request.cp_function_features.is_none());
+        assert!(request.ies.is_empty());
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_with_up_features() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03]);
+
+        let request = AssociationSetupRequestBuilder::new(67890)
+            .node_id(node_id_ie.clone())
+            .recovery_time_stamp(recovery_time_ie.clone())
+            .up_function_features(up_features_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 67890);
+        assert_eq!(request.node_id, node_id_ie);
+        assert_eq!(request.recovery_time_stamp, recovery_time_ie);
+        assert_eq!(request.up_function_features, Some(up_features_ie));
+        assert!(request.cp_function_features.is_none());
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_with_cp_features() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x04, 0x05, 0x06]);
+
+        let request = AssociationSetupRequestBuilder::new(11111)
+            .node_id(node_id_ie.clone())
+            .recovery_time_stamp(recovery_time_ie.clone())
+            .cp_function_features(cp_features_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 11111);
+        assert_eq!(request.node_id, node_id_ie);
+        assert_eq!(request.recovery_time_stamp, recovery_time_ie);
+        assert!(request.up_function_features.is_none());
+        assert_eq!(request.cp_function_features, Some(cp_features_ie));
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_with_additional_ies() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let ie1 = Ie::new(IeType::Unknown, vec![0xAA, 0xBB]);
+        let ie2 = Ie::new(IeType::Unknown, vec![0xCC, 0xDD]);
+        let ie3 = Ie::new(IeType::Unknown, vec![0xEE, 0xFF]);
+
+        let request = AssociationSetupRequestBuilder::new(22222)
+            .node_id(node_id_ie.clone())
+            .recovery_time_stamp(recovery_time_ie.clone())
+            .ie(ie1.clone())
+            .ies(vec![ie2.clone(), ie3.clone()])
+            .build();
+
+        assert_eq!(request.sequence(), 22222);
+        assert_eq!(request.node_id, node_id_ie);
+        assert_eq!(request.recovery_time_stamp, recovery_time_ie);
+        assert_eq!(request.ies.len(), 3);
+        assert_eq!(request.ies[0], ie1);
+        assert_eq!(request.ies[1], ie2);
+        assert_eq!(request.ies[2], ie3);
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_full() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(198, 51, 100, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x11, 0x22]);
+        let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x33, 0x44]);
+        let additional_ie = Ie::new(IeType::Unknown, vec![0xFF, 0xEE, 0xDD]);
+
+        let request = AssociationSetupRequestBuilder::new(33333)
+            .node_id(node_id_ie.clone())
+            .recovery_time_stamp(recovery_time_ie.clone())
+            .up_function_features(up_features_ie.clone())
+            .cp_function_features(cp_features_ie.clone())
+            .ie(additional_ie.clone())
+            .build();
+
+        assert_eq!(request.sequence(), 33333);
+        assert_eq!(request.node_id, node_id_ie);
+        assert_eq!(request.recovery_time_stamp, recovery_time_ie);
+        assert_eq!(request.up_function_features, Some(up_features_ie));
+        assert_eq!(request.cp_function_features, Some(cp_features_ie));
+        assert_eq!(request.ies.len(), 1);
+        assert_eq!(request.ies[0], additional_ie);
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_try_build_success() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 0, 2, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let result = AssociationSetupRequestBuilder::new(44444)
+            .node_id(node_id_ie.clone())
+            .recovery_time_stamp(recovery_time_ie.clone())
+            .try_build();
+
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        assert_eq!(request.sequence(), 44444);
+        assert_eq!(request.node_id, node_id_ie);
+        assert_eq!(request.recovery_time_stamp, recovery_time_ie);
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_try_build_missing_node_id() {
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let result = AssociationSetupRequestBuilder::new(55555)
+            .recovery_time_stamp(recovery_time_ie)
+            .try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Node ID IE is required for AssociationSetupRequest"
+        );
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_try_build_missing_recovery_time() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let result = AssociationSetupRequestBuilder::new(66666)
+            .node_id(node_id_ie)
+            .try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Recovery Time Stamp IE is required for AssociationSetupRequest"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Node ID IE is required for AssociationSetupRequest")]
+    fn test_association_setup_request_builder_build_panic_missing_node_id() {
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        AssociationSetupRequestBuilder::new(77777)
+            .recovery_time_stamp(recovery_time_ie)
+            .build();
+    }
+
+    #[test]
+    #[should_panic(expected = "Recovery Time Stamp IE is required for AssociationSetupRequest")]
+    fn test_association_setup_request_builder_build_panic_missing_recovery_time() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(198, 51, 100, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        AssociationSetupRequestBuilder::new(88888)
+            .node_id(node_id_ie)
+            .build();
+    }
+
+    #[test]
+    fn test_association_setup_request_builder_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 100, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let recovery_time = RecoveryTimeStamp::new(SystemTime::now());
+        let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
+
+        let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0xAB, 0xCD]);
+
+        let original = AssociationSetupRequestBuilder::new(99999)
+            .node_id(node_id_ie)
+            .recovery_time_stamp(recovery_time_ie)
+            .up_function_features(up_features_ie)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+    }
+}
