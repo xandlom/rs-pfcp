@@ -13,6 +13,7 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 #### Heartbeat Request (Type 1) ✅
 - **Purpose**: Verify node connectivity and exchange recovery timestamps
 - **Implementation**: `HeartbeatRequest`
+- **Builder**: `HeartbeatRequestBuilder`
 - **Key IEs**: Recovery Time Stamp, Source IP Address
 - **Usage**: Sent periodically to maintain node associations
 - **Example**: Used in heartbeat-client/server examples
@@ -20,6 +21,7 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 #### Heartbeat Response (Type 2) ✅
 - **Purpose**: Respond to heartbeat requests with recovery information
 - **Implementation**: `HeartbeatResponse`
+- **Builder**: `HeartbeatResponseBuilder`
 - **Key IEs**: Recovery Time Stamp
 - **Usage**: Automatic response to heartbeat requests
 
@@ -28,6 +30,7 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 #### Association Setup Request (Type 5) ✅
 - **Purpose**: Establish association between control and user plane nodes
 - **Implementation**: `AssociationSetupRequest`
+- **Builder**: `AssociationSetupRequestBuilder`
 - **Key IEs**: Node ID, Recovery Time Stamp, User Plane IP Resource Information
 - **Usage**: First message in node association establishment
 - **Features**: Supports IPv4/IPv6 dual-stack configurations
@@ -35,30 +38,35 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 #### Association Setup Response (Type 6) ✅
 - **Purpose**: Response to association setup with local node capabilities
 - **Implementation**: `AssociationSetupResponse`
+- **Builder**: `AssociationSetupResponseBuilder`
 - **Key IEs**: Node ID, Cause, Recovery Time Stamp, CP Function Features
 - **Usage**: Confirms successful association or reports errors
 
 #### Association Update Request (Type 7) ✅
 - **Purpose**: Update existing association parameters
 - **Implementation**: `AssociationUpdateRequest`
+- **Builder**: `AssociationUpdateRequestBuilder`
 - **Key IEs**: Node ID, CP Function Features, Graceful Release Period
 - **Usage**: Modify association settings without re-establishment
 
 #### Association Update Response (Type 8) ✅
 - **Purpose**: Response to association update requests
 - **Implementation**: `AssociationUpdateResponse`
+- **Builder**: `AssociationUpdateResponseBuilder`
 - **Key IEs**: Node ID, Cause, UP Function Features, CP Function Features
 - **Usage**: Confirms association parameter updates or reports errors
 
 #### Association Release Request (Type 9) ✅
 - **Purpose**: Gracefully terminate association
 - **Implementation**: `AssociationReleaseRequest`
+- **Builder**: `AssociationReleaseRequestBuilder`
 - **Key IEs**: Node ID, Graceful Release Period
 - **Usage**: Clean termination of control/user plane association
 
 #### Association Release Response (Type 10) ✅
 - **Purpose**: Acknowledge association release
 - **Implementation**: `AssociationReleaseResponse`
+- **Builder**: `AssociationReleaseResponseBuilder`
 - **Key IEs**: Node ID, Cause
 - **Usage**: Confirms successful association termination
 
@@ -92,24 +100,28 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 #### Session Modification Response (Type 53) ✅
 - **Purpose**: Response to session modification requests
 - **Implementation**: `SessionModificationResponse`
+- **Builder**: `SessionModificationResponseBuilder`
 - **Key IEs**: Cause, Updated PDR, Updated FAR, Usage Report
 - **Usage**: Confirms rule modifications and reports usage
 
 #### Session Deletion Request (Type 54) ✅
 - **Purpose**: Remove PFCP session and associated rules
 - **Implementation**: `SessionDeletionRequest`
+- **Builder**: `SessionDeletionRequestBuilder`
 - **Key IEs**: F-SEID, Usage Information Request
 - **Usage**: Clean session termination with optional usage reporting
 
 #### Session Deletion Response (Type 55) ✅
 - **Purpose**: Confirm session deletion with final usage reports
 - **Implementation**: `SessionDeletionResponse`
+- **Builder**: `SessionDeletionResponseBuilder`
 - **Key IEs**: Cause, Usage Report, Load Control Information
 - **Usage**: Final session cleanup confirmation
 
 #### Session Report Request (Type 56) ✅
 - **Purpose**: Report session events and usage to control plane
 - **Implementation**: `SessionReportRequest`
+- **Builder**: `SessionReportRequestBuilder`
 - **Key IEs**: Report Type, Usage Report, Application Detection Information
 - **Usage**: Quota exhaustion, threshold triggers, periodic reporting
 - **Features**:
@@ -129,29 +141,55 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 #### PFD Management Request (Type 3) ✅
 - **Purpose**: Manage Packet Flow Descriptions for application detection
 - **Implementation**: `PfdManagementRequest`
+- **Builder**: `PfdManagementRequestBuilder`
 - **Key IEs**: Application IDs, PFDs
 - **Usage**: Configure deep packet inspection rules
 
 #### PFD Management Response (Type 4) ✅
 - **Purpose**: Response to PFD management requests
 - **Implementation**: `PfdManagementResponse`
+- **Builder**: `PfdManagementResponseBuilder`
 - **Key IEs**: Cause, Offending IE
 - **Usage**: Confirm PFD configuration or report errors
 
-### 5. Unsupported/Future Messages
+### 5. Node Reporting Messages
 
-The following message types are defined in the MsgType enum but not yet implemented:
+#### Node Report Request (Type 12) ✅
+- **Purpose**: Request node-level usage and status reports
+- **Implementation**: `NodeReportRequest`
+- **Builder**: `NodeReportRequestBuilder` for ergonomic construction
+- **Key IEs**: Node ID, Report Type, User Plane Path Failure Report
+- **Usage**: Monitor node status, path failures, and resource usage
 
-- **Node Report Request (Type 12)** ❌
-- **Node Report Response (Type 13)** ❌
-- **Session Set Deletion Request (Type 14)** ❌
-- **Session Set Deletion Response (Type 15)** ❌
+#### Node Report Response (Type 13) ✅
+- **Purpose**: Response to node report requests
+- **Implementation**: `NodeReportResponse` 
+- **Builder**: `NodeReportResponseBuilder`
+- **Key IEs**: Node ID, Cause, Offending IE
+- **Usage**: Acknowledge node reports and provide feedback
 
-### Recently Implemented Messages
+### 6. Session Set Management Messages
+
+#### Session Set Deletion Request (Type 14) ✅
+- **Purpose**: Delete multiple PFCP sessions as a set operation
+- **Implementation**: `SessionSetDeletionRequest`
+- **Builder**: `SessionSetDeletionRequestBuilder`
+- **Key IEs**: Node ID, F-SEID Set (optional)
+- **Usage**: Bulk session cleanup operations
+
+#### Session Set Deletion Response (Type 15) ✅
+- **Purpose**: Response to session set deletion requests
+- **Implementation**: `SessionSetDeletionResponse`
+- **Builder**: `SessionSetDeletionResponseBuilder`
+- **Key IEs**: Node ID, Cause, Offending IE (optional)
+- **Usage**: Confirm bulk session deletions or report errors
+
+### 7. Version and Error Management Messages
 
 #### Version Not Supported Response (Type 11) ✅
 - **Purpose**: Response when PFCP version is not supported
 - **Implementation**: `VersionNotSupportedResponse`
+- **Builder**: `VersionNotSupportedResponseBuilder`
 - **Key IEs**: Optional Offending IE, additional error information
 - **Usage**: Sent when receiving messages with unsupported PFCP versions
 
@@ -174,7 +212,7 @@ All messages implement the `Message` trait providing:
 - `find_ie()`: Locate specific Information Elements
 
 ### Builder Patterns
-Complex messages use builder patterns for construction:
+**ALL messages now support builder patterns for consistent, ergonomic construction:**
 
 ```rust
 // Session Establishment with multiple rules
@@ -185,10 +223,24 @@ let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
     .create_fars(vec![far1, far2])
     .build()?;
 
-// Session Report Response
-let response = SessionReportResponseBuilder::new(seid, sequence, cause_ie)
-    .update_bars(vec![bar_ie])
-    .build()?;
+// Association Setup with fluent API
+let assoc_req = AssociationSetupRequestBuilder::new(sequence)
+    .node_id(node_id_ie)
+    .recovery_time_stamp(recovery_ie)
+    .cp_function_features(features_ie)
+    .build();
+
+// Session Set Deletion Request
+let set_del_req = SessionSetDeletionRequestBuilder::new(sequence)
+    .node_id(node_id_ie)
+    .fseid_set(fseid_ie)
+    .build();
+
+// Node Report Response
+let node_resp = NodeReportResponseBuilder::new(sequence)
+    .node_id(node_id_ie)
+    .cause(cause_ie)
+    .build();
 ```
 
 ## Usage Examples
@@ -196,7 +248,10 @@ let response = SessionReportResponseBuilder::new(seid, sequence, cause_ie)
 ### Basic Session Flow
 ```rust
 // 1. Association Setup
-let assoc_req = AssociationSetupRequest::new(seq, node_id, recovery_ts, ...);
+let assoc_req = AssociationSetupRequestBuilder::new(seq)
+    .node_id(node_id)
+    .recovery_time_stamp(recovery_ts)
+    .build();
 
 // 2. Session Establishment
 let session_req = SessionEstablishmentRequestBuilder::new(seid, seq)
@@ -213,7 +268,9 @@ let mod_req = SessionModificationRequestBuilder::new(seid, seq)
     .build();
 
 // 4. Session Deletion
-let del_req = SessionDeletionRequest::new(seid, seq, fseid, ...);
+let del_req = SessionDeletionRequestBuilder::new(seid, seq)
+    .smf_fseid(fseid)
+    .build();
 ```
 
 ### Event-Driven Reporting
@@ -227,7 +284,8 @@ match msg.msg_type() {
         }
 
         // Send acknowledgment
-        let response = SessionReportResponseBuilder::new(seid, seq, cause)
+        let response = SessionReportResponseBuilder::new(seid, seq)
+            .cause(cause)
             .build()?;
     }
 }
@@ -247,13 +305,15 @@ The rs-pfcp library implements PFCP messages according to:
 | Category | Implemented | Defined | Coverage |
 |----------|-------------|---------|----------|
 | Node Management | 2/2 | 2 | 100% |
-| Association Management | 5/6 | 6 | 83% |
+| Association Management | 6/6 | 6 | 100% |
 | Session Management | 8/8 | 8 | 100% |
 | PFD Management | 2/2 | 2 | 100% |
+| Node Reporting | 2/2 | 2 | 100% |
+| Session Set Management | 2/2 | 2 | 100% |
 | Version/Error Management | 1/1 | 1 | 100% |
-| **Total** | **18/19** | **19** | **95%** |
+| **Total** | **23/23** | **23** | **100%** |
 
-The library provides comprehensive coverage of core PFCP functionality with 95% of defined message types fully implemented and tested.
+🎉 **The library provides COMPLETE coverage of all defined PFCP message types with 100% implementation!**
 
 ## Error Handling and Troubleshooting
 
