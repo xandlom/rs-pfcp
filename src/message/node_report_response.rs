@@ -19,32 +19,7 @@ pub struct NodeReportResponse {
 
 impl NodeReportResponse {
     /// Creates a new Node Report Response message.
-    pub fn new(seq: u32, node_id: Ie, cause: Ie, offending_ie: Option<Ie>) -> Self {
-        let mut payload_len = node_id.len() + cause.len();
-        if let Some(ref ie) = offending_ie {
-            payload_len += ie.len();
-        }
-
-        let mut header = Header::new(MsgType::NodeReportResponse, false, 0, seq);
-        header.length = 4 + payload_len;
-
-        NodeReportResponse {
-            header,
-            node_id,
-            cause,
-            offending_ie,
-            ies: Vec::new(),
-        }
-    }
-
-    /// Creates a new Node Report Response with additional IEs.
-    pub fn new_with_ies(
-        seq: u32,
-        node_id: Ie,
-        cause: Ie,
-        offending_ie: Option<Ie>,
-        ies: Vec<Ie>,
-    ) -> Self {
+    pub fn new(seq: u32, node_id: Ie, cause: Ie, offending_ie: Option<Ie>, ies: Vec<Ie>) -> Self {
         let mut payload_len = node_id.len() + cause.len();
         if let Some(ref ie) = offending_ie {
             payload_len += ie.len();
@@ -54,7 +29,7 @@ impl NodeReportResponse {
         }
 
         let mut header = Header::new(MsgType::NodeReportResponse, false, 0, seq);
-        header.length = 4 + payload_len;
+        header.length = payload_len + (header.len() - 4);
 
         NodeReportResponse {
             header,
@@ -63,6 +38,21 @@ impl NodeReportResponse {
             offending_ie,
             ies,
         }
+    }
+
+    /// Creates a new Node Report Response with additional IEs.
+    ///
+    /// # Deprecated
+    /// Use `new()` instead which now includes the ies parameter.
+    #[deprecated(since = "0.1.0", note = "Use new() instead")]
+    pub fn new_with_ies(
+        seq: u32,
+        node_id: Ie,
+        cause: Ie,
+        offending_ie: Option<Ie>,
+        ies: Vec<Ie>,
+    ) -> Self {
+        Self::new(seq, node_id, cause, offending_ie, ies)
     }
 }
 
@@ -168,7 +158,7 @@ mod tests {
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
         );
 
-        let original = NodeReportResponse::new(123, node_id_ie, cause_ie, None);
+        let original = NodeReportResponse::new(123, node_id_ie, cause_ie, None, Vec::new());
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 
@@ -201,7 +191,8 @@ mod tests {
         );
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x3C]); // IE type 60
 
-        let original = NodeReportResponse::new(456, node_id_ie, cause_ie, Some(offending_ie));
+        let original =
+            NodeReportResponse::new(456, node_id_ie, cause_ie, Some(offending_ie), Vec::new());
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 
@@ -226,8 +217,7 @@ mod tests {
             Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02, 0x03]),
         ];
 
-        let original =
-            NodeReportResponse::new_with_ies(789, node_id_ie, cause_ie, None, additional_ies);
+        let original = NodeReportResponse::new(789, node_id_ie, cause_ie, None, additional_ies);
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 
@@ -266,7 +256,8 @@ mod tests {
         );
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x3C]);
 
-        let message = NodeReportResponse::new(123, node_id_ie, cause_ie, Some(offending_ie));
+        let message =
+            NodeReportResponse::new(123, node_id_ie, cause_ie, Some(offending_ie), Vec::new());
 
         assert!(message.find_ie(IeType::NodeId).is_some());
         assert!(message.find_ie(IeType::Cause).is_some());
@@ -285,7 +276,7 @@ mod tests {
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
         );
 
-        let message = NodeReportResponse::new(999, node_id_ie, cause_ie, None);
+        let message = NodeReportResponse::new(999, node_id_ie, cause_ie, None, Vec::new());
 
         assert_eq!(message.msg_type(), MsgType::NodeReportResponse);
         assert_eq!(message.sequence(), 999);
@@ -306,7 +297,298 @@ mod tests {
             Cause::new(CauseValue::SystemFailure).marshal().to_vec(),
         );
 
-        let original = NodeReportResponse::new(555, node_id_ie, cause_ie, None);
+        let original = NodeReportResponse::new(555, node_id_ie, cause_ie, None, Vec::new());
+        let marshaled = original.marshal();
+        let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+    }
+}
+
+/// Builder for NodeReportResponse message.
+#[derive(Debug)]
+pub struct NodeReportResponseBuilder {
+    sequence: u32,
+    node_id: Option<Ie>,
+    cause: Option<Ie>,
+    offending_ie: Option<Ie>,
+    ies: Vec<Ie>,
+}
+
+impl NodeReportResponseBuilder {
+    /// Creates a new NodeReportResponse builder.
+    pub fn new(sequence: u32) -> Self {
+        Self {
+            sequence,
+            node_id: None,
+            cause: None,
+            offending_ie: None,
+            ies: Vec::new(),
+        }
+    }
+
+    /// Sets the node ID IE (required).
+    pub fn node_id(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
+        self
+    }
+
+    /// Sets the cause IE (required).
+    pub fn cause(mut self, cause: Ie) -> Self {
+        self.cause = Some(cause);
+        self
+    }
+
+    /// Sets the offending IE (optional).
+    pub fn offending_ie(mut self, offending_ie: Ie) -> Self {
+        self.offending_ie = Some(offending_ie);
+        self
+    }
+
+    /// Adds an additional IE.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
+        self
+    }
+
+    /// Adds multiple additional IEs.
+    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
+        self.ies.append(&mut ies);
+        self
+    }
+
+    /// Builds the NodeReportResponse message.
+    ///
+    /// # Panics
+    /// Panics if required node_id or cause IEs are not set.
+    pub fn build(self) -> NodeReportResponse {
+        let node_id = self
+            .node_id
+            .expect("Node ID IE is required for NodeReportResponse");
+        let cause = self
+            .cause
+            .expect("Cause IE is required for NodeReportResponse");
+
+        NodeReportResponse::new(self.sequence, node_id, cause, self.offending_ie, self.ies)
+    }
+
+    /// Tries to build the NodeReportResponse message.
+    ///
+    /// # Returns
+    /// Returns an error if required IEs are not set.
+    pub fn try_build(self) -> Result<NodeReportResponse, &'static str> {
+        let node_id = self
+            .node_id
+            .ok_or("Node ID IE is required for NodeReportResponse")?;
+        let cause = self
+            .cause
+            .ok_or("Cause IE is required for NodeReportResponse")?;
+
+        Ok(NodeReportResponse::new(
+            self.sequence,
+            node_id,
+            cause,
+            self.offending_ie,
+            self.ies,
+        ))
+    }
+}
+
+#[cfg(test)]
+mod builder_tests {
+    use super::*;
+    use crate::ie::cause::{Cause, CauseValue};
+    use crate::ie::node_id::NodeId;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn test_node_report_response_builder_minimal() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let response = NodeReportResponseBuilder::new(12345)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 12345);
+        assert_eq!(response.seid(), None); // Node reports have no SEID
+        assert_eq!(response.msg_type(), MsgType::NodeReportResponse);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert!(response.offending_ie.is_none());
+        assert!(response.ies.is_empty());
+    }
+
+    #[test]
+    fn test_node_report_response_builder_with_offending_ie() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::MandatoryIeMissing);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x3C]);
+
+        let response = NodeReportResponseBuilder::new(67890)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .offending_ie(offending_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 67890);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.offending_ie, Some(offending_ie));
+    }
+
+    #[test]
+    fn test_node_report_response_builder_with_additional_ies() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let ie1 = Ie::new(IeType::Timer, vec![0x00, 0x00, 0x01, 0x00]);
+        let ie2 = Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02]);
+        let ie3 = Ie::new(IeType::Unknown, vec![0xFF, 0xFF]);
+
+        let response = NodeReportResponseBuilder::new(11111)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .ie(ie1.clone())
+            .ies(vec![ie2.clone(), ie3.clone()])
+            .build();
+
+        assert_eq!(response.sequence(), 11111);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.ies[0], ie1);
+        assert_eq!(response.ies[1], ie2);
+        assert_eq!(response.ies[2], ie3);
+    }
+
+    #[test]
+    fn test_node_report_response_builder_full() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::SystemFailure);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x40]);
+        let additional_ie = Ie::new(IeType::Timer, vec![0x00, 0x00, 0x05, 0x00]);
+
+        let response = NodeReportResponseBuilder::new(22222)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .offending_ie(offending_ie.clone())
+            .ie(additional_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 22222);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.ies.len(), 1);
+        assert_eq!(response.ies[0], additional_ie);
+    }
+
+    #[test]
+    fn test_node_report_response_builder_try_build_success() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 0, 2, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let result = NodeReportResponseBuilder::new(33333)
+            .node_id(node_id_ie.clone())
+            .cause(cause_ie.clone())
+            .try_build();
+
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.sequence(), 33333);
+        assert_eq!(response.node_id, node_id_ie);
+        assert_eq!(response.cause, cause_ie);
+    }
+
+    #[test]
+    fn test_node_report_response_builder_try_build_missing_node_id() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let result = NodeReportResponseBuilder::new(44444)
+            .cause(cause_ie)
+            .try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Node ID IE is required for NodeReportResponse"
+        );
+    }
+
+    #[test]
+    fn test_node_report_response_builder_try_build_missing_cause() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let result = NodeReportResponseBuilder::new(55555)
+            .node_id(node_id_ie)
+            .try_build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Cause IE is required for NodeReportResponse"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Node ID IE is required for NodeReportResponse")]
+    fn test_node_report_response_builder_build_panic_missing_node_id() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        NodeReportResponseBuilder::new(66666)
+            .cause(cause_ie)
+            .build();
+    }
+
+    #[test]
+    #[should_panic(expected = "Cause IE is required for NodeReportResponse")]
+    fn test_node_report_response_builder_build_panic_missing_cause() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 2));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        NodeReportResponseBuilder::new(77777)
+            .node_id(node_id_ie)
+            .build();
+    }
+
+    #[test]
+    fn test_node_report_response_builder_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 100, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        let cause = Cause::new(CauseValue::RequestRejected);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x50]);
+
+        let original = NodeReportResponseBuilder::new(88888)
+            .node_id(node_id_ie)
+            .cause(cause_ie)
+            .offending_ie(offending_ie)
+            .build();
+
         let marshaled = original.marshal();
         let unmarshaled = NodeReportResponse::unmarshal(&marshaled).unwrap();
 

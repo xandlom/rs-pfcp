@@ -50,13 +50,13 @@ fn test_all_new_pfcp_messages() {
     );
 
     // Test NodeReportRequest (Type 12)
-    let msg3 = NodeReportRequest::new(125, node_id_ie.clone(), None, None);
+    let msg3 = NodeReportRequest::new(125, node_id_ie.clone(), None, None, Vec::new());
     let marshaled = msg3.marshal();
     let parsed = parse(&marshaled).unwrap();
     println!("✓ NodeReportRequest (Type 12): {}", parsed.msg_name());
 
     // Test NodeReportResponse (Type 13)
-    let msg4 = NodeReportResponse::new(126, node_id_ie.clone(), cause_ie.clone(), None);
+    let msg4 = NodeReportResponse::new(126, node_id_ie.clone(), cause_ie.clone(), None, Vec::new());
     let marshaled = msg4.marshal();
     let parsed = parse(&marshaled).unwrap();
     println!("✓ NodeReportResponse (Type 13): {}", parsed.msg_name());
