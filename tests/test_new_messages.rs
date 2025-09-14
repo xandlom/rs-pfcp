@@ -62,7 +62,7 @@ fn test_all_new_pfcp_messages() {
     println!("✓ NodeReportResponse (Type 13): {}", parsed.msg_name());
 
     // Test SessionSetDeletionRequest (Type 14)
-    let msg5 = SessionSetDeletionRequest::new(127, node_id_ie.clone(), None);
+    let msg5 = SessionSetDeletionRequest::new(127, node_id_ie.clone(), None, Vec::new());
     let marshaled = msg5.marshal();
     let parsed = parse(&marshaled).unwrap();
     println!(
@@ -71,7 +71,7 @@ fn test_all_new_pfcp_messages() {
     );
 
     // Test SessionSetDeletionResponse (Type 15)
-    let msg6 = SessionSetDeletionResponse::new(128, node_id_ie, cause_ie, None);
+    let msg6 = SessionSetDeletionResponse::new(128, node_id_ie, cause_ie, None, Vec::new());
     let marshaled = msg6.marshal();
     let parsed = parse(&marshaled).unwrap();
     println!(
