@@ -11,11 +11,11 @@ use rs_pfcp::ie::{
     usage_report_trigger::UsageReportTrigger,
 };
 use rs_pfcp::message::{
-    association_setup_response::AssociationSetupResponse, display::MessageDisplay, header::Header,
-    session_deletion_response::SessionDeletionResponse,
+    association_setup_response::AssociationSetupResponseBuilder, display::MessageDisplay,
+    session_deletion_response::SessionDeletionResponseBuilder,
     session_establishment_request::SessionEstablishmentRequest,
     session_establishment_response::SessionEstablishmentResponseBuilder,
-    session_modification_response::SessionModificationResponse,
+    session_modification_response::SessionModificationResponseBuilder,
     session_report_request::SessionReportRequestBuilder, Message, MsgType,
 };
 use std::error::Error;
@@ -121,20 +121,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                         let node_id_ie = node_id.to_ie();
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-                        let res = AssociationSetupResponse {
-                            header: Header::new(
-                                MsgType::AssociationSetupResponse,
-                                false,
-                                0,
-                                msg.sequence(),
-                            ),
-                            cause: cause_ie,
-                            node_id: node_id_ie,
-                            up_function_features: None,
-                            cp_function_features: None,
-                            recovery_time_stamp: None,
-                            ies: vec![],
-                        };
+
+                        let res = AssociationSetupResponseBuilder::new(msg.sequence())
+                            .node_id(node_id_ie)
+                            .cause(cause_ie)
+                            .build();
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionEstablishmentRequest => {
@@ -244,27 +235,25 @@ fn main() -> Result<(), Box<dyn Error>> {
                     MsgType::SessionModificationRequest => {
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-                        let res = SessionModificationResponse::new(
+
+                        let res = SessionModificationResponseBuilder::new(
                             msg.seid().unwrap(),
                             msg.sequence(),
-                            cause_ie,
-                            None,
-                            None,
-                            None,
-                            vec![],
-                        );
+                        )
+                        .cause(cause_ie)
+                        .build();
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionDeletionRequest => {
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-                        let res = SessionDeletionResponse::new(
+
+                        let res = SessionDeletionResponseBuilder::new(
                             msg.seid().unwrap(),
                             msg.sequence(),
-                            cause_ie,
-                            None,
-                            vec![],
-                        );
+                        )
+                        .cause(cause_ie)
+                        .build();
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionReportResponse => {

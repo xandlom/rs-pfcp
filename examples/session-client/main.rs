@@ -13,8 +13,8 @@ use rs_pfcp::ie::{
     Ie, IeType,
 };
 use rs_pfcp::message::{
-    association_setup_request::AssociationSetupRequest,
-    session_deletion_request::SessionDeletionRequest,
+    association_setup_request::AssociationSetupRequestBuilder,
+    session_deletion_request::SessionDeletionRequestBuilder,
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_modification_request::SessionModificationRequestBuilder,
     session_report_response::SessionReportResponseBuilder, Message, MsgType,
@@ -128,14 +128,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // 1. Association Setup
     println!("Sending Association Setup Request...");
-    let assoc_req = AssociationSetupRequest::new(
-        1,
-        node_id_ie.clone(),
-        recovery_ts_ie.clone(),
-        None,
-        None,
-        vec![],
-    );
+    let assoc_req = AssociationSetupRequestBuilder::new(1)
+        .node_id(node_id_ie.clone())
+        .recovery_time_stamp(recovery_ts_ie.clone())
+        .build();
     socket.send(&assoc_req.marshal())?;
     let mut buf = [0; 1024];
     let (_len, _) = socket.recv_from(&mut buf)?;
@@ -245,17 +241,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // 4. Session Deletion
         println!("[{seid}] Sending Session Deletion Request...");
-        let session_del_req = SessionDeletionRequest::new(
-            seid,
-            4,
-            fseid_ie.clone(),
-            None,
-            None,
-            None,
-            vec![],
-            vec![],
-            vec![],
-        );
+        let session_del_req = SessionDeletionRequestBuilder::new(seid, 4)
+            .smf_fseid(fseid_ie.clone())
+            .build();
         socket.send(&session_del_req.marshal())?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Deletion Response.");
