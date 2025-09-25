@@ -10,7 +10,7 @@ documentation = "https://docs.rs/rs-pfcp"
 homepage = "https://github.com/xandlom/rs-pfcp"
 readme = "README.md"
 keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
-categories = ["network-programming", "parser-implementations", "telecommunications"]
+categories = ["network-programming", "parser-implementations"]
 rust-version = "1.70"
 
 [dependencies]
