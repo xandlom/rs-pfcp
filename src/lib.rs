@@ -13,22 +13,55 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use rs_pfcp::message::{SessionEstablishmentRequest, SessionEstablishmentRequestBuilder};
-//! use rs_pfcp::ie::{NodeId, Cause, CauseValue};
+//! # use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+//! # use rs_pfcp::message::Message;
+//! # use rs_pfcp::ie::node_id::NodeId;
+//! # use rs_pfcp::ie::fseid::Fseid;
+//! # use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+//! # use rs_pfcp::ie::create_far::CreateFar;
+//! # use rs_pfcp::ie::f_teid::FteidBuilder;
+//! # use rs_pfcp::ie::pdr_id::PdrId;
+//! # use rs_pfcp::ie::precedence::Precedence;
+//! # use rs_pfcp::ie::pdi::Pdi;
+//! # use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+//! # use rs_pfcp::ie::far_id::FarId;
+//! # use rs_pfcp::ie::apply_action::ApplyAction;
+//! # use rs_pfcp::ie::{Ie, IeType};
+//! # use std::net::Ipv4Addr;
 //!
-//! // Create a session establishment request
+//! // Create F-TEID using new builder pattern
+//! let fteid = FteidBuilder::new()
+//!     .teid(0x12345678)
+//!     .ipv4("192.168.1.1".parse().unwrap())
+//!     .build()
+//!     .unwrap();
+//!
+//! // Create session establishment request
+//! # let session_id = 0x1234567890ABCDEF;
+//! # let sequence_number = 1;
+//! # let node_id = NodeId::new_ipv4("10.0.0.1".parse().unwrap());
+//! # let fseid = Fseid::new(0x11111111, None, Some("2001:db8::1".parse().unwrap()));
+//! # let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access), Some(fteid.clone()), None, None, None, None);
+//! # let create_pdr = CreatePdrBuilder::new(PdrId::new(1))
+//! #     .precedence(Precedence::new(100))
+//! #     .pdi(pdi)
+//! #     .far_id(FarId::new(1))
+//! #     .build()
+//! #     .unwrap();
+//! # let create_far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
 //! let request = SessionEstablishmentRequestBuilder::new(session_id, sequence_number)
-//!     .node_id(NodeId::from_ipv4("10.0.0.1".parse()?))
-//!     .fseid(fseid_ie)
-//!     .create_pdrs(vec![create_pdr_ie])
-//!     .create_fars(vec![create_far_ie])
-//!     .build()?;
+//!     .node_id(node_id.to_ie())
+//!     .fseid(Ie::new(IeType::Fseid, fseid.marshal()))
+//!     .create_pdrs(vec![create_pdr.to_ie()])
+//!     .create_fars(vec![create_far.to_ie()])
+//!     .build()
+//!     .unwrap();
 //!
 //! // Serialize to bytes for network transmission
 //! let bytes = request.marshal();
 //!
 //! // Parse received messages
-//! let parsed_msg = rs_pfcp::message::parse(&bytes)?;
+//! let parsed_msg = rs_pfcp::message::parse(&bytes).unwrap();
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!

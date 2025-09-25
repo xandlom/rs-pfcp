@@ -102,8 +102,9 @@ See `IE_SUPPORT.md` for detailed status of which IEs are implemented. Most core 
 - F-TEID with 3GPP TS 29.244 compliant CHOOSE/CHOOSE_ID flag support
 
 ### Builder Pattern Usage
-Complex messages like `SessionEstablishmentRequest` and `SessionModificationRequest` use the builder pattern for construction:
+Complex messages and Information Elements use the builder pattern for construction:
 
+**Messages:**
 ```rust
 let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
     .node_id(node_id_ie)
@@ -112,6 +113,35 @@ let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
     .create_fars(vec![far_ie])
     .build()?;
 ```
+
+**Information Elements:**
+```rust
+// F-TEID with explicit IPv4 address
+let fteid = FteidBuilder::new()
+    .teid(0x12345678)
+    .ipv4("192.168.1.1".parse()?)
+    .build()?;
+
+// F-TEID with CHOOSE flag (UPF selects IP)
+let choose_fteid = FteidBuilder::new()
+    .teid(0x87654321)
+    .choose_ipv4()
+    .choose_id(42)  // For correlation
+    .build()?;
+
+// CreatePdr with builder pattern
+let pdr = CreatePdrBuilder::new(pdr_id)
+    .precedence(precedence)
+    .pdi(pdi)
+    .far_id(far_id)
+    .build()?;
+```
+
+**Builder Pattern Benefits:**
+- **Type Safety**: Compile-time validation of complex flag combinations
+- **Ergonomics**: Clear, self-documenting API with method chaining
+- **Validation**: Comprehensive error checking with descriptive messages
+- **Flexibility**: Support for both explicit values and CHOOSE semantics
 
 ## Working with the Codebase
 
@@ -123,6 +153,7 @@ let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
 5. Add tests following existing patterns
 6. Update `IE_SUPPORT.md`
 7. **Optional**: Add display support in `src/message/display.rs` for structured output
+8. **Consider Builder Pattern**: For IEs with >5 parameters or complex flag interactions, implement builder pattern (see `FteidBuilder` and `CreatePdrBuilder` as examples)
 
 ### Adding New Messages
 1. Create new module in `src/message/`
