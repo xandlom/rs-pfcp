@@ -1,6 +1,6 @@
 # rs-pfcp
 
-[![Rust](https://github.com/xandlom/rs-pfcp/workflows/CI/badge.svg)](https://github.com/xandlom/rs-pfcp/actions)
+[![Rust](https://github.com/xandlom/rs-pfcp/workflows/Continuous%20Integration/badge.svg)](https://github.com/xandlom/rs-pfcp/actions)
 [![Crates.io](https://img.shields.io/crates/v/rs-pfcp.svg)](https://crates.io/crates/rs-pfcp)
 [![Documentation](https://docs.rs/rs-pfcp/badge.svg)](https://docs.rs/rs-pfcp)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
