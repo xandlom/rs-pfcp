@@ -13,6 +13,10 @@ keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
 categories = ["network-programming", "parser-implementations"]
 rust-version = "1.70"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 anyhow = "1.0.100"
 bitflags = "2.9.4"
