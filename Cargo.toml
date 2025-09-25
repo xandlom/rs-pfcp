@@ -3,6 +3,15 @@ name = "rs-pfcp"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+description = "High-performance Rust implementation of PFCP (Packet Forwarding Control Protocol) for 5G networks with 100% 3GPP TS 29.244 Release 18 compliance"
+authors = ["xandlom"]
+repository = "https://github.com/xandlom/rs-pfcp"
+documentation = "https://docs.rs/rs-pfcp"
+homepage = "https://github.com/xandlom/rs-pfcp"
+readme = "README.md"
+keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
+categories = ["network-programming", "parser-implementations", "telecommunications"]
+rust-version = "1.70"
 
 [dependencies]
 anyhow = "1.0.100"
@@ -33,3 +42,7 @@ path = "examples/session-server/main.rs"
 [[example]]
 name = "pcap-reader"
 path = "examples/pcap-reader/main.rs"
+
+[[example]]
+name = "header-length-test"
+path = "examples/header-length-test/main.rs"

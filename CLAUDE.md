@@ -11,7 +11,7 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 ### Build and Test
 - **Build**: `cargo build`
 - **Test**: `cargo test`
-- **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`
+- **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`, `pcap-reader`, `header-length-test`
 - **Check**: `cargo check`
 - **Format**: `cargo fmt`
 - **Lint**: `cargo clippy`
@@ -171,3 +171,12 @@ Key dependencies used throughout the codebase:
 - **network-interface**: Network interface detection and IP resolution
 - **pcap-file**: PCAP file parsing for traffic analysis
 - **serde**: JSON/YAML serialization for message display
+- **serde_json/serde_yaml**: Structured output formatting
+
+### Performance and Benchmarking
+The repository includes comprehensive benchmarking capabilities:
+- **Benchmark suite**: Located in `benchmarks/` directory with Rust vs Go comparisons
+- **Run benchmarks**: `cd benchmarks && ./scripts/run_benchmark.sh` (if available)
+- **Performance tests**: Uses real captured PFCP traffic for realistic measurements
+- **Individual examples**: `cargo run --example header-length-test` for specific testing
+- **Debug tools**: Various debug examples for protocol analysis
