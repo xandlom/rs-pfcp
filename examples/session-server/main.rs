@@ -1,14 +1,32 @@
 // examples/session-server/main.rs
+//
+// Enhanced PFCP Session Server demonstrating builder pattern responses
+//
+// This server example showcases the new builder patterns for server-side PFCP processing:
+// - F-TEID Builder: Create server-side F-TEIDs with UPF-allocated addresses
+// - Created PDR responses: Use builders for proper server responses
+// - Session response construction: Enhanced with validation and type safety
+//
+// Key server-side features demonstrated:
+// ✅ UPF-side F-TEID allocation with builder patterns
+// ✅ Created PDR generation using type-safe builders
+// ✅ Proper server response construction with validation
+// ✅ Comprehensive session state management
+// ✅ Usage reporting with structured IE construction
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::ie::{
-    cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr, f_teid::Fteid,
-    node_id::NodeId, Ie, IeType,
-};
-use rs_pfcp::ie::{
-    sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReport,
+    cause::CauseValue,
+    create_pdr::CreatePdr,
+    created_pdr::CreatedPdr,
+    f_teid::FteidBuilder,
+    node_id::NodeId,
+    sequence_number::SequenceNumber,
+    urr_id::UrrId,
+    usage_report::UsageReport,
     usage_report_trigger::UsageReportTrigger,
+    Ie, IeType,
 };
 use rs_pfcp::message::{
     association_setup_response::AssociationSetupResponseBuilder, display::MessageDisplay,
@@ -160,17 +178,38 @@ fn main() -> Result<(), Box<dyn Error>> {
                                         received_pdr.precedence.value
                                     );
 
-                                    // Create a Created PDR with the same PDR ID and a local F-TEID
-                                    // Using a dummy F-TEID for demonstration (in real implementation,
-                                    // this would be allocated from the UPF's F-TEID pool)
-                                    let local_f_teid = Fteid::new(
-                                        true,                                            // IPv4 flag
-                                        false, // IPv6 flag
-                                        0x12345678 + received_pdr.pdr_id.value as u32, // TEID (unique per PDR)
-                                        Some(std::net::Ipv4Addr::new(192, 168, 1, 100)), // UPF IP
-                                        None,                                          // No IPv6
-                                        0, // No UDP port
-                                    );
+                                    // Demonstrate different F-TEID allocation strategies based on PDR ID
+                                    let local_f_teid = match received_pdr.pdr_id.value {
+                                        1 => {
+                                            // For PDR 1: Standard IPv4 F-TEID allocation
+                                            println!("      → Allocating standard IPv4 F-TEID for uplink PDR");
+                                            FteidBuilder::new()
+                                                .teid(0x12345678 + received_pdr.pdr_id.value as u32)
+                                                .ipv4(std::net::Ipv4Addr::new(192, 168, 1, 100))
+                                                .build()
+                                                .unwrap()
+                                        }
+                                        2 => {
+                                            // For PDR 2: Dual-stack F-TEID with both IPv4 and IPv6
+                                            println!("      → Allocating dual-stack F-TEID for downlink PDR");
+                                            FteidBuilder::new()
+                                                .teid(0x12345678 + received_pdr.pdr_id.value as u32)
+                                                .ipv4(std::net::Ipv4Addr::new(192, 168, 1, 100))
+                                                .ipv6("2001:db8::100".parse().unwrap())
+                                                .build()
+                                                .unwrap()
+                                        }
+                                        _ => {
+                                            // For other PDRs: Use CHOOSE flag to let SMF know UPF will select
+                                            println!("      → Using CHOOSE flag for dynamic F-TEID allocation");
+                                            FteidBuilder::new()
+                                                .teid(0x12345678 + received_pdr.pdr_id.value as u32)
+                                                .choose_ipv4()
+                                                .choose_id(received_pdr.pdr_id.value as u8) // For correlation
+                                                .build()
+                                                .unwrap()
+                                        }
+                                    };
 
                                     let created_pdr =
                                         CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
@@ -245,6 +284,44 @@ fn main() -> Result<(), Box<dyn Error>> {
                         socket.send_to(&res.marshal(), src)?;
                     }
                     MsgType::SessionDeletionRequest => {
+                        let seid = msg.seid().unwrap();
+                        println!("  Deleting session 0x{seid:016x}");
+
+                        // Demonstrate additional builder patterns for session cleanup
+                        if sessions.contains_key(&seid) {
+                            println!("=== Server-side Builder Pattern Examples ===");
+
+                            // Example 1: Alternative F-TEID strategies for different use cases
+                            let _enterprise_fteid = FteidBuilder::new()
+                                .teid(0xDEADBEEF)
+                                .ipv4("10.0.0.1".parse().unwrap()) // Enterprise IP range
+                                .build()
+                                .unwrap();
+                            println!("✅ Enterprise F-TEID created for private networks");
+
+                            // Example 2: IPv6-only F-TEID for modern deployments
+                            let _ipv6_only_fteid = FteidBuilder::new()
+                                .teid(0xCAFEBABE)
+                                .ipv6("2001:db8:5a::1".parse().unwrap()) // Valid IPv6 address
+                                .build()
+                                .unwrap();
+                            println!("✅ IPv6-only F-TEID created for modern 5G deployments");
+
+                            // Example 3: CHOOSE flag with correlation for dynamic allocation
+                            let _dynamic_fteid = FteidBuilder::new()
+                                .teid(0xABCDEF00)
+                                .choose_ipv4()
+                                .choose_id(123) // Correlation ID for tracking
+                                .build()
+                                .unwrap();
+                            println!("✅ Dynamic F-TEID with CHOOSE flag for UPF selection");
+
+                            println!("=== Server-side patterns demonstrated! ===\n");
+
+                            // Remove session from tracking
+                            sessions.remove(&seid);
+                        }
+
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
@@ -274,5 +351,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                 eprintln!("Failed to parse message: {e}");
             }
         }
+    }
+
+    // This code is unreachable due to the infinite loop above, but serves as documentation
+    #[allow(unreachable_code)]
+    {
+        println!("🎉 PFCP Session Server with Enhanced Builder Patterns!");
+        println!("📚 This server demonstrated comprehensive server-side builder usage:");
+        println!("   • F-TEID Builder: Server-side allocation with multiple strategies");
+        println!("   • IPv4/IPv6/Dual-stack: Different network deployment scenarios");
+        println!("   • CHOOSE flags: Dynamic UPF address selection with correlation");
+        println!("   • Enterprise scenarios: Private network F-TEID allocation");
+        println!("   • Type-safe construction: Validation and error prevention");
+        println!("   • Real UPF behavior: Proper Created PDR responses");
+        Ok(())
     }
 }
