@@ -145,6 +145,29 @@ let pdr = CreatePdrBuilder::new(pdr_id)
     .pdi(uplink_pdi)
     .far_id(far_id)
     .build()?;
+
+// CreateFar (Forwarding Action Rules) with validation
+let uplink_far = CreateFarBuilder::uplink_to_core(far_id)
+    .build()?;
+
+let buffer_far = CreateFarBuilder::buffer_traffic(
+    FarId::new(2),
+    BarId::new(1)
+).build()?;
+
+let complex_far = CreateFar::builder(FarId::new(3))
+    .forward_to_network(Interface::Dn, NetworkInstance::new("internet"))
+    .bar_id(BarId::new(2))
+    .build()?;
+
+// CreateQer (QoS Enforcement Rules) with rate limiting
+let qer = CreateQerBuilder::new(QerId::new(1))
+    .rate_limit(1000000, 2000000)  // 1Mbps up, 2Mbps down
+    .guaranteed_rate(500000, 1000000)
+    .build()?;
+
+let traffic_control_qer = CreateQer::downlink_only(QerId::new(2));
+let open_qer = CreateQer::open_gate(QerId::new(3));
 ```
 
 **Builder Pattern Benefits:**
@@ -152,6 +175,128 @@ let pdr = CreatePdrBuilder::new(pdr_id)
 - **Ergonomics**: Clear, self-documenting API with method chaining
 - **Validation**: Comprehensive error checking with descriptive messages
 - **Flexibility**: Support for both explicit values and CHOOSE semantics
+
+### Builder Pattern Guidelines
+
+The rs-pfcp library implements comprehensive builder patterns for complex Information Elements. When working with or extending these builders, follow these established patterns:
+
+#### **Builder Implementation Standards**
+
+1. **Naming Convention:**
+   ```rust
+   // Builder struct: <IeName>Builder
+   pub struct CreateFarBuilder { ... }
+
+   // Constructor: new() with required parameters only
+   pub fn new(far_id: FarId) -> Self { ... }
+
+   // Optional setters: method names matching field names
+   pub fn forwarding_parameters(mut self, params: ForwardingParameters) -> Self { ... }
+
+   // Finalizer: build() returning Result<IE, io::Error>
+   pub fn build(self) -> Result<CreateFar, io::Error> { ... }
+   ```
+
+2. **Validation Strategy:**
+   ```rust
+   pub fn build(self) -> Result<CreateFar, io::Error> {
+       // Required field validation
+       let far_id = self.far_id.ok_or_else(|| {
+           io::Error::new(io::ErrorKind::InvalidData, "FAR ID is required")
+       })?;
+
+       // Logical validation (e.g., action and parameter combinations)
+       if apply_action.contains(ApplyAction::BUFF) && self.bar_id.is_none() {
+           return Err(io::Error::new(
+               io::ErrorKind::InvalidData,
+               "BUFF action requires BAR ID to be set"
+           ));
+       }
+
+       Ok(CreateFar { ... })
+   }
+   ```
+
+3. **Convenience Methods Pattern:**
+   ```rust
+   // Common pattern shortcuts as static methods
+   impl CreateFarBuilder {
+       pub fn uplink_to_core(far_id: FarId) -> Self {
+           CreateFarBuilder::new(far_id).forward_to(Interface::Core)
+       }
+
+       pub fn buffer_traffic(far_id: FarId, bar_id: BarId) -> Self {
+           CreateFarBuilder::new(far_id)
+               .action(FarAction::Buffer)
+               .bar_id(bar_id)
+       }
+   }
+
+   // Main struct convenience access
+   impl CreateFar {
+       pub fn builder(far_id: FarId) -> CreateFarBuilder {
+           CreateFarBuilder::new(far_id)
+       }
+   }
+   ```
+
+#### **Testing Requirements for Builders**
+
+All builder implementations must include comprehensive tests:
+
+```rust
+#[cfg(test)]
+mod tests {
+    // Basic builder functionality
+    #[test]
+    fn test_builder_basic() { ... }
+
+    // All convenience methods
+    #[test]
+    fn test_builder_convenience_methods() { ... }
+
+    // Validation error cases
+    #[test]
+    fn test_builder_validation_errors() { ... }
+
+    // Round-trip marshal/unmarshal
+    #[test]
+    fn test_builder_round_trip_marshal() { ... }
+
+    // Complex scenarios with multiple parameters
+    #[test]
+    fn test_builder_comprehensive() { ... }
+}
+```
+
+#### **Current Builder Implementations**
+
+- ✅ **F-TEID Builder**: Complete with CHOOSE flag validation and IP address handling
+- ✅ **PDI Builder**: Common packet detection patterns with interface shortcuts
+- ✅ **CreatePdr Builder**: Packet Detection Rule construction with validation
+- ✅ **CreateQer Builder**: QoS Enforcement Rules with gate control and rate limiting
+- ✅ **CreateFar Builder**: Forwarding Action Rules with action/parameter validation
+
+#### **Builder Pattern Best Practices**
+
+1. **Required vs Optional Parameters:**
+   - Required parameters go in `new()` constructor
+   - Optional parameters use fluent setters
+   - Clear validation errors for missing required fields
+
+2. **Method Chaining:**
+   - All setters return `Self` for fluent interface
+   - Build method consumes self and returns `Result<T, io::Error>`
+
+3. **Error Handling:**
+   - Use `io::ErrorKind::InvalidData` for validation errors
+   - Provide clear, descriptive error messages
+   - Validate logical relationships between fields
+
+4. **Common Patterns:**
+   - Provide shortcuts for typical use cases
+   - Use descriptive method names (e.g., `uplink_to_core()`)
+   - Support both basic and advanced configuration
 
 ## Working with the Codebase
 

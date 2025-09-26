@@ -18,7 +18,7 @@
 //! # use rs_pfcp::ie::node_id::NodeId;
 //! # use rs_pfcp::ie::fseid::Fseid;
 //! # use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
-//! # use rs_pfcp::ie::create_far::CreateFar;
+//! # use rs_pfcp::ie::create_far::{CreateFar, CreateFarBuilder, FarAction};
 //! # use rs_pfcp::ie::create_qer::CreateQerBuilder;
 //! # use rs_pfcp::ie::f_teid::FteidBuilder;
 //! # use rs_pfcp::ie::pdr_id::PdrId;
@@ -63,7 +63,10 @@
 //! #     .far_id(FarId::new(1))
 //! #     .build()
 //! #     .unwrap();
-//! # let create_far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
+//! # let create_far = CreateFar::builder(FarId::new(1))
+//! #     .forward_to(rs_pfcp::ie::destination_interface::Interface::Core)
+//! #     .build()
+//! #     .unwrap();
 //! # let create_qer = CreateQerBuilder::open_gate(QerId::new(1)).build().unwrap();
 //! let request = SessionEstablishmentRequestBuilder::new(session_id, sequence_number)
 //!     .node_id(node_id.to_ie())
@@ -87,6 +90,28 @@
 //! let rate_limited_qer = CreateQer::with_rate_limit(QerId::new(4), 5000000, 10000000);
 //! let downlink_only_qer = CreateQer::downlink_only(QerId::new(5));
 //! let uplink_only_qer = CreateQer::uplink_only(QerId::new(6));
+//!
+//! // Enhanced FAR builder patterns for traffic forwarding
+//! # use rs_pfcp::ie::bar_id::BarId;
+//! # use rs_pfcp::ie::destination_interface::Interface;
+//! # use rs_pfcp::ie::network_instance::NetworkInstance;
+//!
+//! // Common FAR patterns with validation
+//! let uplink_far = CreateFarBuilder::uplink_to_core(FarId::new(10));
+//! let downlink_far = CreateFarBuilder::downlink_to_access(FarId::new(11));
+//! let drop_far = CreateFarBuilder::drop_traffic(FarId::new(12));
+//! let buffer_far = CreateFarBuilder::buffer_traffic(FarId::new(13), BarId::new(1));
+//!
+//! // Advanced FAR with network instance and validation
+//! let internet_far = CreateFar::builder(FarId::new(14))
+//!     .forward_to_network(Interface::Dn, NetworkInstance::new("internet.apn"))
+//!     .build()
+//!     .unwrap();
+//!
+//! // Forward and duplicate pattern for lawful intercept
+//! let intercept_far = CreateFarBuilder::forward_and_duplicate(FarId::new(15), Interface::Core)
+//!     .build()
+//!     .unwrap();
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
