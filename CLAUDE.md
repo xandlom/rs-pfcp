@@ -129,10 +129,20 @@ let choose_fteid = FteidBuilder::new()
     .choose_id(42)  // For correlation
     .build()?;
 
+// PDI (Packet Detection Information) with common patterns
+let uplink_pdi = PdiBuilder::uplink_access()
+    .f_teid(fteid)
+    .build()?;
+
+let downlink_pdi = PdiBuilder::downlink_core()
+    .ue_ip_address(ue_ip)
+    .network_instance(NetworkInstance::new("internet.apn"))
+    .build()?;
+
 // CreatePdr with builder pattern
 let pdr = CreatePdrBuilder::new(pdr_id)
     .precedence(precedence)
-    .pdi(pdi)
+    .pdi(uplink_pdi)
     .far_id(far_id)
     .build()?;
 ```

@@ -22,7 +22,7 @@
 //! # use rs_pfcp::ie::f_teid::FteidBuilder;
 //! # use rs_pfcp::ie::pdr_id::PdrId;
 //! # use rs_pfcp::ie::precedence::Precedence;
-//! # use rs_pfcp::ie::pdi::Pdi;
+//! # use rs_pfcp::ie::pdi::{Pdi, PdiBuilder};
 //! # use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 //! # use rs_pfcp::ie::far_id::FarId;
 //! # use rs_pfcp::ie::apply_action::ApplyAction;
@@ -41,7 +41,10 @@
 //! # let sequence_number = 1;
 //! # let node_id = NodeId::new_ipv4("10.0.0.1".parse().unwrap());
 //! # let fseid = Fseid::new(0x11111111, None, Some("2001:db8::1".parse().unwrap()));
-//! # let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access), Some(fteid.clone()), None, None, None, None);
+//! # let pdi = PdiBuilder::uplink_access()
+//! #     .f_teid(fteid.clone())
+//! #     .build()
+//! #     .unwrap();
 //! # let create_pdr = CreatePdrBuilder::new(PdrId::new(1))
 //! #     .precedence(Precedence::new(100))
 //! #     .pdi(pdi)

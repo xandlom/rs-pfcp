@@ -188,10 +188,10 @@ impl IeNameBuilder {
 - ✅ Add extensive test coverage (30 tests total, 15 new builder tests)
 - ✅ Update documentation and examples
 
-### Week 2: PDI Builder
-- Implement PdiBuilder with common pattern shortcuts
-- Integration with FteidBuilder
-- Test complex packet detection scenarios
+### ✅ Week 2: PDI Builder (COMPLETED)
+- ✅ Implement PdiBuilder with common pattern shortcuts
+- ✅ Integration with FteidBuilder (22 comprehensive tests)
+- ✅ Test complex packet detection scenarios including round-trip marshaling
 
 ### Week 3: CreateQer Builder
 - Implement CreateQerBuilder for QoS rules
