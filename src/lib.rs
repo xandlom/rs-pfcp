@@ -19,12 +19,14 @@
 //! # use rs_pfcp::ie::fseid::Fseid;
 //! # use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
 //! # use rs_pfcp::ie::create_far::CreateFar;
+//! # use rs_pfcp::ie::create_qer::CreateQerBuilder;
 //! # use rs_pfcp::ie::f_teid::FteidBuilder;
 //! # use rs_pfcp::ie::pdr_id::PdrId;
 //! # use rs_pfcp::ie::precedence::Precedence;
 //! # use rs_pfcp::ie::pdi::{Pdi, PdiBuilder};
 //! # use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 //! # use rs_pfcp::ie::far_id::FarId;
+//! # use rs_pfcp::ie::qer_id::QerId;
 //! # use rs_pfcp::ie::apply_action::ApplyAction;
 //! # use rs_pfcp::ie::{Ie, IeType};
 //! # use std::net::Ipv4Addr;
@@ -33,6 +35,16 @@
 //! let fteid = FteidBuilder::new()
 //!     .teid(0x12345678)
 //!     .ipv4("192.168.1.1".parse().unwrap())
+//!     .build()
+//!     .unwrap();
+//!
+//! // Create QER using new builder pattern for QoS enforcement
+//! let qer = CreateQerBuilder::new(QerId::new(1))
+//!     .gate_status(rs_pfcp::ie::gate_status::GateStatus::new(
+//!         rs_pfcp::ie::gate_status::GateStatusValue::Open,
+//!         rs_pfcp::ie::gate_status::GateStatusValue::Open
+//!     ))
+//!     .rate_limit(1000000, 2000000) // 1Mbps up, 2Mbps down
 //!     .build()
 //!     .unwrap();
 //!
@@ -52,11 +64,13 @@
 //! #     .build()
 //! #     .unwrap();
 //! # let create_far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
+//! # let create_qer = CreateQerBuilder::open_gate(QerId::new(1)).build().unwrap();
 //! let request = SessionEstablishmentRequestBuilder::new(session_id, sequence_number)
 //!     .node_id(node_id.to_ie())
 //!     .fseid(Ie::new(IeType::Fseid, fseid.marshal()))
 //!     .create_pdrs(vec![create_pdr.to_ie()])
 //!     .create_fars(vec![create_far.to_ie()])
+//!     .create_qers(vec![create_qer.to_ie()])
 //!     .build()
 //!     .unwrap();
 //!
@@ -65,6 +79,14 @@
 //!
 //! // Parse received messages
 //! let parsed_msg = rs_pfcp::message::parse(&bytes).unwrap();
+//!
+//! // Convenience methods for common QER patterns
+//! # use rs_pfcp::ie::create_qer::CreateQer;
+//! let open_qer = CreateQer::open_gate(QerId::new(2));
+//! let closed_qer = CreateQer::closed_gate(QerId::new(3));
+//! let rate_limited_qer = CreateQer::with_rate_limit(QerId::new(4), 5000000, 10000000);
+//! let downlink_only_qer = CreateQer::downlink_only(QerId::new(5));
+//! let uplink_only_qer = CreateQer::uplink_only(QerId::new(6));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
