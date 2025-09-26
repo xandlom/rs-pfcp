@@ -20,6 +20,7 @@ pub mod created_pdr;
 pub mod deactivate_predefined_rules;
 pub mod destination_interface;
 pub mod dl_buffering_duration;
+pub mod duration_measurement;
 pub mod downlink_data_notification_delay;
 pub mod downlink_data_service_information;
 pub mod duplicating_parameters;
@@ -64,9 +65,13 @@ pub mod sequence_number;
 pub mod snssai;
 pub mod source_interface;
 pub mod source_ip_address;
+// pub mod start_time; // TODO: Phase 2
 pub mod subsequent_time_threshold;
 pub mod subsequent_volume_threshold;
 pub mod suggested_buffering_packets_count;
+pub mod time_of_first_packet;
+pub mod time_of_last_packet;
+// pub mod time_quota; // TODO: Phase 2
 pub mod time_threshold;
 pub mod timer;
 pub mod trace_information;
@@ -81,10 +86,13 @@ pub mod update_qer;
 pub mod update_traffic_endpoint;
 pub mod update_urr;
 pub mod urr_id;
+pub mod usage_information;
 pub mod usage_report;
 pub mod usage_report_trigger;
 pub mod user_id;
 pub mod user_plane_inactivity_timer;
+pub mod volume_measurement;
+// pub mod volume_quota; // TODO: Phase 2
 pub mod volume_threshold;
 
 // IE Type definitions.
@@ -153,10 +161,21 @@ pub enum IeType {
     NodeId = 60,
     PfdContents = 61,
     MeasurementMethod = 62,
+    VolumeMeasurement = 66,
+    DurationMeasurement = 67,
+    ApplicationDetectionInformation = 68,
+    TimeOfFirstPacket = 69,
+    TimeOfLastPacket = 70,
+    QuotaHoldingTime = 71,
+    VolumeQuota = 73,
     UsageReport = 74,
     UsageReportTrigger = 75,
+    TimeQuota = 76,
+    StartTime = 77,
+    EndTime = 78,
     UrrId = 81,
     CpFunctionFeatures = 89,
+    UsageInformation = 90,
     UeIpAddress = 93,
     OuterHeaderRemoval = 95,
     RecoveryTimeStamp = 96,
@@ -247,8 +266,18 @@ impl From<u16> for IeType {
             60 => IeType::NodeId,
             61 => IeType::PfdContents,
             62 => IeType::MeasurementMethod,
+            66 => IeType::VolumeMeasurement,
+            67 => IeType::DurationMeasurement,
+            68 => IeType::ApplicationDetectionInformation,
+            69 => IeType::TimeOfFirstPacket,
+            70 => IeType::TimeOfLastPacket,
+            71 => IeType::QuotaHoldingTime,
+            73 => IeType::VolumeQuota,
             74 => IeType::UsageReport,
             75 => IeType::UsageReportTrigger,
+            76 => IeType::TimeQuota,
+            77 => IeType::StartTime,
+            78 => IeType::EndTime,
             81 => IeType::UrrId,
             93 => IeType::UeIpAddress,
             95 => IeType::OuterHeaderRemoval,
@@ -256,6 +285,7 @@ impl From<u16> for IeType {
             106 => IeType::ActivatePredefinedRules,
             107 => IeType::DeactivatePredefinedRules,
             89 => IeType::CpFunctionFeatures,
+            90 => IeType::UsageInformation,
             115 => IeType::CreateBar,
             116 => IeType::UpdateBar,
             117 => IeType::RemoveBar,
