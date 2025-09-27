@@ -63,9 +63,12 @@ fn create_quota_exhausted_usage_report() -> Ie {
         ))
         .duration_measurement(DurationMeasurement::new(3600)) // 1 hour session duration
         // Phase 3 enhancements: Application detection and user tracking
-        .with_detected_application("YouTube") // Detected video streaming
-        .with_ue_ipv4_usage(std::net::Ipv4Addr::new(192, 168, 1, 50), 1) // UE IP usage stats
-        .with_additional_flags(true, false) // Request additional interim usage reports
+        // TODO: Fix ApplicationDetectionInformation grouped IE structure for 3GPP compliance
+        // .with_detected_application("YouTube") // Detected video streaming
+        // TODO: Fix UE IP Address Usage Information grouped IE structure for 3GPP compliance
+        // .with_ue_ipv4_usage(std::net::Ipv4Addr::new(192, 168, 1, 50), 1) // UE IP usage stats
+        // TODO: Fix Additional Usage Reports Information IE structure for 3GPP compliance
+        // .with_additional_flags(true, false) // Request additional interim usage reports
         .build()
         .expect("Failed to build usage report");
 

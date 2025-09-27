@@ -15,20 +15,19 @@ impl SequenceNumber {
         SequenceNumber { value }
     }
 
-    pub fn marshal(&self) -> [u8; 3] {
-        let bytes = self.value.to_be_bytes();
-        [bytes[1], bytes[2], bytes[3]]
+    pub fn marshal(&self) -> [u8; 4] {
+        self.value.to_be_bytes()
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
-        if data.len() < 3 {
+        if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Not enough data for SequenceNumber",
             ));
         }
         Ok(SequenceNumber {
-            value: u32::from_be_bytes([0, data[0], data[1], data[2]]),
+            value: u32::from_be_bytes([data[0], data[1], data[2], data[3]]),
         })
     }
 
@@ -51,7 +50,7 @@ mod tests {
 
     #[test]
     fn test_sequence_number_unmarshal_invalid_data() {
-        let data = [0; 2];
+        let data = [0; 3];  // Less than 4 bytes should fail
         let result = SequenceNumber::unmarshal(&data);
         assert!(result.is_err());
     }
