@@ -44,7 +44,7 @@ impl ApplicationDetectionInformation {
     }
 
     pub fn marshal_len(&self) -> usize {
-        let mut len = 0;
+        let mut len = 1; // flags byte
 
         // Application ID: 1 byte length + string content
         len += 1 + self.application_id.len();
@@ -69,6 +69,16 @@ impl ApplicationDetectionInformation {
     }
 
     pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+        // Marshal flags byte to indicate which optional fields are present
+        let mut flags = 0u8;
+        if self.application_instance_id.is_some() {
+            flags |= 0x01; // Application Instance ID present
+        }
+        if self.flow_information.is_some() {
+            flags |= 0x02; // Flow Information present
+        }
+        buf.push(flags);
+
         // Marshal Application ID (required)
         if self.application_id.len() > 255 {
             return Err(io::Error::new(
@@ -107,14 +117,18 @@ impl ApplicationDetectionInformation {
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
-        if data.is_empty() {
+        if data.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
-                "Application detection information requires at least 1 byte",
+                "Application detection information requires at least 2 bytes",
             ));
         }
 
         let mut cursor = 0;
+
+        // Parse flags byte
+        let flags = data[cursor];
+        cursor += 1;
 
         // Parse Application ID (required)
         if cursor >= data.len() {
@@ -138,55 +152,65 @@ impl ApplicationDetectionInformation {
             })?;
         cursor += app_id_len;
 
-        // Parse Application Instance ID (optional)
+        // Parse Application Instance ID (optional, based on flags)
         let mut application_instance_id = None;
-        if cursor < data.len() {
+        if (flags & 0x01) != 0 {
+            if cursor >= data.len() {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Missing application instance ID length",
+                ));
+            }
             let instance_id_len = data[cursor] as usize;
             cursor += 1;
 
-            if cursor + instance_id_len <= data.len() {
-                let instance_id =
-                    String::from_utf8(data[cursor..cursor + instance_id_len].to_vec()).map_err(
-                        |_| {
-                            io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "Invalid UTF-8 in application instance ID",
-                            )
-                        },
-                    )?;
-                application_instance_id = Some(instance_id);
-                cursor += instance_id_len;
-            } else {
+            if cursor + instance_id_len > data.len() {
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "Insufficient data for application instance ID",
                 ));
             }
+            let instance_id =
+                String::from_utf8(data[cursor..cursor + instance_id_len].to_vec()).map_err(
+                    |_| {
+                        io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "Invalid UTF-8 in application instance ID",
+                        )
+                    },
+                )?;
+            application_instance_id = Some(instance_id);
+            cursor += instance_id_len;
         }
 
-        // Parse Flow Information (optional)
+        // Parse Flow Information (optional, based on flags)
         let mut flow_information = None;
-        if cursor < data.len() {
+        if (flags & 0x02) != 0 {
+            if cursor >= data.len() {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "Missing flow information length",
+                ));
+            }
             let flow_info_len = data[cursor] as usize;
             cursor += 1;
 
-            if cursor + flow_info_len <= data.len() {
-                let flow_info =
-                    String::from_utf8(data[cursor..cursor + flow_info_len].to_vec()).map_err(
-                        |_| {
-                            io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "Invalid UTF-8 in flow information",
-                            )
-                        },
-                    )?;
-                flow_information = Some(flow_info);
-            } else {
+            if cursor + flow_info_len > data.len() {
                 return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "Insufficient data for flow information",
                 ));
             }
+            let flow_info =
+                String::from_utf8(data[cursor..cursor + flow_info_len].to_vec()).map_err(
+                    |_| {
+                        io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "Invalid UTF-8 in flow information",
+                        )
+                    },
+                )?;
+            flow_information = Some(flow_info);
         }
 
         Ok(Self {
@@ -299,6 +323,13 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+
+        // Test with only 1 byte (should also fail)
+        let data = [0x00];
+        let result = ApplicationDetectionInformation::unmarshal(&data);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
     }
 
     #[test]
@@ -322,13 +353,13 @@ mod tests {
     #[test]
     fn test_application_detection_information_marshal_len() {
         let adi = ApplicationDetectionInformation::simple_app("HTTP");
-        assert_eq!(adi.marshal_len(), 1 + 4); // 1 byte length + 4 bytes "HTTP"
+        assert_eq!(adi.marshal_len(), 1 + 1 + 4); // flags + 1 byte length + 4 bytes "HTTP"
 
         let adi2 = ApplicationDetectionInformation::app_with_instance("HTTPS", "session");
-        assert_eq!(adi2.marshal_len(), 1 + 5 + 1 + 7); // "HTTPS" + "session"
+        assert_eq!(adi2.marshal_len(), 1 + 1 + 5 + 1 + 7); // flags + "HTTPS" + "session"
 
         let adi3 = ApplicationDetectionInformation::full_app_detection("FTP", "transfer", "tcp:21");
-        assert_eq!(adi3.marshal_len(), 1 + 3 + 1 + 8 + 1 + 6); // "FTP" + "transfer" + "tcp:21"
+        assert_eq!(adi3.marshal_len(), 1 + 1 + 3 + 1 + 8 + 1 + 6); // flags + "FTP" + "transfer" + "tcp:21"
     }
 
     #[test]
