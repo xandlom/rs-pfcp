@@ -130,6 +130,14 @@ pub trait Message {
     fn sequence(&self) -> u32;
     fn set_sequence(&mut self, seq: u32);
     fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie>;
+    fn find_all_ies(&self, ie_type: crate::ie::IeType) -> Vec<&Ie> {
+        // Default implementation: return single IE as vector or empty vector
+        if let Some(ie) = self.find_ie(ie_type) {
+            vec![ie]
+        } else {
+            vec![]
+        }
+    }
 }
 
 // A generic message for unknown message types.

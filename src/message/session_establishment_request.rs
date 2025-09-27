@@ -213,6 +213,25 @@ impl Message for SessionEstablishmentRequest {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn find_all_ies(&self, ie_type: crate::ie::IeType) -> Vec<&Ie> {
+        match ie_type {
+            IeType::CreatePdr => self.create_pdrs.iter().collect(),
+            IeType::CreateFar => self.create_fars.iter().collect(),
+            IeType::CreateUrr => self.create_urrs.iter().collect(),
+            IeType::CreateQer => self.create_qers.iter().collect(),
+            IeType::CreateBar => self.create_bars.iter().collect(),
+            IeType::CreateTrafficEndpoint => self.create_traffic_endpoints.iter().collect(),
+            _ => {
+                // For other types, return single IE as vector or empty vector
+                if let Some(ie) = self.find_ie(ie_type) {
+                    vec![ie]
+                } else {
+                    vec![]
+                }
+            }
+        }
+    }
 }
 
 pub struct SessionEstablishmentRequestBuilder {

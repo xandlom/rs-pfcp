@@ -66,9 +66,34 @@ impl<T: Message> MessageDisplay for T {
 
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
-            if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{ie_type:?}").to_lowercase();
-                ies_map.insert(ie_name, ie_to_structured_data(ie));
+            // Handle IE types that can have multiple instances
+            match ie_type {
+                IeType::CreatePdr | IeType::CreateFar | IeType::CreateUrr | IeType::CreateQer |
+                IeType::CreatedPdr | IeType::UpdatePdr | IeType::UpdateFar | IeType::UpdateUrr |
+                IeType::UpdateQer | IeType::RemovePdr | IeType::RemoveFar | IeType::RemoveUrr |
+                IeType::RemoveQer => {
+                    let all_ies = self.find_all_ies(ie_type);
+                    if !all_ies.is_empty() {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        if all_ies.len() == 1 {
+                            // Single IE - use same format as before
+                            ies_map.insert(ie_name, ie_to_structured_data(&all_ies[0]));
+                        } else {
+                            // Multiple IEs - create array
+                            let ie_array: Vec<YamlValue> = all_ies.iter()
+                                .map(|ie| ie_to_structured_data(ie))
+                                .collect();
+                            ies_map.insert(ie_name, YamlValue::Sequence(ie_array));
+                        }
+                    }
+                },
+                _ => {
+                    // Single IE types - use existing logic
+                    if let Some(ie) = self.find_ie(ie_type) {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        ies_map.insert(ie_name, ie_to_structured_data(ie));
+                    }
+                }
             }
         }
 
@@ -113,9 +138,34 @@ impl<T: Message> MessageDisplay for T {
 
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
-            if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{ie_type:?}").to_lowercase();
-                ies_map.insert(ie_name, ie_to_json_data(ie));
+            // Handle IE types that can have multiple instances
+            match ie_type {
+                IeType::CreatePdr | IeType::CreateFar | IeType::CreateUrr | IeType::CreateQer |
+                IeType::CreatedPdr | IeType::UpdatePdr | IeType::UpdateFar | IeType::UpdateUrr |
+                IeType::UpdateQer | IeType::RemovePdr | IeType::RemoveFar | IeType::RemoveUrr |
+                IeType::RemoveQer => {
+                    let all_ies = self.find_all_ies(ie_type);
+                    if !all_ies.is_empty() {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        if all_ies.len() == 1 {
+                            // Single IE - use same format as before
+                            ies_map.insert(ie_name, ie_to_json_data(&all_ies[0]));
+                        } else {
+                            // Multiple IEs - create array
+                            let ie_array: Vec<JsonValue> = all_ies.iter()
+                                .map(|ie| ie_to_json_data(ie))
+                                .collect();
+                            ies_map.insert(ie_name, JsonValue::Array(ie_array));
+                        }
+                    }
+                },
+                _ => {
+                    // Single IE types - use existing logic
+                    if let Some(ie) = self.find_ie(ie_type) {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        ies_map.insert(ie_name, ie_to_json_data(ie));
+                    }
+                }
             }
         }
 
@@ -1188,9 +1238,34 @@ impl MessageDisplay for Box<dyn Message> {
 
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
-            if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{ie_type:?}").to_lowercase();
-                ies_map.insert(ie_name, ie_to_structured_data(ie));
+            // Handle IE types that can have multiple instances
+            match ie_type {
+                IeType::CreatePdr | IeType::CreateFar | IeType::CreateUrr | IeType::CreateQer |
+                IeType::CreatedPdr | IeType::UpdatePdr | IeType::UpdateFar | IeType::UpdateUrr |
+                IeType::UpdateQer | IeType::RemovePdr | IeType::RemoveFar | IeType::RemoveUrr |
+                IeType::RemoveQer => {
+                    let all_ies = self.find_all_ies(ie_type);
+                    if !all_ies.is_empty() {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        if all_ies.len() == 1 {
+                            // Single IE - use same format as before
+                            ies_map.insert(ie_name, ie_to_structured_data(&all_ies[0]));
+                        } else {
+                            // Multiple IEs - create array
+                            let ie_array: Vec<YamlValue> = all_ies.iter()
+                                .map(|ie| ie_to_structured_data(ie))
+                                .collect();
+                            ies_map.insert(ie_name, YamlValue::Sequence(ie_array));
+                        }
+                    }
+                },
+                _ => {
+                    // Single IE types - use existing logic
+                    if let Some(ie) = self.find_ie(ie_type) {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        ies_map.insert(ie_name, ie_to_structured_data(ie));
+                    }
+                }
             }
         }
 
@@ -1235,9 +1310,34 @@ impl MessageDisplay for Box<dyn Message> {
 
         // Collect all IEs by iterating through known IE types
         for ie_type in get_common_ie_types() {
-            if let Some(ie) = self.find_ie(ie_type) {
-                let ie_name = format!("{ie_type:?}").to_lowercase();
-                ies_map.insert(ie_name, ie_to_json_data(ie));
+            // Handle IE types that can have multiple instances
+            match ie_type {
+                IeType::CreatePdr | IeType::CreateFar | IeType::CreateUrr | IeType::CreateQer |
+                IeType::CreatedPdr | IeType::UpdatePdr | IeType::UpdateFar | IeType::UpdateUrr |
+                IeType::UpdateQer | IeType::RemovePdr | IeType::RemoveFar | IeType::RemoveUrr |
+                IeType::RemoveQer => {
+                    let all_ies = self.find_all_ies(ie_type);
+                    if !all_ies.is_empty() {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        if all_ies.len() == 1 {
+                            // Single IE - use same format as before
+                            ies_map.insert(ie_name, ie_to_json_data(&all_ies[0]));
+                        } else {
+                            // Multiple IEs - create array
+                            let ie_array: Vec<JsonValue> = all_ies.iter()
+                                .map(|ie| ie_to_json_data(ie))
+                                .collect();
+                            ies_map.insert(ie_name, JsonValue::Array(ie_array));
+                        }
+                    }
+                },
+                _ => {
+                    // Single IE types - use existing logic
+                    if let Some(ie) = self.find_ie(ie_type) {
+                        let ie_name = format!("{ie_type:?}").to_lowercase();
+                        ies_map.insert(ie_name, ie_to_json_data(ie));
+                    }
+                }
             }
         }
 
