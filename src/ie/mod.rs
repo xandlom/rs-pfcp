@@ -67,6 +67,10 @@ pub mod source_interface;
 pub mod source_ip_address;
 pub mod quota_holding_time;
 pub mod start_time;
+pub mod query_urr_reference;
+pub mod additional_usage_reports_information;
+pub mod ue_ip_address_usage_information;
+pub mod application_detection_information;
 pub mod subsequent_time_threshold;
 pub mod subsequent_volume_threshold;
 pub mod suggested_buffering_packets_count;
@@ -196,10 +200,13 @@ pub enum IeType {
     UpdateBar = 116,
     RemoveBar = 117,
     BarId = 118,
+    QueryURRReference = 125,
+    AdditionalUsageReportsInformation = 126,
     CreateTrafficEndpoint = 131,
     UpdateTrafficEndpoint = 132,
     RemoveTrafficEndpoint = 133,
     SourceIPAddress = 192,
+    UEIPAddressUsageInformation = 267,
     Unknown = 0,
 }
 
@@ -294,10 +301,13 @@ impl From<u16> for IeType {
             118 => IeType::BarId,
             108 => IeType::FarId,
             109 => IeType::QerId,
+            125 => IeType::QueryURRReference,
+            126 => IeType::AdditionalUsageReportsInformation,
             131 => IeType::CreateTrafficEndpoint,
             132 => IeType::UpdateTrafficEndpoint,
             133 => IeType::RemoveTrafficEndpoint,
             192 => IeType::SourceIPAddress,
+            267 => IeType::UEIPAddressUsageInformation,
             99 => IeType::PdnType,
             100 => IeType::UserId,
             101 => IeType::Snssai,
