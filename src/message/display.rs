@@ -77,7 +77,7 @@ impl<T: Message> MessageDisplay for T {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
                             // Single IE - use same format as before
-                            ies_map.insert(ie_name, ie_to_structured_data(&all_ies[0]));
+                            ies_map.insert(ie_name, ie_to_structured_data(all_ies[0]));
                         } else {
                             // Multiple IEs - create array
                             let ie_array: Vec<YamlValue> = all_ies.iter()
@@ -149,7 +149,7 @@ impl<T: Message> MessageDisplay for T {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
                             // Single IE - use same format as before
-                            ies_map.insert(ie_name, ie_to_json_data(&all_ies[0]));
+                            ies_map.insert(ie_name, ie_to_json_data(all_ies[0]));
                         } else {
                             // Multiple IEs - create array
                             let ie_array: Vec<JsonValue> = all_ies.iter()
@@ -1249,7 +1249,7 @@ impl MessageDisplay for Box<dyn Message> {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
                             // Single IE - use same format as before
-                            ies_map.insert(ie_name, ie_to_structured_data(&all_ies[0]));
+                            ies_map.insert(ie_name, ie_to_structured_data(all_ies[0]));
                         } else {
                             // Multiple IEs - create array
                             let ie_array: Vec<YamlValue> = all_ies.iter()
@@ -1321,7 +1321,7 @@ impl MessageDisplay for Box<dyn Message> {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
                             // Single IE - use same format as before
-                            ies_map.insert(ie_name, ie_to_json_data(&all_ies[0]));
+                            ies_map.insert(ie_name, ie_to_json_data(all_ies[0]));
                         } else {
                             // Multiple IEs - create array
                             let ie_array: Vec<JsonValue> = all_ies.iter()
