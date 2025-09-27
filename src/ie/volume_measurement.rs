@@ -383,11 +383,7 @@ mod tests {
         let vm = VolumeMeasurement::new(
             0x01, // TOVOL flag set
             None, // but no value provided
-            None,
-            None,
-            None,
-            None,
-            None,
+            None, None, None, None, None,
         );
 
         let result = vm.marshal();

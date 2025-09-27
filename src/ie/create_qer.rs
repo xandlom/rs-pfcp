@@ -36,7 +36,10 @@ impl CreateQer {
         let mut ies = vec![self.qer_id.to_ie()];
 
         if let Some(qer_corr_id) = &self.qer_correlation_id {
-            ies.push(Ie::new(IeType::QerCorrelationId, qer_corr_id.marshal().to_vec()));
+            ies.push(Ie::new(
+                IeType::QerCorrelationId,
+                qer_corr_id.marshal().to_vec(),
+            ));
         }
         if let Some(gate_status) = &self.gate_status {
             ies.push(Ie::new(IeType::GateStatus, gate_status.marshal().to_vec()));
@@ -89,10 +92,7 @@ impl CreateQer {
 
         Ok(CreateQer {
             qer_id: qer_id.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory QER ID IE",
-                )
+                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory QER ID IE")
             })?,
             qer_correlation_id,
             gate_status,
@@ -200,9 +200,9 @@ impl CreateQerBuilder {
     ///
     /// Returns an error if the QER ID is not set.
     pub fn build(self) -> Result<CreateQer, io::Error> {
-        let qer_id = self.qer_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "QER ID is required")
-        })?;
+        let qer_id = self
+            .qer_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "QER ID is required"))?;
 
         Ok(CreateQer {
             qer_id,
@@ -218,8 +218,10 @@ impl CreateQerBuilder {
     /// This is a common pattern for allowing traffic to flow freely.
     pub fn open_gate(qer_id: QerId) -> Self {
         use crate::ie::gate_status::{GateStatus, GateStatusValue};
-        CreateQerBuilder::new(qer_id)
-            .gate_status(GateStatus::new(GateStatusValue::Open, GateStatusValue::Open))
+        CreateQerBuilder::new(qer_id).gate_status(GateStatus::new(
+            GateStatusValue::Open,
+            GateStatusValue::Open,
+        ))
     }
 
     /// Creates a QER builder with closed gates for both directions.
@@ -227,8 +229,10 @@ impl CreateQerBuilder {
     /// This is a common pattern for blocking all traffic.
     pub fn closed_gate(qer_id: QerId) -> Self {
         use crate::ie::gate_status::{GateStatus, GateStatusValue};
-        CreateQerBuilder::new(qer_id)
-            .gate_status(GateStatus::new(GateStatusValue::Closed, GateStatusValue::Closed))
+        CreateQerBuilder::new(qer_id).gate_status(GateStatus::new(
+            GateStatusValue::Closed,
+            GateStatusValue::Closed,
+        ))
     }
 
     /// Creates a QER builder with uplink open, downlink closed.
@@ -236,8 +240,10 @@ impl CreateQerBuilder {
     /// This is useful for download-only scenarios.
     pub fn downlink_only(qer_id: QerId) -> Self {
         use crate::ie::gate_status::{GateStatus, GateStatusValue};
-        CreateQerBuilder::new(qer_id)
-            .gate_status(GateStatus::new(GateStatusValue::Closed, GateStatusValue::Open))
+        CreateQerBuilder::new(qer_id).gate_status(GateStatus::new(
+            GateStatusValue::Closed,
+            GateStatusValue::Open,
+        ))
     }
 
     /// Creates a QER builder with downlink open, uplink closed.
@@ -245,14 +251,15 @@ impl CreateQerBuilder {
     /// This is useful for upload-only scenarios.
     pub fn uplink_only(qer_id: QerId) -> Self {
         use crate::ie::gate_status::{GateStatus, GateStatusValue};
-        CreateQerBuilder::new(qer_id)
-            .gate_status(GateStatus::new(GateStatusValue::Open, GateStatusValue::Closed))
+        CreateQerBuilder::new(qer_id).gate_status(GateStatus::new(
+            GateStatusValue::Open,
+            GateStatusValue::Closed,
+        ))
     }
 
     /// Creates a QER builder with rate limiting for both directions.
     pub fn with_rate_limit(qer_id: QerId, uplink_bps: u64, downlink_bps: u64) -> Self {
-        CreateQerBuilder::open_gate(qer_id)
-            .rate_limit(uplink_bps, downlink_bps)
+        CreateQerBuilder::open_gate(qer_id).rate_limit(uplink_bps, downlink_bps)
     }
 }
 
@@ -459,7 +466,9 @@ mod tests {
     #[test]
     fn test_builder_closed_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::closed_gate(qer_id.clone()).build().unwrap();
+        let qer = CreateQerBuilder::closed_gate(qer_id.clone())
+            .build()
+            .unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -471,7 +480,9 @@ mod tests {
     #[test]
     fn test_builder_downlink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::downlink_only(qer_id.clone()).build().unwrap();
+        let qer = CreateQerBuilder::downlink_only(qer_id.clone())
+            .build()
+            .unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -483,7 +494,9 @@ mod tests {
     #[test]
     fn test_builder_uplink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::uplink_only(qer_id.clone()).build().unwrap();
+        let qer = CreateQerBuilder::uplink_only(qer_id.clone())
+            .build()
+            .unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -517,7 +530,10 @@ mod tests {
         let qer_id = QerId::new(42);
         let original = CreateQerBuilder::new(qer_id.clone())
             .qer_correlation_id(QerCorrelationId::new(0x87654321))
-            .gate_status(GateStatus::new(GateStatusValue::Closed, GateStatusValue::Open))
+            .gate_status(GateStatus::new(
+                GateStatusValue::Closed,
+                GateStatusValue::Open,
+            ))
             .rate_limit(500000, 1500000)
             .guaranteed_rate(250000, 750000)
             .build()

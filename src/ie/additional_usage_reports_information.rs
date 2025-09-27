@@ -191,7 +191,12 @@ mod tests {
         let no_interim = AdditionalUsageReportsInformation::with_nouri(); // No additional interim usage report
         let complex_scenario = AdditionalUsageReportsInformation::with_both_flags(); // Both flags
 
-        for scenario in [standard_report, additional_interim, no_interim, complex_scenario] {
+        for scenario in [
+            standard_report,
+            additional_interim,
+            no_interim,
+            complex_scenario,
+        ] {
             let data = scenario.marshal().unwrap();
             let unmarshaled = AdditionalUsageReportsInformation::unmarshal(&data).unwrap();
             assert_eq!(scenario, unmarshaled);

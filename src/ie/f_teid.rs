@@ -326,9 +326,9 @@ impl FteidBuilder {
     /// - Both explicit address and CHOOSE flag are set for the same IP version
     /// - CHOOSE ID is set but no CHOOSE flags are enabled
     pub fn build(self) -> Result<Fteid, io::Error> {
-        let teid = self.teid.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "TEID is required")
-        })?;
+        let teid = self
+            .teid
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "TEID is required"))?;
 
         // Validate IPv4 configuration
         if self.ipv4_address.is_some() && self.choose_ipv4 {
@@ -820,12 +820,13 @@ mod tests {
 
     #[test]
     fn test_fteid_builder_no_ip_method() {
-        let result = FteidBuilder::new()
-            .teid(0x12345678)
-            .build();
+        let result = FteidBuilder::new().teid(0x12345678).build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("At least one IP addressing method"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("At least one IP addressing method"));
     }
 
     #[test]
@@ -837,7 +838,10 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot specify both explicit IPv4 address and CHOOSE IPv4 flag"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot specify both explicit IPv4 address and CHOOSE IPv4 flag"));
     }
 
     #[test]
@@ -849,7 +853,10 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot specify both explicit IPv6 address and CHOOSE IPv6 flag"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot specify both explicit IPv6 address and CHOOSE IPv6 flag"));
     }
 
     #[test]
@@ -861,7 +868,10 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("CHOOSE ID can only be used with CHOOSE flags"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("CHOOSE ID can only be used with CHOOSE flags"));
     }
 
     // Convenience method tests

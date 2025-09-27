@@ -148,7 +148,10 @@ impl ApplicationDetectionInformation {
         }
         let application_id = String::from_utf8(data[cursor..cursor + app_id_len].to_vec())
             .map_err(|_| {
-                io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 in application ID")
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid UTF-8 in application ID",
+                )
             })?;
         cursor += app_id_len;
 
@@ -170,15 +173,13 @@ impl ApplicationDetectionInformation {
                     "Insufficient data for application instance ID",
                 ));
             }
-            let instance_id =
-                String::from_utf8(data[cursor..cursor + instance_id_len].to_vec()).map_err(
-                    |_| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Invalid UTF-8 in application instance ID",
-                        )
-                    },
-                )?;
+            let instance_id = String::from_utf8(data[cursor..cursor + instance_id_len].to_vec())
+                .map_err(|_| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid UTF-8 in application instance ID",
+                    )
+                })?;
             application_instance_id = Some(instance_id);
             cursor += instance_id_len;
         }
@@ -201,15 +202,13 @@ impl ApplicationDetectionInformation {
                     "Insufficient data for flow information",
                 ));
             }
-            let flow_info =
-                String::from_utf8(data[cursor..cursor + flow_info_len].to_vec()).map_err(
-                    |_| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Invalid UTF-8 in flow information",
-                        )
-                    },
-                )?;
+            let flow_info = String::from_utf8(data[cursor..cursor + flow_info_len].to_vec())
+                .map_err(|_| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid UTF-8 in flow information",
+                    )
+                })?;
             flow_information = Some(flow_info);
         }
 
@@ -235,7 +234,11 @@ mod tests {
         let app_id = "HTTP".to_string();
         let instance_id = Some("session_123".to_string());
         let flow_info = Some("tcp:80".to_string());
-        let adi = ApplicationDetectionInformation::new(app_id.clone(), instance_id.clone(), flow_info.clone());
+        let adi = ApplicationDetectionInformation::new(
+            app_id.clone(),
+            instance_id.clone(),
+            flow_info.clone(),
+        );
 
         assert_eq!(adi.application_id, app_id);
         assert_eq!(adi.application_instance_id, instance_id);
@@ -253,33 +256,61 @@ mod tests {
 
     #[test]
     fn test_application_detection_information_convenience_constructors() {
-        let app_with_instance = ApplicationDetectionInformation::app_with_instance("YouTube", "video_session_456");
+        let app_with_instance =
+            ApplicationDetectionInformation::app_with_instance("YouTube", "video_session_456");
         assert_eq!(app_with_instance.application_id, "YouTube");
-        assert_eq!(app_with_instance.application_instance_id, Some("video_session_456".to_string()));
+        assert_eq!(
+            app_with_instance.application_instance_id,
+            Some("video_session_456".to_string())
+        );
         assert!(app_with_instance.flow_information.is_none());
 
-        let app_with_flow = ApplicationDetectionInformation::app_with_flow_info("Netflix", "tcp:443,udp:53");
+        let app_with_flow =
+            ApplicationDetectionInformation::app_with_flow_info("Netflix", "tcp:443,udp:53");
         assert_eq!(app_with_flow.application_id, "Netflix");
         assert!(app_with_flow.application_instance_id.is_none());
-        assert_eq!(app_with_flow.flow_information, Some("tcp:443,udp:53".to_string()));
+        assert_eq!(
+            app_with_flow.flow_information,
+            Some("tcp:443,udp:53".to_string())
+        );
 
-        let full_app = ApplicationDetectionInformation::full_app_detection("WhatsApp", "chat_789", "tcp:443,udp:5222");
+        let full_app = ApplicationDetectionInformation::full_app_detection(
+            "WhatsApp",
+            "chat_789",
+            "tcp:443,udp:5222",
+        );
         assert_eq!(full_app.application_id, "WhatsApp");
-        assert_eq!(full_app.application_instance_id, Some("chat_789".to_string()));
-        assert_eq!(full_app.flow_information, Some("tcp:443,udp:5222".to_string()));
+        assert_eq!(
+            full_app.application_instance_id,
+            Some("chat_789".to_string())
+        );
+        assert_eq!(
+            full_app.flow_information,
+            Some("tcp:443,udp:5222".to_string())
+        );
     }
 
     #[test]
     fn test_application_detection_information_marshal_unmarshal() {
-        let adi = ApplicationDetectionInformation::full_app_detection("Facebook", "timeline_abc", "tcp:80,tcp:443");
+        let adi = ApplicationDetectionInformation::full_app_detection(
+            "Facebook",
+            "timeline_abc",
+            "tcp:80,tcp:443",
+        );
 
         let data = adi.marshal().unwrap();
         let unmarshaled = ApplicationDetectionInformation::unmarshal(&data).unwrap();
 
         assert_eq!(adi, unmarshaled);
         assert_eq!(unmarshaled.application_id, "Facebook");
-        assert_eq!(unmarshaled.application_instance_id, Some("timeline_abc".to_string()));
-        assert_eq!(unmarshaled.flow_information, Some("tcp:80,tcp:443".to_string()));
+        assert_eq!(
+            unmarshaled.application_instance_id,
+            Some("timeline_abc".to_string())
+        );
+        assert_eq!(
+            unmarshaled.flow_information,
+            Some("tcp:80,tcp:443".to_string())
+        );
     }
 
     #[test]
@@ -304,7 +335,10 @@ mod tests {
 
         assert_eq!(adi, unmarshaled);
         assert_eq!(unmarshaled.application_id, "Skype");
-        assert_eq!(unmarshaled.application_instance_id, Some("call_xyz".to_string()));
+        assert_eq!(
+            unmarshaled.application_instance_id,
+            Some("call_xyz".to_string())
+        );
         assert!(unmarshaled.flow_information.is_none());
     }
 
@@ -365,11 +399,18 @@ mod tests {
     #[test]
     fn test_application_detection_information_real_world_scenarios() {
         // Test common DPI detection scenarios
-        let web_browsing = ApplicationDetectionInformation::app_with_flow_info("HTTP", "tcp:80,tcp:8080");
-        let video_streaming = ApplicationDetectionInformation::full_app_detection("YouTube", "video_4k_stream", "tcp:443,udp:443");
-        let social_media = ApplicationDetectionInformation::app_with_instance("Instagram", "mobile_app_session");
+        let web_browsing =
+            ApplicationDetectionInformation::app_with_flow_info("HTTP", "tcp:80,tcp:8080");
+        let video_streaming = ApplicationDetectionInformation::full_app_detection(
+            "YouTube",
+            "video_4k_stream",
+            "tcp:443,udp:443",
+        );
+        let social_media =
+            ApplicationDetectionInformation::app_with_instance("Instagram", "mobile_app_session");
         let gaming = ApplicationDetectionInformation::simple_app("Fortnite");
-        let voip = ApplicationDetectionInformation::app_with_flow_info("SIP", "udp:5060,rtp:10000-20000");
+        let voip =
+            ApplicationDetectionInformation::app_with_flow_info("SIP", "udp:5060,rtp:10000-20000");
 
         for scenario in [web_browsing, video_streaming, social_media, gaming, voip] {
             let data = scenario.marshal().unwrap();

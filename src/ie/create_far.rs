@@ -310,9 +310,9 @@ impl CreateFarBuilder {
     /// - FORW action without forwarding parameters
     /// - DUPL action without duplicating parameters
     pub fn build(self) -> Result<CreateFar, io::Error> {
-        let far_id = self.far_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "FAR ID is required")
-        })?;
+        let far_id = self
+            .far_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "FAR ID is required"))?;
 
         let apply_action = self.apply_action.ok_or_else(|| {
             io::Error::new(io::ErrorKind::InvalidData, "Apply Action is required")
@@ -336,7 +336,7 @@ impl CreateFarBuilder {
         if apply_action.contains(ApplyAction::BUFF) && self.bar_id.is_none() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "BUFF action requires BAR ID to be set"
+                "BUFF action requires BAR ID to be set",
             ));
         }
 
@@ -656,9 +656,7 @@ mod tests {
     #[test]
     fn test_builder_convenience_drop_traffic() {
         let far_id = FarId::new(102);
-        let far = CreateFarBuilder::drop_traffic(far_id)
-            .build()
-            .unwrap();
+        let far = CreateFarBuilder::drop_traffic(far_id).build().unwrap();
 
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::DROP);
@@ -682,16 +680,17 @@ mod tests {
     #[test]
     fn test_builder_convenience_uplink_to_core() {
         let far_id = FarId::new(104);
-        let far = CreateFarBuilder::uplink_to_core(far_id)
-            .build()
-            .unwrap();
+        let far = CreateFarBuilder::uplink_to_core(far_id).build().unwrap();
 
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
         assert!(far.forwarding_parameters.is_some());
 
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Core);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Core
+        );
     }
 
     #[test]
@@ -706,22 +705,26 @@ mod tests {
         assert!(far.forwarding_parameters.is_some());
 
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Access);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Access
+        );
     }
 
     #[test]
     fn test_builder_convenience_to_data_network() {
         let far_id = FarId::new(106);
-        let far = CreateFarBuilder::to_data_network(far_id)
-            .build()
-            .unwrap();
+        let far = CreateFarBuilder::to_data_network(far_id).build().unwrap();
 
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
         assert!(far.forwarding_parameters.is_some());
 
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Dn);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Dn
+        );
     }
 
     #[test]
@@ -736,7 +739,10 @@ mod tests {
         assert!(far.forwarding_parameters.is_some());
 
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Core);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Core
+        );
     }
 
     #[test]
@@ -800,7 +806,10 @@ mod tests {
         assert!(far.forwarding_parameters.is_some());
 
         let forwarding_params = far.forwarding_parameters.unwrap();
-        assert_eq!(forwarding_params.destination_interface.interface, Interface::Dn);
+        assert_eq!(
+            forwarding_params.destination_interface.interface,
+            Interface::Dn
+        );
         assert_eq!(forwarding_params.network_instance, Some(network_instance));
     }
 }

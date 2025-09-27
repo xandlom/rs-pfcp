@@ -310,12 +310,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             .unwrap();
 
         // Create new FAR for modified traffic with buffering capability
-        let modified_far = CreateFarBuilder::buffer_traffic(
-            FarId::new(3),
-            rs_pfcp::ie::bar_id::BarId::new(1)
-        )
-        .build()
-        .unwrap();
+        let modified_far =
+            CreateFarBuilder::buffer_traffic(FarId::new(3), rs_pfcp::ie::bar_id::BarId::new(1))
+                .build()
+                .unwrap();
 
         // Create new QER with different QoS settings (e.g., restricted bandwidth)
         let modified_qer = CreateQer::with_rate_limit(
@@ -361,10 +359,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("✅ Directional QERs created: uplink-only + downlink-only");
 
             // Example 3: Advanced FAR with forwarding and duplication
-            let _intercept_far = CreateFarBuilder::forward_and_duplicate(
-                FarId::new(200),
-                Interface::Core
-            ).build().unwrap();
+            let _intercept_far =
+                CreateFarBuilder::forward_and_duplicate(FarId::new(200), Interface::Core)
+                    .build()
+                    .unwrap();
             println!("✅ Lawful intercept FAR created: forward + duplicate");
 
             // Example 4: PDI for SGi-LAN interface with comprehensive setup

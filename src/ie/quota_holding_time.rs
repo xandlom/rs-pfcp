@@ -9,7 +9,9 @@ pub struct QuotaHoldingTime {
 
 impl QuotaHoldingTime {
     pub fn new(holding_time_seconds: u32) -> Self {
-        Self { holding_time_seconds }
+        Self {
+            holding_time_seconds,
+        }
     }
 
     pub fn marshal_len(&self) -> usize {
@@ -38,7 +40,9 @@ impl QuotaHoldingTime {
         let bytes: [u8; 4] = data[0..4].try_into().unwrap();
         let holding_time_seconds = u32::from_be_bytes(bytes);
 
-        Ok(Self { holding_time_seconds })
+        Ok(Self {
+            holding_time_seconds,
+        })
     }
 
     pub fn to_ie(&self) -> Result<Ie, io::Error> {
@@ -153,7 +157,13 @@ mod tests {
         let ten_minutes = QuotaHoldingTime::new(600);
         let one_hour = QuotaHoldingTime::new(3600);
 
-        for holding_time in [thirty_seconds, one_minute, five_minutes, ten_minutes, one_hour] {
+        for holding_time in [
+            thirty_seconds,
+            one_minute,
+            five_minutes,
+            ten_minutes,
+            one_hour,
+        ] {
             let data = holding_time.marshal().unwrap();
             let unmarshaled = QuotaHoldingTime::unmarshal(&data).unwrap();
             assert_eq!(holding_time, unmarshaled);

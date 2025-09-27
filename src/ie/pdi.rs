@@ -226,7 +226,7 @@ impl PdiBuilder {
         let source_interface = self.source_interface.ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "Source Interface is required for PDI"
+                "Source Interface is required for PDI",
             )
         })?;
 
@@ -327,19 +327,17 @@ impl Pdi {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
     use crate::ie::f_teid::FteidBuilder;
     use crate::ie::network_instance::NetworkInstance;
-    use crate::ie::ue_ip_address::UeIpAddress;
     use crate::ie::sdf_filter::SdfFilter;
+    use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+    use crate::ie::ue_ip_address::UeIpAddress;
     use std::net::Ipv4Addr;
 
     #[test]
     fn test_pdi_builder_basic() {
         let source_interface = SourceInterface::new(SourceInterfaceValue::Access);
-        let pdi = PdiBuilder::new(source_interface)
-            .build()
-            .unwrap();
+        let pdi = PdiBuilder::new(source_interface).build().unwrap();
 
         assert_eq!(pdi.source_interface, source_interface);
         assert!(pdi.f_teid.is_none());
@@ -513,16 +511,17 @@ mod tests {
     fn test_pdi_builder_missing_source_interface() {
         let result = PdiBuilder::default().build();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Source Interface is required"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Source Interface is required"));
     }
 
     // Convenience method tests
 
     #[test]
     fn test_pdi_builder_uplink_access() {
-        let pdi = PdiBuilder::uplink_access()
-            .build()
-            .unwrap();
+        let pdi = PdiBuilder::uplink_access().build().unwrap();
 
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Access);
         assert!(pdi.f_teid.is_none());
@@ -539,9 +538,7 @@ mod tests {
 
     #[test]
     fn test_pdi_builder_downlink_core() {
-        let pdi = PdiBuilder::downlink_core()
-            .build()
-            .unwrap();
+        let pdi = PdiBuilder::downlink_core().build().unwrap();
 
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Core);
         assert!(pdi.f_teid.is_none());
@@ -558,9 +555,7 @@ mod tests {
 
     #[test]
     fn test_pdi_builder_sgi_lan() {
-        let pdi = PdiBuilder::sgi_lan()
-            .build()
-            .unwrap();
+        let pdi = PdiBuilder::sgi_lan().build().unwrap();
 
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::SgiLan);
         assert!(pdi.f_teid.is_none());
@@ -577,9 +572,7 @@ mod tests {
 
     #[test]
     fn test_pdi_builder_cp_function() {
-        let pdi = PdiBuilder::cp_function()
-            .build()
-            .unwrap();
+        let pdi = PdiBuilder::cp_function().build().unwrap();
 
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::CpFunction);
         assert!(pdi.f_teid.is_none());
@@ -743,7 +736,7 @@ mod tests {
             .teid(0xDEADBEEF)
             .dual_stack(
                 Ipv4Addr::new(192, 168, 1, 100),
-                "2001:db8::100".parse().unwrap()
+                "2001:db8::100".parse().unwrap(),
             )
             .build()
             .unwrap();

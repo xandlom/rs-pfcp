@@ -241,7 +241,7 @@ mod tests {
         let ueip = UEIPAddressUsageInformation::with_dual_stack(
             Ipv4Addr::new(192, 168, 1, 100),
             "2001:db8::100".parse().unwrap(),
-            10
+            10,
         );
 
         assert!(ueip.has_ipv4());

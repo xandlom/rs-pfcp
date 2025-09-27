@@ -1,22 +1,22 @@
 // src/ie/usage_report.rs
 
-use crate::ie::sequence_number::SequenceNumber;
-use crate::ie::urr_id::UrrId;
-use crate::ie::usage_report_trigger::UsageReportTrigger;
-use crate::ie::volume_measurement::VolumeMeasurement;
+use crate::ie::additional_usage_reports_information::AdditionalUsageReportsInformation;
+use crate::ie::application_detection_information::ApplicationDetectionInformation;
 use crate::ie::duration_measurement::DurationMeasurement;
-use crate::ie::time_of_first_packet::TimeOfFirstPacket;
-use crate::ie::time_of_last_packet::TimeOfLastPacket;
-use crate::ie::usage_information::UsageInformation;
-use crate::ie::volume_quota::VolumeQuota;
-use crate::ie::time_quota::TimeQuota;
-use crate::ie::quota_holding_time::QuotaHoldingTime;
-use crate::ie::start_time::StartTime;
 use crate::ie::end_time::EndTime;
 use crate::ie::query_urr_reference::QueryURRReference;
-use crate::ie::application_detection_information::ApplicationDetectionInformation;
+use crate::ie::quota_holding_time::QuotaHoldingTime;
+use crate::ie::sequence_number::SequenceNumber;
+use crate::ie::start_time::StartTime;
+use crate::ie::time_of_first_packet::TimeOfFirstPacket;
+use crate::ie::time_of_last_packet::TimeOfLastPacket;
+use crate::ie::time_quota::TimeQuota;
 use crate::ie::ue_ip_address_usage_information::UEIPAddressUsageInformation;
-use crate::ie::additional_usage_reports_information::AdditionalUsageReportsInformation;
+use crate::ie::urr_id::UrrId;
+use crate::ie::usage_information::UsageInformation;
+use crate::ie::usage_report_trigger::UsageReportTrigger;
+use crate::ie::volume_measurement::VolumeMeasurement;
+use crate::ie::volume_quota::VolumeQuota;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -207,32 +207,27 @@ impl UsageReport {
                 IeType::UsageInformation => {
                     usage_information = Some(UsageInformation::unmarshal(&ie.payload)?)
                 }
-                IeType::VolumeQuota => {
-                    volume_quota = Some(VolumeQuota::unmarshal(&ie.payload)?)
-                }
-                IeType::TimeQuota => {
-                    time_quota = Some(TimeQuota::unmarshal(&ie.payload)?)
-                }
+                IeType::VolumeQuota => volume_quota = Some(VolumeQuota::unmarshal(&ie.payload)?),
+                IeType::TimeQuota => time_quota = Some(TimeQuota::unmarshal(&ie.payload)?),
                 IeType::QuotaHoldingTime => {
                     quota_holding_time = Some(QuotaHoldingTime::unmarshal(&ie.payload)?)
                 }
-                IeType::StartTime => {
-                    start_time = Some(StartTime::unmarshal(&ie.payload)?)
-                }
-                IeType::EndTime => {
-                    end_time = Some(EndTime::unmarshal(&ie.payload)?)
-                }
+                IeType::StartTime => start_time = Some(StartTime::unmarshal(&ie.payload)?),
+                IeType::EndTime => end_time = Some(EndTime::unmarshal(&ie.payload)?),
                 IeType::QueryURRReference => {
                     query_urr_reference = Some(QueryURRReference::unmarshal(&ie.payload)?)
                 }
                 IeType::ApplicationDetectionInformation => {
-                    application_detection_information = Some(ApplicationDetectionInformation::unmarshal(&ie.payload)?)
+                    application_detection_information =
+                        Some(ApplicationDetectionInformation::unmarshal(&ie.payload)?)
                 }
                 IeType::UEIPAddressUsageInformation => {
-                    ue_ip_address_usage_information = Some(UEIPAddressUsageInformation::unmarshal(&ie.payload)?)
+                    ue_ip_address_usage_information =
+                        Some(UEIPAddressUsageInformation::unmarshal(&ie.payload)?)
                 }
                 IeType::AdditionalUsageReportsInformation => {
-                    additional_usage_reports_information = Some(AdditionalUsageReportsInformation::unmarshal(&ie.payload)?)
+                    additional_usage_reports_information =
+                        Some(AdditionalUsageReportsInformation::unmarshal(&ie.payload)?)
                 }
                 _ => (),
             }
@@ -836,7 +831,10 @@ impl UsageReportBuilder {
     /// # Arguments
     ///
     /// * `application_detection_information` - DPI results and application info
-    pub fn application_detection_information(mut self, application_detection_information: ApplicationDetectionInformation) -> Self {
+    pub fn application_detection_information(
+        mut self,
+        application_detection_information: ApplicationDetectionInformation,
+    ) -> Self {
         self.application_detection_information = Some(application_detection_information);
         self
     }
@@ -846,7 +844,10 @@ impl UsageReportBuilder {
     /// # Arguments
     ///
     /// * `ue_ip_address_usage_information` - UE IP usage statistics
-    pub fn ue_ip_address_usage_information(mut self, ue_ip_address_usage_information: UEIPAddressUsageInformation) -> Self {
+    pub fn ue_ip_address_usage_information(
+        mut self,
+        ue_ip_address_usage_information: UEIPAddressUsageInformation,
+    ) -> Self {
         self.ue_ip_address_usage_information = Some(ue_ip_address_usage_information);
         self
     }
@@ -856,7 +857,10 @@ impl UsageReportBuilder {
     /// # Arguments
     ///
     /// * `additional_usage_reports_information` - Additional usage report flags
-    pub fn additional_usage_reports_information(mut self, additional_usage_reports_information: AdditionalUsageReportsInformation) -> Self {
+    pub fn additional_usage_reports_information(
+        mut self,
+        additional_usage_reports_information: AdditionalUsageReportsInformation,
+    ) -> Self {
         self.additional_usage_reports_information = Some(additional_usage_reports_information);
         self
     }
@@ -879,7 +883,8 @@ impl UsageReportBuilder {
     ///
     /// * `app_id` - The application identifier string
     pub fn with_detected_application(mut self, app_id: &str) -> Self {
-        self.application_detection_information = Some(ApplicationDetectionInformation::simple_app(app_id));
+        self.application_detection_information =
+            Some(ApplicationDetectionInformation::simple_app(app_id));
         self
     }
 
@@ -890,7 +895,9 @@ impl UsageReportBuilder {
     /// * `app_id` - The application identifier
     /// * `instance_id` - The application instance identifier
     pub fn with_application_instance(mut self, app_id: &str, instance_id: &str) -> Self {
-        self.application_detection_information = Some(ApplicationDetectionInformation::app_with_instance(app_id, instance_id));
+        self.application_detection_information = Some(
+            ApplicationDetectionInformation::app_with_instance(app_id, instance_id),
+        );
         self
     }
 
@@ -901,7 +908,8 @@ impl UsageReportBuilder {
     /// * `ipv4` - The IPv4 address
     /// * `count` - Number of UE IP addresses
     pub fn with_ue_ipv4_usage(mut self, ipv4: std::net::Ipv4Addr, count: u32) -> Self {
-        self.ue_ip_address_usage_information = Some(UEIPAddressUsageInformation::with_ipv4(ipv4, count));
+        self.ue_ip_address_usage_information =
+            Some(UEIPAddressUsageInformation::with_ipv4(ipv4, count));
         self
     }
 
@@ -913,7 +921,8 @@ impl UsageReportBuilder {
     /// * `nouri` - No additional interim usage report flag
     pub fn with_additional_flags(mut self, auri: bool, nouri: bool) -> Self {
         let flags = if auri { 0x01 } else { 0x00 } | if nouri { 0x02 } else { 0x00 };
-        self.additional_usage_reports_information = Some(AdditionalUsageReportsInformation::new(flags));
+        self.additional_usage_reports_information =
+            Some(AdditionalUsageReportsInformation::new(flags));
         self
     }
 }
@@ -1232,7 +1241,10 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(usage_report.duration_measurement, Some(duration_measurement));
+        assert_eq!(
+            usage_report.duration_measurement,
+            Some(duration_measurement)
+        );
 
         // Test marshal/unmarshal round trip
         let marshaled = usage_report.marshal();
@@ -1253,7 +1265,10 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(usage_report.time_of_first_packet, Some(time_of_first_packet));
+        assert_eq!(
+            usage_report.time_of_first_packet,
+            Some(time_of_first_packet)
+        );
 
         // Test marshal/unmarshal round trip
         let marshaled = usage_report.marshal();
@@ -1333,8 +1348,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(usage_report.volume_measurement, Some(volume_measurement));
-        assert_eq!(usage_report.duration_measurement, Some(duration_measurement));
-        assert_eq!(usage_report.time_of_first_packet, Some(time_of_first_packet));
+        assert_eq!(
+            usage_report.duration_measurement,
+            Some(duration_measurement)
+        );
+        assert_eq!(
+            usage_report.time_of_first_packet,
+            Some(time_of_first_packet)
+        );
         assert_eq!(usage_report.time_of_last_packet, Some(time_of_last_packet));
         assert_eq!(usage_report.usage_information, Some(usage_information));
 
@@ -1420,17 +1441,15 @@ mod tests {
     #[test]
     fn test_usage_report_comprehensive_measurement_scenario() {
         // Simulate a realistic quota exhaustion scenario with all measurements
-        let usage_report = UsageReportBuilder::quota_exhausted_report(
-            UrrId::new(99),
-            SequenceNumber::new(255)
-        )
-        .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total, 3GB up, 2GB down
-        .with_packet_data(5000000, 3000000, 2000000) // 5M packets total
-        .with_duration(3600) // 1 hour session
-        .with_packet_times(0x60000000, 0x60000E10) // Session timestamps
-        .with_usage_flags(false, true, false, true) // After enforcement, before enforcement
-        .build()
-        .unwrap();
+        let usage_report =
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(99), SequenceNumber::new(255))
+                .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total, 3GB up, 2GB down
+                .with_packet_data(5000000, 3000000, 2000000) // 5M packets total
+                .with_duration(3600) // 1 hour session
+                .with_packet_times(0x60000000, 0x60000E10) // Session timestamps
+                .with_usage_flags(false, true, false, true) // After enforcement, before enforcement
+                .build()
+                .unwrap();
 
         // Verify trigger
         assert_eq!(
@@ -1697,22 +1716,20 @@ mod tests {
     #[test]
     fn test_usage_report_comprehensive_phase1_and_phase2_scenario() {
         // Simulate a complete quota exhaustion scenario with both Phase 1 and Phase 2 IEs
-        let usage_report = UsageReportBuilder::quota_exhausted_report(
-            UrrId::new(99),
-            SequenceNumber::new(255)
-        )
-        // Phase 1 measurements
-        .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total usage
-        .with_duration(3600) // 1 hour session
-        .with_packet_times(0x60000000, 0x60000E10) // Session timestamps
-        .with_usage_flags(false, true, false, true) // After enforcement flags
-        // Phase 2 quotas and timing
-        .with_volume_quota(5000000000, 3000000000, 2000000000) // Same as measurement (quota exhausted)
-        .with_time_quota(3600) // 1 hour time quota
-        .with_quota_holding_time(300) // 5 minute holding time
-        .with_monitoring_window(0x60000000, 0x60000E10) // Monitoring period
-        .build()
-        .unwrap();
+        let usage_report =
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(99), SequenceNumber::new(255))
+                // Phase 1 measurements
+                .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total usage
+                .with_duration(3600) // 1 hour session
+                .with_packet_times(0x60000000, 0x60000E10) // Session timestamps
+                .with_usage_flags(false, true, false, true) // After enforcement flags
+                // Phase 2 quotas and timing
+                .with_volume_quota(5000000000, 3000000000, 2000000000) // Same as measurement (quota exhausted)
+                .with_time_quota(3600) // 1 hour time quota
+                .with_quota_holding_time(300) // 5 minute holding time
+                .with_monitoring_window(0x60000000, 0x60000E10) // Monitoring period
+                .build()
+                .unwrap();
 
         // Verify all Phase 1 measurements are present
         assert!(usage_report.volume_measurement.is_some());
@@ -1867,7 +1884,9 @@ mod tests {
         let adi_report = UsageReportBuilder::new(UrrId::new(2))
             .sequence_number(SequenceNumber::new(2))
             .stop_of_traffic()
-            .application_detection_information(ApplicationDetectionInformation::simple_app("YouTube"))
+            .application_detection_information(ApplicationDetectionInformation::simple_app(
+                "YouTube",
+            ))
             .build()
             .unwrap();
 
@@ -1881,7 +1900,7 @@ mod tests {
             .quota_exhausted()
             .ue_ip_address_usage_information(UEIPAddressUsageInformation::with_ipv4(
                 Ipv4Addr::new(192, 168, 1, 100),
-                5
+                5,
             ))
             .build()
             .unwrap();
@@ -1914,21 +1933,29 @@ mod tests {
             .application_detection_information(ApplicationDetectionInformation::full_app_detection(
                 "Netflix",
                 "video_session_123",
-                "tcp:443,udp:443"
+                "tcp:443,udp:443",
             ))
             .ue_ip_address_usage_information(UEIPAddressUsageInformation::with_ipv4(
                 Ipv4Addr::new(10, 0, 0, 1),
-                10
+                10,
             ))
-            .additional_usage_reports_information(AdditionalUsageReportsInformation::with_both_flags())
+            .additional_usage_reports_information(
+                AdditionalUsageReportsInformation::with_both_flags(),
+            )
             .build()
             .unwrap();
 
         // Verify all Phase 3 fields are present
         assert!(comprehensive_report.query_urr_reference.is_some());
-        assert!(comprehensive_report.application_detection_information.is_some());
-        assert!(comprehensive_report.ue_ip_address_usage_information.is_some());
-        assert!(comprehensive_report.additional_usage_reports_information.is_some());
+        assert!(comprehensive_report
+            .application_detection_information
+            .is_some());
+        assert!(comprehensive_report
+            .ue_ip_address_usage_information
+            .is_some());
+        assert!(comprehensive_report
+            .additional_usage_reports_information
+            .is_some());
 
         // Test marshal/unmarshal round trip
         let marshaled = comprehensive_report.marshal();
@@ -1939,16 +1966,25 @@ mod tests {
         let qur = comprehensive_report.query_urr_reference.unwrap();
         assert_eq!(qur.reference, 0xABCDEF01);
 
-        let adi = comprehensive_report.application_detection_information.unwrap();
+        let adi = comprehensive_report
+            .application_detection_information
+            .unwrap();
         assert_eq!(adi.application_id, "Netflix");
-        assert_eq!(adi.application_instance_id, Some("video_session_123".to_string()));
+        assert_eq!(
+            adi.application_instance_id,
+            Some("video_session_123".to_string())
+        );
         assert_eq!(adi.flow_information, Some("tcp:443,udp:443".to_string()));
 
-        let ueip = comprehensive_report.ue_ip_address_usage_information.unwrap();
+        let ueip = comprehensive_report
+            .ue_ip_address_usage_information
+            .unwrap();
         assert_eq!(ueip.ipv4_address, Some(Ipv4Addr::new(10, 0, 0, 1)));
         assert_eq!(ueip.number_of_ue_ip_addresses, Some(10));
 
-        let auri = comprehensive_report.additional_usage_reports_information.unwrap();
+        let auri = comprehensive_report
+            .additional_usage_reports_information
+            .unwrap();
         assert!(auri.has_auri());
         assert!(auri.has_nouri());
     }
@@ -1978,15 +2014,22 @@ mod tests {
         assert_eq!(qur.reference, 0x87654321);
 
         // Note: The last set convenience method wins
-        let adi = convenience_report.application_detection_information.unwrap();
+        let adi = convenience_report
+            .application_detection_information
+            .unwrap();
         assert_eq!(adi.application_id, "Instagram");
-        assert_eq!(adi.application_instance_id, Some("mobile_session_456".to_string()));
+        assert_eq!(
+            adi.application_instance_id,
+            Some("mobile_session_456".to_string())
+        );
 
         let ueip = convenience_report.ue_ip_address_usage_information.unwrap();
         assert_eq!(ueip.ipv4_address, Some(Ipv4Addr::new(203, 0, 113, 1)));
         assert_eq!(ueip.number_of_ue_ip_addresses, Some(3));
 
-        let auri = convenience_report.additional_usage_reports_information.unwrap();
+        let auri = convenience_report
+            .additional_usage_reports_information
+            .unwrap();
         assert!(auri.has_auri());
         assert!(!auri.has_nouri());
     }
@@ -2037,7 +2080,9 @@ mod tests {
         assert!(complete_report.query_urr_reference.is_some());
         assert!(complete_report.application_detection_information.is_some());
         assert!(complete_report.ue_ip_address_usage_information.is_some());
-        assert!(complete_report.additional_usage_reports_information.is_some());
+        assert!(complete_report
+            .additional_usage_reports_information
+            .is_some());
 
         // Test complete marshal/unmarshal round trip
         let marshaled = complete_report.marshal();
@@ -2045,10 +2090,24 @@ mod tests {
         assert_eq!(complete_report, unmarshaled);
 
         // Verify some key values
-        assert_eq!(complete_report.query_urr_reference.unwrap().reference, 0xCAFEBABE);
-        assert_eq!(complete_report.application_detection_information.unwrap().application_id, "TikTok");
-        assert_eq!(complete_report.ue_ip_address_usage_information.unwrap().ipv4_address,
-                   Some(Ipv4Addr::new(172, 16, 0, 1)));
+        assert_eq!(
+            complete_report.query_urr_reference.unwrap().reference,
+            0xCAFEBABE
+        );
+        assert_eq!(
+            complete_report
+                .application_detection_information
+                .unwrap()
+                .application_id,
+            "TikTok"
+        );
+        assert_eq!(
+            complete_report
+                .ue_ip_address_usage_information
+                .unwrap()
+                .ipv4_address,
+            Some(Ipv4Addr::new(172, 16, 0, 1))
+        );
     }
 
     #[test]
@@ -2063,11 +2122,11 @@ mod tests {
             .application_detection_information(ApplicationDetectionInformation::full_app_detection(
                 "🎵Music", // Unicode app name
                 "session_with_unicode_🎧",
-                "complex:flow:info:with:colons"
+                "complex:flow:info:with:colons",
             ))
             .ue_ip_address_usage_information(UEIPAddressUsageInformation::with_ipv4(
                 Ipv4Addr::new(0, 0, 0, 0), // Edge case IP
-                u32::MAX // Maximum count
+                u32::MAX,                  // Maximum count
             ))
             .additional_usage_reports_information(AdditionalUsageReportsInformation::new(0xFF)) // All flags
             .build()
@@ -2079,7 +2138,10 @@ mod tests {
         assert_eq!(edge_case_report, unmarshaled);
 
         // Verify edge case values
-        assert_eq!(edge_case_report.query_urr_reference.unwrap().reference, u32::MAX);
+        assert_eq!(
+            edge_case_report.query_urr_reference.unwrap().reference,
+            u32::MAX
+        );
 
         let adi = edge_case_report.application_detection_information.unwrap();
         assert_eq!(adi.application_id, "🎵Music");
@@ -2089,7 +2151,9 @@ mod tests {
         assert_eq!(ueip.ipv4_address, Some(Ipv4Addr::new(0, 0, 0, 0)));
         assert_eq!(ueip.number_of_ue_ip_addresses, Some(u32::MAX));
 
-        let auri = edge_case_report.additional_usage_reports_information.unwrap();
+        let auri = edge_case_report
+            .additional_usage_reports_information
+            .unwrap();
         assert_eq!(auri.flags, 0xFF);
     }
 
@@ -2098,13 +2162,14 @@ mod tests {
         use std::net::Ipv4Addr;
 
         // Scenario 1: Video streaming with DPI detection
-        let video_streaming = UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(1))
-            .with_volume_data(500000000, 50000000, 450000000) // 500MB total, mostly downlink
-            .with_detected_application("Netflix")
-            .with_ue_ipv4_usage(Ipv4Addr::new(192, 168, 1, 100), 1)
-            .with_query_reference(0x10000001)
-            .build()
-            .unwrap();
+        let video_streaming =
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(1))
+                .with_volume_data(500000000, 50000000, 450000000) // 500MB total, mostly downlink
+                .with_detected_application("Netflix")
+                .with_ue_ipv4_usage(Ipv4Addr::new(192, 168, 1, 100), 1)
+                .with_query_reference(0x10000001)
+                .build()
+                .unwrap();
 
         // Scenario 2: Social media with multiple instances
         let social_media = UsageReportBuilder::new(UrrId::new(2))
@@ -2117,20 +2182,23 @@ mod tests {
             .unwrap();
 
         // Scenario 3: Enterprise app with complex tracking
-        let enterprise_app = UsageReportBuilder::time_threshold_report(UrrId::new(3), SequenceNumber::new(3))
-            .application_detection_information(ApplicationDetectionInformation::full_app_detection(
-                "Slack",
-                "enterprise_workspace_ABC123",
-                "tcp:443,websocket:443"
-            ))
-            .ue_ip_address_usage_information(UEIPAddressUsageInformation::with_ipv4(
-                Ipv4Addr::new(172, 16, 100, 200),
-                25 // Multiple users
-            ))
-            .with_query_reference(0x30000003)
-            .with_additional_flags(true, false) // Additional interim reporting
-            .build()
-            .unwrap();
+        let enterprise_app =
+            UsageReportBuilder::time_threshold_report(UrrId::new(3), SequenceNumber::new(3))
+                .application_detection_information(
+                    ApplicationDetectionInformation::full_app_detection(
+                        "Slack",
+                        "enterprise_workspace_ABC123",
+                        "tcp:443,websocket:443",
+                    ),
+                )
+                .ue_ip_address_usage_information(UEIPAddressUsageInformation::with_ipv4(
+                    Ipv4Addr::new(172, 16, 100, 200),
+                    25, // Multiple users
+                ))
+                .with_query_reference(0x30000003)
+                .with_additional_flags(true, false) // Additional interim reporting
+                .build()
+                .unwrap();
 
         // Test all scenarios
         for scenario in [video_streaming, social_media, enterprise_app] {

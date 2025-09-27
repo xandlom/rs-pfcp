@@ -128,7 +128,15 @@ mod tests {
 
     #[test]
     fn test_query_urr_reference_round_trip_various_values() {
-        let test_values = [0, 1, 0x12345678, 0xABCDEF01, 0x87654321, 0xFFFFFFFF, u32::MAX];
+        let test_values = [
+            0,
+            1,
+            0x12345678,
+            0xABCDEF01,
+            0x87654321,
+            0xFFFFFFFF,
+            u32::MAX,
+        ];
 
         for &value in &test_values {
             let qur = QueryURRReference::new(value);

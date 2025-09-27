@@ -241,12 +241,7 @@ mod tests {
 
     #[test]
     fn test_volume_quota_to_ie() {
-        let vq = VolumeQuota::new(
-            0x07,
-            Some(1000000),
-            Some(600000),
-            Some(400000),
-        );
+        let vq = VolumeQuota::new(0x07, Some(1000000), Some(600000), Some(400000));
 
         let ie = vq.to_ie().unwrap();
         assert_eq!(ie.ie_type, IeType::VolumeQuota);
@@ -257,8 +252,7 @@ mod tests {
         let vq = VolumeQuota::new(
             0x01, // TOVOL flag set
             None, // but no value provided
-            None,
-            None,
+            None, None,
         );
 
         let result = vq.marshal();
