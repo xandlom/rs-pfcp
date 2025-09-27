@@ -3,7 +3,9 @@
 use std::io;
 
 pub mod activate_predefined_rules;
+pub mod additional_usage_reports_information;
 pub mod apn_dnn;
+pub mod application_detection_information;
 pub mod application_id;
 pub mod application_ids_pfds;
 pub mod apply_action;
@@ -20,10 +22,11 @@ pub mod created_pdr;
 pub mod deactivate_predefined_rules;
 pub mod destination_interface;
 pub mod dl_buffering_duration;
-pub mod duration_measurement;
 pub mod downlink_data_notification_delay;
 pub mod downlink_data_service_information;
 pub mod duplicating_parameters;
+pub mod duration_measurement;
+pub mod end_time;
 pub mod f_teid;
 pub mod far_id;
 pub mod forwarding_parameters;
@@ -53,6 +56,8 @@ pub mod pfd_context;
 pub mod precedence;
 pub mod qer_correlation_id;
 pub mod qer_id;
+pub mod query_urr_reference;
+pub mod quota_holding_time;
 pub mod recovery_time_stamp;
 pub mod redirect_information;
 pub mod remove_far;
@@ -65,24 +70,19 @@ pub mod sequence_number;
 pub mod snssai;
 pub mod source_interface;
 pub mod source_ip_address;
-pub mod quota_holding_time;
 pub mod start_time;
-pub mod query_urr_reference;
-pub mod additional_usage_reports_information;
-pub mod ue_ip_address_usage_information;
-pub mod application_detection_information;
 pub mod subsequent_time_threshold;
 pub mod subsequent_volume_threshold;
 pub mod suggested_buffering_packets_count;
 pub mod time_of_first_packet;
 pub mod time_of_last_packet;
-pub mod end_time;
 pub mod time_quota;
 pub mod time_threshold;
 pub mod timer;
 pub mod trace_information;
 pub mod transport_level_marking;
 pub mod ue_ip_address;
+pub mod ue_ip_address_usage_information;
 pub mod update_bar;
 pub mod update_bar_within_session_report_response;
 pub mod update_far;
@@ -196,15 +196,16 @@ pub enum IeType {
     DeactivatePredefinedRules = 107,
     FarId = 108,
     QerId = 109,
-    CreateBar = 115,
-    UpdateBar = 116,
-    RemoveBar = 117,
-    BarId = 118,
+    CreateBar = 85,
+    UpdateBar = 86,
+    RemoveBar = 87,
+    BarId = 88,
+    AggregatedURRs = 118,
     QueryURRReference = 125,
     AdditionalUsageReportsInformation = 126,
-    CreateTrafficEndpoint = 131,
-    UpdateTrafficEndpoint = 132,
-    RemoveTrafficEndpoint = 133,
+    CreateTrafficEndpoint = 127,
+    UpdateTrafficEndpoint = 129,
+    RemoveTrafficEndpoint = 130,
     SourceIPAddress = 192,
     UEIPAddressUsageInformation = 267,
     Unknown = 0,
@@ -295,17 +296,18 @@ impl From<u16> for IeType {
             107 => IeType::DeactivatePredefinedRules,
             89 => IeType::CpFunctionFeatures,
             90 => IeType::UsageInformation,
-            115 => IeType::CreateBar,
-            116 => IeType::UpdateBar,
-            117 => IeType::RemoveBar,
-            118 => IeType::BarId,
+            85 => IeType::CreateBar,
+            86 => IeType::UpdateBar,
+            87 => IeType::RemoveBar,
+            88 => IeType::BarId,
             108 => IeType::FarId,
             109 => IeType::QerId,
+            118 => IeType::AggregatedURRs,
             125 => IeType::QueryURRReference,
             126 => IeType::AdditionalUsageReportsInformation,
-            131 => IeType::CreateTrafficEndpoint,
-            132 => IeType::UpdateTrafficEndpoint,
-            133 => IeType::RemoveTrafficEndpoint,
+            127 => IeType::CreateTrafficEndpoint,
+            129 => IeType::UpdateTrafficEndpoint,
+            130 => IeType::RemoveTrafficEndpoint,
             192 => IeType::SourceIPAddress,
             267 => IeType::UEIPAddressUsageInformation,
             99 => IeType::PdnType,
