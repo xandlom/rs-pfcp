@@ -79,6 +79,6 @@ impl SourceIpAddress {
 
     /// Wraps the Source IP Address in a SourceIPAddress IE.
     pub fn to_ie(&self) -> Ie {
-        Ie::new(IeType::SourceIPAddress, self.marshal())
+        Ie::new(IeType::SourceIpAddress, self.marshal())
     }
 }

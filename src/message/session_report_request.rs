@@ -68,7 +68,7 @@ impl Message for SessionReportRequest {
             match ie.ie_type {
                 IeType::ReportType => report_type = Some(ie),
                 IeType::DownlinkDataServiceInformation => downlink_data_report = Some(ie),
-                IeType::UsageReport => usage_reports.push(ie),
+                IeType::UsageReportWithinSessionReportRequest => usage_reports.push(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 _ => ies.push(ie),
@@ -117,7 +117,7 @@ impl Message for SessionReportRequest {
             IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
             _ => {
                 // Check usage reports first
-                if ie_type == IeType::UsageReport && !self.usage_reports.is_empty() {
+                if ie_type == IeType::UsageReportWithinSessionReportRequest && !self.usage_reports.is_empty() {
                     return Some(&self.usage_reports[0]);
                 }
                 // Then check additional IEs
@@ -354,7 +354,7 @@ mod tests {
 
         assert_eq!(req, unmarshaled);
         assert_eq!(req.usage_reports.len(), 1);
-        assert_eq!(req.find_ie(IeType::UsageReport), Some(&usage_report_ie));
+        assert_eq!(req.find_ie(IeType::UsageReportWithinSessionReportRequest), Some(&usage_report_ie));
     }
 
     #[test]
@@ -390,7 +390,7 @@ mod tests {
         let sequence = 0x112233;
 
         let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]);
-        let usage_report_ie = Ie::new(IeType::UsageReport, vec![0x01, 0x02, 0x03, 0x04]);
+        let usage_report_ie = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x01, 0x02, 0x03, 0x04]);
         let load_control_ie = Ie::new(IeType::LoadControlInformation, vec![0x05, 0x06]);
 
         let req = SessionReportRequestBuilder::new(seid, sequence)
@@ -423,8 +423,8 @@ mod tests {
         );
 
         // Create multiple usage reports
-        let usage_report1 = Ie::new(IeType::UsageReport, vec![0x01, 0x02, 0x03]);
-        let usage_report2 = Ie::new(IeType::UsageReport, vec![0x04, 0x05, 0x06]);
+        let usage_report1 = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x01, 0x02, 0x03]);
+        let usage_report2 = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x04, 0x05, 0x06]);
         let usage_reports = vec![usage_report1, usage_report2];
 
         let load_control_ie = Ie::new(IeType::LoadControlInformation, vec![0x07, 0x08]);
@@ -471,7 +471,7 @@ mod tests {
         let sequence = 0x112233;
 
         let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]);
-        let usage_report_ie = Ie::new(IeType::UsageReport, vec![0x01, 0x02]);
+        let usage_report_ie = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x01, 0x02]);
         let unknown_ie = Ie::new(IeType::Timer, vec![0x03, 0x04]);
 
         let req = SessionReportRequestBuilder::new(seid, sequence)
@@ -481,7 +481,7 @@ mod tests {
             .build();
 
         assert_eq!(req.find_ie(IeType::ReportType), Some(&report_type_ie));
-        assert_eq!(req.find_ie(IeType::UsageReport), Some(&usage_report_ie));
+        assert_eq!(req.find_ie(IeType::UsageReportWithinSessionReportRequest), Some(&usage_report_ie));
         assert_eq!(req.find_ie(IeType::Timer), Some(&unknown_ie));
         assert_eq!(req.find_ie(IeType::NodeId), None);
     }

@@ -82,7 +82,7 @@ impl Message for SessionReportResponse {
                 }
                 IeType::PfcpsrrspFlags => pfcpsrrsp_flags = Some(ie),
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
-                IeType::UsageReport => usage_reports.push(ie),
+                IeType::UsageReportWithinSessionReportRequest => usage_reports.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -135,7 +135,7 @@ impl Message for SessionReportResponse {
             IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
             _ => {
                 // Check usage reports first
-                if ie_type == IeType::UsageReport && !self.usage_reports.is_empty() {
+                if ie_type == IeType::UsageReportWithinSessionReportRequest && !self.usage_reports.is_empty() {
                     return Some(&self.usage_reports[0]);
                 }
                 // Then check additional IEs

@@ -214,14 +214,14 @@ impl UsageReport {
                 }
                 IeType::StartTime => start_time = Some(StartTime::unmarshal(&ie.payload)?),
                 IeType::EndTime => end_time = Some(EndTime::unmarshal(&ie.payload)?),
-                IeType::QueryURRReference => {
+                IeType::QueryUrrReference => {
                     query_urr_reference = Some(QueryURRReference::unmarshal(&ie.payload)?)
                 }
                 IeType::ApplicationDetectionInformation => {
                     application_detection_information =
                         Some(ApplicationDetectionInformation::unmarshal(&ie.payload)?)
                 }
-                IeType::UEIPAddressUsageInformation => {
+                IeType::UeIpAddressUsageInformation => {
                     ue_ip_address_usage_information =
                         Some(UEIPAddressUsageInformation::unmarshal(&ie.payload)?)
                 }
@@ -265,7 +265,7 @@ impl UsageReport {
     }
 
     pub fn to_ie(&self) -> Ie {
-        Ie::new(IeType::UsageReport, self.marshal())
+        Ie::new(IeType::UsageReportWithinSessionReportRequest, self.marshal())
     }
 }
 
@@ -1191,7 +1191,7 @@ mod tests {
 
             // Test IE wrapping
             let ie = usage_report.to_ie();
-            assert_eq!(ie.ie_type, IeType::UsageReport);
+            assert_eq!(ie.ie_type, IeType::UsageReportWithinSessionReportRequest);
         }
     }
 
@@ -1471,7 +1471,7 @@ mod tests {
 
         // Test IE conversion
         let ie = usage_report.to_ie();
-        assert_eq!(ie.ie_type, IeType::UsageReport);
+        assert_eq!(ie.ie_type, IeType::UsageReportWithinSessionReportRequest);
     }
 
     #[test]
@@ -1761,7 +1761,7 @@ mod tests {
 
         // Test IE conversion
         let ie = usage_report.to_ie();
-        assert_eq!(ie.ie_type, IeType::UsageReport);
+        assert_eq!(ie.ie_type, IeType::UsageReportWithinSessionReportRequest);
     }
 
     #[test]

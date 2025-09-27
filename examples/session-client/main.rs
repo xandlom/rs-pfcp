@@ -86,7 +86,7 @@ fn handle_session_report_request(
     }
 
     // Check for usage reports
-    if let Some(_usage_report_ie) = msg.find_ie(IeType::UsageReport) {
+    if let Some(_usage_report_ie) = msg.find_ie(IeType::UsageReportWithinSessionReportRequest) {
         println!("    Contains Usage Report - quota exhausted!");
     }
 

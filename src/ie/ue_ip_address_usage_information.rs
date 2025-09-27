@@ -216,7 +216,7 @@ impl UEIPAddressUsageInformation {
 
     pub fn to_ie(&self) -> Result<Ie, io::Error> {
         let data = self.marshal()?;
-        Ok(Ie::new(IeType::UEIPAddressUsageInformation, data))
+        Ok(Ie::new(IeType::UeIpAddressUsageInformation, data))
     }
 }
 
@@ -326,7 +326,7 @@ mod tests {
         let ueip = UEIPAddressUsageInformation::with_ipv4(ipv4, 1);
 
         let ie = ueip.to_ie().unwrap();
-        assert_eq!(ie.ie_type, IeType::UEIPAddressUsageInformation);
+        assert_eq!(ie.ie_type, IeType::UeIpAddressUsageInformation);
     }
 
     #[test]

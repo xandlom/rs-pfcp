@@ -43,7 +43,7 @@ impl QueryURRReference {
 
     pub fn to_ie(&self) -> Result<Ie, io::Error> {
         let data = self.marshal()?;
-        Ok(Ie::new(IeType::QueryURRReference, data))
+        Ok(Ie::new(IeType::QueryUrrReference, data))
     }
 }
 
@@ -99,7 +99,7 @@ mod tests {
         let qur = QueryURRReference::new(reference);
 
         let ie = qur.to_ie().unwrap();
-        assert_eq!(ie.ie_type, IeType::QueryURRReference);
+        assert_eq!(ie.ie_type, IeType::QueryUrrReference);
     }
 
     #[test]

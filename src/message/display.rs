@@ -172,7 +172,7 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                 );
             }
         }
-        IeType::UsageReport => {
+        IeType::UsageReportWithinSessionReportRequest => {
             if let Ok(usage_report) = crate::ie::usage_report::UsageReport::unmarshal(&ie.payload) {
                 map.extend(usage_report_to_structured_data(&usage_report));
             }
@@ -237,7 +237,7 @@ fn get_common_ie_types() -> Vec<IeType> {
         IeType::Cause,
         IeType::RecoveryTimeStamp,
         IeType::ReportType,
-        IeType::UsageReport,
+        IeType::UsageReportWithinSessionReportRequest,
         IeType::DownlinkDataServiceInformation,
         IeType::Fseid,
         IeType::CreatePdr,
@@ -703,7 +703,7 @@ fn ie_to_json_data(ie: &Ie) -> JsonValue {
                 );
             }
         }
-        IeType::UsageReport => {
+        IeType::UsageReportWithinSessionReportRequest => {
             if let Ok(usage_report) = crate::ie::usage_report::UsageReport::unmarshal(&ie.payload) {
                 map.extend(usage_report_to_json_data(&usage_report));
             }

@@ -253,7 +253,7 @@ impl PathFailureReport {
 
     /// Wraps the Path Failure Report in a Path Failure Report IE.
     pub fn to_ie(&self) -> Ie {
-        Ie::new(IeType::PathFailureReport, self.marshal())
+        Ie::new(IeType::UserPlanePathFailureReport, self.marshal())
     }
 }
 
@@ -370,7 +370,7 @@ mod tests {
         let report = PathFailureReport::empty().add_ipv4_peer(Ipv4Addr::new(172, 16, 1, 1));
         let ie = report.to_ie();
 
-        assert_eq!(ie.ie_type, IeType::PathFailureReport);
+        assert_eq!(ie.ie_type, IeType::UserPlanePathFailureReport);
 
         let unmarshaled = PathFailureReport::unmarshal(&ie.payload).unwrap();
         assert_eq!(report, unmarshaled);

@@ -66,7 +66,7 @@ impl Message for HeartbeatRequest {
             let ie_len = ie.len() as usize;
             match ie.ie_type {
                 IeType::RecoveryTimeStamp => recovery_time_stamp = Some(ie),
-                IeType::SourceIPAddress => source_ip_address = Some(ie),
+                IeType::SourceIpAddress => source_ip_address = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_heartbeat_request_builder_with_source_ip() {
         let ip = SourceIpAddress::new(Some(Ipv4Addr::new(192, 168, 1, 1)), None);
-        let ip_ie = Ie::new(IeType::SourceIPAddress, ip.marshal());
+        let ip_ie = Ie::new(IeType::SourceIpAddress, ip.marshal());
 
         let request = HeartbeatRequestBuilder::new(12345)
             .source_ip_address(ip_ie.clone())
@@ -228,7 +228,7 @@ mod tests {
         let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
         let ip = SourceIpAddress::new(Some(Ipv4Addr::new(192, 168, 1, 1)), None);
-        let ip_ie = Ie::new(IeType::SourceIPAddress, ip.marshal());
+        let ip_ie = Ie::new(IeType::SourceIpAddress, ip.marshal());
 
         let additional_ie = Ie::new(IeType::Unknown, vec![0x01, 0x02, 0x03]);
 
