@@ -467,8 +467,14 @@ mod tests {
         let fseid = Fseid::new(123, Some(Ipv4Addr::new(192, 168, 1, 1)), None);
         let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
 
-        let usage_report1 = Ie::new(IeType::UsageReportWithinSessionDeletionResponse, vec![0x01, 0x02, 0x03]);
-        let usage_report2 = Ie::new(IeType::UsageReportWithinSessionDeletionResponse, vec![0x04, 0x05, 0x06]);
+        let usage_report1 = Ie::new(
+            IeType::UsageReportWithinSessionDeletionResponse,
+            vec![0x01, 0x02, 0x03],
+        );
+        let usage_report2 = Ie::new(
+            IeType::UsageReportWithinSessionDeletionResponse,
+            vec![0x04, 0x05, 0x06],
+        );
 
         let request = SessionDeletionRequestBuilder::new(99999, 11110)
             .smf_fseid(fseid_ie.clone())
@@ -521,7 +527,10 @@ mod tests {
         let urr_id = UrrId::new(42);
         let urr_id_ie = Ie::new(IeType::UrrId, urr_id.marshal().to_vec());
 
-        let usage_report = Ie::new(IeType::UsageReportWithinSessionDeletionResponse, vec![0xFF, 0xEE, 0xDD]);
+        let usage_report = Ie::new(
+            IeType::UsageReportWithinSessionDeletionResponse,
+            vec![0xFF, 0xEE, 0xDD],
+        );
         let additional_ie = Ie::new(IeType::Unknown, vec![0x12, 0x34]);
 
         let request = SessionDeletionRequestBuilder::new(0xABCD, 0x1234)

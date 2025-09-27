@@ -460,7 +460,10 @@ fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
 
     assert_eq!(res, unmarshaled);
     assert_eq!(res.usage_reports.len(), 1);
-    assert_eq!(res.find_ie(IeType::UsageReportWithinSessionReportRequest), Some(&usage_report_ie));
+    assert_eq!(
+        res.find_ie(IeType::UsageReportWithinSessionReportRequest),
+        Some(&usage_report_ie)
+    );
 }
 
 #[test]
@@ -471,7 +474,10 @@ fn test_session_report_response_builder() {
     let seid = 0x1122334455667788;
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-    let usage_report_ie = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x01, 0x02, 0x03, 0x04]);
+    let usage_report_ie = Ie::new(
+        IeType::UsageReportWithinSessionReportRequest,
+        vec![0x01, 0x02, 0x03, 0x04],
+    );
     let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x05, 0x06]);
 
     let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
@@ -509,8 +515,14 @@ fn test_session_report_response_builder_comprehensive() {
     let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x08, 0x09]);
 
     // Create multiple usage reports
-    let usage_report1 = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x0A, 0x0B, 0x0C]);
-    let usage_report2 = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x0D, 0x0E, 0x0F]);
+    let usage_report1 = Ie::new(
+        IeType::UsageReportWithinSessionReportRequest,
+        vec![0x0A, 0x0B, 0x0C],
+    );
+    let usage_report2 = Ie::new(
+        IeType::UsageReportWithinSessionReportRequest,
+        vec![0x0D, 0x0E, 0x0F],
+    );
     let usage_reports = vec![usage_report1, usage_report2];
 
     let additional_ie = Ie::new(IeType::Timer, vec![0x10, 0x11, 0x12, 0x13]);
@@ -566,7 +578,10 @@ fn test_session_report_response_find_ie() {
     let seid = 0x1122334455667788;
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-    let usage_report_ie = Ie::new(IeType::UsageReportWithinSessionReportRequest, vec![0x01, 0x02]);
+    let usage_report_ie = Ie::new(
+        IeType::UsageReportWithinSessionReportRequest,
+        vec![0x01, 0x02],
+    );
     let unknown_ie = Ie::new(IeType::Timer, vec![0x03, 0x04]);
 
     let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
@@ -576,7 +591,10 @@ fn test_session_report_response_find_ie() {
         .unwrap();
 
     assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
-    assert_eq!(res.find_ie(IeType::UsageReportWithinSessionReportRequest), Some(&usage_report_ie));
+    assert_eq!(
+        res.find_ie(IeType::UsageReportWithinSessionReportRequest),
+        Some(&usage_report_ie)
+    );
     assert_eq!(res.find_ie(IeType::Timer), Some(&unknown_ie));
     assert_eq!(res.find_ie(IeType::NodeId), None);
 }

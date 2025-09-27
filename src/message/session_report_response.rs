@@ -135,7 +135,9 @@ impl Message for SessionReportResponse {
             IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
             _ => {
                 // Check usage reports first
-                if ie_type == IeType::UsageReportWithinSessionReportRequest && !self.usage_reports.is_empty() {
+                if ie_type == IeType::UsageReportWithinSessionReportRequest
+                    && !self.usage_reports.is_empty()
+                {
                     return Some(&self.usage_reports[0]);
                 }
                 // Then check additional IEs

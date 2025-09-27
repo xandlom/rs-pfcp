@@ -29,10 +29,10 @@ impl UeIpAddress {
         let mut data = Vec::new();
         let mut flags = 0;
         if self.v6 {
-            flags |= 1;  // Bit 0: V6 (IPv6)
+            flags |= 1; // Bit 0: V6 (IPv6)
         }
         if self.v4 {
-            flags |= 2;  // Bit 1: V4 (IPv4)
+            flags |= 2; // Bit 1: V4 (IPv4)
         }
         data.push(flags);
         if let Some(addr) = self.ipv4_address {
@@ -53,8 +53,8 @@ impl UeIpAddress {
             ));
         }
         let flags = payload[0];
-        let v6 = flags & 1 != 0;  // Bit 0: V6 (IPv6)
-        let v4 = flags & 2 != 0;  // Bit 1: V4 (IPv4)
+        let v6 = flags & 1 != 0; // Bit 0: V6 (IPv6)
+        let v4 = flags & 2 != 0; // Bit 1: V4 (IPv4)
         let mut offset = 1;
         let ipv4_address = if v4 {
             if payload.len() < offset + 4 {

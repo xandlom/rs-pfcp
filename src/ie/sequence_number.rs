@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn test_sequence_number_unmarshal_invalid_data() {
-        let data = [0; 3];  // Less than 4 bytes should fail
+        let data = [0; 3]; // Less than 4 bytes should fail
         let result = SequenceNumber::unmarshal(&data);
         assert!(result.is_err());
     }

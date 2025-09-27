@@ -265,7 +265,10 @@ impl UsageReport {
     }
 
     pub fn to_ie(&self) -> Ie {
-        Ie::new(IeType::UsageReportWithinSessionReportRequest, self.marshal())
+        Ie::new(
+            IeType::UsageReportWithinSessionReportRequest,
+            self.marshal(),
+        )
     }
 }
 
