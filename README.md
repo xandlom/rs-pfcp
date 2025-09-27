@@ -16,15 +16,15 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - All 69 Information Elements implemented
+- 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - All 70 Information Elements implemented
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 281+ comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 285+ comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Builder patterns, structured debugging, and comprehensive error handling
 - 📊 **Production Ready** - YAML/JSON message display, network interface support, and robust examples
 
 ### Protocol Coverage
 - ✅ **23/23 Message Types** (100% coverage) - All core session and association management
-- ✅ **69/69 Information Elements** (100% coverage) - Complete IE specification
+- ✅ **70/70 Information Elements** (100% coverage) - Complete IE specification
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and usage reporting
 
@@ -92,7 +92,7 @@ cd examples && ./test_session_report.sh lo
 
 ```
 rs-pfcp/
-├── src/ie/              # Information Elements (69 types)
+├── src/ie/              # Information Elements (70 types)
 │   ├── f_teid.rs        # F-TEID with 3GPP compliant CHOOSE flags
 │   ├── pdn_type.rs      # PDN connection types (IPv4/IPv6/Non-IP)
 │   ├── snssai.rs        # 5G Network Slicing identifiers
@@ -133,7 +133,7 @@ rs-pfcp/
 # Build the library
 cargo build
 
-# Run all tests (281+ tests)
+# Run all tests (285+ tests)
 cargo test
 
 # Run specific test category

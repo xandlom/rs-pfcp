@@ -32,7 +32,7 @@ pub trait Message {
 
 ### 2. Information Elements (IEs)
 
-IEs are the building blocks of PFCP messages. The library provides 69 fully implemented IE types:
+IEs are the building blocks of PFCP messages. The library provides 70 fully implemented IE types:
 
 ```rust
 use rs_pfcp::ie::*;
