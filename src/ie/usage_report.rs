@@ -8,6 +8,11 @@ use crate::ie::duration_measurement::DurationMeasurement;
 use crate::ie::time_of_first_packet::TimeOfFirstPacket;
 use crate::ie::time_of_last_packet::TimeOfLastPacket;
 use crate::ie::usage_information::UsageInformation;
+use crate::ie::volume_quota::VolumeQuota;
+use crate::ie::time_quota::TimeQuota;
+use crate::ie::quota_holding_time::QuotaHoldingTime;
+use crate::ie::start_time::StartTime;
+use crate::ie::end_time::EndTime;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -24,12 +29,14 @@ pub struct UsageReport {
     pub time_of_last_packet: Option<TimeOfLastPacket>,
     pub usage_information: Option<UsageInformation>,
 
+    // Phase 2: Quota and Time IEs
+    pub volume_quota: Option<VolumeQuota>,
+    pub time_quota: Option<TimeQuota>,
+    pub quota_holding_time: Option<QuotaHoldingTime>,
+    pub start_time: Option<StartTime>,
+    pub end_time: Option<EndTime>,
+
     // Future phases:
-    // pub volume_quota: Option<VolumeQuota>, // IE Type 73
-    // pub time_quota: Option<TimeQuota>, // IE Type 76
-    // pub quota_holding_time: Option<QuotaHoldingTime>, // IE Type 71
-    // pub start_time: Option<StartTime>, // IE Type 77
-    // pub end_time: Option<EndTime>, // IE Type 78
     // pub query_urr_reference: Option<QueryUrrReference>, // IE Type 125
     // pub application_detection_information: Option<ApplicationDetectionInformation>, // IE Type 68
     // pub additional_usage_reports_information: Option<AdditionalUsageReportsInformation>, // IE Type 126
@@ -50,6 +57,11 @@ impl UsageReport {
             time_of_first_packet: None,
             time_of_last_packet: None,
             usage_information: None,
+            volume_quota: None,
+            time_quota: None,
+            quota_holding_time: None,
+            start_time: None,
+            end_time: None,
         }
     }
 
@@ -91,6 +103,33 @@ impl UsageReport {
             }
         }
 
+        // Marshal Phase 2 quota and time IEs
+        if let Some(ref vq) = self.volume_quota {
+            if let Ok(ie) = vq.to_ie() {
+                buffer.extend_from_slice(&ie.marshal());
+            }
+        }
+        if let Some(ref tq) = self.time_quota {
+            if let Ok(ie) = tq.to_ie() {
+                buffer.extend_from_slice(&ie.marshal());
+            }
+        }
+        if let Some(ref qht) = self.quota_holding_time {
+            if let Ok(ie) = qht.to_ie() {
+                buffer.extend_from_slice(&ie.marshal());
+            }
+        }
+        if let Some(ref st) = self.start_time {
+            if let Ok(ie) = st.to_ie() {
+                buffer.extend_from_slice(&ie.marshal());
+            }
+        }
+        if let Some(ref et) = self.end_time {
+            if let Ok(ie) = et.to_ie() {
+                buffer.extend_from_slice(&ie.marshal());
+            }
+        }
+
         buffer
     }
 
@@ -104,6 +143,11 @@ impl UsageReport {
         let mut time_of_first_packet = None;
         let mut time_of_last_packet = None;
         let mut usage_information = None;
+        let mut volume_quota = None;
+        let mut time_quota = None;
+        let mut quota_holding_time = None;
+        let mut start_time = None;
+        let mut end_time = None;
 
         while cursor < data.len() {
             let ie = Ie::unmarshal(&data[cursor..])?;
@@ -128,6 +172,21 @@ impl UsageReport {
                 IeType::UsageInformation => {
                     usage_information = Some(UsageInformation::unmarshal(&ie.payload)?)
                 }
+                IeType::VolumeQuota => {
+                    volume_quota = Some(VolumeQuota::unmarshal(&ie.payload)?)
+                }
+                IeType::TimeQuota => {
+                    time_quota = Some(TimeQuota::unmarshal(&ie.payload)?)
+                }
+                IeType::QuotaHoldingTime => {
+                    quota_holding_time = Some(QuotaHoldingTime::unmarshal(&ie.payload)?)
+                }
+                IeType::StartTime => {
+                    start_time = Some(StartTime::unmarshal(&ie.payload)?)
+                }
+                IeType::EndTime => {
+                    end_time = Some(EndTime::unmarshal(&ie.payload)?)
+                }
                 _ => (),
             }
             cursor += ie.len() as usize;
@@ -151,6 +210,11 @@ impl UsageReport {
             time_of_first_packet,
             time_of_last_packet,
             usage_information,
+            volume_quota,
+            time_quota,
+            quota_holding_time,
+            start_time,
+            end_time,
         })
     }
 
@@ -209,6 +273,11 @@ pub struct UsageReportBuilder {
     time_of_first_packet: Option<TimeOfFirstPacket>,
     time_of_last_packet: Option<TimeOfLastPacket>,
     usage_information: Option<UsageInformation>,
+    volume_quota: Option<VolumeQuota>,
+    time_quota: Option<TimeQuota>,
+    quota_holding_time: Option<QuotaHoldingTime>,
+    start_time: Option<StartTime>,
+    end_time: Option<EndTime>,
 }
 
 impl UsageReportBuilder {
@@ -227,6 +296,11 @@ impl UsageReportBuilder {
             time_of_first_packet: None,
             time_of_last_packet: None,
             usage_information: None,
+            volume_quota: None,
+            time_quota: None,
+            quota_holding_time: None,
+            start_time: None,
+            end_time: None,
         }
     }
 
@@ -341,6 +415,11 @@ impl UsageReportBuilder {
             time_of_first_packet: self.time_of_first_packet,
             time_of_last_packet: self.time_of_last_packet,
             usage_information: self.usage_information,
+            volume_quota: self.volume_quota,
+            time_quota: self.time_quota,
+            quota_holding_time: self.quota_holding_time,
+            start_time: self.start_time,
+            end_time: self.end_time,
         })
     }
 
@@ -560,6 +639,120 @@ impl UsageReportBuilder {
     /// * `ube` - Usage before enforcement flag
     pub fn with_usage_flags(mut self, bef: bool, aft: bool, uae: bool, ube: bool) -> Self {
         self.usage_information = Some(UsageInformation::new_with_flags(bef, aft, uae, ube));
+        self
+    }
+
+    // Phase 2: Quota and Time IE setters
+
+    /// Sets volume quota for the usage report.
+    ///
+    /// Volume quota specifies the allowed volume thresholds for traffic monitoring.
+    ///
+    /// # Arguments
+    ///
+    /// * `volume_quota` - The volume quota data
+    pub fn volume_quota(mut self, volume_quota: VolumeQuota) -> Self {
+        self.volume_quota = Some(volume_quota);
+        self
+    }
+
+    /// Sets time quota for the usage report.
+    ///
+    /// Time quota specifies the allowed time duration for traffic monitoring.
+    ///
+    /// # Arguments
+    ///
+    /// * `time_quota` - The time quota data
+    pub fn time_quota(mut self, time_quota: TimeQuota) -> Self {
+        self.time_quota = Some(time_quota);
+        self
+    }
+
+    /// Sets quota holding time for the usage report.
+    ///
+    /// Quota holding time specifies how long quotas should be held after allocation.
+    ///
+    /// # Arguments
+    ///
+    /// * `quota_holding_time` - The quota holding time data
+    pub fn quota_holding_time(mut self, quota_holding_time: QuotaHoldingTime) -> Self {
+        self.quota_holding_time = Some(quota_holding_time);
+        self
+    }
+
+    /// Sets start time for the usage report.
+    ///
+    /// Start time contains the 3GPP NTP timestamp when monitoring began.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_time` - The start time data
+    pub fn start_time(mut self, start_time: StartTime) -> Self {
+        self.start_time = Some(start_time);
+        self
+    }
+
+    /// Sets end time for the usage report.
+    ///
+    /// End time contains the 3GPP NTP timestamp when monitoring ended.
+    ///
+    /// # Arguments
+    ///
+    /// * `end_time` - The end time data
+    pub fn end_time(mut self, end_time: EndTime) -> Self {
+        self.end_time = Some(end_time);
+        self
+    }
+
+    // Phase 2 convenience methods
+
+    /// Convenience method to set volume quota with total, uplink, and downlink volumes.
+    ///
+    /// # Arguments
+    ///
+    /// * `total` - Total volume quota in bytes
+    /// * `uplink` - Uplink volume quota in bytes
+    /// * `downlink` - Downlink volume quota in bytes
+    pub fn with_volume_quota(mut self, total: u64, uplink: u64, downlink: u64) -> Self {
+        let volume_quota = VolumeQuota::new(
+            0x07, // TOVOL | ULVOL | DLVOL flags
+            Some(total),
+            Some(uplink),
+            Some(downlink),
+        );
+        self.volume_quota = Some(volume_quota);
+        self
+    }
+
+    /// Convenience method to set time quota in seconds.
+    ///
+    /// # Arguments
+    ///
+    /// * `quota_seconds` - Time quota in seconds
+    pub fn with_time_quota(mut self, quota_seconds: u32) -> Self {
+        self.time_quota = Some(TimeQuota::new(quota_seconds));
+        self
+    }
+
+    /// Convenience method to set quota holding time in seconds.
+    ///
+    /// # Arguments
+    ///
+    /// * `holding_seconds` - Quota holding time in seconds
+    pub fn with_quota_holding_time(mut self, holding_seconds: u32) -> Self {
+        self.quota_holding_time = Some(QuotaHoldingTime::new(holding_seconds));
+        self
+    }
+
+    /// Convenience method to set monitoring time window.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_timestamp` - 3GPP NTP timestamp when monitoring started
+    /// * `end_timestamp` - 3GPP NTP timestamp when monitoring ended
+    pub fn with_monitoring_window(mut self, start_timestamp: u32, end_timestamp: u32) -> Self {
+        self.start_time = Some(StartTime::new(start_timestamp));
+        self.end_time = Some(EndTime::new(end_timestamp));
         self
     }
 }
@@ -1132,5 +1325,362 @@ mod tests {
         let marshaled = max_report.marshal();
         let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
         assert_eq!(max_report, unmarshaled);
+    }
+
+    // Phase 2 Tests - Quota and Time IEs
+
+    #[test]
+    fn test_usage_report_with_volume_quota() {
+        let urr_id = UrrId::new(1);
+        let ur_seqn = SequenceNumber::new(42);
+        let volume_quota = VolumeQuota::new(
+            0x07, // TOVOL | ULVOL | DLVOL
+            Some(5000000000),
+            Some(3000000000),
+            Some(2000000000),
+        );
+
+        let usage_report = UsageReportBuilder::new(urr_id.clone())
+            .sequence_number(ur_seqn.clone())
+            .quota_exhausted()
+            .volume_quota(volume_quota.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(usage_report.urr_id, urr_id);
+        assert_eq!(usage_report.ur_seqn, ur_seqn);
+        assert_eq!(usage_report.volume_quota, Some(volume_quota));
+
+        // Test marshal/unmarshal round trip
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_with_time_quota() {
+        let urr_id = UrrId::new(2);
+        let ur_seqn = SequenceNumber::new(43);
+        let time_quota = TimeQuota::new(3600); // 1 hour
+
+        let usage_report = UsageReportBuilder::new(urr_id.clone())
+            .sequence_number(ur_seqn.clone())
+            .time_threshold_triggered()
+            .time_quota(time_quota.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(usage_report.time_quota, Some(time_quota));
+
+        // Test marshal/unmarshal round trip
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_with_quota_holding_time() {
+        let urr_id = UrrId::new(3);
+        let ur_seqn = SequenceNumber::new(44);
+        let quota_holding_time = QuotaHoldingTime::new(300); // 5 minutes
+
+        let usage_report = UsageReportBuilder::new(urr_id.clone())
+            .sequence_number(ur_seqn.clone())
+            .quota_exhausted()
+            .quota_holding_time(quota_holding_time.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(usage_report.quota_holding_time, Some(quota_holding_time));
+
+        // Test marshal/unmarshal round trip
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_with_start_time() {
+        let urr_id = UrrId::new(4);
+        let ur_seqn = SequenceNumber::new(45);
+        let start_time = StartTime::new(0x60000000);
+
+        let usage_report = UsageReportBuilder::new(urr_id.clone())
+            .sequence_number(ur_seqn.clone())
+            .start_of_traffic()
+            .start_time(start_time.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(usage_report.start_time, Some(start_time));
+
+        // Test marshal/unmarshal round trip
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_with_end_time() {
+        let urr_id = UrrId::new(5);
+        let ur_seqn = SequenceNumber::new(46);
+        let end_time = EndTime::new(0x60000E10);
+
+        let usage_report = UsageReportBuilder::new(urr_id.clone())
+            .sequence_number(ur_seqn.clone())
+            .stop_of_traffic()
+            .end_time(end_time.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(usage_report.end_time, Some(end_time));
+
+        // Test marshal/unmarshal round trip
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_with_all_phase2_fields() {
+        let urr_id = UrrId::new(6);
+        let ur_seqn = SequenceNumber::new(47);
+        let volume_quota = VolumeQuota::new(
+            0x07,
+            Some(10000000000), // 10GB total
+            Some(6000000000),  // 6GB uplink
+            Some(4000000000),  // 4GB downlink
+        );
+        let time_quota = TimeQuota::new(7200); // 2 hours
+        let quota_holding_time = QuotaHoldingTime::new(600); // 10 minutes
+        let start_time = StartTime::new(0x60000000);
+        let end_time = EndTime::new(0x60001C20);
+
+        let usage_report = UsageReportBuilder::new(urr_id.clone())
+            .sequence_number(ur_seqn.clone())
+            .quota_exhausted()
+            .volume_quota(volume_quota.clone())
+            .time_quota(time_quota.clone())
+            .quota_holding_time(quota_holding_time.clone())
+            .start_time(start_time.clone())
+            .end_time(end_time.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(usage_report.volume_quota, Some(volume_quota));
+        assert_eq!(usage_report.time_quota, Some(time_quota));
+        assert_eq!(usage_report.quota_holding_time, Some(quota_holding_time));
+        assert_eq!(usage_report.start_time, Some(start_time));
+        assert_eq!(usage_report.end_time, Some(end_time));
+
+        // Test marshal/unmarshal round trip
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_builder_convenience_methods_phase2() {
+        // Test with_volume_quota convenience method
+        let volume_report = UsageReportBuilder::new(UrrId::new(1))
+            .sequence_number(SequenceNumber::new(100))
+            .quota_exhausted()
+            .with_volume_quota(5000000000, 3000000000, 2000000000)
+            .build()
+            .unwrap();
+
+        let vq = volume_report.volume_quota.unwrap();
+        assert!(vq.has_total_volume());
+        assert!(vq.has_uplink_volume());
+        assert!(vq.has_downlink_volume());
+        assert_eq!(vq.total_volume, Some(5000000000));
+        assert_eq!(vq.uplink_volume, Some(3000000000));
+        assert_eq!(vq.downlink_volume, Some(2000000000));
+
+        // Test with_time_quota convenience method
+        let time_report = UsageReportBuilder::new(UrrId::new(2))
+            .sequence_number(SequenceNumber::new(101))
+            .time_threshold_triggered()
+            .with_time_quota(3600)
+            .build()
+            .unwrap();
+
+        let tq = time_report.time_quota.unwrap();
+        assert_eq!(tq.quota_seconds, 3600);
+
+        // Test with_quota_holding_time convenience method
+        let holding_report = UsageReportBuilder::new(UrrId::new(3))
+            .sequence_number(SequenceNumber::new(102))
+            .quota_exhausted()
+            .with_quota_holding_time(300)
+            .build()
+            .unwrap();
+
+        let qht = holding_report.quota_holding_time.unwrap();
+        assert_eq!(qht.holding_time_seconds, 300);
+
+        // Test with_monitoring_window convenience method
+        let window_report = UsageReportBuilder::new(UrrId::new(4))
+            .sequence_number(SequenceNumber::new(103))
+            .periodic_report()
+            .with_monitoring_window(0x60000000, 0x60000E10)
+            .build()
+            .unwrap();
+
+        let st = window_report.start_time.unwrap();
+        let et = window_report.end_time.unwrap();
+        assert_eq!(st.timestamp, 0x60000000);
+        assert_eq!(et.timestamp, 0x60000E10);
+    }
+
+    #[test]
+    fn test_usage_report_comprehensive_phase1_and_phase2_scenario() {
+        // Simulate a complete quota exhaustion scenario with both Phase 1 and Phase 2 IEs
+        let usage_report = UsageReportBuilder::quota_exhausted_report(
+            UrrId::new(99),
+            SequenceNumber::new(255)
+        )
+        // Phase 1 measurements
+        .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total usage
+        .with_duration(3600) // 1 hour session
+        .with_packet_times(0x60000000, 0x60000E10) // Session timestamps
+        .with_usage_flags(false, true, false, true) // After enforcement flags
+        // Phase 2 quotas and timing
+        .with_volume_quota(5000000000, 3000000000, 2000000000) // Same as measurement (quota exhausted)
+        .with_time_quota(3600) // 1 hour time quota
+        .with_quota_holding_time(300) // 5 minute holding time
+        .with_monitoring_window(0x60000000, 0x60000E10) // Monitoring period
+        .build()
+        .unwrap();
+
+        // Verify all Phase 1 measurements are present
+        assert!(usage_report.volume_measurement.is_some());
+        assert!(usage_report.duration_measurement.is_some());
+        assert!(usage_report.time_of_first_packet.is_some());
+        assert!(usage_report.time_of_last_packet.is_some());
+        assert!(usage_report.usage_information.is_some());
+
+        // Verify all Phase 2 quotas are present
+        assert!(usage_report.volume_quota.is_some());
+        assert!(usage_report.time_quota.is_some());
+        assert!(usage_report.quota_holding_time.is_some());
+        assert!(usage_report.start_time.is_some());
+        assert!(usage_report.end_time.is_some());
+
+        // Verify quota exhaustion logic
+        let vm = usage_report.volume_measurement.as_ref().unwrap();
+        let vq = usage_report.volume_quota.as_ref().unwrap();
+        assert_eq!(vm.total_volume, vq.total_volume); // Usage equals quota (exhausted)
+
+        let dm = usage_report.duration_measurement.as_ref().unwrap();
+        let tq = usage_report.time_quota.as_ref().unwrap();
+        assert_eq!(dm.duration_seconds, tq.quota_seconds); // Duration equals time quota
+
+        // Test marshal/unmarshal round trip with all fields
+        let marshaled = usage_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(usage_report, unmarshaled);
+
+        // Test IE conversion
+        let ie = usage_report.to_ie();
+        assert_eq!(ie.ie_type, IeType::UsageReport);
+    }
+
+    #[test]
+    fn test_usage_report_phase2_marshal_unmarshal_edge_cases() {
+        // Test with zero values
+        let zero_report = UsageReportBuilder::new(UrrId::new(1))
+            .sequence_number(SequenceNumber::new(1))
+            .periodic_report()
+            .with_volume_quota(0, 0, 0)
+            .with_time_quota(0)
+            .with_quota_holding_time(0)
+            .with_monitoring_window(0, 0)
+            .build()
+            .unwrap();
+
+        let marshaled = zero_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(zero_report, unmarshaled);
+
+        // Test with maximum values
+        let max_report = UsageReportBuilder::new(UrrId::new(2))
+            .sequence_number(SequenceNumber::new(2))
+            .periodic_report()
+            .with_volume_quota(u64::MAX, u64::MAX, u64::MAX)
+            .with_time_quota(u32::MAX)
+            .with_quota_holding_time(u32::MAX)
+            .with_monitoring_window(u32::MAX, u32::MAX)
+            .build()
+            .unwrap();
+
+        let marshaled = max_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(max_report, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_phase2_individual_ies() {
+        // Test each Phase 2 IE individually to ensure proper handling
+
+        // VolumeQuota only
+        let vq_report = UsageReportBuilder::new(UrrId::new(1))
+            .sequence_number(SequenceNumber::new(1))
+            .quota_exhausted()
+            .volume_quota(VolumeQuota::new(0x01, Some(1000000), None, None))
+            .build()
+            .unwrap();
+
+        let marshaled = vq_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(vq_report, unmarshaled);
+
+        // TimeQuota only
+        let tq_report = UsageReportBuilder::new(UrrId::new(2))
+            .sequence_number(SequenceNumber::new(2))
+            .time_threshold_triggered()
+            .time_quota(TimeQuota::new(1800))
+            .build()
+            .unwrap();
+
+        let marshaled = tq_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(tq_report, unmarshaled);
+
+        // QuotaHoldingTime only
+        let qht_report = UsageReportBuilder::new(UrrId::new(3))
+            .sequence_number(SequenceNumber::new(3))
+            .quota_exhausted()
+            .quota_holding_time(QuotaHoldingTime::new(600))
+            .build()
+            .unwrap();
+
+        let marshaled = qht_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(qht_report, unmarshaled);
+
+        // StartTime only
+        let st_report = UsageReportBuilder::new(UrrId::new(4))
+            .sequence_number(SequenceNumber::new(4))
+            .start_of_traffic()
+            .start_time(StartTime::new(0x60000000))
+            .build()
+            .unwrap();
+
+        let marshaled = st_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(st_report, unmarshaled);
+
+        // EndTime only
+        let et_report = UsageReportBuilder::new(UrrId::new(5))
+            .sequence_number(SequenceNumber::new(5))
+            .stop_of_traffic()
+            .end_time(EndTime::new(0x60000E10))
+            .build()
+            .unwrap();
+
+        let marshaled = et_report.marshal();
+        let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
+        assert_eq!(et_report, unmarshaled);
     }
 }

@@ -65,13 +65,15 @@ pub mod sequence_number;
 pub mod snssai;
 pub mod source_interface;
 pub mod source_ip_address;
-// pub mod start_time; // TODO: Phase 2
+pub mod quota_holding_time;
+pub mod start_time;
 pub mod subsequent_time_threshold;
 pub mod subsequent_volume_threshold;
 pub mod suggested_buffering_packets_count;
 pub mod time_of_first_packet;
 pub mod time_of_last_packet;
-// pub mod time_quota; // TODO: Phase 2
+pub mod end_time;
+pub mod time_quota;
 pub mod time_threshold;
 pub mod timer;
 pub mod trace_information;
@@ -92,7 +94,7 @@ pub mod usage_report_trigger;
 pub mod user_id;
 pub mod user_plane_inactivity_timer;
 pub mod volume_measurement;
-// pub mod volume_quota; // TODO: Phase 2
+pub mod volume_quota;
 pub mod volume_threshold;
 
 // IE Type definitions.
