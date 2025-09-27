@@ -17,16 +17,10 @@ use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::ie::{
-    cause::CauseValue,
-    create_pdr::CreatePdr,
-    created_pdr::CreatedPdr,
-    f_teid::FteidBuilder,
-    node_id::NodeId,
-    sequence_number::SequenceNumber,
-    urr_id::UrrId,
-    usage_report::UsageReport,
-    usage_report_trigger::UsageReportTrigger,
-    Ie, IeType,
+    cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr,
+    duration_measurement::DurationMeasurement, f_teid::FteidBuilder, node_id::NodeId,
+    sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReportBuilder,
+    usage_report_trigger::UsageReportTrigger, volume_measurement::VolumeMeasurement, Ie, IeType,
 };
 use rs_pfcp::message::{
     association_setup_response::AssociationSetupResponseBuilder, display::MessageDisplay,
@@ -52,15 +46,29 @@ struct Args {
     port: u16,
 }
 
-// Helper function to create a quota exhausted usage report
+// Helper function to create a quota exhausted usage report using the enhanced builder
 fn create_quota_exhausted_usage_report() -> Ie {
-    let urr_id = UrrId::new(1);
-    let ur_seqn = SequenceNumber::new(1);
+    // Create a comprehensive usage report with Phase 3 enhanced features
+    let usage_report = UsageReportBuilder::new(UrrId::new(1))
+        .sequence_number(SequenceNumber::new(1))
+        .trigger(UsageReportTrigger::VOLTH) // Volume Threshold exhausted
+        .volume_measurement(VolumeMeasurement::new(
+            0x07,                // Flags: TOVOL | ULVOL | DLVOL (total, uplink, downlink volume present)
+            Some(2_000_000_000), // 2GB total consumed (quota exhausted)
+            Some(500_000_000),   // 500MB uplink consumed
+            Some(1_500_000_000), // 1.5GB downlink consumed
+            None,
+            None,
+            None, // No packet counters
+        ))
+        .duration_measurement(DurationMeasurement::new(3600)) // 1 hour session duration
+        // Phase 3 enhancements: Application detection and user tracking
+        .with_detected_application("YouTube") // Detected video streaming
+        .with_ue_ipv4_usage(std::net::Ipv4Addr::new(192, 168, 1, 50), 1) // UE IP usage stats
+        .with_additional_flags(true, false) // Request additional interim usage reports
+        .build()
+        .expect("Failed to build usage report");
 
-    // Usage Report Trigger: Volume Threshold exhausted
-    let usage_report_trigger = UsageReportTrigger::VOLTH; // Volume Threshold
-
-    let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
     usage_report.to_ie()
 }
 
