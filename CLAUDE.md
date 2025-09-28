@@ -366,7 +366,20 @@ Key dependencies used throughout the codebase:
 ### Performance and Benchmarking
 The repository includes comprehensive benchmarking capabilities:
 - **Benchmark suite**: Located in `benchmarks/` directory with Rust vs Go comparisons
-- **Run benchmarks**: `cd benchmarks && ./scripts/run_benchmark.sh` (if available)
+- **Run benchmarks**: `cd benchmarks && ./scripts/run-benchmarks.sh`
 - **Performance tests**: Uses real captured PFCP traffic for realistic measurements
 - **Individual examples**: `cargo run --example header-length-test` for specific testing
 - **Debug tools**: Various debug examples for protocol analysis
+
+### Development Workflow
+
+#### Git Hooks
+The project includes a pre-commit hook that automatically runs:
+- **Code formatting**: `cargo fmt` (auto-fixes and stages changes)
+- **Linting**: `cargo clippy --all-targets --all-features -- -D warnings`
+- **Build check**: `cargo check --all-targets`
+- **Quick tests**: Unit tests with 30s timeout
+- **Security scan**: Detects potential secrets in staged changes
+- **Benchmark validation**: Ensures benchmark project compiles
+
+The hook is automatically installed and helps maintain code quality. See `.git-hooks-setup.md` for details.
