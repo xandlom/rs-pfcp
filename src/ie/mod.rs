@@ -378,6 +378,8 @@ pub enum IeType {
     ValidityTimer = 269,
     RedundantTransmissionForwardingParameters = 270,
     TransportDelayReporting = 271,
+    GroupId = 291,
+    CpIpAddress = 292,
     Unknown = 0,
 }
 
@@ -655,6 +657,8 @@ impl From<u16> for IeType {
             269 => IeType::ValidityTimer,
             270 => IeType::RedundantTransmissionForwardingParameters,
             271 => IeType::TransportDelayReporting,
+            291 => IeType::GroupId,
+            292 => IeType::CpIpAddress,
             _ => IeType::Unknown,
         }
     }

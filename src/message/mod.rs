@@ -24,6 +24,8 @@ pub mod session_report_request;
 pub mod session_report_response;
 pub mod session_set_deletion_request;
 pub mod session_set_deletion_response;
+pub mod session_set_modification_request;
+pub mod session_set_modification_response;
 pub mod version_not_supported_response;
 
 use crate::ie::Ie;
@@ -49,6 +51,8 @@ use crate::message::session_report_request::SessionReportRequest;
 use crate::message::session_report_response::SessionReportResponse;
 use crate::message::session_set_deletion_request::SessionSetDeletionRequest;
 use crate::message::session_set_deletion_response::SessionSetDeletionResponse;
+use crate::message::session_set_modification_request::SessionSetModificationRequest;
+use crate::message::session_set_modification_response::SessionSetModificationResponse;
 use crate::message::version_not_supported_response::VersionNotSupportedResponse;
 use std::io;
 
@@ -71,6 +75,8 @@ pub enum MsgType {
     NodeReportResponse = 13,
     SessionSetDeletionRequest = 14,
     SessionSetDeletionResponse = 15,
+    SessionSetModificationRequest = 16,
+    SessionSetModificationResponse = 17,
     SessionEstablishmentRequest = 50,
     SessionEstablishmentResponse = 51,
     SessionModificationRequest = 52,
@@ -100,6 +106,8 @@ impl From<u8> for MsgType {
             13 => MsgType::NodeReportResponse,
             14 => MsgType::SessionSetDeletionRequest,
             15 => MsgType::SessionSetDeletionResponse,
+            16 => MsgType::SessionSetModificationRequest,
+            17 => MsgType::SessionSetModificationResponse,
             50 => MsgType::SessionEstablishmentRequest,
             51 => MsgType::SessionEstablishmentResponse,
             52 => MsgType::SessionModificationRequest,
@@ -244,6 +252,12 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
         }
         MsgType::SessionSetDeletionResponse => {
             Ok(Box::new(SessionSetDeletionResponse::unmarshal(data)?))
+        }
+        MsgType::SessionSetModificationRequest => {
+            Ok(Box::new(SessionSetModificationRequest::unmarshal(data)?))
+        }
+        MsgType::SessionSetModificationResponse => {
+            Ok(Box::new(SessionSetModificationResponse::unmarshal(data)?))
         }
         _ => Ok(Box::new(Generic::unmarshal(data)?)),
     }
