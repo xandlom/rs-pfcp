@@ -748,8 +748,10 @@ mod tests {
     #[test]
     fn test_builder_enhanced_validation_missing_far_id() {
         // This shouldn't happen with current API, but test for completeness
-        let mut builder = CreateFarBuilder::default();
-        builder.apply_action = Some(ApplyAction::FORW);
+        let builder = CreateFarBuilder {
+            apply_action: Some(ApplyAction::FORW),
+            ..Default::default()
+        };
 
         let result = builder.build();
         assert!(result.is_err());
@@ -776,7 +778,7 @@ mod tests {
     #[test]
     fn test_create_far_builder_method() {
         let far_id = FarId::new(109);
-        let far = CreateFar::builder(far_id.clone())
+        let far = CreateFar::builder(far_id)
             .action(FarAction::Forward)
             .forward_to(Interface::Core)
             .build()

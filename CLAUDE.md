@@ -11,7 +11,7 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 ### Build and Test
 - **Build**: `cargo build`
 - **Test**: `cargo test`
-- **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`, `pcap-reader`, `header-length-test`
+- **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`, `pcap-reader`, `header-length-test`, `usage_report_phase1_demo`, `usage_report_phase2_demo`, `pdn-type-demo`, `pdn-type-simple`, `debug_ie_parser`, `debug_parser`, `test_real_messages`
 - **Check**: `cargo check`
 - **Format**: `cargo fmt`
 - **Lint**: `cargo clippy`
@@ -24,6 +24,10 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 - PFCP packet analysis: `cargo run --example pcap-reader -- --pcap <file.pcap> --format yaml`
 - Session report demo: `cd examples && ./test_session_report.sh [interface_name]`
 - Header length test: `cargo run --example header-length-test`
+- Usage report demos: `cargo run --example usage_report_phase1_demo` or `cargo run --example usage_report_phase2_demo`
+- PDN type demos: `cargo run --example pdn-type-demo` or `cargo run --example pdn-type-simple`
+- Debug parsers: `cargo run --example debug_ie_parser` or `cargo run --example debug_parser`
+- Real message testing: `cargo run --example test_real_messages`
 
 ### Testing Individual Components
 - **Run all tests**: `cargo test`

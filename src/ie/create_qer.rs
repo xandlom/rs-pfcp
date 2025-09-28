@@ -314,7 +314,7 @@ mod tests {
     #[test]
     fn test_create_qer_new() {
         let qer_id = QerId::new(1);
-        let qer = CreateQer::new(qer_id.clone());
+        let qer = CreateQer::new(qer_id);
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.qer_correlation_id.is_none());
@@ -343,11 +343,11 @@ mod tests {
         let gbr = Gbr::new(500000, 1000000);
 
         let qer = CreateQer {
-            qer_id: qer_id.clone(),
-            qer_correlation_id: Some(qer_correlation_id.clone()),
-            gate_status: Some(gate_status.clone()),
-            mbr: Some(mbr.clone()),
-            gbr: Some(gbr.clone()),
+            qer_id,
+            qer_correlation_id: Some(qer_correlation_id),
+            gate_status: Some(gate_status),
+            mbr: Some(mbr),
+            gbr: Some(gbr),
         };
 
         let marshaled = qer.marshal();
@@ -389,7 +389,7 @@ mod tests {
     #[test]
     fn test_builder_new() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::new(qer_id.clone()).build().unwrap();
+        let qer = CreateQerBuilder::new(qer_id).build().unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.qer_correlation_id.is_none());
@@ -406,11 +406,11 @@ mod tests {
         let mbr = Mbr::new(1000000, 2000000);
         let gbr = Gbr::new(500000, 1000000);
 
-        let qer = CreateQerBuilder::new(qer_id.clone())
-            .qer_correlation_id(qer_correlation_id.clone())
-            .gate_status(gate_status.clone())
-            .mbr(mbr.clone())
-            .gbr(gbr.clone())
+        let qer = CreateQerBuilder::new(qer_id)
+            .qer_correlation_id(qer_correlation_id)
+            .gate_status(gate_status)
+            .mbr(mbr)
+            .gbr(gbr)
             .build()
             .unwrap();
 
@@ -424,7 +424,7 @@ mod tests {
     #[test]
     fn test_builder_rate_limit() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::new(qer_id.clone())
+        let qer = CreateQerBuilder::new(qer_id)
             .rate_limit(1000000, 2000000)
             .build()
             .unwrap();
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn test_builder_guaranteed_rate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::new(qer_id.clone())
+        let qer = CreateQerBuilder::new(qer_id)
             .guaranteed_rate(500000, 1000000)
             .build()
             .unwrap();
@@ -454,7 +454,7 @@ mod tests {
     #[test]
     fn test_builder_open_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::open_gate(qer_id.clone()).build().unwrap();
+        let qer = CreateQerBuilder::open_gate(qer_id).build().unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -466,9 +466,7 @@ mod tests {
     #[test]
     fn test_builder_closed_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::closed_gate(qer_id.clone())
-            .build()
-            .unwrap();
+        let qer = CreateQerBuilder::closed_gate(qer_id).build().unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -480,9 +478,7 @@ mod tests {
     #[test]
     fn test_builder_downlink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::downlink_only(qer_id.clone())
-            .build()
-            .unwrap();
+        let qer = CreateQerBuilder::downlink_only(qer_id).build().unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -494,9 +490,7 @@ mod tests {
     #[test]
     fn test_builder_uplink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::uplink_only(qer_id.clone())
-            .build()
-            .unwrap();
+        let qer = CreateQerBuilder::uplink_only(qer_id).build().unwrap();
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -508,7 +502,7 @@ mod tests {
     #[test]
     fn test_builder_with_rate_limit() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::with_rate_limit(qer_id.clone(), 1000000, 2000000)
+        let qer = CreateQerBuilder::with_rate_limit(qer_id, 1000000, 2000000)
             .build()
             .unwrap();
 
@@ -528,7 +522,7 @@ mod tests {
     #[test]
     fn test_builder_round_trip_marshal() {
         let qer_id = QerId::new(42);
-        let original = CreateQerBuilder::new(qer_id.clone())
+        let original = CreateQerBuilder::new(qer_id)
             .qer_correlation_id(QerCorrelationId::new(0x87654321))
             .gate_status(GateStatus::new(
                 GateStatusValue::Closed,
@@ -548,7 +542,7 @@ mod tests {
     #[test]
     fn test_builder_ie_round_trip() {
         let qer_id = QerId::new(99);
-        let original = CreateQerBuilder::with_rate_limit(qer_id.clone(), 2000000, 4000000)
+        let original = CreateQerBuilder::with_rate_limit(qer_id, 2000000, 4000000)
             .guaranteed_rate(1000000, 2000000)
             .build()
             .unwrap();
@@ -564,7 +558,7 @@ mod tests {
     #[test]
     fn test_convenience_open_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQer::open_gate(qer_id.clone());
+        let qer = CreateQer::open_gate(qer_id);
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -576,7 +570,7 @@ mod tests {
     #[test]
     fn test_convenience_closed_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQer::closed_gate(qer_id.clone());
+        let qer = CreateQer::closed_gate(qer_id);
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -588,7 +582,7 @@ mod tests {
     #[test]
     fn test_convenience_with_rate_limit() {
         let qer_id = QerId::new(1);
-        let qer = CreateQer::with_rate_limit(qer_id.clone(), 3000000, 6000000);
+        let qer = CreateQer::with_rate_limit(qer_id, 3000000, 6000000);
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -602,7 +596,7 @@ mod tests {
     #[test]
     fn test_convenience_downlink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQer::downlink_only(qer_id.clone());
+        let qer = CreateQer::downlink_only(qer_id);
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -614,7 +608,7 @@ mod tests {
     #[test]
     fn test_convenience_uplink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQer::uplink_only(qer_id.clone());
+        let qer = CreateQer::uplink_only(qer_id);
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -626,7 +620,7 @@ mod tests {
     #[test]
     fn test_convenience_builder() {
         let qer_id = QerId::new(1);
-        let builder = CreateQer::builder(qer_id.clone());
+        let builder = CreateQer::builder(qer_id);
         let qer = builder.build().unwrap();
 
         assert_eq!(qer.qer_id, qer_id);

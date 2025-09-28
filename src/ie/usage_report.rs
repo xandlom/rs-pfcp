@@ -954,7 +954,7 @@ mod tests {
         let trigger = UsageReportTrigger::PERIO;
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .trigger(trigger)
             .build()
             .unwrap();
@@ -970,7 +970,7 @@ mod tests {
         let ur_seqn = SequenceNumber::new(42);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .quota_exhausted()
             .build()
             .unwrap();
@@ -989,7 +989,7 @@ mod tests {
         let ur_seqn = SequenceNumber::new(43);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .periodic_report()
             .build()
             .unwrap();
@@ -1005,7 +1005,7 @@ mod tests {
         let ur_seqn = SequenceNumber::new(44);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .volume_threshold_triggered()
             .build()
             .unwrap();
@@ -1021,7 +1021,7 @@ mod tests {
         let ur_seqn = SequenceNumber::new(45);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .time_threshold_triggered()
             .build()
             .unwrap();
@@ -1037,7 +1037,7 @@ mod tests {
         let ur_seqn = SequenceNumber::new(46);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .start_of_traffic()
             .build()
             .unwrap();
@@ -1053,7 +1053,7 @@ mod tests {
         let ur_seqn = SequenceNumber::new(47);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .stop_of_traffic()
             .build()
             .unwrap();
@@ -1215,7 +1215,7 @@ mod tests {
         );
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .volume_threshold_triggered()
             .volume_measurement(volume_measurement.clone())
             .build()
@@ -1238,7 +1238,7 @@ mod tests {
         let duration_measurement = DurationMeasurement::new(3600); // 1 hour
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .time_threshold_triggered()
             .duration_measurement(duration_measurement.clone())
             .build()
@@ -1262,7 +1262,7 @@ mod tests {
         let time_of_first_packet = TimeOfFirstPacket::new(0x12345678);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .start_of_traffic()
             .time_of_first_packet(time_of_first_packet.clone())
             .build()
@@ -1286,7 +1286,7 @@ mod tests {
         let time_of_last_packet = TimeOfLastPacket::new(0x87654321);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .stop_of_traffic()
             .time_of_last_packet(time_of_last_packet.clone())
             .build()
@@ -1307,7 +1307,7 @@ mod tests {
         let usage_information = UsageInformation::new_with_flags(true, false, true, false);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .periodic_report()
             .usage_information(usage_information.clone())
             .build()
@@ -1340,7 +1340,7 @@ mod tests {
         let usage_information = UsageInformation::new_with_flags(true, true, false, false);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .quota_exhausted()
             .volume_measurement(volume_measurement.clone())
             .duration_measurement(duration_measurement.clone())
@@ -1524,7 +1524,7 @@ mod tests {
         );
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .quota_exhausted()
             .volume_quota(volume_quota.clone())
             .build()
@@ -1547,7 +1547,7 @@ mod tests {
         let time_quota = TimeQuota::new(3600); // 1 hour
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .time_threshold_triggered()
             .time_quota(time_quota.clone())
             .build()
@@ -1568,7 +1568,7 @@ mod tests {
         let quota_holding_time = QuotaHoldingTime::new(300); // 5 minutes
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .quota_exhausted()
             .quota_holding_time(quota_holding_time.clone())
             .build()
@@ -1589,7 +1589,7 @@ mod tests {
         let start_time = StartTime::new(0x60000000);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .start_of_traffic()
             .start_time(start_time.clone())
             .build()
@@ -1610,7 +1610,7 @@ mod tests {
         let end_time = EndTime::new(0x60000E10);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .stop_of_traffic()
             .end_time(end_time.clone())
             .build()
@@ -1640,7 +1640,7 @@ mod tests {
         let end_time = EndTime::new(0x60001C20);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
-            .sequence_number(ur_seqn.clone())
+            .sequence_number(ur_seqn)
             .quota_exhausted()
             .volume_quota(volume_quota.clone())
             .time_quota(time_quota.clone())
