@@ -32,16 +32,13 @@ run_rust_benchmarks() {
     
     # Run each benchmark suite
     echo "  📋 Marshal benchmarks..."
-    cargo bench pfcp_marshal --quiet -- --output-format json > "${RESULTS_PREFIX}_rust_marshal.json" 2>/dev/null || true
-    cargo bench pfcp_marshal --quiet > "${RESULTS_PREFIX}_rust_marshal.txt" 2>&1
-    
+    cargo bench --bench pfcp_marshal --quiet > "${RESULTS_PREFIX}_rust_marshal.txt" 2>&1
+
     echo "  📥 Unmarshal benchmarks..."
-    cargo bench pfcp_unmarshal --quiet -- --output-format json > "${RESULTS_PREFIX}_rust_unmarshal.json" 2>/dev/null || true
-    cargo bench pfcp_unmarshal --quiet > "${RESULTS_PREFIX}_rust_unmarshal.txt" 2>&1
-    
+    cargo bench --bench pfcp_unmarshal --quiet > "${RESULTS_PREFIX}_rust_unmarshal.txt" 2>&1
+
     echo "  🔄 Round-trip benchmarks..."
-    cargo bench pfcp_roundtrip --quiet -- --output-format json > "${RESULTS_PREFIX}_rust_roundtrip.json" 2>/dev/null || true
-    cargo bench pfcp_roundtrip --quiet > "${RESULTS_PREFIX}_rust_roundtrip.txt" 2>&1
+    cargo bench --bench pfcp_roundtrip --quiet > "${RESULTS_PREFIX}_rust_roundtrip.txt" 2>&1
     
     echo "  ✅ Rust benchmarks completed"
 }
@@ -61,13 +58,13 @@ run_go_benchmarks() {
     fi
     
     echo "  📋 Marshal benchmarks..."
-    go test -bench=BenchmarkMarshal -benchmem -run=^$ > "${RESULTS_PREFIX}_go_marshal.txt" 2>&1
-    
+    go test -bench=BenchmarkGoMarshal -benchmem -run=^$ > "${RESULTS_PREFIX}_go_marshal.txt" 2>&1
+
     echo "  📥 Unmarshal benchmarks..."
-    go test -bench=BenchmarkUnmarshal -benchmem -run=^$ > "${RESULTS_PREFIX}_go_unmarshal.txt" 2>&1
-    
+    go test -bench=BenchmarkGoUnmarshal -benchmem -run=^$ > "${RESULTS_PREFIX}_go_unmarshal.txt" 2>&1
+
     echo "  🔄 Round-trip benchmarks..."
-    go test -bench=BenchmarkRoundtrip -benchmem -run=^$ > "${RESULTS_PREFIX}_go_roundtrip.txt" 2>&1
+    go test -bench=BenchmarkGoRoundtrip -benchmem -run=^$ > "${RESULTS_PREFIX}_go_roundtrip.txt" 2>&1
     
     echo "  ✅ Go benchmarks completed"
 }

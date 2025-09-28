@@ -45,7 +45,7 @@ fn benchmark_marshal_simple(c: &mut Criterion) {
     for (name, msg) in simple_messages {
         group.bench_function(&name, |b| {
             b.iter(|| {
-                let result = msg.marshal();
+                let result = black_box(&msg).marshal();
                 black_box(result)
             })
         });
@@ -66,7 +66,7 @@ fn benchmark_marshal_medium(c: &mut Criterion) {
     for (name, msg) in medium_messages {
         group.bench_function(&name, |b| {
             b.iter(|| {
-                let result = msg.marshal();
+                let result = black_box(&msg).marshal();
                 black_box(result)
             })
         });
@@ -87,7 +87,7 @@ fn benchmark_marshal_complex(c: &mut Criterion) {
     for (name, msg) in complex_messages {
         group.bench_function(&name, |b| {
             b.iter(|| {
-                let result = msg.marshal();
+                let result = black_box(&msg).marshal();
                 black_box(result)
             })
         });
@@ -104,7 +104,7 @@ fn benchmark_marshal_all(c: &mut Criterion) {
     for (name, msg) in messages {
         group.bench_function(&name, |b| {
             b.iter(|| {
-                let result = msg.marshal();
+                let result = black_box(&msg).marshal();
                 black_box(result)
             })
         });

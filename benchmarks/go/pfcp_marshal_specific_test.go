@@ -63,7 +63,7 @@ func BenchmarkGoRoundtrip(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to load test data: %v", err)
 	}
-	
+
 	// Parse messages once
 	parsedMessages := make(map[string]message.Message)
 	for name, data := range testData {
@@ -73,7 +73,7 @@ func BenchmarkGoRoundtrip(b *testing.B) {
 		}
 		parsedMessages[name] = msg
 	}
-	
+
 	// Benchmark roundtrip
 	for name, msg := range parsedMessages {
 		b.Run(name, func(b *testing.B) {
@@ -92,3 +92,4 @@ func BenchmarkGoRoundtrip(b *testing.B) {
 		})
 	}
 }
+
