@@ -20,7 +20,7 @@ jobs:
         include:
           # Test MSRV on Ubuntu only to speed up CI
           - os: ubuntu-latest
-            rust: 1.88.0
+            rust: 1.90.0
     
     steps:
     - name: Checkout sources
