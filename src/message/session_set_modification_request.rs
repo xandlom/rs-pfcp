@@ -367,11 +367,12 @@ impl SessionSetModificationRequest {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::{Ie, IeType};
+    use crate::ie::IeType;
+    use std::net::Ipv4Addr;
 
     #[test]
     fn test_session_set_modification_request_basic() {
-        let alt_smf_ip = Ie::new(IeType::AlternativeSmfIpAddress, vec![192, 168, 1, 100]);
+        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let request = SessionSetModificationRequestBuilder::new(123)
             .alternative_smf_ip_address(alt_smf_ip)
             .build()
@@ -385,10 +386,10 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_with_optional_ies() {
-        let alt_smf_ip = Ie::new(IeType::AlternativeSmfIpAddress, vec![192, 168, 1, 100]);
-        let fq_csid = Ie::new(IeType::FqCsid, vec![0x01, 0x02, 0x03, 0x04]);
-        let group_id = Ie::new(IeType::GroupId, vec![0x05, 0x06]);
-        let cp_ip = Ie::new(IeType::CpIpAddress, vec![10, 0, 0, 1]);
+        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
+        let fq_csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
+        let group_id = GroupId::new(vec![0x05, 0x06]);
+        let cp_ip = CpIpAddress::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
 
         let request = SessionSetModificationRequestBuilder::new(456)
             .alternative_smf_ip_address(alt_smf_ip)
@@ -418,8 +419,8 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_round_trip() {
-        let alt_smf_ip = Ie::new(IeType::AlternativeSmfIpAddress, vec![192, 168, 1, 100]);
-        let fq_csid = Ie::new(IeType::FqCsid, vec![0x01, 0x02, 0x03, 0x04]);
+        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
+        let fq_csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
 
         let original = SessionSetModificationRequestBuilder::new(999)
             .alternative_smf_ip_address(alt_smf_ip)
@@ -437,9 +438,9 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_find_all_ies() {
-        let alt_smf_ip = Ie::new(IeType::AlternativeSmfIpAddress, vec![192, 168, 1, 100]);
-        let fq_csid1 = Ie::new(IeType::FqCsid, vec![0x01, 0x02, 0x03, 0x04]);
-        let fq_csid2 = Ie::new(IeType::FqCsid, vec![0x05, 0x06, 0x07, 0x08]);
+        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
+        let fq_csid1 = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
+        let fq_csid2 = FqCsid::new_ipv4(Ipv4Addr::new(5, 6, 7, 8), vec![2]);
 
         let request = SessionSetModificationRequestBuilder::new(111)
             .alternative_smf_ip_address(alt_smf_ip)
