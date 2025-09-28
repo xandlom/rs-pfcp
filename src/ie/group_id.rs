@@ -29,7 +29,7 @@ impl GroupId {
     /// Creates a new Group ID from a hex string (for UUID format).
     pub fn new_from_hex(hex_str: &str) -> Result<Self, io::Error> {
         let hex_clean = hex_str.replace("-", "").replace(" ", "");
-        if hex_clean.len() % 2 != 0 {
+        if !hex_clean.len().is_multiple_of(2) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Hex string must have even length",
