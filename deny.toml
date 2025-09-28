@@ -198,8 +198,13 @@ deny = [
 
 # Certain crates/versions that will be skipped when doing duplicate detection.
 skip = [
-    #"ansi_term@0.11.0",
-    #{ crate = "ansi_term@0.11.0", reason = "you can specify a reason why it can't be updated/removed" },
+    # syn v1.x is used by pcap-file (via derive-into-owned) while v2.x is used by modern crates
+    # These are proc-macro dependencies and don't conflict at runtime
+    { crate = "syn@1.0.109", reason = "pcap-file dependency chain uses syn v1.x while modern crates use v2.x" },
+    # thiserror v1.x is used by pcap-file while v2.x is used by network-interface
+    # These don't conflict since they're in separate dependency chains
+    { crate = "thiserror@1.0.69", reason = "pcap-file uses thiserror v1.x while network-interface uses v2.x" },
+    { crate = "thiserror-impl@1.0.69", reason = "thiserror v1.x dependency, see thiserror@1.0.69" },
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive
