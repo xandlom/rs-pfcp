@@ -4,6 +4,10 @@
 //! to request the UPF(s) to send subsequent PFCP Session Report Request messages to the
 //! alternative SMF. This is used for SMF set management and session handover scenarios.
 
+use crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
+use crate::ie::cp_ip_address::CpIpAddress;
+use crate::ie::fq_csid::FqCsid;
+use crate::ie::group_id::GroupId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -18,33 +22,38 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetModificationRequest {
     pub header: Header,
-    pub alternative_smf_ip_address: Ie,
-    pub fq_csids: Option<Vec<Ie>>,
-    pub group_ids: Option<Vec<Ie>>,
-    pub cp_ip_addresses: Option<Vec<Ie>>,
+    pub alternative_smf_ip_address: AlternativeSmfIpAddress,
+    pub fq_csids: Option<Vec<FqCsid>>,
+    pub group_ids: Option<Vec<GroupId>>,
+    pub cp_ip_addresses: Option<Vec<CpIpAddress>>,
     pub ies: Vec<Ie>,
+    // Raw IEs for backwards compatibility with find_ie
+    alternative_smf_ip_address_ie: Ie,
+    fq_csids_ies: Option<Vec<Ie>>,
+    group_ids_ies: Option<Vec<Ie>>,
+    cp_ip_addresses_ies: Option<Vec<Ie>>,
 }
 
 impl Message for SessionSetModificationRequest {
     fn marshal(&self) -> Vec<u8> {
         let mut data = self.header.marshal();
-        data.extend_from_slice(&self.alternative_smf_ip_address.marshal());
+        data.extend_from_slice(&self.alternative_smf_ip_address.to_ie().marshal());
 
         if let Some(ies) = &self.fq_csids {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                data.extend_from_slice(&ie.to_ie().marshal());
             }
         }
 
         if let Some(ies) = &self.group_ids {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                data.extend_from_slice(&ie.to_ie().marshal());
             }
         }
 
         if let Some(ies) = &self.cp_ip_addresses {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                data.extend_from_slice(&ie.to_ie().marshal());
             }
         }
 
@@ -69,7 +78,8 @@ impl Message for SessionSetModificationRequest {
             match ie.ie_type {
                 IeType::AlternativeSmfIpAddress => {
                     if alternative_smf_ip_address.is_none() {
-                        alternative_smf_ip_address = Some(ie);
+                        let typed_ie = AlternativeSmfIpAddress::unmarshal(&ie.payload)?;
+                        alternative_smf_ip_address = Some((typed_ie, ie));
                     } else {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
@@ -77,28 +87,70 @@ impl Message for SessionSetModificationRequest {
                         ));
                     }
                 }
-                IeType::FqCsid => fq_csids.get_or_insert(Vec::new()).push(ie),
-                IeType::GroupId => group_ids.get_or_insert(Vec::new()).push(ie),
-                IeType::CpIpAddress => cp_ip_addresses.get_or_insert(Vec::new()).push(ie),
+                IeType::FqCsid => {
+                    let typed_ie = FqCsid::unmarshal(&ie.payload)?;
+                    fq_csids
+                        .get_or_insert(Vec::new())
+                        .push((typed_ie, ie.clone()));
+                }
+                IeType::GroupId => {
+                    let typed_ie = GroupId::unmarshal(&ie.payload)?;
+                    group_ids
+                        .get_or_insert(Vec::new())
+                        .push((typed_ie, ie.clone()));
+                }
+                IeType::CpIpAddress => {
+                    let typed_ie = CpIpAddress::unmarshal(&ie.payload)?;
+                    cp_ip_addresses
+                        .get_or_insert(Vec::new())
+                        .push((typed_ie, ie.clone()));
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
         }
 
-        let alternative_smf_ip_address = alternative_smf_ip_address.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Alternative SMF IP Address IE is mandatory",
-            )
-        })?;
+        let (alternative_smf_ip_address, alternative_smf_ip_address_ie) =
+            alternative_smf_ip_address.ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Alternative SMF IP Address IE is mandatory",
+                )
+            })?;
+
+        // Extract typed and raw IEs
+        let (typed_fq_csids, fq_csids_ies) = if let Some(tuples) = fq_csids {
+            let (typed, raw): (Vec<_>, Vec<_>) = tuples.into_iter().unzip();
+            (Some(typed), Some(raw))
+        } else {
+            (None, None)
+        };
+
+        let (typed_group_ids, group_ids_ies) = if let Some(tuples) = group_ids {
+            let (typed, raw): (Vec<_>, Vec<_>) = tuples.into_iter().unzip();
+            (Some(typed), Some(raw))
+        } else {
+            (None, None)
+        };
+
+        let (typed_cp_ip_addresses, cp_ip_addresses_ies) = if let Some(tuples) = cp_ip_addresses {
+            let (typed, raw): (Vec<_>, Vec<_>) = tuples.into_iter().unzip();
+            (Some(typed), Some(raw))
+        } else {
+            (None, None)
+        };
 
         Ok(SessionSetModificationRequest {
             header,
             alternative_smf_ip_address,
-            fq_csids,
-            group_ids,
-            cp_ip_addresses,
+            fq_csids: typed_fq_csids,
+            group_ids: typed_group_ids,
+            cp_ip_addresses: typed_cp_ip_addresses,
             ies,
+            alternative_smf_ip_address_ie,
+            fq_csids_ies,
+            group_ids_ies,
+            cp_ip_addresses_ies,
         })
     }
 
@@ -120,23 +172,23 @@ impl Message for SessionSetModificationRequest {
 
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
-            IeType::AlternativeSmfIpAddress => Some(&self.alternative_smf_ip_address),
+            IeType::AlternativeSmfIpAddress => Some(&self.alternative_smf_ip_address_ie),
             IeType::FqCsid => {
-                if let Some(ies) = &self.fq_csids {
+                if let Some(ies) = &self.fq_csids_ies {
                     ies.first()
                 } else {
                     None
                 }
             }
             IeType::GroupId => {
-                if let Some(ies) = &self.group_ids {
+                if let Some(ies) = &self.group_ids_ies {
                     ies.first()
                 } else {
                     None
                 }
             }
             IeType::CpIpAddress => {
-                if let Some(ies) = &self.cp_ip_addresses {
+                if let Some(ies) = &self.cp_ip_addresses_ies {
                     ies.first()
                 } else {
                     None
@@ -148,23 +200,23 @@ impl Message for SessionSetModificationRequest {
 
     fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie> {
         match ie_type {
-            IeType::AlternativeSmfIpAddress => vec![&self.alternative_smf_ip_address],
+            IeType::AlternativeSmfIpAddress => vec![&self.alternative_smf_ip_address_ie],
             IeType::FqCsid => {
-                if let Some(ies) = &self.fq_csids {
+                if let Some(ies) = &self.fq_csids_ies {
                     ies.iter().collect()
                 } else {
                     vec![]
                 }
             }
             IeType::GroupId => {
-                if let Some(ies) = &self.group_ids {
+                if let Some(ies) = &self.group_ids_ies {
                     ies.iter().collect()
                 } else {
                     vec![]
                 }
             }
             IeType::CpIpAddress => {
-                if let Some(ies) = &self.cp_ip_addresses {
+                if let Some(ies) = &self.cp_ip_addresses_ies {
                     ies.iter().collect()
                 } else {
                     vec![]
@@ -177,10 +229,10 @@ impl Message for SessionSetModificationRequest {
 
 pub struct SessionSetModificationRequestBuilder {
     seq: u32,
-    alternative_smf_ip_address: Option<Ie>,
-    fq_csids: Option<Vec<Ie>>,
-    group_ids: Option<Vec<Ie>>,
-    cp_ip_addresses: Option<Vec<Ie>>,
+    alternative_smf_ip_address: Option<AlternativeSmfIpAddress>,
+    fq_csids: Option<Vec<FqCsid>>,
+    group_ids: Option<Vec<GroupId>>,
+    cp_ip_addresses: Option<Vec<CpIpAddress>>,
     ies: Vec<Ie>,
 }
 
@@ -196,37 +248,40 @@ impl SessionSetModificationRequestBuilder {
         }
     }
 
-    pub fn alternative_smf_ip_address(mut self, alternative_smf_ip_address: Ie) -> Self {
+    pub fn alternative_smf_ip_address(
+        mut self,
+        alternative_smf_ip_address: AlternativeSmfIpAddress,
+    ) -> Self {
         self.alternative_smf_ip_address = Some(alternative_smf_ip_address);
         self
     }
 
-    pub fn fq_csids(mut self, fq_csids: Vec<Ie>) -> Self {
+    pub fn fq_csids(mut self, fq_csids: Vec<FqCsid>) -> Self {
         self.fq_csids = Some(fq_csids);
         self
     }
 
-    pub fn add_fq_csid(mut self, fq_csid: Ie) -> Self {
+    pub fn add_fq_csid(mut self, fq_csid: FqCsid) -> Self {
         self.fq_csids.get_or_insert(Vec::new()).push(fq_csid);
         self
     }
 
-    pub fn group_ids(mut self, group_ids: Vec<Ie>) -> Self {
+    pub fn group_ids(mut self, group_ids: Vec<GroupId>) -> Self {
         self.group_ids = Some(group_ids);
         self
     }
 
-    pub fn add_group_id(mut self, group_id: Ie) -> Self {
+    pub fn add_group_id(mut self, group_id: GroupId) -> Self {
         self.group_ids.get_or_insert(Vec::new()).push(group_id);
         self
     }
 
-    pub fn cp_ip_addresses(mut self, cp_ip_addresses: Vec<Ie>) -> Self {
+    pub fn cp_ip_addresses(mut self, cp_ip_addresses: Vec<CpIpAddress>) -> Self {
         self.cp_ip_addresses = Some(cp_ip_addresses);
         self
     }
 
-    pub fn add_cp_ip_address(mut self, cp_ip_address: Ie) -> Self {
+    pub fn add_cp_ip_address(mut self, cp_ip_address: CpIpAddress) -> Self {
         self.cp_ip_addresses
             .get_or_insert(Vec::new())
             .push(cp_ip_address);
@@ -246,25 +301,39 @@ impl SessionSetModificationRequestBuilder {
             )
         })?;
 
-        let mut payload_len = alternative_smf_ip_address.len();
+        // Create raw IE versions for backwards compatibility
+        let alternative_smf_ip_address_ie = alternative_smf_ip_address.to_ie();
+        let mut payload_len = alternative_smf_ip_address_ie.len();
 
-        if let Some(ies) = &self.fq_csids {
-            for ie in ies {
+        let fq_csids_ies = if let Some(ref ies) = self.fq_csids {
+            let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
+            for ie in &raw_ies {
                 payload_len += ie.len();
             }
-        }
+            Some(raw_ies)
+        } else {
+            None
+        };
 
-        if let Some(ies) = &self.group_ids {
-            for ie in ies {
+        let group_ids_ies = if let Some(ref ies) = self.group_ids {
+            let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
+            for ie in &raw_ies {
                 payload_len += ie.len();
             }
-        }
+            Some(raw_ies)
+        } else {
+            None
+        };
 
-        if let Some(ies) = &self.cp_ip_addresses {
-            for ie in ies {
+        let cp_ip_addresses_ies = if let Some(ref ies) = self.cp_ip_addresses {
+            let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
+            for ie in &raw_ies {
                 payload_len += ie.len();
             }
-        }
+            Some(raw_ies)
+        } else {
+            None
+        };
 
         for ie in &self.ies {
             payload_len += ie.len();
@@ -285,6 +354,10 @@ impl SessionSetModificationRequestBuilder {
             group_ids: self.group_ids,
             cp_ip_addresses: self.cp_ip_addresses,
             ies: self.ies,
+            alternative_smf_ip_address_ie,
+            fq_csids_ies,
+            group_ids_ies,
+            cp_ip_addresses_ies,
         })
     }
 }
