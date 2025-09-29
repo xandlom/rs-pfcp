@@ -176,7 +176,7 @@ mod tests {
         assert!(group_id.is_uuid());
 
         let uuid_str = group_id.to_uuid_string().unwrap();
-        assert_eq!(uuid_str, "123456789abcdef0-1122-3344-5566-778899aabbcc");
+        assert_eq!(uuid_str, "12345678-9abc-def0-1122-334455667788");
     }
 
     #[test]
