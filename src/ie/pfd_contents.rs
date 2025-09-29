@@ -4,9 +4,9 @@
 //! with flags indicating which fields are present (FD, URL, DN, CP, DNP, AFD, AURL, ADNP).
 //!
 //! **Flow Description Encoding**: The Flow Description field, when present, shall be encoded
-//! as an OctetString as specified in clause 6.4.3.7 of 3GPP TS 29.251 [21], which references
+//! as an OctetString as specified in clause 6.4.3.7 of 3GPP TS 29.251, which references
 //! the IP filter rule syntax from 3GPP TS 29.212 clause 5.4.2. Flow descriptions should follow
-//! the format: `action dir proto from src to dst [options]`
+//! the format: `action dir proto from src to dst \[options\]`
 //!
 //! Example flow descriptions:
 //! - `"permit out tcp from any to any port 80"`
@@ -35,7 +35,7 @@ use std::io;
 pub struct PfdContents {
     pub flags: u8,
     /// Flow Description as IP filter rule (3GPP TS 29.251 clause 6.4.3.7).
-    /// Format: "action dir proto from src to dst [options]"
+    /// Format: "action dir proto from src to dst \[options\]"
     /// Example: "permit out tcp from any to any port 80"
     pub flow_description: Option<String>,
     pub url: Option<String>,
@@ -74,7 +74,7 @@ impl PfdContentsBuilder {
     /// Sets the flow description (FD flag bit 0).
     ///
     /// The flow description shall be an IP filter rule as specified in 3GPP TS 29.251 clause 6.4.3.7.
-    /// Format: "action dir proto from src to dst [options]"
+    /// Format: "action dir proto from src to dst \[options\]"
     ///
     /// # Examples
     /// ```rust
@@ -249,7 +249,7 @@ impl PfdContents {
     /// Creates a PfdContents with just a flow description.
     ///
     /// The flow description shall be an IP filter rule as specified in 3GPP TS 29.251 clause 6.4.3.7.
-    /// Format: "action dir proto from src to dst [options]"
+    /// Format: "action dir proto from src to dst \[options\]"
     pub fn flow_description<S: Into<String>>(flow_description: S) -> Result<Self, io::Error> {
         PfdContentsBuilder::new()
             .flow_description(flow_description)
