@@ -245,6 +245,7 @@ impl PfdManagementRequestBuilder {
 mod tests {
     use super::*;
     use crate::ie::application_id::ApplicationId;
+    use crate::ie::pfd_contents::PfdContents;
     use crate::ie::pfd_context::PfdContext;
     use std::net::Ipv4Addr;
 
@@ -262,7 +263,15 @@ mod tests {
     #[test]
     fn test_pfd_management_request_builder_with_application_ids_pfds() {
         let app_id = ApplicationId::new("test.app");
-        let pfd_context = PfdContext::new(vec![]); // Empty PFD for simplicity
+
+        // Create realistic PFD contents using the builder
+        let pfd_contents1 =
+            PfdContents::flow_description("permit out ip from any to 192.168.1.0/24").unwrap();
+        let pfd_contents2 =
+            PfdContents::flow_and_url("permit in tcp from any to any port 443", "https://test.app")
+                .unwrap();
+        let pfd_context = PfdContext::new(vec![pfd_contents1, pfd_contents2]);
+
         let app_ids_pfds = ApplicationIdsPfds::new(app_id, pfd_context);
 
         let request = PfdManagementRequestBuilder::new(12345)
@@ -283,11 +292,35 @@ mod tests {
         let app_id1 = ApplicationId::new("app1.test");
         let app_id2 = ApplicationId::new("app2.test");
         let app_id3 = ApplicationId::new("app3.test");
-        let pfd_context = PfdContext::new(vec![]);
 
-        let app_pfds1 = ApplicationIdsPfds::new(app_id1, pfd_context.clone());
-        let app_pfds2 = ApplicationIdsPfds::new(app_id2, pfd_context.clone());
-        let app_pfds3 = ApplicationIdsPfds::new(app_id3, pfd_context);
+        // Create different PFD contents for each application
+        let pfd_context1 = PfdContext::new(vec![
+            PfdContents::flow_description("permit out tcp from any to any port 80").unwrap(),
+            PfdContents::domain_name("app1.test.com").unwrap(),
+        ]);
+
+        let pfd_context2 = PfdContext::new(vec![
+            PfdContents::url("https://app2.test.com/api").unwrap(),
+            PfdContents::builder()
+                .flow_description("permit in udp from any to any port 443")
+                .domain_name("app2.test.com")
+                .build()
+                .unwrap(),
+        ]);
+
+        let pfd_context3 = PfdContext::new(vec![
+            PfdContents::domain_and_protocol("app3.test.com", "https").unwrap(),
+            PfdContents::builder()
+                .custom_pfd_content("custom application detection rule")
+                .add_additional_url("https://cdn.app3.test.com")
+                .add_additional_url("https://api.app3.test.com")
+                .build()
+                .unwrap(),
+        ]);
+
+        let app_pfds1 = ApplicationIdsPfds::new(app_id1, pfd_context1);
+        let app_pfds2 = ApplicationIdsPfds::new(app_id2, pfd_context2);
+        let app_pfds3 = ApplicationIdsPfds::new(app_id3, pfd_context3);
 
         let request = PfdManagementRequestBuilder::new(98765)
             .application_ids_pfds(app_pfds1.clone())
@@ -329,7 +362,26 @@ mod tests {
     fn test_pfd_management_request_builder_full() {
         let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let app_id = ApplicationId::new("full.test.app");
-        let pfd_context = PfdContext::new(vec![]);
+
+        // Create comprehensive PFD context demonstrating all field types
+        let pfd_context = PfdContext::new(vec![
+            PfdContents::builder()
+                .flow_description("permit out tcp from any to any port 80")
+                .url("https://full.test.app")
+                .domain_name("full.test.app")
+                .build()
+                .unwrap(),
+            PfdContents::builder()
+                .custom_pfd_content("signature: full_test_app_v1.0")
+                .domain_name_protocol("https")
+                .add_additional_flow_description("permit in tcp from any to any port 443")
+                .add_additional_flow_description("permit out udp from any to any port 53")
+                .add_additional_url("https://api.full.test.app")
+                .add_additional_domain_name_and_protocol("cdn.full.test.app:https")
+                .build()
+                .unwrap(),
+        ]);
+
         let app_ids_pfds = ApplicationIdsPfds::new(app_id, pfd_context);
         let other_ie1 = Ie::new(IeType::Unknown, vec![0xAA, 0xBB]);
         let other_ie2 = Ie::new(IeType::Unknown, vec![0xCC, 0xDD]);
@@ -357,9 +409,25 @@ mod tests {
         let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
         let app_id1 = ApplicationId::new("app1.roundtrip");
         let app_id2 = ApplicationId::new("app2.roundtrip");
-        let pfd_context = PfdContext::new(vec![]);
-        let app_pfds1 = ApplicationIdsPfds::new(app_id1, pfd_context.clone());
-        let app_pfds2 = ApplicationIdsPfds::new(app_id2, pfd_context);
+
+        // Create different PFD contexts for roundtrip testing
+        let pfd_context1 = PfdContext::new(vec![PfdContents::flow_and_url(
+            "permit out tcp from any to app1.roundtrip",
+            "https://app1.roundtrip",
+        )
+        .unwrap()]);
+
+        let pfd_context2 = PfdContext::new(vec![
+            PfdContents::domain_and_protocol("app2.roundtrip", "https").unwrap(),
+            PfdContents::builder()
+                .flow_description("permit in tcp from any to any port 8080")
+                .add_additional_flow_description("permit out udp from any to any port 1234")
+                .build()
+                .unwrap(),
+        ]);
+
+        let app_pfds1 = ApplicationIdsPfds::new(app_id1, pfd_context1);
+        let app_pfds2 = ApplicationIdsPfds::new(app_id2, pfd_context2);
         let other_ie = Ie::new(IeType::Unknown, vec![0xFF, 0xEE, 0xDD]);
 
         let original = PfdManagementRequestBuilder::new(99999)
@@ -393,7 +461,20 @@ mod tests {
     fn test_pfd_management_request_type_safe_access() {
         let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 1));
         let app_id = ApplicationId::new("type.safe.app");
-        let pfd_context = PfdContext::new(vec![]);
+
+        // Create a rich PFD context for type-safe access testing
+        let pfd_context = PfdContext::new(vec![PfdContents::builder()
+            .flow_description("permit out tcp from any to any port 80")
+            .url("https://type.safe.app")
+            .domain_name("type.safe.app")
+            .custom_pfd_content("application_signature_v2.1")
+            .domain_name_protocol("https")
+            .add_additional_flow_description("permit in tcp from any to any port 443")
+            .add_additional_url("https://api.type.safe.app")
+            .add_additional_domain_name_and_protocol("cdn.type.safe.app:https")
+            .build()
+            .unwrap()]);
+
         let app_ids_pfds = ApplicationIdsPfds::new(app_id, pfd_context);
         let other_ie = Ie::new(IeType::Unknown, vec![0x01, 0x02, 0x03]);
 
@@ -411,6 +492,15 @@ mod tests {
         let app_pfds = request.application_ids_pfds.as_ref().unwrap();
         assert_eq!(app_pfds.len(), 1);
         assert_eq!(app_pfds[0], app_ids_pfds);
+
+        // Verify the PFD contents are properly structured
+        let pfd_context = &app_pfds[0].pfd_context;
+        assert_eq!(pfd_context.pfd_contents.len(), 1);
+        let pfd_content = &pfd_context.pfd_contents[0];
+        assert_eq!(pfd_content.flags, 0xFF); // All flags should be set
+        assert!(pfd_content.flow_description.is_some());
+        assert!(pfd_content.url.is_some());
+        assert!(pfd_content.domain_name.is_some());
 
         // Generic IE access still works
         assert_eq!(request.ies.len(), 1);
