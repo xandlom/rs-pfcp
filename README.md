@@ -198,6 +198,16 @@ let session_request = SessionEstablishmentRequestBuilder::new(seid, seq)
                 Some(network_instance)
             ))
             .build()?,
+
+        // Downlink FAR - forward to access network
+        CreateFar::builder()
+            .far_id(FarId::new(2))
+            .apply_action(ApplyAction::FORW)
+            .forwarding_parameters(ForwardingParameters::new(
+                DestinationInterface::Access,
+                None
+            ))
+            .build()?,
     ])
     .build()?;
 ```
