@@ -205,7 +205,7 @@ impl CreateUrr {
 ///
 /// // Simple volume-based URR
 /// let urr = CreateUrrBuilder::new(UrrId::new(1))
-///     .measurement_method(MeasurementMethod::new(true, false, false))
+///     .measurement_method(MeasurementMethod::new(false, true, false)) // volume enabled
 ///     .reporting_triggers(ReportingTriggers::new())
 ///     .volume_threshold_bytes(1_000_000_000) // 1GB
 ///     .build()
