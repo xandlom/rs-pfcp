@@ -8,6 +8,8 @@
 // - CreatePdr Builder: Packet Detection Rules with validation
 // - CreateQer Builder: QoS Enforcement Rules with rate limiting and gate control
 // - CreateFar Builder: Forwarding Action Rules with action/parameter validation
+// - UpdateQer Builder: Update existing QoS rules with convenience methods
+// - UpdateFar Builder: Update existing forwarding rules with new destinations
 //
 // Key features demonstrated:
 // ✅ Type-safe IE construction with validation
@@ -16,6 +18,7 @@
 // ✅ CHOOSE flag handling for UPF IP selection
 // ✅ QoS enforcement with bandwidth management
 // ✅ Advanced scenarios (buffering, network instances)
+// ✅ Session modification with Update builders
 
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
@@ -35,6 +38,9 @@ use rs_pfcp::ie::{
     precedence::Precedence,
     qer_id::QerId,
     ue_ip_address::UeIpAddress,
+    update_far::UpdateFarBuilder,
+    update_forwarding_parameters::UpdateForwardingParameters,
+    update_qer::UpdateQerBuilder,
     Ie, IeType,
 };
 use rs_pfcp::message::{
@@ -282,7 +288,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Reset socket timeout for subsequent operations
         socket.set_read_timeout(None)?;
 
-        // 3. Session Modification - Showcase advanced builder patterns
+        // 3. Session Modification - Showcase advanced builder patterns including Update builders
         println!("[{seid}] Sending Session Modification Request...");
 
         // Create F-TEID with CHOOSE flag (let UPF select IP)
@@ -315,17 +321,41 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .build()
                 .unwrap();
 
-        // Create new QER with different QoS settings (e.g., restricted bandwidth)
+        // Update existing FAR #1 to change destination using UpdateFarBuilder
+        let updated_far = UpdateFarBuilder::new(FarId::new(1))
+            .apply_action(rs_pfcp::ie::apply_action::ApplyAction::FORW)
+            .update_forwarding_parameters(
+                UpdateForwardingParameters::new()
+                    .with_destination_interface(
+                        rs_pfcp::ie::destination_interface::DestinationInterface::new(
+                            Interface::Access,
+                        ),
+                    )
+                    .with_network_instance(NetworkInstance::new("modified.core.apn")),
+            )
+            .build()
+            .unwrap();
+
+        // Create new QER with different QoS settings using CreateQer convenience method
         let modified_qer = CreateQer::with_rate_limit(
             QerId::new(2),
             1_000_000,  // Reduced to 1Mbps up
             10_000_000, // Reduced to 10Mbps down
         );
+
+        // Update existing QER #1 to close gates using UpdateQerBuilder
+        let updated_qer = UpdateQerBuilder::closed_gate(QerId::new(1))
+            .rate_limit(5_000_000, 20_000_000) // Also update rate limits
+            .build()
+            .unwrap();
+
         let session_mod_req = SessionModificationRequestBuilder::new(seid, 3)
             .fseid(fseid_ie.clone())
             .update_pdrs(vec![modified_pdr.to_ie()])
             .create_fars(vec![modified_far.to_ie()]) // Add new buffering FAR
+            .update_fars(vec![updated_far.to_ie()]) // Update existing FAR with new destination
             .create_qers(vec![modified_qer.to_ie()]) // Add new restricted QER
+            .update_qers(vec![updated_qer.to_ie()]) // Update existing QER to close gates
             .build();
         socket.send(&session_mod_req.marshal())?;
         let (_len, _) = socket.recv_from(&mut buf)?;
@@ -379,6 +409,34 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .build()
                 .unwrap();
             println!("✅ Premium QER created with guaranteed bandwidth");
+
+            // Example 6: UpdateFar to modify existing forwarding behavior
+            let _update_far_dest = UpdateFarBuilder::new(FarId::new(1))
+                .apply_action(
+                    rs_pfcp::ie::apply_action::ApplyAction::FORW
+                        | rs_pfcp::ie::apply_action::ApplyAction::NOCP,
+                )
+                .update_forwarding_parameters(
+                    UpdateForwardingParameters::new().with_destination_interface(
+                        rs_pfcp::ie::destination_interface::DestinationInterface::new(
+                            Interface::Core,
+                        ),
+                    ),
+                )
+                .build()
+                .unwrap();
+            println!("✅ UpdateFar created to modify forwarding destination");
+
+            // Example 7: UpdateQer convenience methods for traffic control
+            let _qer_open = UpdateQerBuilder::open_gate(QerId::new(1)).build().unwrap();
+            let _qer_close = UpdateQerBuilder::closed_gate(QerId::new(2))
+                .build()
+                .unwrap();
+            let _qer_uplink = UpdateQerBuilder::uplink_only(QerId::new(3))
+                .rate_limit(10_000_000, 50_000_000)
+                .build()
+                .unwrap();
+            println!("✅ UpdateQer convenience methods: open/close/directional gates");
 
             println!("=== All builder patterns demonstrated successfully! ===\n");
         }
