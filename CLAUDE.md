@@ -172,6 +172,15 @@ let qer = CreateQerBuilder::new(QerId::new(1))
 
 let traffic_control_qer = CreateQer::downlink_only(QerId::new(2));
 let open_qer = CreateQer::open_gate(QerId::new(3));
+
+// CreateUrr (Usage Reporting Rules) with thresholds
+let urr = CreateUrrBuilder::new(UrrId::new(1))
+    .measurement_method(MeasurementMethod::new(true, false, false))
+    .reporting_triggers(ReportingTriggers::new())
+    .volume_threshold_bytes(1_000_000_000)  // 1GB quota
+    .time_threshold_seconds(3600)  // 1 hour
+    .subsequent_volume_threshold_bytes(500_000_000)  // 500MB after first report
+    .build()?;
 ```
 
 **Builder Pattern Benefits:**
@@ -280,6 +289,7 @@ mod tests {
 - ✅ **CreatePdr Builder**: Packet Detection Rule construction with validation
 - ✅ **CreateQer Builder**: QoS Enforcement Rules with gate control and rate limiting
 - ✅ **CreateFar Builder**: Forwarding Action Rules with action/parameter validation
+- ✅ **CreateUrr Builder**: Usage Reporting Rules with volume/time thresholds and convenience methods
 
 #### **Builder Pattern Best Practices**
 
