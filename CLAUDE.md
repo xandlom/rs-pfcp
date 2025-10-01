@@ -33,7 +33,7 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 - **Run all tests**: `cargo test`
 - **Run specific test**: `cargo test test_name`
 - **Run tests for specific module**: `cargo test ie::node_id` or `cargo test message::heartbeat`
-- **Integration tests**: `cargo test --test messages`
+- **Integration tests**: `cargo test --test messages` or `cargo test --test test_new_messages`
 
 ### Development and Debugging
 - **Parse messages from hex**: Use `parse()` function with `Box<dyn Message>` for unknown types
@@ -90,11 +90,13 @@ Consistent error handling throughout the codebase:
 
 ### Message Types
 The library supports these PFCP message types:
-- **Node Management**: Heartbeat Request/Response
+- **Node Management**: Heartbeat Request/Response, Node Report Request/Response
 - **Association Management**: Association Setup/Update/Release Request/Response
 - **Session Management**: Session Establishment/Modification/Deletion Request/Response
+- **Session Set Management**: Session Set Modification/Deletion Request/Response
 - **PFD Management**: PFD Management Request/Response
 - **Session Report**: Session Report Request/Response
+- **Version Management**: Version Not Supported Response
 
 ### IE Support Status
 See `IE_SUPPORT.md` for detailed status of which IEs are implemented. Most core IEs are supported including:
@@ -180,6 +182,18 @@ let urr = CreateUrrBuilder::new(UrrId::new(1))
     .volume_threshold_bytes(1_000_000_000)  // 1GB quota
     .time_threshold_seconds(3600)  // 1 hour
     .subsequent_volume_threshold_bytes(500_000_000)  // 500MB after first report
+    .build()?;
+
+// UpdateFar (Update Forwarding Action Rules) with builder pattern
+let update_far = UpdateFarBuilder::new(far_id)
+    .apply_action(ApplyAction::FORW | ApplyAction::NOCP)
+    .update_forwarding_parameters(update_params)
+    .build()?;
+
+// UpdateQer (Update QoS Enforcement Rules) with convenience methods
+let update_qer = UpdateQerBuilder::new(QerId::new(1))
+    .update_gate_status(GateStatus::open())
+    .update_mbr(1500000, 3000000)  // Update to 1.5Mbps up, 3Mbps down
     .build()?;
 ```
 
@@ -290,6 +304,8 @@ mod tests {
 - ✅ **CreateQer Builder**: QoS Enforcement Rules with gate control and rate limiting
 - ✅ **CreateFar Builder**: Forwarding Action Rules with action/parameter validation
 - ✅ **CreateUrr Builder**: Usage Reporting Rules with volume/time thresholds and convenience methods
+- ✅ **UpdateFar Builder**: Update Forwarding Action Rules with validation
+- ✅ **UpdateQer Builder**: Update QoS Enforcement Rules with comprehensive convenience methods
 
 #### **Builder Pattern Best Practices**
 
@@ -337,9 +353,10 @@ mod tests {
 - All marshal/unmarshal operations are tested with round-trip tests
 - Messages are tested both in isolation and when created from other messages
 - Invalid data handling is tested for error cases
-- Integration tests in `tests/messages.rs` cover full message workflows
+- Integration tests in `tests/messages.rs` and `tests/test_new_messages.rs` cover full message workflows
 - F-TEID compliance testing includes CHOOSE/CHOOSE_ID flag validation
 - Created PDR testing validates proper F-TEID allocation and encoding
+- Builder pattern implementations include comprehensive validation error testing
 
 ### YAML/JSON Message Display
 The library supports structured display of PFCP messages:
