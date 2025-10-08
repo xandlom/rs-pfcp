@@ -18,8 +18,8 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 - 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - All 70 Information Elements implemented
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 285+ comprehensive tests with full round-trip serialization validation
-- 🛠️ **Developer Friendly** - Builder patterns, structured debugging, and comprehensive error handling
+- 🧪 **Battle Tested** - 854 comprehensive tests with full round-trip serialization validation
+- 🛠️ **Developer Friendly** - 100% builder pattern coverage with type-safe validation
 - 📊 **Production Ready** - YAML/JSON message display, network interface support, and robust examples
 
 ### Protocol Coverage
@@ -36,7 +36,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.1.0"
+rs-pfcp = "0.1.1"
 ```
 
 ### Basic Usage
@@ -133,7 +133,7 @@ rs-pfcp/
 # Build the library
 cargo build
 
-# Run all tests (285+ tests)
+# Run all tests (854 tests)
 cargo test
 
 # Run specific test category
