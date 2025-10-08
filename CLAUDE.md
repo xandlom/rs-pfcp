@@ -72,6 +72,7 @@ All Information Elements implement:
 - Support for vendor-specific IEs with enterprise IDs
 - 3GPP TS 29.244 compliant F-TEID encoding with proper CHOOSE/CHOOSE_ID flag handling
 - Proper error handling with `std::io::Error`
+- **Security**: Zero-length IEs are rejected at protocol level to prevent DoS attacks (per 3GPP TS 29.244, all IEs have minimum length ≥ 1 byte)
 
 #### Message Display and Debugging
 The library includes sophisticated display capabilities via `MessageDisplay` trait:
@@ -341,6 +342,32 @@ mod tests {
    - Provide shortcuts for typical use cases
    - Use descriptive method names (e.g., `uplink_to_core()`)
    - Support both basic and advanced configuration
+
+## Security Considerations
+
+### Zero-Length IE Protection
+
+**Threat**: Malformed PFCP messages with zero-length Information Elements can cause DoS attacks (similar to free5gc CVE-like issues).
+
+**Mitigation**: The library implements protocol-level validation in `src/ie/mod.rs`:
+- All IEs with `length=0` are rejected with `io::ErrorKind::InvalidData`
+- Aligned with 3GPP TS 29.244 specification (all IEs have minimum length ≥ 1 byte)
+- Prevents attack vectors discovered in production PFCP implementations
+
+**Implementation Details**:
+```rust
+// In Ie::unmarshal()
+if length == 0 {
+    return Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        format!("Zero-length IE not allowed (IE type: {})", ie_type as u16),
+    ));
+}
+```
+
+**Testing**: See `src/ie/mod.rs::tests::test_security_dos_prevention()` for attack scenario simulations.
+
+**Reference**: See `ZERO_LENGTH_IE_ANALYSIS.md` for comprehensive security analysis.
 
 ## Working with the Codebase
 

@@ -765,6 +765,15 @@ impl Ie {
         let ie_type = IeType::from(u16::from_be_bytes([b[0], b[1]]));
         let length = u16::from_be_bytes([b[2], b[3]]);
 
+        // Per 3GPP TS 29.244, no legitimate PFCP IE has zero length.
+        // Reject to prevent DoS attacks via malformed messages.
+        if length == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Zero-length IE not allowed (IE type: {})", ie_type as u16),
+            ));
+        }
+
         let mut offset = 4;
         let enterprise_id = if (ie_type as u16) & 0x8000 != 0 {
             if b.len() < 6 {
@@ -870,5 +879,80 @@ impl Ie {
             offset += ie_len;
         }
         Ok(&self.child_ies)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reject_zero_length_ie() {
+        // IE: Recovery Time Stamp (Type 96), Length 0
+        let malformed = vec![
+            0x00, 0x60, // Type: 96
+            0x00, 0x00, // Length: 0
+        ];
+
+        let result = Ie::unmarshal(&malformed);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("Zero-length"));
+        assert!(err.to_string().contains("96"));
+    }
+
+    #[test]
+    fn test_reject_zero_length_vendor_specific_ie() {
+        // Vendor-specific IE (bit 15 set), Length 0
+        let malformed = vec![
+            0x80, 0x01, // Type: 32769 (vendor-specific)
+            0x00, 0x00, // Length: 0
+            0x00, 0x0A, // Enterprise ID: 10
+        ];
+
+        let result = Ie::unmarshal(&malformed);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("Zero-length"));
+    }
+
+    #[test]
+    fn test_accept_valid_one_byte_ie() {
+        // Cause IE (Type 19), Length 1, Value 1 (Request accepted)
+        let valid = vec![
+            0x00, 0x13, // Type: 19 (Cause)
+            0x00, 0x01, // Length: 1
+            0x01, // Value: 1
+        ];
+
+        let result = Ie::unmarshal(&valid);
+        assert!(result.is_ok());
+        let ie = result.unwrap();
+        assert_eq!(ie.ie_type, IeType::Cause);
+        assert_eq!(ie.payload.len(), 1);
+        assert_eq!(ie.payload[0], 1);
+    }
+
+    #[test]
+    fn test_security_dos_prevention() {
+        // Simulate attack scenario from free5gc issue #483
+        // Multiple zero-length IEs should all be rejected
+        let attack_vectors = vec![
+            vec![0x00, 0x60, 0x00, 0x00], // Recovery Time Stamp
+            vec![0x00, 0x13, 0x00, 0x00], // Cause
+            vec![0x00, 0x3C, 0x00, 0x00], // Node ID
+            vec![0x00, 0x39, 0x00, 0x00], // F-SEID
+        ];
+
+        for malformed in attack_vectors {
+            let result = Ie::unmarshal(&malformed);
+            assert!(
+                result.is_err(),
+                "Should reject zero-length IE: {:?}",
+                malformed
+            );
+        }
     }
 }
