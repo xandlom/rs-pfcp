@@ -195,6 +195,18 @@ let update_qer = UpdateQerBuilder::new(QerId::new(1))
     .update_gate_status(GateStatus::open())
     .update_mbr(1500000, 3000000)  // Update to 1.5Mbps up, 3Mbps down
     .build()?;
+
+// UpdateUrr (Update Usage Reporting Rules) with threshold updates
+let update_urr = UpdateUrrBuilder::new(UrrId::new(1))
+    .volume_threshold_bytes(2_000_000_000)  // Increase to 2GB
+    .time_threshold_seconds(7200)  // Increase to 2 hours
+    .build()?;
+
+// UpdatePdr (Update Packet Detection Rules) with partial updates
+let update_pdr = UpdatePdrBuilder::new(PdrId::new(1))
+    .far_id(FarId::new(10))  // Update only FAR association
+    .precedence(Precedence::new(50))  // Update priority
+    .build()?;
 ```
 
 **Builder Pattern Benefits:**
@@ -306,6 +318,8 @@ mod tests {
 - ✅ **CreateUrr Builder**: Usage Reporting Rules with volume/time thresholds and convenience methods
 - ✅ **UpdateFar Builder**: Update Forwarding Action Rules with validation
 - ✅ **UpdateQer Builder**: Update QoS Enforcement Rules with comprehensive convenience methods
+- ✅ **UpdateUrr Builder**: Update Usage Reporting Rules with threshold validation and partial updates
+- ✅ **UpdatePdr Builder**: Update Packet Detection Rules with support for partial field updates
 
 #### **Builder Pattern Best Practices**
 
