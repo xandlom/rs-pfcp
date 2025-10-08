@@ -93,17 +93,19 @@ let qer = CreateQerBuilder::new(QerId::new(1))
 
 ### Phase 2: Medium Priority IEs
 
-#### 4. **Complete CreateFar Builder**
-- Enhance existing fluent methods into full builder pattern
-- Add validation for action and parameter combinations
+#### 4. **Complete CreateFar Builder** ✅ **COMPLETED**
+- ✅ Enhance existing fluent methods into full builder pattern
+- ✅ Add validation for action and parameter combinations
 
-#### 5. **UsageReport Builder**
-- Multiple optional reporting parameters
-- Complex trigger combinations
+#### 5. **UsageReport Builder** ✅ **COMPLETED**
+- ✅ Multiple optional reporting parameters
+- ✅ Complex trigger combinations
 
-#### 6. **Update* IE Builders**
-- UpdatePdr, UpdateFar, UpdateQer
-- Similar complexity to Create* variants
+#### 6. **Update* IE Builders** ⚠️ **PARTIALLY COMPLETED**
+- ✅ UpdateFar - Complete with validation
+- ✅ UpdateQer - Complete with convenience methods
+- ❌ **UpdatePdr** - **NOT IMPLEMENTED** (9 params with `#[allow(clippy::too_many_arguments)]`)
+- ❌ **UpdateUrr** - **NOT IMPLEMENTED** (9 params with `#[allow(clippy::too_many_arguments)]`)
 
 ### Phase 3: Lower Priority IEs
 
@@ -207,11 +209,13 @@ impl IeNameBuilder {
 - ✅ Implement action/parameter combination validation (BUFF requires BAR ID, etc.)
 - ✅ Add 12 new tests for enhanced validation scenarios (40 total CreateFar tests)
 
-## ✅ Success Metrics - ACHIEVED
+## ⚠️ Success Metrics - MOSTLY ACHIEVED (Phase 2 Incomplete)
 
-1. **Code Quality:** ✅ **ACHIEVED**
+1. **Code Quality:** ⚠️ **MOSTLY ACHIEVED**
    - ✅ **Eliminated `#[allow(clippy::too_many_arguments)]`** from F-TEID implementation
-   - ✅ **Reduced cyclomatic complexity** in IE constructors with builder patterns
+   - ⚠️ **Reduced cyclomatic complexity** - 2 IEs still have `too_many_arguments` warnings:
+     - ❌ **UpdatePdr** (9 params) - NO BUILDER
+     - ❌ **UpdateUrr** (9 params) - NO BUILDER
    - ✅ **Significantly improved test coverage** for error cases:
      - F-TEID Builder: 30 tests (15 new builder tests)
      - PDI Builder: 22 comprehensive tests
@@ -229,9 +233,9 @@ impl IeNameBuilder {
    - ✅ **Simplified debugging** of IE construction issues with comprehensive error messages
    - ✅ **Consistent patterns** across all major IE builders (F-TEID, PDI, CreatePdr, CreateQer, CreateFar)
 
-## Builder Pattern Implementation - Final Status
+## Builder Pattern Implementation - Current Status
 
-### ✅ **All Major Builders Completed (100%)**
+### ⚠️ **Core IE Builders (10/12 = 83%)**
 
 | Builder | Status | Tests | Key Features |
 |---------|--------|-------|--------------|
@@ -240,15 +244,23 @@ impl IeNameBuilder {
 | **CreatePdr Builder** | ✅ Complete | 7 tests | Packet Detection Rule construction with validation |
 | **CreateQer Builder** | ✅ Complete | 22 tests | QoS Enforcement Rules, gate control, rate limiting |
 | **CreateFar Builder** | ✅ Complete | 28 tests | Forwarding Action Rules, action/parameter validation |
+| **CreateUrr Builder** | ✅ Complete | N/A | Usage Reporting Rules, thresholds, measurement methods |
+| **UpdateFar Builder** | ✅ Complete | N/A | Update Forwarding Action Rules with validation |
+| **UpdateQer Builder** | ✅ Complete | N/A | Update QoS Enforcement Rules with convenience methods |
+| **UsageReport Builder** | ✅ Complete | N/A | Usage reporting with triggers and measurements |
+| **PfdContents Builder** | ✅ Complete | N/A | PFD content with flow descriptions |
+| **UpdatePdr Builder** | ❌ **MISSING** | - | **9 params with `too_many_arguments` warning** |
+| **UpdateUrr Builder** | ❌ **MISSING** | - | **9 params with `too_many_arguments` warning** |
 
-**Total:** 5 Builders, **109 comprehensive tests**, **100% specification compliance**
+**Total:** 10/12 Builders (83%), **109+ comprehensive tests**
 
-### ✅ **Key Achievements Summary**
+### ⚠️ **Key Achievements Summary**
 
-1. **Eliminated Complex Constructor Issues:**
-   - Removed `#[allow(clippy::too_many_arguments)]` from F-TEID
-   - Transformed 8-parameter constructors into intuitive builder APIs
-   - Clear validation of complex flag combinations
+1. **Mostly Eliminated Complex Constructor Issues:**
+   - ✅ Removed `#[allow(clippy::too_many_arguments)]` from F-TEID
+   - ✅ Transformed 8-parameter constructors into intuitive builder APIs for CreatePdr, CreateUrr
+   - ❌ **Still remaining:** UpdatePdr (9 params), UpdateUrr (9 params) need builders
+   - ✅ Clear validation of complex flag combinations
 
 2. **Comprehensive Validation Framework:**
    - Action/parameter combination validation (e.g., BUFF requires BAR ID)
@@ -285,10 +297,26 @@ impl IeNameBuilder {
 - **Performance Optimization:** Zero-cost abstractions where possible
 - **Integration with Message Builders:** Seamless composition with session builders (implemented)
 
-## 🎉 **PLAN COMPLETION STATUS: 100% ACHIEVED**
+## ⚠️ **PLAN COMPLETION STATUS: 83% ACHIEVED (Phase 2 Incomplete)**
 
-The rs-pfcp library now provides a **complete, production-ready builder pattern implementation** for all major Information Elements, offering developers **powerful, type-safe, and validated APIs** for 5G PFCP protocol handling while maintaining **full 3GPP TS 29.244 compliance**.
+The rs-pfcp library provides a **mostly complete, production-ready builder pattern implementation** for major Information Elements, offering developers **powerful, type-safe, and validated APIs** for 5G PFCP protocol handling while maintaining **full 3GPP TS 29.244 compliance**.
+
+### **Remaining Work (Phase 2 - Update IEs)**
+
+Two complex IEs still need builder pattern implementation to eliminate `clippy::too_many_arguments` warnings:
+
+1. **UpdatePdr Builder** (Priority: Medium)
+   - 9 parameters (pdr_id + 8 optional fields)
+   - Similar complexity to CreatePdr (already has builder)
+   - Fields: pdr_id, precedence, pdi, outer_header_removal, far_id, urr_id, qer_id, activate_predefined_rules, deactivate_predefined_rules
+
+2. **UpdateUrr Builder** (Priority: Medium)
+   - 9 parameters (urr_id + 8 optional fields)
+   - Similar complexity to CreateUrr (already has builder)
+   - Fields: urr_id, measurement_method, reporting_triggers, monitoring_time, volume_threshold, time_threshold, subsequent_volume_threshold, subsequent_time_threshold, inactivity_detection_time
+
+**Estimated effort:** 2-3 days for both builders including tests and documentation
 
 ---
 
-This plan successfully enhanced the rs-pfcp library with comprehensive builder patterns while maintaining backward compatibility and significantly improving developer experience. All success metrics have been achieved or exceeded.
+This plan successfully enhanced the rs-pfcp library with comprehensive builder patterns while maintaining backward compatibility and significantly improving developer experience. **Most success metrics have been achieved**, with only 2 remaining Update* IEs needing builders to reach 100% completion.
