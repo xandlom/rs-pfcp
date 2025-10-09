@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-10-09
+
+### Added
+
+#### 🔒 Security - Zero-Length IE Protection (Critical)
+- **Protocol-level validation** (612c5fb): Reject all zero-length Information Elements to prevent DoS attacks
+- **Security tests** (4 new tests): Comprehensive test coverage including DoS scenario simulation
+- **ZERO_LENGTH_IE_ANALYSIS.md**: Detailed security analysis document with threat assessment
+- **ZERO_LENGTH_IE_TODO.md**: Implementation plan for Priority 2 IE-specific validation
+- Protection against CVE-like vulnerabilities similar to free5gc Issue #483
+
+### Changed
+- **Test Coverage**: Increased from 854 to 858 tests (+4 security tests)
+- **3GPP Compliance**: Aligned with TS 29.244 specification (all IEs have minimum length ≥ 1 byte)
+
+### Security
+- **DoS Prevention**: Zero-length IEs are rejected at protocol level before IE-specific processing
+- **Fail-Fast**: Invalid messages rejected immediately with descriptive error messages
+- **Defense in Depth**: Protocol-level validation prevents malformed message exploits
+
+### Documentation
+- **CLAUDE.md**: Added Security Considerations section documenting zero-length IE protection
+- **Binary Protocol Implementation**: Updated to note security features
+
 ## [0.1.1] - 2025-01-08
 
 ### Added
