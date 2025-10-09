@@ -45,11 +45,17 @@ impl Fseid {
         data
     }
 
+    /// Unmarshals a byte slice into an F-SEID.
+    ///
+    /// Per 3GPP TS 29.244, F-SEID requires minimum 9 bytes (1 byte flags + 8 bytes SEID).
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         if data.len() < 9 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Not enough data for F-SEID",
+                format!(
+                    "F-SEID requires at least 9 bytes (flags + SEID), got {}",
+                    data.len()
+                ),
             ));
         }
         let flags = data[0];
@@ -147,5 +153,15 @@ mod tests {
         let data = [0; 8];
         let result = Fseid::unmarshal(&data);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fseid_unmarshal_empty() {
+        let result = Fseid::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires at least 9 bytes"));
+        assert!(err.to_string().contains("got 0"));
     }
 }

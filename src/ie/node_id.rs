@@ -50,11 +50,13 @@ impl NodeId {
     }
 
     /// Unmarshals a byte slice into a Node ID.
+    ///
+    /// Per 3GPP TS 29.244, Node ID requires minimum 1 byte (type) plus address data.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Node ID payload too short",
+                "Node ID requires at least 1 byte (type field), got 0",
             ));
         }
         match payload[0] {

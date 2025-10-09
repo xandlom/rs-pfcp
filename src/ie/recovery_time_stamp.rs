@@ -28,11 +28,13 @@ impl RecoveryTimeStamp {
     }
 
     /// Unmarshals a 4-byte slice into a RecoveryTimeStamp.
+    ///
+    /// Per 3GPP TS 29.244, Recovery Time Stamp requires exactly 4 bytes (NTP timestamp).
     pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
         if data.len() < 4 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "Not enough data for RecoveryTimeStamp",
+                format!("Recovery Time Stamp requires 4 bytes, got {}", data.len()),
             ));
         }
         let ntp_timestamp = u32::from_be_bytes(data[0..4].try_into().unwrap()) as u64;
@@ -69,5 +71,24 @@ mod tests {
             .as_secs();
 
         assert_eq!(original_secs, unmarshaled_secs);
+    }
+
+    #[test]
+    fn test_recovery_time_stamp_unmarshal_empty() {
+        let result = RecoveryTimeStamp::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 0"));
+    }
+
+    #[test]
+    fn test_recovery_time_stamp_unmarshal_too_short() {
+        let result = RecoveryTimeStamp::unmarshal(&[0x01, 0x02]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 2"));
     }
 }
