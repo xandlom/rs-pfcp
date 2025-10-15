@@ -19,11 +19,14 @@ impl QerId {
         self.value.to_be_bytes()
     }
 
+    /// Unmarshals a byte slice into a QER ID.
+    ///
+    /// Per 3GPP TS 29.244, QER ID requires exactly 4 bytes (Rule ID).
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Not enough data for QER ID",
+                format!("QER ID requires 4 bytes, got {}", data.len()),
             ));
         }
         Ok(QerId {
@@ -53,5 +56,15 @@ mod tests {
         let data = [0; 3];
         let result = QerId::unmarshal(&data);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_qer_id_unmarshal_empty() {
+        let result = QerId::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 0"));
     }
 }

@@ -19,11 +19,14 @@ impl Precedence {
         self.value.to_be_bytes()
     }
 
+    /// Unmarshals a byte slice into a Precedence.
+    ///
+    /// Per 3GPP TS 29.244, Precedence requires exactly 4 bytes (Priority value).
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Not enough data for Precedence",
+                format!("Precedence requires 4 bytes, got {}", data.len()),
             ));
         }
         Ok(Precedence {
@@ -53,5 +56,15 @@ mod tests {
         let data = [0; 3];
         let result = Precedence::unmarshal(&data);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_precedence_unmarshal_empty() {
+        let result = Precedence::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 0"));
     }
 }

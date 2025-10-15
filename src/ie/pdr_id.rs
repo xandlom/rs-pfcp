@@ -19,11 +19,14 @@ impl PdrId {
         self.value.to_be_bytes()
     }
 
+    /// Unmarshals a byte slice into a PDR ID.
+    ///
+    /// Per 3GPP TS 29.244, PDR ID requires exactly 2 bytes (Rule ID).
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         if data.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Not enough data for PDR ID",
+                format!("PDR ID requires 2 bytes, got {}", data.len()),
             ));
         }
         Ok(PdrId {
@@ -53,5 +56,15 @@ mod tests {
         let data = [0; 1];
         let result = PdrId::unmarshal(&data);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_pdr_id_unmarshal_empty() {
+        let result = PdrId::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 2 bytes"));
+        assert!(err.to_string().contains("got 0"));
     }
 }
