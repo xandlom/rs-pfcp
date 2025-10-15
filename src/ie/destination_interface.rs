@@ -110,11 +110,13 @@ impl DestinationInterface {
     }
 
     /// Unmarshals a byte slice into a Destination Interface.
+    ///
+    /// Per 3GPP TS 29.244, Destination Interface requires exactly 1 byte (interface type).
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Destination Interface payload too short",
+                "Destination Interface requires 1 byte, got 0",
             ));
         }
         Ok(DestinationInterface {
@@ -125,5 +127,28 @@ impl DestinationInterface {
     /// Wraps the Destination Interface in a DestinationInterface IE.
     pub fn to_ie(&self) -> Ie {
         Ie::new(IeType::DestinationInterface, self.marshal())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_destination_interface_marshal_unmarshal() {
+        let di = DestinationInterface::new(Interface::Access);
+        let marshaled = di.marshal();
+        let unmarshaled = DestinationInterface::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.interface, Interface::Access);
+    }
+
+    #[test]
+    fn test_destination_interface_unmarshal_empty() {
+        let result = DestinationInterface::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 1 byte"));
+        assert!(err.to_string().contains("got 0"));
     }
 }

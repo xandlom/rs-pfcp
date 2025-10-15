@@ -43,11 +43,13 @@ impl SourceInterface {
     }
 
     /// Unmarshals a byte slice into a Source Interface.
+    ///
+    /// Per 3GPP TS 29.244, Source Interface requires exactly 1 byte (interface type).
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Source Interface payload too short",
+                "Source Interface requires 1 byte, got 0",
             ));
         }
         Ok(SourceInterface {
@@ -58,5 +60,28 @@ impl SourceInterface {
     /// Wraps the Source Interface in a SourceInterface IE.
     pub fn to_ie(&self) -> Ie {
         Ie::new(IeType::SourceInterface, self.marshal().to_vec())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_source_interface_marshal_unmarshal() {
+        let si = SourceInterface::new(SourceInterfaceValue::Access);
+        let marshaled = si.marshal();
+        let unmarshaled = SourceInterface::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.value, SourceInterfaceValue::Access);
+    }
+
+    #[test]
+    fn test_source_interface_unmarshal_empty() {
+        let result = SourceInterface::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 1 byte"));
+        assert!(err.to_string().contains("got 0"));
     }
 }

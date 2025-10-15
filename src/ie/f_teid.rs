@@ -96,12 +96,17 @@ impl Fteid {
         data
     }
 
-    /// Unmarshals a byte slice into a F-TEID.
+    /// Unmarshals a byte slice into an F-TEID.
+    ///
+    /// Per 3GPP TS 29.244, F-TEID requires minimum 5 bytes (1 byte flags + 4 bytes TEID).
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         if payload.len() < 5 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "F-TEID payload too short",
+                format!(
+                    "F-TEID requires at least 5 bytes (flags + TEID), got {}",
+                    payload.len()
+                ),
             ));
         }
         let flags = payload[0];
