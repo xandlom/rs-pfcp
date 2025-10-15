@@ -45,11 +45,13 @@ impl UeIpAddress {
     }
 
     /// Unmarshals a byte slice into a UE IP Address.
+    ///
+    /// Per 3GPP TS 29.244, UE IP Address requires minimum 1 byte (flags) plus address data.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "UE IP Address payload too short",
+                "UE IP Address requires at least 1 byte, got 0",
             ));
         }
         let flags = payload[0];
