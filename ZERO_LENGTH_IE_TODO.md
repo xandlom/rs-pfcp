@@ -17,14 +17,34 @@
 
 ---
 
-## Priority 2: IE-Specific Validation Audit (PLANNED)
+## Priority 2: IE-Specific Validation Audit (IN PROGRESS)
 
 ### Goal
 Ensure all 113 IE modules have consistent and correct validation for empty payloads.
 
 ### Current State
-- **IEs with empty-check**: 21/113 (19%)
-- **IEs without empty-check**: 92/113 (81%)
+- **IEs with empty-check**: 35/113 (31%)
+- **IEs without empty-check**: 78/113 (69%)
+- **High-priority IEs**: 14/15 complete (93%)
+
+### Recent Progress (2025-10-15)
+
+**Completed**: High-priority core session IEs validation enhancement
+
+**Commits**:
+- `81d0e19`: Enhanced recovery_time_stamp, fseid, node_id with 3GPP TS 29.244 compliant validation
+- `2f519a5`: Enhanced pdr_id, far_id, qer_id, precedence with descriptive error messages
+- `ece977a`: Enhanced source_interface, destination_interface, f_teid with grammar corrections
+- `a4978eb`: Enhanced network_instance with proper empty validation
+- `bcb61bb`: Enhanced sdf_filter, application_id, ue_ip_address completing high-priority IEs
+
+**Test Results**: 875/875 tests passing (+17 new validation tests from baseline 858)
+
+**Impact**:
+- All critical session management IEs now have consistent validation
+- Error messages include specific byte requirements and actual received count
+- Comprehensive test coverage for zero-length rejection scenarios
+- Documentation includes 3GPP TS 29.244 specification references
 
 ### IEs Already Rejecting Empty Payloads (21 modules) ✅
 
@@ -56,23 +76,23 @@ These IEs already have proper validation:
 
 These IEs need review and potentially updated validation logic:
 
-#### High Priority - Core Session IEs (Should be audited first)
+#### High Priority - Core Session IEs ✅ 14/15 COMPLETE
 
-- [ ] `node_id` - Core identifier IE, minimum 1 byte
-- [ ] `fseid` - F-SEID, minimum 8 bytes (SEID + flags + IP)
-- [ ] `recovery_time_stamp` - **Security Critical** (mentioned in free5gc DoS), minimum 4 bytes
-- [ ] `pdr_id` - Packet Detection Rule ID, minimum 2 bytes
-- [ ] `far_id` - Forwarding Action Rule ID, minimum 4 bytes
-- [ ] `qer_id` - QoS Enforcement Rule ID, minimum 4 bytes
+- [x] `node_id` - Core identifier IE, minimum 1 byte ✅ (commit 81d0e19)
+- [x] `fseid` - F-SEID, minimum 9 bytes (flags + SEID + IP) ✅ (commit 81d0e19)
+- [x] `recovery_time_stamp` - **Security Critical** (mentioned in free5gc DoS), minimum 4 bytes ✅ (commit 81d0e19)
+- [x] `pdr_id` - Packet Detection Rule ID, minimum 2 bytes ✅ (commit 2f519a5)
+- [x] `far_id` - Forwarding Action Rule ID, minimum 4 bytes ✅ (commit 2f519a5)
+- [x] `qer_id` - QoS Enforcement Rule ID, minimum 4 bytes ✅ (commit 2f519a5)
 - [ ] `urr_id` - Usage Reporting Rule ID, minimum 4 bytes
-- [ ] `precedence` - Priority value, minimum 4 bytes
-- [ ] `source_interface` - Interface type, minimum 1 byte
-- [ ] `destination_interface` - Interface type, minimum 1 byte
-- [ ] `f_teid` - F-TEID, minimum 5 bytes (flags + TEID)
-- [ ] `network_instance` - Network name, variable ≥ 1 byte
-- [ ] `sdf_filter` - SDF filter, variable ≥ 1 byte
-- [ ] `application_id` - Application identifier, variable ≥ 1 byte
-- [ ] `ue_ip_address` - UE IP address, minimum 2 bytes
+- [x] `precedence` - Priority value, minimum 4 bytes ✅ (commit 2f519a5)
+- [x] `source_interface` - Interface type, minimum 1 byte ✅ (commit ece977a)
+- [x] `destination_interface` - Interface type, minimum 1 byte ✅ (commit ece977a)
+- [x] `f_teid` - F-TEID, minimum 5 bytes (flags + TEID) ✅ (commit ece977a)
+- [x] `network_instance` - Network name, variable ≥ 1 byte ✅ (commit a4978eb)
+- [x] `sdf_filter` - SDF filter, variable ≥ 1 byte ✅ (commit bcb61bb)
+- [x] `application_id` - Application identifier, variable ≥ 1 byte ✅ (commit bcb61bb)
+- [x] `ue_ip_address` - UE IP address, minimum 1 byte (flags) ✅ (commit bcb61bb)
 
 #### Medium Priority - Grouped IEs
 
