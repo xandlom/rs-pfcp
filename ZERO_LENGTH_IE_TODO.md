@@ -23,9 +23,11 @@
 Ensure all 113 IE modules have consistent and correct validation for empty payloads.
 
 ### Current State
-- **IEs with empty-check**: 36/113 (32%)
-- **IEs without empty-check**: 77/113 (68%)
+- **IEs with empty-check**: 39/113 (35%)
+- **IEs without empty-check**: 74/113 (65%)
 - **High-priority IEs**: 15/15 complete (100%) ✅
+- **Remove IEs**: 4/4 complete (100%) ✅
+- **Miscellaneous IEs**: 3 enhanced (BAR ID, Sequence Number, Timer)
 
 ### Recent Progress (2025-10-15)
 
@@ -38,7 +40,7 @@ Ensure all 113 IE modules have consistent and correct validation for empty paylo
 - `a4978eb`: Enhanced network_instance with proper empty validation
 - `bcb61bb`: Enhanced sdf_filter, application_id, ue_ip_address completing high-priority IEs
 
-**Test Results**: 889/889 tests passing (+31 new validation tests from baseline 858)
+**Test Results**: 898/898 tests passing (+40 new validation tests from baseline 858)
 
 **Impact**:
 - All critical session management IEs now have consistent validation
@@ -141,9 +143,9 @@ These IEs need review and potentially updated validation logic:
 
 #### Lower Priority - Miscellaneous
 
-- [ ] `sequence_number` - Minimum 4 bytes
-- [ ] `offending_ie` - Minimum 2 bytes (IE type)
-- [ ] `timer` - Minimum 1 byte
+- [x] `sequence_number` - Minimum 4 bytes ✅ (commit df18dc2)
+- [ ] `offending_ie` - Minimum 2 bytes (already has validation)
+- [x] `timer` - Minimum 4 bytes ✅ (commit df18dc2)
 - [ ] `dl_buffering_duration` - Minimum 1 byte
 - [ ] `dl_buffering_suggested_packet_count` - Minimum 2 bytes
 - [ ] `downlink_data_notification_delay` - Minimum 1 byte
@@ -168,9 +170,9 @@ These IEs need review and potentially updated validation logic:
 - [ ] `pfd_contents` - Variable, minimum flags
 - [ ] `measurement_method` - Minimum 1 byte (flags)
 - [ ] `reporting_triggers` - Minimum 3 bytes (flags)
-- [ ] `bar` - Grouped IE
-- [ ] `bar_id` - Minimum 1 byte
-- [ ] `create_bar` - Grouped IE
+- [ ] `bar` - Grouped IE (validation via child IEs)
+- [x] `bar_id` - Minimum 1 byte ✅ (commit df18dc2)
+- [ ] `create_bar` - Grouped IE (validation via child IEs)
 - [ ] `update_bar` - Grouped IE
 - [ ] `update_bar_within_session_report_response` - Grouped IE
 - [ ] `duplicating_parameters` - Grouped IE
