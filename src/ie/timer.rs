@@ -18,11 +18,14 @@ impl Timer {
         self.value.to_be_bytes()
     }
 
+    /// Unmarshals a byte slice into a Timer.
+    ///
+    /// Per 3GPP TS 29.244, Timer requires exactly 4 bytes (u32).
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Not enough data for Timer",
+                format!("Timer requires 4 bytes (u32), got {}", data.len()),
             ));
         }
         Ok(Timer {
@@ -48,5 +51,30 @@ mod tests {
         let data = [0; 3];
         let result = Timer::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 3"));
+    }
+
+    #[test]
+    fn test_timer_unmarshal_empty() {
+        let result = Timer::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 0"));
+    }
+
+    #[test]
+    fn test_timer_round_trip() {
+        let test_values = vec![0, 1, 60, 3600, 86400, 0xFFFFFFFF];
+        for value in test_values {
+            let timer = Timer::new(value);
+            let marshaled = timer.marshal();
+            let unmarshaled = Timer::unmarshal(&marshaled).unwrap();
+            assert_eq!(unmarshaled.value, value);
+        }
     }
 }

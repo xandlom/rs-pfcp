@@ -19,11 +19,14 @@ impl SequenceNumber {
         self.value.to_be_bytes()
     }
 
+    /// Unmarshals a byte slice into a Sequence Number.
+    ///
+    /// Per 3GPP TS 29.244, Sequence Number requires exactly 4 bytes (u32).
     pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Not enough data for SequenceNumber",
+                format!("Sequence Number requires 4 bytes (u32), got {}", data.len()),
             ));
         }
         Ok(SequenceNumber {
@@ -39,6 +42,7 @@ impl SequenceNumber {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ie::IeType;
 
     #[test]
     fn test_sequence_number_marshal_unmarshal() {
@@ -53,5 +57,41 @@ mod tests {
         let data = [0; 3]; // Less than 4 bytes should fail
         let result = SequenceNumber::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 3"));
+    }
+
+    #[test]
+    fn test_sequence_number_unmarshal_empty() {
+        let result = SequenceNumber::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("requires 4 bytes"));
+        assert!(err.to_string().contains("got 0"));
+    }
+
+    #[test]
+    fn test_sequence_number_round_trip() {
+        let test_values = vec![0, 1, 0xFFFFFFFF, 0x12345678, 0xABCDEF00];
+        for value in test_values {
+            let sn = SequenceNumber::new(value);
+            let marshaled = sn.marshal();
+            let unmarshaled = SequenceNumber::unmarshal(&marshaled).unwrap();
+            assert_eq!(unmarshaled.value, value);
+        }
+    }
+
+    #[test]
+    fn test_sequence_number_to_ie() {
+        let sn = SequenceNumber::new(999999);
+        let ie = sn.to_ie();
+        assert_eq!(ie.ie_type, IeType::SequenceNumber);
+        assert_eq!(ie.payload.len(), 4);
+
+        let unmarshaled = SequenceNumber::unmarshal(&ie.payload).unwrap();
+        assert_eq!(unmarshaled.value, 999999);
     }
 }
