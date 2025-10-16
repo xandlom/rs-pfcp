@@ -26,3 +26,33 @@ impl RemovePdr {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn remove_pdr_serialization() {
+        let pdr = RemovePdr::new(PdrId::new(0x1234));
+        let marshaled = pdr.marshal();
+        assert_eq!(marshaled, vec![0x12, 0x34]);
+
+        let unmarshaled = RemovePdr::unmarshal(&marshaled).unwrap();
+        assert_eq!(pdr, unmarshaled);
+    }
+
+    #[test]
+    fn remove_pdr_to_ie() {
+        let ie = RemovePdr::new(PdrId::new(1234)).to_ie();
+        assert_eq!(ie.ie_type, IeType::RemovePdr);
+        assert_eq!(ie.payload.len(), 2);
+    }
+
+    #[test]
+    fn invalid_unmarshal() {
+        // Empty payload
+        assert!(RemovePdr::unmarshal(&[]).is_err());
+        // Too short (1 byte instead of 2)
+        assert!(RemovePdr::unmarshal(&[0x00]).is_err());
+    }
+}
