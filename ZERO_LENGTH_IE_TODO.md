@@ -23,9 +23,9 @@
 Ensure all 113 IE modules have consistent and correct validation for empty payloads.
 
 ### Current State
-- **IEs with empty-check**: 35/113 (31%)
-- **IEs without empty-check**: 78/113 (69%)
-- **High-priority IEs**: 14/15 complete (93%)
+- **IEs with empty-check**: 36/113 (32%)
+- **IEs without empty-check**: 77/113 (68%)
+- **High-priority IEs**: 15/15 complete (100%) ✅
 
 ### Recent Progress (2025-10-15)
 
@@ -38,7 +38,7 @@ Ensure all 113 IE modules have consistent and correct validation for empty paylo
 - `a4978eb`: Enhanced network_instance with proper empty validation
 - `bcb61bb`: Enhanced sdf_filter, application_id, ue_ip_address completing high-priority IEs
 
-**Test Results**: 875/875 tests passing (+17 new validation tests from baseline 858)
+**Test Results**: 886/886 tests passing (+28 new validation tests from baseline 858)
 
 **Impact**:
 - All critical session management IEs now have consistent validation
@@ -76,7 +76,7 @@ These IEs already have proper validation:
 
 These IEs need review and potentially updated validation logic:
 
-#### High Priority - Core Session IEs ✅ 14/15 COMPLETE
+#### High Priority - Core Session IEs ✅ 15/15 COMPLETE
 
 - [x] `node_id` - Core identifier IE, minimum 1 byte ✅ (commit 81d0e19)
 - [x] `fseid` - F-SEID, minimum 9 bytes (flags + SEID + IP) ✅ (commit 81d0e19)
@@ -84,7 +84,7 @@ These IEs need review and potentially updated validation logic:
 - [x] `pdr_id` - Packet Detection Rule ID, minimum 2 bytes ✅ (commit 2f519a5)
 - [x] `far_id` - Forwarding Action Rule ID, minimum 4 bytes ✅ (commit 2f519a5)
 - [x] `qer_id` - QoS Enforcement Rule ID, minimum 4 bytes ✅ (commit 2f519a5)
-- [ ] `urr_id` - Usage Reporting Rule ID, minimum 4 bytes
+- [x] `urr_id` - Usage Reporting Rule ID, minimum 4 bytes ✅ (current commit)
 - [x] `precedence` - Priority value, minimum 4 bytes ✅ (commit 2f519a5)
 - [x] `source_interface` - Interface type, minimum 1 byte ✅ (commit ece977a)
 - [x] `destination_interface` - Interface type, minimum 1 byte ✅ (commit ece977a)
