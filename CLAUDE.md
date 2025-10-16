@@ -349,25 +349,45 @@ mod tests {
 
 **Threat**: Malformed PFCP messages with zero-length Information Elements can cause DoS attacks (similar to free5gc CVE-like issues).
 
-**Mitigation**: The library implements protocol-level validation in `src/ie/mod.rs`:
-- All IEs with `length=0` are rejected with `io::ErrorKind::InvalidData`
-- Aligned with 3GPP TS 29.244 specification (all IEs have minimum length ≥ 1 byte)
+**Mitigation**: The library implements **allowlist-based validation** at protocol level in `src/ie/mod.rs`:
+- Zero-length IEs are **rejected by default** with `io::ErrorKind::InvalidData`
+- **Three IEs explicitly allowed** to support zero-length for clear/reset semantics per TS 29.244 R18
 - Prevents attack vectors discovered in production PFCP implementations
+
+**Allowlisted Zero-Length IEs** (Per 3GPP TS 29.244 Release 18):
+1. **Network Instance (Type 22)**: Clear network routing context in Update FAR
+2. **APN/DNN (Type 159)**: Default APN (empty network name)
+3. **Forwarding Policy (Type 41)**: Clear policy identifier
+
+**Zero-Length Semantics in Update Operations**:
+- **IE Omitted**: "No change" - keep existing value
+- **IE Present with Value**: "Update" - change to new value
+- **IE Present with Zero-Length**: "Clear/Reset" - remove value
 
 **Implementation Details**:
 ```rust
 // In Ie::unmarshal()
-if length == 0 {
+fn allows_zero_length(ie_type: IeType) -> bool {
+    matches!(
+        ie_type,
+        IeType::NetworkInstance | IeType::ApnDnn | IeType::ForwardingPolicy
+    )
+}
+
+if length == 0 && !Self::allows_zero_length(ie_type) {
     return Err(io::Error::new(
         io::ErrorKind::InvalidData,
-        format!("Zero-length IE not allowed (IE type: {})", ie_type as u16),
+        format!("Zero-length IE not allowed for {:?}", ie_type),
     ));
 }
 ```
 
-**Testing**: See `src/ie/mod.rs::tests::test_security_dos_prevention()` for attack scenario simulations.
+**Testing**: See `src/ie/mod.rs::tests` for:
+- DoS attack prevention tests (`test_security_dos_prevention`)
+- Allowlist validation tests (6 new tests covering all allowlisted IEs)
+- Real-world Update FAR scenario (`test_zero_length_update_far_scenario`)
 
-**Reference**: See `ZERO_LENGTH_IE_ANALYSIS.md` for comprehensive security analysis.
+**Reference**: See `ZERO_LENGTH_IE_ANALYSIS.md` for comprehensive security analysis and specification research.
 
 ## Working with the Codebase
 

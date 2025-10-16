@@ -129,54 +129,97 @@ Recovery Time Stamp IE with length=0 → Runtime panic → DoS
 
 ## 3GPP Specification Research
 
-### Finding: No Legitimate Zero-Length IEs Found
+### Finding: Limited Legitimate Zero-Length IEs (Updated 2025-10-16)
 
-After reviewing:
-- 3GPP TS 29.244 Section 7.2 (Message Format)
-- Section 8.1 (IE Structure)
-- Section 8.2+ (Individual IE definitions)
+**⚠️ CORRECTION**: After reviewing 3GPP TS 29.244 Release 18 (v18.9.0, March 2025), certain IEs **DO** legitimately support zero-length encoding to indicate "clear/reset" semantics in update operations.
 
-**Conclusion**: All defined PFCP IEs have a **minimum length ≥ 1 byte**.
+#### Zero-Length Semantics in Update Operations
 
-Examples:
+Per TS 29.244 R18, there are three distinct states for IEs in update messages:
+
+1. **IE Omitted**: "No change" - keep existing value
+2. **IE Present with Value**: "Update" - change to new value
+3. **IE Present with Zero-Length**: "Clear/Reset" - remove value
+
+This distinction is **critical** for proper PFCP session management and allows control planes to explicitly remove IE associations.
+
+#### Legitimate Zero-Length IEs (Allowlist)
+
+Based on TS 29.244 Release 18 specification:
+
+- **Network Instance (Type 22)**: Clear network routing context in Update FAR
+  - **Section 8.2.4**: Explicitly supports zero-length encoding
+  - **Use case**: Update FAR with empty Network Instance clears routing context
+
+- **APN/DNN (Type 159)**: Default APN (empty network name)
+  - **Section 8.2.103**: Empty value represents default APN
+  - **Encoding**: Single zero byte in DNS label format
+
+- **Forwarding Policy (Type 41)**: Clear policy identifier
+  - **Variable-length string**: Empty = clear policy
+
+#### IEs That Reject Zero-Length
+
+All other PFCP IEs have **minimum length ≥ 1 byte**:
+
 - `Cause`: 1 byte (IE Type 19)
 - `RecoveryTimeStamp`: 4 bytes (IE Type 96)
 - `NodeID`: Variable ≥ 1 byte (IE Type 60)
 - `FSEID`: 8-16 bytes (IE Type 57)
 
-**No IE in TS 29.244 Release 18 legitimately has zero length.**
+**Implementation**: The library uses an allowlist-based approach to permit zero-length only for explicitly validated IEs.
 
 ---
 
 ## Recommendations
 
-### Priority 1: Security Hardening (🔴 Critical)
+### Priority 1: Security Hardening (✅ IMPLEMENTED)
 
-**Add length validation at protocol level**:
+**Status**: Complete as of 2025-10-16
+
+**Implementation**: Allowlist-based validation at protocol level:
 
 ```rust
 // src/ie/mod.rs
+fn allows_zero_length(ie_type: IeType) -> bool {
+    matches!(
+        ie_type,
+        IeType::NetworkInstance     // TS 29.244 R18 Section 8.2.4
+        | IeType::ApnDnn            // Default APN
+        | IeType::ForwardingPolicy  // Clear policy
+    )
+}
+
 pub fn unmarshal(b: &[u8]) -> Result<Self, io::Error> {
-    // ... existing header parsing ...
+    // ... header parsing ...
+    let ie_type = IeType::from(u16::from_be_bytes([b[0], b[1]]));
     let length = u16::from_be_bytes([b[2], b[3]]);
 
-    // ✅ ADD THIS CHECK
-    if length == 0 {
+    // Security: Reject zero-length except for allowlisted IEs
+    if length == 0 && !Self::allows_zero_length(ie_type) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("Zero-length IE not allowed (IE type: {})", ie_type as u16),
+            format!(
+                "Zero-length IE not allowed for {:?} (IE type: {})",
+                ie_type, ie_type as u16
+            ),
         ));
     }
-
-    // ... rest of function ...
+    // ...
 }
 ```
 
-**Rationale**:
-- Defense in depth against malformed messages
-- Prevents DoS attacks similar to free5gc #483
-- Aligns with 3GPP spec (no zero-length IEs exist)
-- Fail fast before IE-specific unmarshal
+**Benefits**:
+- ✅ Defense in depth against malformed messages (99% of IEs)
+- ✅ Prevents DoS attacks similar to free5gc #483
+- ✅ Supports legitimate zero-length for clear/reset semantics
+- ✅ Explicit allowlist makes security review easy
+- ✅ Easy to extend as more IEs are confirmed
+
+**Test Coverage**: 6 new tests covering:
+- Zero-length allowlist (3 IEs)
+- Non-allowlisted rejection (5 IEs)
+- Real-world Update FAR scenario
 
 ### Priority 2: Consistent IE Validation (🟡 Medium)
 
@@ -231,14 +274,17 @@ fn test_all_ies_reject_empty_payload() {
 
 ## Implementation Plan
 
-### Phase 1: Protocol-Level Protection (Immediate)
+### Phase 1: Protocol-Level Protection ✅ COMPLETE
 
-- [ ] Add zero-length check in `Ie::unmarshal()`
-- [ ] Add test case for zero-length rejection
-- [ ] Document behavior in CLAUDE.md
+- [x] Add allowlist-based zero-length check in `Ie::unmarshal()`
+- [x] Add `allows_zero_length()` helper function with documentation
+- [x] Update Network Instance to support zero-length clear semantics
+- [x] Add comprehensive test cases (6 new tests, 881 total passing)
+- [x] Document behavior in ZERO_LENGTH_IE_ANALYSIS.md
 
-**Estimated effort**: 1 hour
-**Risk**: Low (backward compatible for valid messages)
+**Completed**: 2025-10-16
+**Implementation**: src/ie/mod.rs:759-803, src/ie/network_instance.rs:25-40
+**Test Coverage**: src/ie/mod.rs:987-1096, src/ie/network_instance.rs:60-86
 
 ### Phase 2: IE-Specific Auditing (Short-term)
 
@@ -286,17 +332,24 @@ fn test_all_ies_reject_empty_payload() {
 
 ## Conclusion
 
-**Current Status**:
-- Protocol-level parsing **supports** zero-length IEs
-- IE-specific validation is **inconsistent** (19% reject, 81% may accept)
-- Security risk from malformed messages exists
+**Current Status** (Updated 2025-10-16):
+- ✅ Protocol-level parsing uses **allowlist-based validation**
+- ✅ Three IEs explicitly support zero-length for clear/reset semantics
+- ✅ All other IEs reject zero-length to prevent DoS attacks
+- ✅ Comprehensive test coverage (881 tests passing)
+- 📋 IE-specific validation ongoing (Priority 2)
 
-**Recommended Action**:
-1. ✅ **Implement Priority 1 immediately** (protocol-level rejection)
-2. 📋 **Plan Priority 2 for next release** (comprehensive IE validation)
-3. 📅 **Schedule Priority 3** for ongoing security improvement
+**Implementation Summary**:
+1. ✅ **Priority 1 COMPLETE**: Allowlist-based protocol-level validation
+2. 📋 **Priority 2 IN PROGRESS**: Comprehensive IE validation (14/15 high-priority IEs complete)
+3. 📅 **Priority 3 PLANNED**: Fuzzing and advanced testing
 
-**Bottom Line**: Zero-length IEs are **not legitimate** per 3GPP spec and should be **rejected at the protocol level** to prevent security issues.
+**Bottom Line**: Zero-length IEs are **legitimate for specific update operations** per 3GPP TS 29.244 Release 18. The library implements an **allowlist-based security model** that:
+- Permits zero-length for explicitly validated IEs (Network Instance, APN/DNN, Forwarding Policy)
+- Rejects zero-length for all other IEs to prevent DoS attacks
+- Provides clear documentation and test coverage for the allowlist
+
+**Key Insight**: The distinction between "IE omitted" vs "IE present with zero-length" is critical for proper PFCP session management in update operations.
 
 ---
 

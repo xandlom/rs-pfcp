@@ -24,14 +24,16 @@ impl NetworkInstance {
 
     /// Unmarshals a byte slice into a Network Instance.
     ///
-    /// Per 3GPP TS 29.244, Network Instance requires at least 1 byte (network name).
+    /// Per 3GPP TS 29.244 Release 18 Section 8.2.4, Network Instance supports:
+    /// - **Non-empty**: Specifies network routing context (APN/DNN-style encoding)
+    /// - **Zero-length**: Clear/reset network instance (used in Update FAR to remove routing)
+    ///
+    /// # Zero-Length Semantics
+    /// In update operations (e.g., Update FAR):
+    /// - Omitted IE: Keep current network instance
+    /// - Present with value: Change to new network instance
+    /// - Present with zero-length: Clear network instance (default routing)
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Network Instance requires at least 1 byte, got 0",
-            ));
-        }
         let instance = String::from_utf8(payload.to_vec())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(NetworkInstance { instance })
@@ -57,11 +59,29 @@ mod tests {
 
     #[test]
     fn test_network_instance_unmarshal_empty() {
+        // Zero-length Network Instance is valid per TS 29.244 R18
+        // Used in Update FAR to clear/reset network routing context
         let result = NetworkInstance::unmarshal(&[]);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires at least 1 byte"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(result.is_ok());
+        let ni = result.unwrap();
+        assert_eq!(ni.instance, "");
+    }
+
+    #[test]
+    fn test_network_instance_zero_length_semantics() {
+        // Test the three states for update operations:
+        // 1. Non-empty: Specific network instance
+        let specific = NetworkInstance::new("internet.apn");
+        assert_eq!(specific.instance, "internet.apn");
+
+        // 2. Zero-length: Clear network instance (default routing)
+        let clear = NetworkInstance::new("");
+        assert_eq!(clear.instance, "");
+        assert_eq!(clear.marshal(), Vec::<u8>::new());
+
+        // 3. Round-trip zero-length
+        let marshaled = clear.marshal();
+        let unmarshaled = NetworkInstance::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.instance, "");
     }
 }

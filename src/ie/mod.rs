@@ -756,6 +756,29 @@ impl Ie {
         data
     }
 
+    /// Returns true if the IE type legitimately supports zero-length encoding.
+    ///
+    /// Per 3GPP TS 29.244 Release 18, certain IEs support zero-length to indicate
+    /// "clear/reset" semantics in update operations (different from omitting the IE).
+    ///
+    /// # Zero-Length Semantics
+    /// - **IE Omitted**: "No change" - keep existing value
+    /// - **IE Present with Value**: "Update" - change to new value
+    /// - **IE Present with Zero-Length**: "Clear" - reset/remove value
+    ///
+    /// # Allowlisted IEs
+    /// - **Network Instance (Type 22)**: Clear network routing context in Update FAR
+    /// - **APN/DNN (Type 159)**: Default APN (empty network name)
+    /// - **Forwarding Policy (Type 41)**: Clear policy identifier
+    fn allows_zero_length(ie_type: IeType) -> bool {
+        matches!(
+            ie_type,
+            IeType::NetworkInstance     // TS 29.244 R18 Section 8.2.4: Zero-length valid
+            | IeType::ApnDnn            // TS 29.244 R18 Section 8.2.103: Empty = default APN
+            | IeType::ForwardingPolicy // Variable-length string, empty = clear
+        )
+    }
+
     /// Deserializes a byte slice into an IE.
     pub fn unmarshal(b: &[u8]) -> Result<Self, io::Error> {
         if b.len() < 4 {
@@ -765,12 +788,17 @@ impl Ie {
         let ie_type = IeType::from(u16::from_be_bytes([b[0], b[1]]));
         let length = u16::from_be_bytes([b[2], b[3]]);
 
-        // Per 3GPP TS 29.244, no legitimate PFCP IE has zero length.
-        // Reject to prevent DoS attacks via malformed messages.
-        if length == 0 {
+        // Security: Reject zero-length IEs except for explicitly allowlisted types.
+        // Per 3GPP TS 29.244 Release 18, certain IEs legitimately support zero-length
+        // to indicate "clear/reset" semantics in update operations.
+        // All other zero-length IEs are rejected to prevent DoS attacks.
+        if length == 0 && !Self::allows_zero_length(ie_type) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("Zero-length IE not allowed (IE type: {})", ie_type as u16),
+                format!(
+                    "Zero-length IE not allowed for {:?} (IE type: {})",
+                    ie_type, ie_type as u16
+                ),
             ));
         }
 
@@ -954,5 +982,113 @@ mod tests {
                 malformed
             );
         }
+    }
+
+    #[test]
+    fn test_zero_length_allowlist_network_instance() {
+        // Network Instance (Type 22) with zero length is valid per TS 29.244 R18
+        let zero_length_ni = vec![
+            0x00, 0x16, // Type: 22 (NetworkInstance)
+            0x00, 0x00, // Length: 0
+        ];
+
+        let result = Ie::unmarshal(&zero_length_ni);
+        assert!(result.is_ok(), "Network Instance should allow zero-length");
+        let ie = result.unwrap();
+        assert_eq!(ie.ie_type, IeType::NetworkInstance);
+        assert_eq!(ie.payload.len(), 0);
+    }
+
+    #[test]
+    fn test_zero_length_allowlist_apn_dnn() {
+        // APN/DNN (Type 159) with zero length is valid (default APN)
+        let zero_length_apn = vec![
+            0x00, 0x9F, // Type: 159 (ApnDnn)
+            0x00, 0x00, // Length: 0
+        ];
+
+        let result = Ie::unmarshal(&zero_length_apn);
+        assert!(result.is_ok(), "APN/DNN should allow zero-length");
+        let ie = result.unwrap();
+        assert_eq!(ie.ie_type, IeType::ApnDnn);
+        assert_eq!(ie.payload.len(), 0);
+    }
+
+    #[test]
+    fn test_zero_length_allowlist_forwarding_policy() {
+        // Forwarding Policy (Type 41) with zero length is valid (clear policy)
+        let zero_length_fp = vec![
+            0x00, 0x29, // Type: 41 (ForwardingPolicy)
+            0x00, 0x00, // Length: 0
+        ];
+
+        let result = Ie::unmarshal(&zero_length_fp);
+        assert!(result.is_ok(), "Forwarding Policy should allow zero-length");
+        let ie = result.unwrap();
+        assert_eq!(ie.ie_type, IeType::ForwardingPolicy);
+        assert_eq!(ie.payload.len(), 0);
+    }
+
+    #[test]
+    fn test_zero_length_rejected_for_non_allowlisted() {
+        // Test that non-allowlisted IEs still reject zero-length
+        let test_cases = vec![
+            (0x0018, "ApplicationId"),   // Type 24
+            (0x0017, "SdfFilter"),       // Type 23
+            (0x0014, "SourceInterface"), // Type 20
+            (0x001D, "Precedence"),      // Type 29
+            (0x006C, "FarId"),           // Type 108
+        ];
+
+        for (ie_type, name) in test_cases {
+            let zero_length_ie = vec![
+                (ie_type >> 8) as u8,
+                (ie_type & 0xFF) as u8,
+                0x00,
+                0x00, // Length: 0
+            ];
+
+            let result = Ie::unmarshal(&zero_length_ie);
+            assert!(
+                result.is_err(),
+                "{} should reject zero-length (not in allowlist)",
+                name
+            );
+            let err = result.unwrap_err();
+            assert!(err.to_string().contains("Zero-length"));
+        }
+    }
+
+    #[test]
+    fn test_zero_length_update_far_scenario() {
+        // Real-world scenario: Update FAR with zero-length Network Instance
+        // This clears the network routing context per TS 29.244 R18
+        use crate::ie::network_instance::NetworkInstance;
+
+        // Create zero-length Network Instance IE
+        let clear_ni = NetworkInstance::new("");
+        let clear_ni_ie = clear_ni.to_ie();
+
+        // Verify it marshals to zero-length
+        let marshaled = clear_ni_ie.marshal();
+        assert_eq!(marshaled[0..2], [0x00, 0x16]); // Type 22
+        assert_eq!(marshaled[2..4], [0x00, 0x00]); // Length 0
+
+        // Verify it can be unmarshaled
+        let unmarshaled = Ie::unmarshal(&marshaled);
+        assert!(
+            unmarshaled.is_ok(),
+            "Zero-length Network Instance should unmarshal successfully"
+        );
+
+        // Verify the payload is empty
+        let ie = unmarshaled.unwrap();
+        assert_eq!(ie.payload.len(), 0);
+        assert_eq!(ie.ie_type, IeType::NetworkInstance);
+
+        // Verify the NetworkInstance interprets empty correctly
+        let ni_result = NetworkInstance::unmarshal(&ie.payload);
+        assert!(ni_result.is_ok());
+        assert_eq!(ni_result.unwrap().instance, "");
     }
 }
