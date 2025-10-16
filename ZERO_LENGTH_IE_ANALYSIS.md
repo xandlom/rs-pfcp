@@ -143,31 +143,59 @@ Per TS 29.244 R18, there are three distinct states for IEs in update messages:
 
 This distinction is **critical** for proper PFCP session management and allows control planes to explicitly remove IE associations.
 
-#### Legitimate Zero-Length IEs (Allowlist)
+#### IE Encoding Pattern Classification
 
-Based on TS 29.244 Release 18 specification:
+Based on TS 29.244 Release 18 specification analysis:
 
-- **Network Instance (Type 22)**: Clear network routing context in Update FAR
+### ✅ Allowlisted: Pure OCTET STRING IEs (Zero-Length Valid)
+
+These IEs have **no internal structure** and can be truly zero-length at protocol level:
+
+- **Network Instance (Type 22)**
   - **Section 8.2.4**: Explicitly supports zero-length encoding
   - **Use case**: Update FAR with empty Network Instance clears routing context
+  - **Encoding**: Pure string, empty payload valid
 
-- **APN/DNN (Type 159)**: Default APN (empty network name)
+- **APN/DNN (Type 159)**
   - **Section 8.2.103**: Empty value represents default APN
-  - **Encoding**: Single zero byte in DNS label format
+  - **Encoding**: Pure string (DNS label format)
+  - **Note**: Encodes empty as `[0]` byte, not truly zero-length at payload level
 
-- **Forwarding Policy (Type 41)**: Clear policy identifier
-  - **Variable-length string**: Empty = clear policy
+- **Forwarding Policy (Type 41)**
+  - **Variable-length string**: Empty = clear policy identifier
+  - **Encoding**: Pure string, empty payload valid
 
-#### IEs That Reject Zero-Length
+### ❌ Not Allowlisted: IEs with Internal Structure
 
-All other PFCP IEs have **minimum length ≥ 1 byte**:
+#### Structured OCTET STRING (Require Type/Flag Bytes)
 
-- `Cause`: 1 byte (IE Type 19)
-- `RecoveryTimeStamp`: 4 bytes (IE Type 96)
-- `NodeID`: Variable ≥ 1 byte (IE Type 60)
-- `FSEID`: 8-16 bytes (IE Type 57)
+These IEs have structure bytes that must always be present:
 
-**Implementation**: The library uses an allowlist-based approach to permit zero-length only for explicitly validated IEs.
+- **User ID (Type 141)**: Minimum 1 byte (type field: IMSI/IMEI/NAI/etc.)
+  - *Value can be empty*, but type byte required
+- **Redirect Information (Type 38)**: Minimum 2 bytes (address type + address)
+- **Header Enrichment (Type 98)**: Requires type + name + value structure (minimum 3 bytes)
+
+#### Flow Descriptions (Cannot Be Empty Per Specification)
+
+- **SDF Filter (Type 23)**: Requires flow description (minimum 1 byte)
+- **Application ID (Type 24)**: Requires application identifier (minimum 1 byte)
+
+#### Fixed-Length and Flags (Always > 0)
+
+- **Integer IDs**: PDR ID (2 bytes), FAR ID (4 bytes), QER ID (4 bytes), URR ID (4 bytes)
+- **Timestamps**: Recovery Time Stamp (4 bytes), Start Time (4 bytes), End Time (4 bytes)
+- **Addresses**: Node ID (variable ≥ 1 byte), F-SEID (8-16 bytes), F-TEID (5+ bytes)
+- **Bitflags**: Cause (1 byte), Apply Action (1 byte), Measurement Method (1 byte)
+
+### Important Distinction
+
+**Protocol Level vs. Value Field**:
+- Some IEs like **User ID** can have empty **value fields** (e.g., NAI type with no name)
+- But they still require **structure bytes** (type field), so cannot be zero-length at **IE protocol level**
+- Only **pure OCTET STRING** IEs with no structure can be truly zero-length
+
+**Implementation**: The library uses an allowlist-based approach at the **protocol level** (`Ie::unmarshal()`), permitting zero-length only for pure OCTET STRING IEs.
 
 ---
 

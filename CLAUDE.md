@@ -355,6 +355,9 @@ mod tests {
 - Prevents attack vectors discovered in production PFCP implementations
 
 **Allowlisted Zero-Length IEs** (Per 3GPP TS 29.244 Release 18):
+
+Only **pure OCTET STRING IEs** (no internal structure) can be zero-length:
+
 1. **Network Instance (Type 22)**: Clear network routing context in Update FAR
 2. **APN/DNN (Type 159)**: Default APN (empty network name)
 3. **Forwarding Policy (Type 41)**: Clear policy identifier
@@ -363,6 +366,13 @@ mod tests {
 - **IE Omitted**: "No change" - keep existing value
 - **IE Present with Value**: "Update" - change to new value
 - **IE Present with Zero-Length**: "Clear/Reset" - remove value
+
+**Why Other OCTET STRING IEs Cannot Be Zero-Length**:
+- **Structured OCTET STRING**: User ID, Redirect Information, Header Enrichment (require type/flag bytes)
+- **Flow Descriptions**: SDF Filter, Application ID (must have content per spec)
+- **Fixed-Length**: All integer IDs, timestamps, addresses, bitflags (always > 0 bytes)
+
+**Important**: Some IEs like User ID can have *empty value fields* after their structure bytes, but cannot be zero-length at the protocol IE level.
 
 **Implementation Details**:
 ```rust

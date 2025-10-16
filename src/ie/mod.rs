@@ -761,15 +761,42 @@ impl Ie {
     /// Per 3GPP TS 29.244 Release 18, certain IEs support zero-length to indicate
     /// "clear/reset" semantics in update operations (different from omitting the IE).
     ///
-    /// # Zero-Length Semantics
+    /// # Zero-Length Semantics in Update Operations
     /// - **IE Omitted**: "No change" - keep existing value
     /// - **IE Present with Value**: "Update" - change to new value
-    /// - **IE Present with Zero-Length**: "Clear" - reset/remove value
+    /// - **IE Present with Zero-Length**: "Clear/Reset" - remove value
     ///
-    /// # Allowlisted IEs
+    /// # IE Encoding Pattern Analysis
+    ///
+    /// Only **pure OCTET STRING IEs** (no internal structure) can be zero-length:
+    ///
+    /// ## ✅ Allowlisted (Zero-Length Valid)
+    /// These IEs are pure OCTET STRING with no internal structure:
     /// - **Network Instance (Type 22)**: Clear network routing context in Update FAR
     /// - **APN/DNN (Type 159)**: Default APN (empty network name)
     /// - **Forwarding Policy (Type 41)**: Clear policy identifier
+    ///
+    /// ## ❌ Not Allowlisted (Cannot Be Zero-Length)
+    /// All other IEs have structure that prevents zero-length at protocol level:
+    ///
+    /// **Structured OCTET STRING** (have type/flag bytes):
+    /// - User ID (Type 141): Requires 1 byte type field (IMSI/IMEI/NAI/etc.)
+    /// - Redirect Information: Requires 1 byte address type + address
+    /// - Header Enrichment: Requires type + name + value structure
+    ///
+    /// **Flow Descriptions** (cannot be empty per specification):
+    /// - SDF Filter (Type 23): Requires flow description
+    /// - Application ID (Type 24): Requires application identifier
+    ///
+    /// **Fixed-Length/Flags** (always > 0):
+    /// - All integer IDs (PDR ID, FAR ID, QER ID, URR ID)
+    /// - Timestamps and counters
+    /// - Bitflag IEs (Apply Action, Measurement Method, etc.)
+    ///
+    /// # Important Distinction
+    /// Some IEs like User ID can have **empty value fields** (e.g., NAI type with no name),
+    /// but still require their **structure bytes** (type field), so they cannot be
+    /// zero-length at the IE protocol level.
     fn allows_zero_length(ie_type: IeType) -> bool {
         matches!(
             ie_type,
