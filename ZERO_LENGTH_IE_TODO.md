@@ -38,7 +38,7 @@ Ensure all 113 IE modules have consistent and correct validation for empty paylo
 - `a4978eb`: Enhanced network_instance with proper empty validation
 - `bcb61bb`: Enhanced sdf_filter, application_id, ue_ip_address completing high-priority IEs
 
-**Test Results**: 886/886 tests passing (+28 new validation tests from baseline 858)
+**Test Results**: 889/889 tests passing (+31 new validation tests from baseline 858)
 
 **Impact**:
 - All critical session management IEs now have consistent validation
@@ -96,21 +96,21 @@ These IEs need review and potentially updated validation logic:
 
 #### Medium Priority - Grouped IEs
 
-- [ ] `create_pdr` - Grouped IE
-- [ ] `create_far` - Grouped IE
-- [ ] `create_qer` - Grouped IE
-- [ ] `create_urr` - Grouped IE
-- [ ] `update_pdr` - Grouped IE
-- [ ] `update_far` - Grouped IE
-- [ ] `update_qer` - Grouped IE
-- [ ] `update_urr` - Grouped IE
-- [ ] `remove_pdr` - Minimum 2 bytes (PDR ID)
-- [ ] `remove_far` - Minimum 4 bytes (FAR ID)
-- [ ] `remove_qer` - Minimum 4 bytes (QER ID)
-- [ ] `remove_urr` - Minimum 4 bytes (URR ID)
-- [ ] `pdi` - Packet Detection Information, grouped
-- [ ] `forwarding_parameters` - Grouped IE
-- [ ] `update_forwarding_parameters` - Grouped IE
+- [ ] `create_pdr` - Grouped IE (validation via child IEs)
+- [ ] `create_far` - Grouped IE (validation via child IEs)
+- [ ] `create_qer` - Grouped IE (validation via child IEs)
+- [ ] `create_urr` - Grouped IE (validation via child IEs)
+- [ ] `update_pdr` - Grouped IE (validation via child IEs)
+- [ ] `update_far` - Grouped IE (validation via child IEs)
+- [ ] `update_qer` - Grouped IE (validation via child IEs)
+- [ ] `update_urr` - Grouped IE (validation via child IEs)
+- [x] `remove_pdr` - Minimum 2 bytes (PDR ID) ✅ (commit 9beaddd)
+- [x] `remove_far` - Minimum 4 bytes (FAR ID) ✅ (commit 9beaddd)
+- [x] `remove_qer` - Minimum 4 bytes (QER ID) ✅ (commit 9beaddd)
+- [x] `remove_urr` - Minimum 4 bytes (URR ID) ✅ (commit 9beaddd)
+- [ ] `pdi` - Packet Detection Information, grouped (validation via child IEs)
+- [ ] `forwarding_parameters` - Grouped IE (validation via child IEs)
+- [ ] `update_forwarding_parameters` - Grouped IE (validation via child IEs)
 
 #### Lower Priority - Reporting & Usage IEs
 
