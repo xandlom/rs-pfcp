@@ -34,10 +34,12 @@ Developer tooling and workflows:
 
 #### [Architecture Documentation](architecture/)
 Deep dives into library architecture:
-- Message structure and patterns
-- Information Element design
-- Binary protocol implementation
-- Security considerations
+- **[Overview](architecture/overview.md)** - High-level architecture and design principles
+- **[Builder Patterns](architecture/builder-patterns.md)** - Comprehensive builder pattern guide
+- **[Security Architecture](architecture/security.md)** - Security design and threat mitigation
+- **[Message Layer](architecture/message-layer.md)** - Message handling architecture (planned)
+- **[IE Layer](architecture/ie-layer.md)** - Information Element architecture (planned)
+- **[Binary Protocol](architecture/binary-protocol.md)** - Low-level protocol details (planned)
 
 ### For Contributors
 
