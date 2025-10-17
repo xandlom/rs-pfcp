@@ -158,12 +158,41 @@ When starting new research or planning:
 - **[Architecture Docs](../architecture/)** - System design (planned)
 - **[AI Guide](../../.claude/claude-guide.md)** - AI development assistance
 
+## Documentation Meta-Files
+
+This directory also contains documentation about the documentation itself:
+
+### [Documentation Migration](documentation-migration.md)
+**Type**: Meta-documentation
+**Date**: 2025-10-17
+
+Complete summary of the documentation restructuring project:
+- File mapping from old to new locations
+- Benefits and rationale
+- Migration process and verification
+- Git history preservation details
+
+### [Documentation Restructure Proposal](documentation-restructure-proposal.md)
+**Type**: Meta-documentation
+**Date**: 2025-10-17
+
+Original proposal and analysis for the documentation reorganization:
+- Current state analysis
+- Proposed structure with rationale
+- Migration strategy and timeline
+- Benefits and considerations
+
+These files document the evolution of the rs-pfcp documentation structure itself.
+
+---
+
 ## Statistics
 
 | Category | Count | Status |
 |----------|-------|--------|
 | Completed Analyses | 4 | ✅ Archived |
 | Ongoing Tasks | 1 | 🔄 Active |
+| Meta-Documentation | 2 | 📋 Reference |
 | Total IE Validation | 898 tests | ✅ Passing |
 | Builder Pattern Coverage | 100% | ✅ Complete |
 

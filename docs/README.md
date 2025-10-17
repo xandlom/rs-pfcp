@@ -45,6 +45,9 @@ Deep dives into library architecture:
 Historical analysis and ongoing work:
 - **[Completed Analysis](analysis/completed/)** - Archived planning and analysis documents
 - **[Ongoing Work](analysis/ongoing/)** - Active task tracking and implementation plans
+- **[Documentation Meta-Files](analysis/)** - Documentation about the documentation itself
+  - [Documentation Migration](analysis/documentation-migration.md) - Complete restructuring summary
+  - [Documentation Restructure Proposal](analysis/documentation-restructure-proposal.md) - Original proposal
 
 ## 🔗 Quick Links
 
