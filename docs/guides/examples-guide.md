@@ -545,9 +545,9 @@ After completing these examples:
 1. **Study the Code**: Examine example source code to understand implementation patterns
 2. **Modify Examples**: Adapt examples for your specific use case
 3. **Read Documentation**:
-   - [API_GUIDE.md](API_GUIDE.md) for detailed API usage
-   - [PFCP_MESSAGES.md](PFCP_MESSAGES.md) for message specifications
-   - [IE_SUPPORT.md](IE_SUPPORT.md) for Information Element details
+   - [API Guide](api-guide.md) for detailed API usage
+   - [Messages Reference](../reference/messages.md) for message specifications
+   - [IE Support](../reference/ie-support.md) for Information Element details
 4. **Build Your Application**: Use examples as templates for production code
 
 ## 📚 Additional Resources

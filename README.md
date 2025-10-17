@@ -117,13 +117,24 @@ rs-pfcp/
 
 ## 📖 Documentation
 
+### Quick Links
 | Document | Purpose |
 |----------|---------|
-| **[IE_SUPPORT.md](IE_SUPPORT.md)** | Complete Information Element implementation status |
-| **[PFCP_MESSAGES.md](PFCP_MESSAGES.md)** | Message types, usage patterns, and code examples |
-| **[SESSION_REPORT_DEMO.md](examples/SESSION_REPORT_DEMO.md)** | Quota management and usage reporting walkthrough |
-| **[3GPP_COMPLIANCE_REPORT.md](3GPP_COMPLIANCE_REPORT.md)** | Detailed compliance verification and integration testing |
-| **[CLAUDE.md](CLAUDE.md)** | Development commands and codebase architecture |
+| **[Documentation Hub](docs/)** | Complete documentation index |
+| **[API Guide](docs/guides/api-guide.md)** | Comprehensive API reference and usage patterns |
+| **[IE Support](docs/reference/ie-support.md)** | Complete Information Element implementation status |
+| **[Messages Reference](docs/reference/messages.md)** | Message types, usage patterns, and code examples |
+| **[Examples Guide](docs/guides/examples-guide.md)** | Running and understanding example applications |
+
+### Guides & Tutorials
+- **[Deployment Guide](docs/guides/deployment-guide.md)** - Production deployment strategies
+- **[Session Report Demo](docs/guides/session-report-demo.md)** - Quota management walkthrough
+- **[Git Hooks Setup](docs/development/git-hooks.md)** - Development workflow automation
+
+### Reference Documentation
+- **[3GPP Compliance](docs/reference/3gpp-compliance.md)** - Detailed compliance verification
+- **[IE Compliance](docs/reference/ie-compliance.md)** - Information Element compliance details
+- **[API Documentation](https://docs.rs/rs-pfcp)** - Full API reference on docs.rs
 
 ## 🔧 Development
 

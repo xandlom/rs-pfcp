@@ -100,7 +100,7 @@ The library supports these PFCP message types:
 - **Version Management**: Version Not Supported Response
 
 ### IE Support Status
-See `IE_SUPPORT.md` for detailed status of which IEs are implemented. Most core IEs are supported including:
+See [IE Support](../docs/reference/ie-support.md) for detailed status of which IEs are implemented. Most core IEs are supported including:
 - Node ID, F-SEID, Cause
 - PDR/FAR/QER/URR creation/update/removal
 - Created PDR with proper F-TEID allocation
@@ -397,7 +397,7 @@ if length == 0 && !Self::allows_zero_length(ie_type) {
 - Allowlist validation tests (6 new tests covering all allowlisted IEs)
 - Real-world Update FAR scenario (`test_zero_length_update_far_scenario`)
 
-**Reference**: See `ZERO_LENGTH_IE_ANALYSIS.md` for comprehensive security analysis and specification research.
+**Reference**: See [Zero-Length IE Analysis](../docs/analysis/completed/zero-length-ie-analysis.md) for comprehensive security analysis and specification research.
 
 ## Working with the Codebase
 
@@ -407,7 +407,7 @@ if length == 0 && !Self::allows_zero_length(ie_type) {
 3. Add IE type enum variant in `IeType`
 4. Implement marshal/unmarshal and any type-specific methods
 5. Add tests following existing patterns
-6. Update `IE_SUPPORT.md`
+6. Update [IE Support](../docs/reference/ie-support.md)
 7. **Optional**: Add display support in `src/message/display.rs` for structured output
 8. **Consider Builder Pattern**: For IEs with >5 parameters or complex flag interactions, implement builder pattern (see `FteidBuilder` and `CreatePdrBuilder` as examples)
 

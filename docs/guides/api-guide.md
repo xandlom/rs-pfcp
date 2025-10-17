@@ -588,10 +588,10 @@ impl PfcpSessionManager {
 
 After mastering these API concepts, explore:
 
-1. **[EXAMPLES_GUIDE.md](EXAMPLES_GUIDE.md)** - Detailed walkthrough of working examples
-2. **[PFCP_MESSAGES.md](PFCP_MESSAGES.md)** - Complete message type reference
-3. **[IE_SUPPORT.md](IE_SUPPORT.md)** - Information Element implementation details
-4. **[SESSION_REPORT_DEMO.md](examples/SESSION_REPORT_DEMO.md)** - Real-world usage reporting scenario
+1. **[Examples Guide](examples-guide.md)** - Detailed walkthrough of working examples
+2. **[Messages Reference](../reference/messages.md)** - Complete message type reference
+3. **[IE Support](../reference/ie-support.md)** - Information Element implementation details
+4. **[Session Report Demo](session-report-demo.md)** - Real-world usage reporting scenario
 
 ## 🤝 Community
 
