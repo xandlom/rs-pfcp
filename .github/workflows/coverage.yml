@@ -1,0 +1,161 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Allow manual triggering
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  coverage:
+    name: Generate Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v5
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ubuntu-coverage-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ubuntu-coverage-
+
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
+
+    - name: Generate coverage
+      run: |
+        cargo tarpaulin \
+          --lib \
+          --out Xml \
+          --out Html \
+          --output-dir target/coverage \
+          --timeout 300 \
+          --fail-under 60
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: target/coverage/cobertura.xml
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: target/coverage/
+        retention-days: 30
+
+    - name: Generate coverage summary
+      run: |
+        echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Extract coverage percentage
+        COVERAGE=$(cargo tarpaulin --lib --out Json --output-dir target/coverage 2>&1 | grep -oP '\d+\.\d+(?=% coverage)')
+
+        echo "**Overall Coverage**: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Target: 60% minimum, 80% goal" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 Detailed report available in artifacts" >> $GITHUB_STEP_SUMMARY
+
+  coverage-check:
+    name: Coverage Quality Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v5
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
+
+    - name: Check PR coverage
+      run: |
+        echo "## PR Coverage Check" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Run coverage
+        cargo tarpaulin --lib --out Json --output-dir target/coverage --timeout 300 2>&1 | tee coverage.log
+
+        # Extract current coverage
+        CURRENT=$(grep -oP '\d+\.\d+(?=% coverage)' coverage.log | head -1)
+
+        echo "**PR Coverage**: ${CURRENT}%" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Check if meets minimum
+        if (( $(echo "$CURRENT < 60" | bc -l) )); then
+          echo "⚠️ Coverage below 60% minimum" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please add tests to increase coverage." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ Coverage meets minimum threshold" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  uncovered-lines:
+    name: Identify Uncovered Code
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v5
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
+
+    - name: Generate detailed coverage
+      run: |
+        cargo tarpaulin --lib --out Html --output-dir target/coverage --timeout 300 --verbose 2>&1 | tee coverage.log
+
+    - name: Identify gaps
+      run: |
+        echo "## Coverage Gaps" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Files with <50% coverage:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Parse coverage log for low coverage files
+        grep -E "^\\|\\|.*: [0-9]+/[0-9]+" coverage.log | while read line; do
+          FILE=$(echo "$line" | grep -oP '(?<=\|\| ).*(?=:)')
+          COVERED=$(echo "$line" | grep -oP '\d+(?=/)')
+          TOTAL=$(echo "$line" | grep -oP '(?<=/)\d+')
+
+          if [ "$TOTAL" -gt 0 ]; then
+            PERCENT=$(awk "BEGIN {printf \"%.1f\", ($COVERED/$TOTAL)*100}")
+
+            if (( $(echo "$PERCENT < 50" | bc -l) )); then
+              echo "- \`$FILE\`: ${PERCENT}% ($COVERED/$TOTAL lines)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+        done || echo "- None found" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload detailed report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-gaps
+        path: target/coverage/
+        retention-days: 30

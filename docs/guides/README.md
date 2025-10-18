@@ -47,6 +47,17 @@ Performance testing and optimization:
 
 **When to read**: When measuring or optimizing performance
 
+#### [Coverage Guide](coverage.md) 🧪 **NEW**
+Code coverage analysis and improvement:
+- Running coverage reports
+- Understanding coverage metrics
+- Current coverage status (67.64%)
+- Identifying coverage gaps
+- Improving test coverage
+- CI integration
+
+**When to read**: When adding tests or improving quality
+
 ### In-Depth Guides
 
 #### [API Guide](api-guide.md)
@@ -108,6 +119,12 @@ Complete tutorial on quota management:
 1. **[Benchmarking Guide](benchmarking.md)** - Measure and optimize
 2. **[Performance Architecture](../architecture/performance.md)** - Design patterns
 3. **[Contributing](../../CONTRIBUTING.md)** - Submit improvements
+
+**Improving test coverage?**
+
+1. **[Coverage Guide](coverage.md)** - Measure and improve coverage
+2. **[Testing Strategy](../architecture/testing-strategy.md)** - Testing approach
+3. **[Coverage Report](../COVERAGE.md)** - Current status and gaps
 
 ## Guide Structure
 

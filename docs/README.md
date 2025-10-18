@@ -15,6 +15,7 @@ Step-by-step tutorials and practical guides:
 - **[Cookbook](guides/cookbook.md)** ⭐ - Copy-paste recipes for common tasks
 - **[Troubleshooting](guides/troubleshooting.md)** ⭐ - Debug common issues
 - **[Benchmarking Guide](guides/benchmarking.md)** ⭐ - Performance testing and optimization
+- **[Coverage Guide](guides/coverage.md)** ⭐ - Code coverage analysis (67.64% current)
 - **[API Guide](guides/api-guide.md)** - Comprehensive API reference and usage patterns
 - **[Deployment Guide](guides/deployment-guide.md)** - Production deployment strategies
 - **[Examples Guide](guides/examples-guide.md)** - Running and understanding the example applications
