@@ -1,7 +1,5 @@
-use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
-use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
-use rs_pfcp::message::heartbeat_response::HeartbeatResponse;
+use rs_pfcp::message::heartbeat_response::HeartbeatResponseBuilder;
 use rs_pfcp::message::Message;
 use std::net::UdpSocket;
 use std::time::SystemTime;
@@ -21,18 +19,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(hbreq) => {
                         println!("Received Heartbeat Request from {addr}");
 
-                        // Create recovery timestamp IE
-                        let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
-                        let ts_ie =
-                            Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+                        // Create and send heartbeat response with same sequence number
+                        let response_bytes = HeartbeatResponseBuilder::new(hbreq.sequence())
+                            .recovery_time_stamp(SystemTime::now())
+                            .marshal();
 
-                        // Create heartbeat response with same sequence number
-                        let seq = hbreq.sequence();
-                        let hbres = HeartbeatResponse::new(seq, Some(ts_ie), vec![]);
-                        let marshaled = hbres.marshal();
-
-                        // Send heartbeat response
-                        socket.send_to(&marshaled, addr)?;
+                        socket.send_to(&response_bytes, addr)?;
                         println!("Sent Heartbeat Response to {addr}");
                     }
                     Err(e) => {

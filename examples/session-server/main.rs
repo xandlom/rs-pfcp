@@ -18,7 +18,7 @@ use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::ie::{
     cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr,
-    duration_measurement::DurationMeasurement, f_teid::FteidBuilder, node_id::NodeId,
+    duration_measurement::DurationMeasurement, f_teid::FteidBuilder,
     sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReportBuilder,
     usage_report_trigger::UsageReportTrigger, volume_measurement::VolumeMeasurement, Ie, IeType,
 };
@@ -146,16 +146,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 println!("===========================");
                 match msg.msg_type() {
                     MsgType::AssociationSetupRequest => {
-                        let node_id = NodeId::new_ipv4(std::net::Ipv4Addr::new(127, 0, 0, 1));
-                        let node_id_ie = node_id.to_ie();
                         let cause_ie =
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-                        let res = AssociationSetupResponseBuilder::new(msg.sequence())
-                            .node_id_ie(node_id_ie)
+                        let response_bytes = AssociationSetupResponseBuilder::new(msg.sequence())
+                            .node_id(std::net::Ipv4Addr::new(127, 0, 0, 1))
                             .cause(cause_ie)
-                            .build();
-                        socket.send_to(&res.marshal(), src)?;
+                            .marshal();
+                        socket.send_to(&response_bytes, src)?;
                     }
                     MsgType::SessionEstablishmentRequest => {
                         let seid = msg.seid().unwrap();
