@@ -283,12 +283,98 @@ impl SessionEstablishmentRequestBuilder {
         }
     }
 
-    pub fn node_id(mut self, node_id: Ie) -> Self {
+    /// Sets the node ID from an IP address.
+    ///
+    /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. For FQDN-based node IDs,
+    /// use [`node_id_fqdn`]. For full control, use [`node_id_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+    ///
+    /// let builder = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+    ///     .node_id(Ipv4Addr::new(192, 168, 1, 1));
+    /// ```
+    ///
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    /// [`node_id_ie`]: #method.node_id_ie
+    pub fn node_id<T>(mut self, node_id: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::node_id::NodeId;
+        let ip_addr = node_id.into();
+        let node = match ip_addr {
+            std::net::IpAddr::V4(v4) => NodeId::new_ipv4(v4),
+            std::net::IpAddr::V6(v6) => NodeId::new_ipv6(v6),
+        };
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the node ID from an FQDN.
+    ///
+    /// For IP-based node IDs, use [`node_id`] which accepts IP addresses directly.
+    ///
+    /// [`node_id`]: #method.node_id
+    pub fn node_id_fqdn(mut self, fqdn: &str) -> Self {
+        use crate::ie::node_id::NodeId;
+        let node = NodeId::new_fqdn(fqdn);
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the node ID IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`node_id`] for IP addresses or [`node_id_fqdn`] for FQDNs.
+    ///
+    /// [`node_id`]: #method.node_id
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    pub fn node_id_ie(mut self, node_id: Ie) -> Self {
         self.node_id = Some(node_id);
         self
     }
 
-    pub fn fseid(mut self, fseid: Ie) -> Self {
+    /// Sets the F-SEID from a SEID value and IP address.
+    ///
+    /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. The F-SEID will contain
+    /// the provided SEID and IP address. For full control, use [`fseid_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+    ///
+    /// let builder = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+    ///     .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1));
+    /// ```
+    ///
+    /// [`fseid_ie`]: #method.fseid_ie
+    pub fn fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::fseid::Fseid;
+        let ip_addr = ip_addr.into();
+        let fseid = match ip_addr {
+            std::net::IpAddr::V4(v4) => Fseid::new(seid, Some(v4), None),
+            std::net::IpAddr::V6(v6) => Fseid::new(seid, None, Some(v6)),
+        };
+        self.fseid = Some(Ie::new(IeType::Fseid, fseid.marshal()));
+        self
+    }
+
+    /// Sets the F-SEID IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`fseid`] which accepts a SEID and IP address directly.
+    ///
+    /// [`fseid`]: #method.fseid
+    pub fn fseid_ie(mut self, fseid: Ie) -> Self {
         self.fseid = Some(fseid);
         self
     }
@@ -343,7 +429,36 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
-    pub fn recovery_time_stamp(mut self, recovery_time_stamp: Ie) -> Self {
+    /// Sets the recovery time stamp from a `SystemTime`.
+    ///
+    /// This is an ergonomic method that automatically converts the `SystemTime`
+    /// to a `RecoveryTimeStamp` IE. For more control, use [`recovery_time_stamp_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+    ///
+    /// let builder = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+    ///     .recovery_time_stamp(SystemTime::now());
+    /// ```
+    ///
+    /// [`recovery_time_stamp_ie`]: #method.recovery_time_stamp_ie
+    pub fn recovery_time_stamp(mut self, timestamp: std::time::SystemTime) -> Self {
+        use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+        let ts = RecoveryTimeStamp::new(timestamp);
+        self.recovery_time_stamp = Some(Ie::new(IeType::RecoveryTimeStamp, ts.marshal().to_vec()));
+        self
+    }
+
+    /// Sets the recovery time stamp IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`recovery_time_stamp`] which accepts a `SystemTime` directly.
+    ///
+    /// [`recovery_time_stamp`]: #method.recovery_time_stamp
+    pub fn recovery_time_stamp_ie(mut self, recovery_time_stamp: Ie) -> Self {
         self.recovery_time_stamp = Some(recovery_time_stamp);
         self
     }
@@ -471,5 +586,310 @@ impl SessionEstablishmentRequestBuilder {
             pfcpsm_req_flags: self.pfcpsm_req_flags,
             ies: self.ies,
         })
+    }
+
+    /// Builds the SessionEstablishmentRequest message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method equivalent to calling `.build()?.marshal()`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::SystemTime;
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+    /// use rs_pfcp::ie::Ie;
+    ///
+    /// let bytes = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+    ///     .node_id(Ipv4Addr::new(192, 168, 1, 1))
+    ///     .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+    ///     .create_pdrs(vec![Ie::new(rs_pfcp::ie::IeType::CreatePdr, vec![])])
+    ///     .create_fars(vec![Ie::new(rs_pfcp::ie::IeType::CreateFar, vec![])])
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+        Ok(self.build()?.marshal())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ie::{
+        fseid::Fseid, node_id::NodeId, recovery_time_stamp::RecoveryTimeStamp, IeType,
+    };
+    use std::net::{Ipv4Addr, Ipv6Addr};
+    use std::time::SystemTime;
+
+    // Helper to create minimal valid Create PDR and FAR IEs for testing
+    fn create_minimal_pdr_far() -> (Vec<Ie>, Vec<Ie>) {
+        use crate::ie::{
+            create_far::CreateFar,
+            create_pdr::CreatePdr,
+            destination_interface::Interface,
+            far_id::FarId,
+            pdi::Pdi,
+            pdr_id::PdrId,
+            precedence::Precedence,
+            source_interface::{SourceInterface, SourceInterfaceValue},
+        };
+
+        // Create minimal PDI (needed for PDR)
+        let pdi = Pdi {
+            source_interface: SourceInterface::new(SourceInterfaceValue::Access),
+            f_teid: None,
+            network_instance: None,
+            ue_ip_address: None,
+            sdf_filter: None,
+            application_id: None,
+        };
+
+        // Create minimal PDR
+        let pdr = CreatePdr::new(
+            PdrId::new(1),
+            Precedence::new(100),
+            pdi,
+            None, // outer_header_removal
+            Some(FarId::new(1)),
+            None, // urr_ids
+            None, // qer_ids
+            None, // activate_predefined_rules
+        );
+
+        // Create minimal FAR
+        let far = CreateFar::builder(FarId::new(1))
+            .forward_to(Interface::Access)
+            .build()
+            .unwrap();
+
+        (vec![pdr.to_ie()], vec![far.to_ie()])
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_node_id_ipv4() {
+        let ipv4 = Ipv4Addr::new(192, 168, 1, 1);
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id(ipv4)
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert_eq!(request.sequence(), 1);
+        assert_eq!(request.seid(), Some(0x1234));
+        assert_eq!(request.node_id.ie_type, IeType::NodeId);
+
+        // Verify the node ID unmarshals correctly
+        let node = NodeId::unmarshal(&request.node_id.payload).unwrap();
+        assert_eq!(node, NodeId::IPv4(ipv4));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_node_id_ipv6() {
+        let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id(ipv6)
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        let node = NodeId::unmarshal(&request.node_id.payload).unwrap();
+        assert_eq!(node, NodeId::IPv6(ipv6));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_node_id_fqdn() {
+        let fqdn = "upf.example.com";
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_fqdn(fqdn)
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        let node = NodeId::unmarshal(&request.node_id.payload).unwrap();
+        assert_eq!(node, NodeId::FQDN(fqdn.to_string()));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_fseid_ipv4() {
+        let ipv4 = Ipv4Addr::new(10, 0, 0, 1);
+        let seid = 0x5678;
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_ie(Ie::new(IeType::NodeId, vec![]))
+            .fseid(seid, ipv4)
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert_eq!(request.fseid.ie_type, IeType::Fseid);
+
+        // Verify the F-SEID unmarshals correctly
+        let fseid = Fseid::unmarshal(&request.fseid.payload).unwrap();
+        assert_eq!(fseid.seid, seid);
+        assert_eq!(fseid.ipv4_address, Some(ipv4));
+        assert_eq!(fseid.ipv6_address, None);
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_fseid_ipv6() {
+        let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+        let seid = 0x5678;
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_ie(Ie::new(IeType::NodeId, vec![]))
+            .fseid(seid, ipv6)
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        let fseid = Fseid::unmarshal(&request.fseid.payload).unwrap();
+        assert_eq!(fseid.seid, seid);
+        assert_eq!(fseid.ipv4_address, None);
+        assert_eq!(fseid.ipv6_address, Some(ipv6));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_recovery_timestamp() {
+        let timestamp = SystemTime::now();
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_ie(Ie::new(IeType::NodeId, vec![]))
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .recovery_time_stamp(timestamp)
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert!(request.recovery_time_stamp.is_some());
+        let ie = request.recovery_time_stamp.unwrap();
+        assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
+
+        // Verify it unmarshals correctly
+        let recovered = RecoveryTimeStamp::unmarshal(&ie.payload).unwrap();
+        let duration = timestamp
+            .duration_since(recovered.timestamp)
+            .unwrap_or_else(|e| e.duration());
+        assert!(duration.as_secs() < 1);
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_full_chain() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let request = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id(Ipv4Addr::new(192, 168, 1, 1))
+            .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert_eq!(request.sequence(), 1);
+        assert_eq!(request.seid(), Some(0x1234));
+        assert!(request.recovery_time_stamp.is_some());
+
+        // Verify it marshals and unmarshals correctly
+        let bytes = request.marshal();
+        let unmarshaled = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
+        assert_eq!(unmarshaled.sequence(), 1);
+        assert_eq!(unmarshaled.seid(), Some(0x1234));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_ergonomic_marshal_method() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        // Test the .marshal() convenience method
+        let bytes = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id(Ipv4Addr::new(192, 168, 1, 1))
+            .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .marshal()
+            .unwrap();
+
+        // Should produce valid bytes
+        let request = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
+        assert_eq!(request.sequence(), 1);
+        assert_eq!(request.seid(), Some(0x1234));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_validation_missing_node_id() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let result = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build();
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Node ID"));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_validation_missing_fseid() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let result = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_ie(Ie::new(IeType::NodeId, vec![]))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build();
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("F-SEID"));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_validation_missing_pdrs() {
+        let (_, fars) = create_minimal_pdr_far();
+
+        let result = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_ie(Ie::new(IeType::NodeId, vec![]))
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .create_fars(fars)
+            .build();
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Create PDR"));
+    }
+
+    #[test]
+    fn test_session_establishment_builder_validation_missing_fars() {
+        let (pdrs, _) = create_minimal_pdr_far();
+
+        let result = SessionEstablishmentRequestBuilder::new(0x1234, 1)
+            .node_id_ie(Ie::new(IeType::NodeId, vec![]))
+            .fseid_ie(Ie::new(IeType::Fseid, vec![0; 9]))
+            .create_pdrs(pdrs)
+            .build();
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Create FAR"));
     }
 }

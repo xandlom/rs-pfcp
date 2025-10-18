@@ -30,7 +30,6 @@ use rs_pfcp::ie::{
     destination_interface::Interface,
     f_teid::FteidBuilder,
     far_id::FarId,
-    fseid::Fseid,
     network_instance::NetworkInstance,
     pdi::PdiBuilder,
     pdr_id::PdrId,
@@ -167,8 +166,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // 2. Session Establishment - Demonstrating comprehensive builder patterns
         println!("[{seid}] Sending Session Establishment Request with enhanced builders...");
-        let fseid = Fseid::new(0x0102030405060708u64 + seid, Some(interface_ipv4), None);
-        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
         // Create F-TEID for uplink traffic using new builder pattern
         let uplink_fteid = FteidBuilder::new()
             .teid(0x12345678u32 + seid as u32)
@@ -227,19 +224,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             .guaranteed_rate(1_000_000, 5_000_000) // 1Mbps up, 5Mbps down guaranteed
             .build()
             .unwrap();
-        // Create node_id IE for session establishment (will be made ergonomic later)
-        let node_id = rs_pfcp::ie::node_id::NodeId::new_ipv4(interface_ipv4);
-        let node_id_ie = node_id.to_ie();
 
-        let session_req = SessionEstablishmentRequestBuilder::new(seid, 2)
-            .node_id(node_id_ie.clone())
-            .fseid(fseid_ie.clone())
+        // Send Session Establishment Request using ergonomic builder API
+        let session_req_bytes = SessionEstablishmentRequestBuilder::new(seid, 2)
+            .node_id(interface_ipv4)
+            .fseid(0x0102030405060708u64 + seid, interface_ipv4)
             .create_pdrs(vec![uplink_pdr.to_ie(), downlink_pdr.to_ie()])
             .create_fars(vec![uplink_far.to_ie(), downlink_far.to_ie()])
             .create_qers(vec![qer.to_ie()])
-            .build()
-            .unwrap();
-        socket.send(&session_req.marshal())?;
+            .marshal()?;
+        socket.send(&session_req_bytes)?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Establishment Response.");
 
@@ -287,6 +281,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // 3. Session Modification - Showcase advanced builder patterns including Update builders
         println!("[{seid}] Sending Session Modification Request...");
+
+        // Create F-SEID IE for Session Modification (needed by SessionModificationRequest)
+        let fseid_ie = {
+            use rs_pfcp::ie::fseid::Fseid;
+            Ie::new(
+                IeType::Fseid,
+                Fseid::new(0x0102030405060708u64 + seid, Some(interface_ipv4), None).marshal(),
+            )
+        };
 
         // Create F-TEID with CHOOSE flag (let UPF select IP)
         let choose_fteid = FteidBuilder::new()

@@ -3,7 +3,7 @@
 //! This example demonstrates how the PDN Type Information Element (Type 99)
 //! is properly integrated into PFCP messages for 5G network identification.
 
-use rs_pfcp::ie::{cause::Cause, fseid::Fseid, node_id::NodeId};
+use rs_pfcp::ie::{cause::Cause, fseid::Fseid};
 use rs_pfcp::ie::{pdn_type::PdnType, Ie, IeType};
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
@@ -35,18 +35,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Demonstrate Session Establishment Request with PDN Type
     println!("\n2. 📨 Session Establishment Request with PDN Type:");
-    let node_id = Ie::new(
-        IeType::NodeId,
-        NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 10)).marshal(),
-    );
-    let fseid = Ie::new(
-        IeType::Fseid,
-        Fseid::new(0x123456789ABCDEF0, Some(Ipv4Addr::new(10, 0, 0, 1)), None).marshal(),
-    );
-
     let session_req = SessionEstablishmentRequestBuilder::new(0, 1001)
-        .node_id(node_id.clone())
-        .fseid(fseid.clone())
+        .node_id(Ipv4Addr::new(192, 168, 1, 10))
+        .fseid(0x123456789ABCDEF0, Ipv4Addr::new(10, 0, 0, 1))
         .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in request
         .build()?;
 
@@ -59,9 +50,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Demonstrate Session Establishment Response with PDN Type
     println!("\n3. 📨 Session Establishment Response with PDN Type:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
+    let fseid_ie = Ie::new(
+        IeType::Fseid,
+        Fseid::new(0x123456789ABCDEF0, Some(Ipv4Addr::new(10, 0, 0, 1)), None).marshal(),
+    );
 
     let session_resp = SessionEstablishmentResponseBuilder::new(0x987654321, 1001, cause_ie)
-        .fseid(fseid.clone())
+        .fseid(fseid_ie.clone())
         .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
         .build()?;
 

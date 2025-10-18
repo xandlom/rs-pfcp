@@ -253,8 +253,10 @@ fn test_session_establishment_request_marshal_unmarshal() {
         SessionEstablishmentRequest, SessionEstablishmentRequestBuilder,
     };
 
-    let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
-    let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+    let node_id_ie = Ie::new(
+        IeType::NodeId,
+        NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1)).marshal(),
+    );
     let fseid_ie = Ie::new(
         IeType::Fseid,
         vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
@@ -263,8 +265,8 @@ fn test_session_establishment_request_marshal_unmarshal() {
     let pdr_ie = Ie::new(IeType::CreatePdr, vec![0x01, 0x02, 0x03, 0x04]);
     let far_ie = Ie::new(IeType::CreateFar, vec![0x05, 0x06, 0x07, 0x08]);
     let req = SessionEstablishmentRequestBuilder::new(0x1122334455667788, 0x112233)
-        .node_id(node_id_ie.clone())
-        .fseid(fseid_ie.clone())
+        .node_id_ie(node_id_ie.clone())
+        .fseid_ie(fseid_ie.clone())
         .create_pdrs(vec![pdr_ie])
         .create_fars(vec![far_ie])
         .build()
