@@ -35,11 +35,15 @@ Developer tooling and workflows:
 #### [Architecture Documentation](architecture/)
 Deep dives into library architecture:
 - **[Overview](architecture/overview.md)** - High-level architecture and design principles
+- **[Message Layer](architecture/message-layer.md)** - Message structure, lifecycle, and display system
+- **[IE Layer](architecture/ie-layer.md)** - Information Element types, TLV encoding, and validation
+- **[Binary Protocol](architecture/binary-protocol.md)** - Wire format specification and compliance
 - **[Builder Patterns](architecture/builder-patterns.md)** - Comprehensive builder pattern guide
+- **[Error Handling](architecture/error-handling.md)** - Error philosophy, validation, and recovery
 - **[Security Architecture](architecture/security.md)** - Security design and threat mitigation
-- **[Message Layer](architecture/message-layer.md)** - Message handling architecture (planned)
-- **[IE Layer](architecture/ie-layer.md)** - Information Element architecture (planned)
-- **[Binary Protocol](architecture/binary-protocol.md)** - Low-level protocol details (planned)
+- **[Testing Strategy](architecture/testing-strategy.md)** - 898+ tests across 6 testing layers
+- **[Performance](architecture/performance.md)** - Zero-copy design and optimization techniques
+- **[Extension Points](architecture/extension-points.md)** - Vendor IEs, custom messages, and handlers
 
 ### For Contributors
 
@@ -126,10 +130,24 @@ Documentation improvements are always welcome! When contributing:
 | User Guides | 4 | ✅ Complete |
 | Reference | 4 | ✅ Complete |
 | Development | 1 | 🔄 Growing |
-| Architecture | 0 | 📝 Planned |
+| Architecture | 10 | ✅ Complete |
 | Analysis | 5 | ✅ Archived |
+
+### Architecture Documentation Coverage
+- ✅ System overview and design principles
+- ✅ Message layer architecture (691 lines)
+- ✅ Information Element layer (1,019 lines)
+- ✅ Binary protocol specification (449 lines)
+- ✅ Builder pattern philosophy (467 lines)
+- ✅ Error handling architecture (875 lines)
+- ✅ Security architecture (389 lines)
+- ✅ Testing strategy (795 lines)
+- ✅ Performance optimization (751 lines)
+- ✅ Extension points (890 lines)
+
+**Total**: 6,325 lines of comprehensive architecture documentation
 
 ---
 
-**Last Updated**: 2025-10-17
+**Last Updated**: 2025-10-18
 **Version**: 0.1.2
