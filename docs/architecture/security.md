@@ -417,7 +417,7 @@ When adding new IEs or messages:
 
 ---
 
-**Security Version**: 0.1.2
+**Security Version**: 0.1.3
 **Last Security Audit**: 2025-01-08
 **Next Planned Audit**: TBD
 **Fuzzing Status**: Planned

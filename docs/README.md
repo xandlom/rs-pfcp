@@ -156,4 +156,4 @@ Documentation improvements are always welcome! When contributing:
 ---
 
 **Last Updated**: 2025-10-18
-**Version**: 0.1.2
+**Version**: 0.1.3

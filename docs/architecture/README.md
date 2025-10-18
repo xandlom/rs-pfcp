@@ -112,7 +112,7 @@ Every marshal/unmarshal operation verified with round-trip tests (898+ tests).
 
 ## Architecture Evolution
 
-### Current State (v0.1.2)
+### Current State (v0.1.3)
 - ✅ 100% message type coverage (25/25)
 - ✅ 104+ Information Elements implemented
 - ✅ Complete builder pattern coverage
@@ -169,5 +169,5 @@ For architecture questions or proposals:
 ---
 
 **Last Updated**: 2025-10-17
-**Architecture Version**: 0.1.2
+**Architecture Version**: 0.1.3
 **Compliance**: 3GPP TS 29.244 Release 18

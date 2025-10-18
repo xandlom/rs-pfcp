@@ -402,6 +402,6 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 
 ---
 
-**Version**: 0.1.2
+**Version**: 0.1.3
 **3GPP Compliance**: TS 29.244 Release 18
 **Last Updated**: 2025-10-17

@@ -14,7 +14,7 @@ rs-pfcp is designed for high-performance PFCP protocol processing in production 
 - **Allocation**: Minimize allocations per operation
 - **CPU**: Efficient cache usage, minimal branching
 
-### Measured Performance (v0.1.2)
+### Measured Performance (v0.1.3)
 
 Benchmarks on AMD Ryzen 7 5800X @ 3.8GHz:
 
@@ -747,5 +747,5 @@ Service Level Objectives for performance:
 ---
 
 **Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.2
+**Architecture Version**: 0.1.3
 **Benchmark Platform**: AMD Ryzen 7 5800X @ 3.8GHz

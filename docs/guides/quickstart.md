@@ -8,7 +8,7 @@ Add rs-pfcp to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.1.2"
+rs-pfcp = "0.1.3"
 ```
 
 Or use cargo add:
@@ -455,4 +455,4 @@ You're now ready to build production-grade PFCP implementations in Rust. Start w
 ---
 
 **Last Updated**: 2025-10-18
-**rs-pfcp Version**: 0.1.2
+**rs-pfcp Version**: 0.1.3

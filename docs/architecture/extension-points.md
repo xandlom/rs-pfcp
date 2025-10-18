@@ -886,5 +886,5 @@ impl VersionedMessage for SessionEstablishmentRequest {
 ---
 
 **Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.2
+**Architecture Version**: 0.1.3
 **Specification**: 3GPP TS 29.244 Release 18

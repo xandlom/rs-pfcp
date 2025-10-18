@@ -36,7 +36,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.1.2"
+rs-pfcp = "0.1.3"
 ```
 
 ### Basic Usage

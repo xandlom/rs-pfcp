@@ -17,7 +17,7 @@ rs-pfcp employs a comprehensive, multi-layered testing strategy designed to ensu
 
 ### Quality Metrics
 
-Current test coverage (v0.1.2):
+Current test coverage (v0.1.3):
 
 ```
 Message Types:    25/25  (100%)
@@ -790,6 +790,6 @@ fn debug_unmarshal_failure() {
 ---
 
 **Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.2
+**Architecture Version**: 0.1.3
 **Test Count**: 898+
 **Specification**: 3GPP TS 29.244 Release 18

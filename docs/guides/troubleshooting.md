@@ -698,4 +698,4 @@ If you're still stuck:
 ---
 
 **Last Updated**: 2025-10-18
-**rs-pfcp Version**: 0.1.2
+**rs-pfcp Version**: 0.1.3

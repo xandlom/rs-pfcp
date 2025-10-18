@@ -524,7 +524,7 @@ Binary protocol optimizations:
 
 ## Metadata
 
-- **Version:** 0.1.2
+- **Version:** 0.1.3
 - **Last Updated:** 2025-10-17
 - **3GPP Compliance:** TS 29.244 Release 18
 - **Specification Reference:** 3GPP TS 29.244 V18.1.0 (2023-12)
