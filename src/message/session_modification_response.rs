@@ -252,6 +252,11 @@ impl SessionModificationResponseBuilder {
             self.ies,
         ))
     }
+
+    /// Builds and marshals the SessionModificationResponse in one step.
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]

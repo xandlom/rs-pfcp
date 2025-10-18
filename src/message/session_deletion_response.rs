@@ -192,6 +192,11 @@ impl SessionDeletionResponseBuilder {
             self.ies,
         ))
     }
+
+    /// Builds and marshals the SessionDeletionResponse in one step.
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]

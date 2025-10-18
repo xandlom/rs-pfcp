@@ -179,7 +179,30 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
-    pub fn fseid(mut self, fseid: Ie) -> Self {
+    /// Sets the F-SEID from a SEID value and IP address.
+    ///
+    /// For full control, use [`fseid_ie`].
+    ///
+    /// [`fseid_ie`]: #method.fseid_ie
+    pub fn fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::fseid::Fseid;
+        use crate::ie::IeType;
+        let ip_addr = ip_addr.into();
+        let fseid = match ip_addr {
+            std::net::IpAddr::V4(v4) => Fseid::new(seid, Some(v4), None),
+            std::net::IpAddr::V6(v6) => Fseid::new(seid, None, Some(v6)),
+        };
+        self.fseid = Some(crate::ie::Ie::new(IeType::Fseid, fseid.marshal()));
+        self
+    }
+
+    /// Sets the F-SEID IE directly.
+    ///
+    /// [`fseid`]: #method.fseid
+    pub fn fseid_ie(mut self, fseid: Ie) -> Self {
         self.fseid = Some(fseid);
         self
     }
@@ -256,5 +279,10 @@ impl SessionEstablishmentResponseBuilder {
             overload_control_information: self.overload_control_information,
             ies: self.ies,
         })
+    }
+
+    /// Builds and marshals the SessionEstablishmentResponse in one step.
+    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+        Ok(self.build()?.marshal())
     }
 }

@@ -152,7 +152,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
                         let res = AssociationSetupResponseBuilder::new(msg.sequence())
-                            .node_id(node_id_ie)
+                            .node_id_ie(node_id_ie)
                             .cause(cause_ie)
                             .build();
                         socket.send_to(&res.marshal(), src)?;
@@ -255,7 +255,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             msg.sequence(),
                             cause_ie,
                         )
-                        .fseid(fseid_ie);
+                        .fseid_ie(fseid_ie);
 
                         // Add all created PDRs to the response
                         for created_pdr in created_pdrs {

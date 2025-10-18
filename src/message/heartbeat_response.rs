@@ -119,8 +119,37 @@ impl HeartbeatResponseBuilder {
         }
     }
 
-    /// Sets the recovery time stamp IE.
-    pub fn recovery_time_stamp(mut self, recovery_time_stamp: Ie) -> Self {
+    /// Sets the recovery time stamp from a `SystemTime`.
+    ///
+    /// This is an ergonomic method that automatically converts the `SystemTime`
+    /// to a `RecoveryTimeStamp` IE. For more control, use [`recovery_time_stamp_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::heartbeat_response::HeartbeatResponseBuilder;
+    ///
+    /// let response = HeartbeatResponseBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
+    ///     .build();
+    /// ```
+    ///
+    /// [`recovery_time_stamp_ie`]: #method.recovery_time_stamp_ie
+    pub fn recovery_time_stamp(mut self, timestamp: std::time::SystemTime) -> Self {
+        use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+        let ts = RecoveryTimeStamp::new(timestamp);
+        self.recovery_time_stamp = Some(Ie::new(IeType::RecoveryTimeStamp, ts.marshal().to_vec()));
+        self
+    }
+
+    /// Sets the recovery time stamp IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`recovery_time_stamp`] which accepts a `SystemTime` directly.
+    ///
+    /// [`recovery_time_stamp`]: #method.recovery_time_stamp
+    pub fn recovery_time_stamp_ie(mut self, recovery_time_stamp: Ie) -> Self {
         self.recovery_time_stamp = Some(recovery_time_stamp);
         self
     }
@@ -140,6 +169,24 @@ impl HeartbeatResponseBuilder {
     /// Builds the HeartbeatResponse message.
     pub fn build(self) -> HeartbeatResponse {
         HeartbeatResponse::new(self.sequence, self.recovery_time_stamp, self.ies)
+    }
+
+    /// Builds the HeartbeatResponse message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method equivalent to calling `.build().marshal()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::heartbeat_response::HeartbeatResponseBuilder;
+    ///
+    /// let bytes = HeartbeatResponseBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
     }
 }
 
@@ -166,7 +213,7 @@ mod tests {
         let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
         let response = HeartbeatResponseBuilder::new(12345)
-            .recovery_time_stamp(recovery_ie.clone())
+            .recovery_time_stamp_ie(recovery_ie.clone())
             .build();
 
         assert_eq!(response.sequence(), 12345);
@@ -199,7 +246,7 @@ mod tests {
         let additional_ie = Ie::new(IeType::Unknown, vec![0x01, 0x02, 0x03]);
 
         let response = HeartbeatResponseBuilder::new(12345)
-            .recovery_time_stamp(recovery_ie.clone())
+            .recovery_time_stamp_ie(recovery_ie.clone())
             .ie(additional_ie.clone())
             .build();
 
@@ -216,7 +263,7 @@ mod tests {
         let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
         let original = HeartbeatResponseBuilder::new(12345)
-            .recovery_time_stamp(recovery_ie)
+            .recovery_time_stamp_ie(recovery_ie)
             .build();
 
         let marshaled = original.marshal();

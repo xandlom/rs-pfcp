@@ -690,7 +690,7 @@ fn test_session_establishment_response_multiple_created_pdrs() {
 
     // Build SessionEstablishmentResponse with multiple Created PDRs using the builder pattern
     let response = SessionEstablishmentResponseBuilder::new(seid, sequence, cause_ie)
-        .fseid(fseid_ie)
+        .fseid_ie(fseid_ie)
         .created_pdr(created_pdr1_ie)
         .created_pdr(created_pdr2_ie)
         .build()

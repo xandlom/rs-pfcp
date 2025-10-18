@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let session_resp = SessionEstablishmentResponseBuilder::new(0x987654321, 1001, cause_ie)
-        .fseid(fseid_ie.clone())
+        .fseid_ie(fseid_ie.clone())
         .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
         .build()?;
 
