@@ -246,20 +246,106 @@ impl SessionDeletionRequestBuilder {
         }
     }
 
-    /// Sets the SMF F-SEID IE (required).
-    pub fn smf_fseid(mut self, smf_fseid: Ie) -> Self {
+    /// Sets the SMF F-SEID from a SEID value and IP address.
+    ///
+    /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. For full control, use [`smf_fseid_ie`].
+    ///
+    /// [`smf_fseid_ie`]: #method.smf_fseid_ie
+    pub fn smf_fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::fseid::Fseid;
+        use crate::ie::IeType;
+        let ip_addr = ip_addr.into();
+        let fseid = match ip_addr {
+            std::net::IpAddr::V4(v4) => Fseid::new(seid, Some(v4), None),
+            std::net::IpAddr::V6(v6) => Fseid::new(seid, None, Some(v6)),
+        };
+        self.smf_fseid = Some(crate::ie::Ie::new(IeType::Fseid, fseid.marshal()));
+        self
+    }
+
+    /// Sets the SMF F-SEID IE directly (required).
+    ///
+    /// For common cases, use [`smf_fseid`] which accepts a SEID and IP address directly.
+    ///
+    /// [`smf_fseid`]: #method.smf_fseid
+    pub fn smf_fseid_ie(mut self, smf_fseid: Ie) -> Self {
         self.smf_fseid = Some(smf_fseid);
         self
     }
 
-    /// Sets the node ID IE (optional).
-    pub fn node_id(mut self, node_id: Ie) -> Self {
+    /// Sets the node ID from an IP address (optional).
+    ///
+    /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. For FQDN-based node IDs,
+    /// use [`node_id_fqdn`]. For full control, use [`node_id_ie`].
+    ///
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    /// [`node_id_ie`]: #method.node_id_ie
+    pub fn node_id<T>(mut self, node_id: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::node_id::NodeId;
+        let ip_addr = node_id.into();
+        let node = match ip_addr {
+            std::net::IpAddr::V4(v4) => NodeId::new_ipv4(v4),
+            std::net::IpAddr::V6(v6) => NodeId::new_ipv6(v6),
+        };
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the node ID from an FQDN (optional).
+    ///
+    /// For IP-based node IDs, use [`node_id`] which accepts IP addresses directly.
+    ///
+    /// [`node_id`]: #method.node_id
+    pub fn node_id_fqdn(mut self, fqdn: &str) -> Self {
+        use crate::ie::node_id::NodeId;
+        let node = NodeId::new_fqdn(fqdn);
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the node ID IE directly (optional).
+    ///
+    /// For common cases, use [`node_id`] for IP addresses or [`node_id_fqdn`] for FQDNs.
+    ///
+    /// [`node_id`]: #method.node_id
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    pub fn node_id_ie(mut self, node_id: Ie) -> Self {
         self.node_id = Some(node_id);
         self
     }
 
-    /// Sets the CP F-SEID IE (optional).
-    pub fn cp_fseid(mut self, cp_fseid: Ie) -> Self {
+    /// Sets the CP F-SEID from a SEID value and IP address (optional).
+    ///
+    /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. For full control, use [`cp_fseid_ie`].
+    ///
+    /// [`cp_fseid_ie`]: #method.cp_fseid_ie
+    pub fn cp_fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::fseid::Fseid;
+        use crate::ie::IeType;
+        let ip_addr = ip_addr.into();
+        let fseid = match ip_addr {
+            std::net::IpAddr::V4(v4) => Fseid::new(seid, Some(v4), None),
+            std::net::IpAddr::V6(v6) => Fseid::new(seid, None, Some(v6)),
+        };
+        self.cp_fseid = Some(crate::ie::Ie::new(IeType::Fseid, fseid.marshal()));
+        self
+    }
+
+    /// Sets the CP F-SEID IE directly (optional).
+    ///
+    /// For common cases, use [`cp_fseid`] which accepts a SEID and IP address directly.
+    ///
+    /// [`cp_fseid`]: #method.cp_fseid
+    pub fn cp_fseid_ie(mut self, cp_fseid: Ie) -> Self {
         self.cp_fseid = Some(cp_fseid);
         self
     }
@@ -349,6 +435,27 @@ impl SessionDeletionRequestBuilder {
             self.ies,
         ))
     }
+
+    /// Builds the SessionDeletionRequest message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method equivalent to calling `.build().marshal()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::session_deletion_request::SessionDeletionRequestBuilder;
+    ///
+    /// let bytes = SessionDeletionRequestBuilder::new(0x1234, 1)
+    ///     .smf_fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+    ///     .marshal();
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if the required SMF F-SEID IE is not set.
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]
@@ -363,7 +470,7 @@ mod tests {
         let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
 
         let request = SessionDeletionRequestBuilder::new(12345, 67890)
-            .smf_fseid(fseid_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
             .build();
 
         assert_eq!(request.sequence(), 67890);
@@ -387,8 +494,8 @@ mod tests {
         let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
         let request = SessionDeletionRequestBuilder::new(11111, 22222)
-            .smf_fseid(fseid_ie.clone())
-            .node_id(node_id_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
+            .node_id_ie(node_id_ie.clone())
             .build();
 
         assert_eq!(request.sequence(), 22222);
@@ -407,8 +514,8 @@ mod tests {
         let cp_fseid_ie = Ie::new(IeType::Fseid, cp_fseid.marshal());
 
         let request = SessionDeletionRequestBuilder::new(33333, 44444)
-            .smf_fseid(smf_fseid_ie.clone())
-            .cp_fseid(cp_fseid_ie.clone())
+            .smf_fseid_ie(smf_fseid_ie.clone())
+            .cp_fseid_ie(cp_fseid_ie.clone())
             .build();
 
         assert_eq!(request.sequence(), 44444);
@@ -425,7 +532,7 @@ mod tests {
         let pfcpsm_ie = Ie::new(IeType::PfcpsmReqFlags, pfcpsm_flags.marshal().to_vec());
 
         let request = SessionDeletionRequestBuilder::new(55555, 66666)
-            .smf_fseid(fseid_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
             .pfcpsm_req_flags(pfcpsm_ie.clone())
             .build();
 
@@ -449,7 +556,7 @@ mod tests {
         let urr_id3_ie = Ie::new(IeType::UrrId, urr_id3.marshal().to_vec());
 
         let request = SessionDeletionRequestBuilder::new(77777, 88888)
-            .smf_fseid(fseid_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
             .urr_id(urr_id1_ie.clone())
             .urr_ids(vec![urr_id2_ie.clone(), urr_id3_ie.clone()])
             .build();
@@ -477,7 +584,7 @@ mod tests {
         );
 
         let request = SessionDeletionRequestBuilder::new(99999, 11110)
-            .smf_fseid(fseid_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
             .usage_report(usage_report1.clone())
             .usage_reports(vec![usage_report2.clone()])
             .build();
@@ -498,7 +605,7 @@ mod tests {
         let ie2 = Ie::new(IeType::Unknown, vec![0xCC, 0xDD]);
 
         let request = SessionDeletionRequestBuilder::new(12121, 34343)
-            .smf_fseid(fseid_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
             .ie(ie1.clone())
             .ies(vec![ie2.clone()])
             .build();
@@ -534,9 +641,9 @@ mod tests {
         let additional_ie = Ie::new(IeType::Unknown, vec![0x12, 0x34]);
 
         let request = SessionDeletionRequestBuilder::new(0xABCD, 0x1234)
-            .smf_fseid(smf_fseid_ie.clone())
-            .node_id(node_id_ie.clone())
-            .cp_fseid(cp_fseid_ie.clone())
+            .smf_fseid_ie(smf_fseid_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .cp_fseid_ie(cp_fseid_ie.clone())
             .pfcpsm_req_flags(pfcpsm_ie.clone())
             .urr_id(urr_id_ie.clone())
             .usage_report(usage_report.clone())
@@ -563,7 +670,7 @@ mod tests {
         let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
 
         let result = SessionDeletionRequestBuilder::new(12345, 67890)
-            .smf_fseid(fseid_ie.clone())
+            .smf_fseid_ie(fseid_ie.clone())
             .try_build();
 
         assert!(result.is_ok());
@@ -602,8 +709,8 @@ mod tests {
         let urr_id_ie = Ie::new(IeType::UrrId, urr_id.marshal().to_vec());
 
         let original = SessionDeletionRequestBuilder::new(54321, 98765)
-            .smf_fseid(smf_fseid_ie)
-            .node_id(node_id_ie)
+            .smf_fseid_ie(smf_fseid_ie)
+            .node_id_ie(node_id_ie)
             .urr_id(urr_id_ie)
             .build();
 

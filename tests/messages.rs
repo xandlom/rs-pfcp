@@ -334,7 +334,7 @@ fn test_session_modification_request_marshal_unmarshal() {
     let pdr_ie = Ie::new(IeType::CreatePdr, vec![0x01, 0x02, 0x03, 0x04]);
     let far_ie = Ie::new(IeType::CreateFar, vec![0x05, 0x06, 0x07, 0x08]);
     let req = SessionModificationRequestBuilder::new(0x1122334455667788, 0x112233)
-        .fseid(fseid_ie.clone())
+        .fseid_ie(fseid_ie.clone())
         .create_pdrs(vec![pdr_ie.clone()])
         .create_fars(vec![far_ie.clone()])
         .build();

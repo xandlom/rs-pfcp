@@ -386,7 +386,43 @@ impl SessionModificationRequestBuilder {
         }
     }
 
-    pub fn fseid(mut self, fseid: Ie) -> Self {
+    /// Sets the F-SEID from a SEID value and IP address.
+    ///
+    /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. The F-SEID will contain
+    /// the provided SEID and IP address. For full control, use [`fseid_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::session_modification_request::SessionModificationRequestBuilder;
+    ///
+    /// let builder = SessionModificationRequestBuilder::new(0x1234, 1)
+    ///     .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1));
+    /// ```
+    ///
+    /// [`fseid_ie`]: #method.fseid_ie
+    pub fn fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::fseid::Fseid;
+        let ip_addr = ip_addr.into();
+        let fseid = match ip_addr {
+            std::net::IpAddr::V4(v4) => Fseid::new(seid, Some(v4), None),
+            std::net::IpAddr::V6(v6) => Fseid::new(seid, None, Some(v6)),
+        };
+        self.fseid = Some(Ie::new(IeType::Fseid, fseid.marshal()));
+        self
+    }
+
+    /// Sets the F-SEID IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`fseid`] which accepts a SEID and IP address directly.
+    ///
+    /// [`fseid`]: #method.fseid
+    pub fn fseid_ie(mut self, fseid: Ie) -> Self {
         self.fseid = Some(fseid);
         self
     }
@@ -501,7 +537,26 @@ impl SessionModificationRequestBuilder {
         self
     }
 
-    pub fn recovery_time_stamp(mut self, recovery_time_stamp: Ie) -> Self {
+    /// Sets the recovery time stamp from a `SystemTime`.
+    ///
+    /// This is an ergonomic method that automatically converts the `SystemTime`
+    /// to a `RecoveryTimeStamp` IE. For more control, use [`recovery_time_stamp_ie`].
+    ///
+    /// [`recovery_time_stamp_ie`]: #method.recovery_time_stamp_ie
+    pub fn recovery_time_stamp(mut self, timestamp: std::time::SystemTime) -> Self {
+        use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+        let ts = RecoveryTimeStamp::new(timestamp);
+        self.recovery_time_stamp = Some(Ie::new(IeType::RecoveryTimeStamp, ts.marshal().to_vec()));
+        self
+    }
+
+    /// Sets the recovery time stamp IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`recovery_time_stamp`] which accepts a `SystemTime` directly.
+    ///
+    /// [`recovery_time_stamp`]: #method.recovery_time_stamp
+    pub fn recovery_time_stamp_ie(mut self, recovery_time_stamp: Ie) -> Self {
         self.recovery_time_stamp = Some(recovery_time_stamp);
         self
     }
@@ -695,6 +750,24 @@ impl SessionModificationRequestBuilder {
             pfcpsm_req_flags: self.pfcpsm_req_flags,
             ies: self.ies,
         }
+    }
+
+    /// Builds the SessionModificationRequest message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method equivalent to calling `.build().marshal()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::session_modification_request::SessionModificationRequestBuilder;
+    ///
+    /// let bytes = SessionModificationRequestBuilder::new(0x1234, 1)
+    ///     .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
     }
 }
 

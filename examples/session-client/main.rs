@@ -282,15 +282,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         // 3. Session Modification - Showcase advanced builder patterns including Update builders
         println!("[{seid}] Sending Session Modification Request...");
 
-        // Create F-SEID IE for Session Modification (needed by SessionModificationRequest)
-        let fseid_ie = {
-            use rs_pfcp::ie::fseid::Fseid;
-            Ie::new(
-                IeType::Fseid,
-                Fseid::new(0x0102030405060708u64 + seid, Some(interface_ipv4), None).marshal(),
-            )
-        };
-
         // Create F-TEID with CHOOSE flag (let UPF select IP)
         let choose_fteid = FteidBuilder::new()
             .teid(0x87654321u32 + seid as u32)
@@ -349,24 +340,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             .build()
             .unwrap();
 
-        let session_mod_req = SessionModificationRequestBuilder::new(seid, 3)
-            .fseid(fseid_ie.clone())
+        // Send Session Modification Request using ergonomic builder API
+        let session_mod_bytes = SessionModificationRequestBuilder::new(seid, 3)
+            .fseid(0x0102030405060708u64 + seid, interface_ipv4)
             .update_pdrs(vec![modified_pdr.to_ie()])
             .create_fars(vec![modified_far.to_ie()]) // Add new buffering FAR
             .update_fars(vec![updated_far.to_ie()]) // Update existing FAR with new destination
             .create_qers(vec![modified_qer.to_ie()]) // Add new restricted QER
             .update_qers(vec![updated_qer.to_ie()]) // Update existing QER to close gates
-            .build();
-        socket.send(&session_mod_req.marshal())?;
+            .marshal();
+        socket.send(&session_mod_bytes)?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Modification Response.");
 
         // 4. Session Deletion
         println!("[{seid}] Sending Session Deletion Request...");
-        let session_del_req = SessionDeletionRequestBuilder::new(seid, 4)
-            .smf_fseid(fseid_ie.clone())
-            .build();
-        socket.send(&session_del_req.marshal())?;
+        let session_del_bytes = SessionDeletionRequestBuilder::new(seid, 4)
+            .smf_fseid(0x0102030405060708u64 + seid, interface_ipv4)
+            .marshal();
+        socket.send(&session_del_bytes)?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Deletion Response.");
 
