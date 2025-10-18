@@ -12,6 +12,14 @@ readme = "README.md"
 keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
 categories = ["network-programming", "parser-implementations"]
 rust-version = "1.90.0"
+exclude = [
+    "go-interop/session-server",
+    "go-interop/session-client",
+    "go-interop/simple-server",
+    "go-interop/*.sh",
+    "benchmarks/data/results/",
+    "benchmarks/scripts/",
+]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -25,7 +33,7 @@ network-interface = "2.0.3"
 pcap-file = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+serde_yml = "0.0.12"
 
 [[example]]
 name = "heartbeat-client"
