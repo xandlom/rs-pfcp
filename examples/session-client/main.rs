@@ -32,7 +32,6 @@ use rs_pfcp::ie::{
     far_id::FarId,
     fseid::Fseid,
     network_instance::NetworkInstance,
-    node_id::NodeId,
     pdi::PdiBuilder,
     pdr_id::PdrId,
     precedence::Precedence,
@@ -150,20 +149,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         return Err("Interface IP is not IPv4".into());
     };
-    let node_id = NodeId::new_ipv4(interface_ipv4);
-    let node_id_ie = node_id.to_ie();
-    // Create current recovery timestamp using proper RecoveryTimeStamp struct
-    let recovery_ts =
-        rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp::new(std::time::SystemTime::now());
-    let recovery_ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
-    // 1. Association Setup
+    // 1. Association Setup using ergonomic builder API
     println!("Sending Association Setup Request...");
-    let assoc_req = AssociationSetupRequestBuilder::new(1)
-        .node_id(node_id_ie.clone())
-        .recovery_time_stamp(recovery_ts_ie.clone())
-        .build();
-    socket.send(&assoc_req.marshal())?;
+    let assoc_req_bytes = AssociationSetupRequestBuilder::new(1)
+        .node_id(interface_ipv4)
+        .recovery_time_stamp(std::time::SystemTime::now())
+        .marshal();
+    socket.send(&assoc_req_bytes)?;
     let mut buf = [0; 1024];
     let (_len, _) = socket.recv_from(&mut buf)?;
     println!("Received Association Setup Response.");
@@ -234,6 +227,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             .guaranteed_rate(1_000_000, 5_000_000) // 1Mbps up, 5Mbps down guaranteed
             .build()
             .unwrap();
+        // Create node_id IE for session establishment (will be made ergonomic later)
+        let node_id = rs_pfcp::ie::node_id::NodeId::new_ipv4(interface_ipv4);
+        let node_id_ie = node_id.to_ie();
+
         let session_req = SessionEstablishmentRequestBuilder::new(seid, 2)
             .node_id(node_id_ie.clone())
             .fseid(fseid_ie.clone())

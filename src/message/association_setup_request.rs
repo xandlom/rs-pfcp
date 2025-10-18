@@ -162,15 +162,104 @@ impl AssociationSetupRequestBuilder {
         }
     }
 
-    /// Sets the node ID IE (required).
-    pub fn node_id(mut self, node_id: Ie) -> Self {
-        self.node_id = Some(node_id);
+    /// Sets the node ID from a string (FQDN) or IP address.
+    ///
+    /// This is an ergonomic method that accepts standard types. For more control,
+    /// use [`node_id_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// // From FQDN
+    /// let request = AssociationSetupRequestBuilder::new(1)
+    ///     .node_id("smf.example.com");
+    ///
+    /// // From IP address
+    /// let request = AssociationSetupRequestBuilder::new(1)
+    ///     .node_id(Ipv4Addr::new(192, 168, 1, 1));
+    /// ```
+    ///
+    /// [`node_id_ie`]: #method.node_id_ie
+    pub fn node_id<T>(mut self, node_id: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::node_id::NodeId;
+        let ip_addr = node_id.into();
+        let node = match ip_addr {
+            std::net::IpAddr::V4(v4) => NodeId::new_ipv4(v4),
+            std::net::IpAddr::V6(v6) => NodeId::new_ipv6(v6),
+        };
+        self.node_id = Some(node.to_ie());
         self
     }
 
-    /// Sets the recovery time stamp IE (required).
-    pub fn recovery_time_stamp(mut self, recovery_time_stamp: Ie) -> Self {
-        self.recovery_time_stamp = Some(recovery_time_stamp);
+    /// Sets the node ID from a string (FQDN).
+    ///
+    /// This is a convenience method for FQDN node IDs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+    ///
+    /// let request = AssociationSetupRequestBuilder::new(1)
+    ///     .node_id_fqdn("smf.example.com");
+    /// ```
+    pub fn node_id_fqdn(mut self, fqdn: &str) -> Self {
+        use crate::ie::node_id::NodeId;
+        let node = NodeId::new_fqdn(fqdn);
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the node ID IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`node_id`] or [`node_id_fqdn`].
+    ///
+    /// [`node_id`]: #method.node_id
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    pub fn node_id_ie(mut self, ie: Ie) -> Self {
+        self.node_id = Some(ie);
+        self
+    }
+
+    /// Sets the recovery time stamp from a `SystemTime`.
+    ///
+    /// This is an ergonomic method that automatically converts the `SystemTime`
+    /// to a `RecoveryTimeStamp` IE. For more control, use [`recovery_time_stamp_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+    ///
+    /// let request = AssociationSetupRequestBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now());
+    /// ```
+    ///
+    /// [`recovery_time_stamp_ie`]: #method.recovery_time_stamp_ie
+    pub fn recovery_time_stamp(mut self, timestamp: std::time::SystemTime) -> Self {
+        use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+        use crate::ie::IeType;
+        let ts = RecoveryTimeStamp::new(timestamp);
+        self.recovery_time_stamp = Some(Ie::new(IeType::RecoveryTimeStamp, ts.marshal().to_vec()));
+        self
+    }
+
+    /// Sets the recovery time stamp IE directly.
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`recovery_time_stamp`] which accepts a `SystemTime` directly.
+    ///
+    /// [`recovery_time_stamp`]: #method.recovery_time_stamp
+    pub fn recovery_time_stamp_ie(mut self, ie: Ie) -> Self {
+        self.recovery_time_stamp = Some(ie);
         self
     }
 
@@ -220,6 +309,29 @@ impl AssociationSetupRequestBuilder {
         )
     }
 
+    /// Builds the AssociationSetupRequest message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method equivalent to calling `.build().marshal()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use std::net::Ipv4Addr;
+    /// use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+    ///
+    /// let bytes = AssociationSetupRequestBuilder::new(1)
+    ///     .node_id(Ipv4Addr::new(192, 168, 1, 1))
+    ///     .recovery_time_stamp(SystemTime::now())
+    ///     .marshal();
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if required IEs are not set.
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
+
     /// Tries to build the AssociationSetupRequest message.
     ///
     /// # Returns
@@ -260,8 +372,8 @@ mod tests {
         let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
 
         let request = AssociationSetupRequestBuilder::new(12345)
-            .node_id(node_id_ie.clone())
-            .recovery_time_stamp(recovery_time_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .recovery_time_stamp_ie(recovery_time_ie.clone())
             .build();
 
         assert_eq!(request.sequence(), 12345);
@@ -285,8 +397,8 @@ mod tests {
         let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03]);
 
         let request = AssociationSetupRequestBuilder::new(67890)
-            .node_id(node_id_ie.clone())
-            .recovery_time_stamp(recovery_time_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .recovery_time_stamp_ie(recovery_time_ie.clone())
             .up_function_features(up_features_ie.clone())
             .build();
 
@@ -308,8 +420,8 @@ mod tests {
         let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x04, 0x05, 0x06]);
 
         let request = AssociationSetupRequestBuilder::new(11111)
-            .node_id(node_id_ie.clone())
-            .recovery_time_stamp(recovery_time_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .recovery_time_stamp_ie(recovery_time_ie.clone())
             .cp_function_features(cp_features_ie.clone())
             .build();
 
@@ -333,8 +445,8 @@ mod tests {
         let ie3 = Ie::new(IeType::Unknown, vec![0xEE, 0xFF]);
 
         let request = AssociationSetupRequestBuilder::new(22222)
-            .node_id(node_id_ie.clone())
-            .recovery_time_stamp(recovery_time_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .recovery_time_stamp_ie(recovery_time_ie.clone())
             .ie(ie1.clone())
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
@@ -361,8 +473,8 @@ mod tests {
         let additional_ie = Ie::new(IeType::Unknown, vec![0xFF, 0xEE, 0xDD]);
 
         let request = AssociationSetupRequestBuilder::new(33333)
-            .node_id(node_id_ie.clone())
-            .recovery_time_stamp(recovery_time_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .recovery_time_stamp_ie(recovery_time_ie.clone())
             .up_function_features(up_features_ie.clone())
             .cp_function_features(cp_features_ie.clone())
             .ie(additional_ie.clone())
@@ -386,8 +498,8 @@ mod tests {
         let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
 
         let result = AssociationSetupRequestBuilder::new(44444)
-            .node_id(node_id_ie.clone())
-            .recovery_time_stamp(recovery_time_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .recovery_time_stamp_ie(recovery_time_ie.clone())
             .try_build();
 
         assert!(result.is_ok());
@@ -403,7 +515,7 @@ mod tests {
         let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
 
         let result = AssociationSetupRequestBuilder::new(55555)
-            .recovery_time_stamp(recovery_time_ie)
+            .recovery_time_stamp_ie(recovery_time_ie)
             .try_build();
 
         assert!(result.is_err());
@@ -419,7 +531,7 @@ mod tests {
         let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
         let result = AssociationSetupRequestBuilder::new(66666)
-            .node_id(node_id_ie)
+            .node_id_ie(node_id_ie)
             .try_build();
 
         assert!(result.is_err());
@@ -436,7 +548,7 @@ mod tests {
         let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
 
         AssociationSetupRequestBuilder::new(77777)
-            .recovery_time_stamp(recovery_time_ie)
+            .recovery_time_stamp_ie(recovery_time_ie)
             .build();
     }
 
@@ -447,7 +559,7 @@ mod tests {
         let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
         AssociationSetupRequestBuilder::new(88888)
-            .node_id(node_id_ie)
+            .node_id_ie(node_id_ie)
             .build();
     }
 
@@ -462,8 +574,8 @@ mod tests {
         let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0xAB, 0xCD]);
 
         let original = AssociationSetupRequestBuilder::new(99999)
-            .node_id(node_id_ie)
-            .recovery_time_stamp(recovery_time_ie)
+            .node_id_ie(node_id_ie)
+            .recovery_time_stamp_ie(recovery_time_ie)
             .up_function_features(up_features_ie)
             .build();
 
