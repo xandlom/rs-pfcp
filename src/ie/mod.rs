@@ -937,6 +937,102 @@ impl Ie {
     }
 }
 
+/// Ergonomic builder support for converting common Rust types to IEs.
+///
+/// This module provides the `IntoIe` trait and implementations for common types
+/// to enable ergonomic builder APIs that accept standard Rust types directly.
+///
+/// # Examples
+///
+/// ```
+/// use rs_pfcp::ie::{Ie, IntoIe};
+/// use std::time::SystemTime;
+///
+/// // Convert SystemTime directly to RecoveryTimeStamp IE
+/// let ie: Ie = SystemTime::now().into_ie();
+/// ```
+pub mod builder_support {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::time::SystemTime;
+
+    /// Trait for types that can be automatically converted to Information Elements.
+    ///
+    /// This trait enables ergonomic builder APIs by allowing standard Rust types
+    /// to be passed directly to builder methods, which then convert them to the
+    /// appropriate IE representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::ie::builder_support::IntoIe;
+    /// use std::time::SystemTime;
+    ///
+    /// let timestamp = SystemTime::now();
+    /// let ie = timestamp.into_ie();
+    /// ```
+    pub trait IntoIe {
+        /// Converts this value into an Information Element.
+        fn into_ie(self) -> Ie;
+    }
+
+    /// SystemTime → RecoveryTimeStamp IE
+    impl IntoIe for SystemTime {
+        fn into_ie(self) -> Ie {
+            use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+            let ts = RecoveryTimeStamp::new(self);
+            Ie::new(IeType::RecoveryTimeStamp, ts.marshal().to_vec())
+        }
+    }
+
+    /// Ipv4Addr → SourceIpAddress IE (IPv4 only)
+    impl IntoIe for Ipv4Addr {
+        fn into_ie(self) -> Ie {
+            use crate::ie::source_ip_address::SourceIpAddress;
+            let ip = SourceIpAddress::new(Some(self), None);
+            ip.to_ie()
+        }
+    }
+
+    /// Ipv6Addr → SourceIpAddress IE (IPv6 only)
+    impl IntoIe for Ipv6Addr {
+        fn into_ie(self) -> Ie {
+            use crate::ie::source_ip_address::SourceIpAddress;
+            let ip = SourceIpAddress::new(None, Some(self));
+            ip.to_ie()
+        }
+    }
+
+    /// IpAddr → SourceIpAddress IE (dispatches to IPv4 or IPv6)
+    impl IntoIe for IpAddr {
+        fn into_ie(self) -> Ie {
+            match self {
+                IpAddr::V4(addr) => addr.into_ie(),
+                IpAddr::V6(addr) => addr.into_ie(),
+            }
+        }
+    }
+
+    /// &str → NodeId IE (FQDN)
+    impl IntoIe for &str {
+        fn into_ie(self) -> Ie {
+            use crate::ie::node_id::NodeId;
+            let node_id = NodeId::new_fqdn(self);
+            node_id.to_ie()
+        }
+    }
+
+    /// String → NodeId IE (FQDN)
+    impl IntoIe for String {
+        fn into_ie(self) -> Ie {
+            self.as_str().into_ie()
+        }
+    }
+}
+
+// Re-export IntoIe for convenience
+pub use builder_support::IntoIe;
+
 #[cfg(test)]
 mod tests {
     use super::*;
