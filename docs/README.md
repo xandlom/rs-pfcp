@@ -11,6 +11,10 @@ Start here if you're new to rs-pfcp. The main README provides installation instr
 
 #### [Guides](guides/)
 Step-by-step tutorials and practical guides:
+- **[Quickstart Guide](guides/quickstart.md)** ⭐ - Get started in 5 minutes
+- **[Cookbook](guides/cookbook.md)** ⭐ - Copy-paste recipes for common tasks
+- **[Troubleshooting](guides/troubleshooting.md)** ⭐ - Debug common issues
+- **[Benchmarking Guide](guides/benchmarking.md)** ⭐ - Performance testing and optimization
 - **[API Guide](guides/api-guide.md)** - Comprehensive API reference and usage patterns
 - **[Deployment Guide](guides/deployment-guide.md)** - Production deployment strategies
 - **[Examples Guide](guides/examples-guide.md)** - Running and understanding the example applications
@@ -27,8 +31,9 @@ Technical reference documentation:
 
 #### [Development Documentation](development/)
 Developer tooling and workflows:
+- **[Contributing Guide](../CONTRIBUTING.md)** ⭐ - How to contribute to rs-pfcp
 - **[Git Hooks](development/git-hooks.md)** - Pre-commit hooks for code quality
-- **Contributing Guidelines** - How to contribute to rs-pfcp (see main README)
+- **[Benchmarking](guides/benchmarking.md)** - Performance testing guide
 - **Testing Strategy** - Testing philosophy and practices
 - **Release Process** - How releases are managed
 

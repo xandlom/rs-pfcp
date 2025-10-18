@@ -36,6 +36,17 @@ Debug common issues:
 
 **When to read**: When something isn't working
 
+#### [Benchmarking Guide](benchmarking.md) 🚀 **NEW**
+Performance testing and optimization:
+- Running benchmarks
+- Interpreting results
+- Performance baselines
+- CI integration
+- Contributing benchmarks
+- Performance optimization tips
+
+**When to read**: When measuring or optimizing performance
+
 ### In-Depth Guides
 
 #### [API Guide](api-guide.md)
@@ -91,6 +102,12 @@ Complete tutorial on quota management:
 1. **[Deployment Guide](deployment-guide.md)** - Production best practices
 2. **[Architecture Docs](../architecture/)** - Understand internal design
 3. **[Security Architecture](../architecture/security.md)** - Security considerations
+
+**Optimizing performance?**
+
+1. **[Benchmarking Guide](benchmarking.md)** - Measure and optimize
+2. **[Performance Architecture](../architecture/performance.md)** - Design patterns
+3. **[Contributing](../../CONTRIBUTING.md)** - Submit improvements
 
 ## Guide Structure
 
