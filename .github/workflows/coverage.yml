@@ -40,12 +40,12 @@ jobs:
     - name: Generate coverage
       run: |
         cargo tarpaulin \
-          --lib \
+          --tests \
           --out Xml \
           --out Html \
           --output-dir target/coverage \
           --timeout 300 \
-          --fail-under 60
+          --fail-under 70
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -66,12 +66,12 @@ jobs:
         echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
-        # Extract coverage percentage
-        COVERAGE=$(cargo tarpaulin --lib --out Json --output-dir target/coverage 2>&1 | grep -oP '\d+\.\d+(?=% coverage)')
+        # Extract coverage percentage (including integration tests)
+        COVERAGE=$(cargo tarpaulin --tests --out Json --output-dir target/coverage 2>&1 | grep -oP '\d+\.\d+(?=% coverage)')
 
         echo "**Overall Coverage**: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Target: 60% minimum, 80% goal" >> $GITHUB_STEP_SUMMARY
+        echo "Target: 70% minimum, 80% goal" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "📊 Detailed report available in artifacts" >> $GITHUB_STEP_SUMMARY
 
@@ -95,8 +95,8 @@ jobs:
         echo "## PR Coverage Check" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
-        # Run coverage
-        cargo tarpaulin --lib --out Json --output-dir target/coverage --timeout 300 2>&1 | tee coverage.log
+        # Run coverage (including integration tests)
+        cargo tarpaulin --tests --out Json --output-dir target/coverage --timeout 300 2>&1 | tee coverage.log
 
         # Extract current coverage
         CURRENT=$(grep -oP '\d+\.\d+(?=% coverage)' coverage.log | head -1)
@@ -105,8 +105,8 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
 
         # Check if meets minimum
-        if (( $(echo "$CURRENT < 60" | bc -l) )); then
-          echo "⚠️ Coverage below 60% minimum" >> $GITHUB_STEP_SUMMARY
+        if (( $(echo "$CURRENT < 70" | bc -l) )); then
+          echo "⚠️ Coverage below 70% minimum" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Please add tests to increase coverage." >> $GITHUB_STEP_SUMMARY
         else
@@ -129,7 +129,7 @@ jobs:
 
     - name: Generate detailed coverage
       run: |
-        cargo tarpaulin --lib --out Html --output-dir target/coverage --timeout 300 --verbose 2>&1 | tee coverage.log
+        cargo tarpaulin --tests --out Html --output-dir target/coverage --timeout 300 --verbose 2>&1 | tee coverage.log
 
     - name: Identify gaps
       run: |
