@@ -3,13 +3,13 @@
 use crate::ie::{Ie, IeType};
 use crate::message::Message;
 use serde_json::Value as JsonValue;
-use serde_yml::Value as YamlValue;
+use serde_yaml_ng::Value as YamlValue;
 use std::collections::BTreeMap;
 
 /// Trait for displaying PFCP messages in various formats.
 pub trait MessageDisplay {
     /// Converts the message to YAML format.
-    fn to_yaml(&self) -> Result<String, serde_yml::Error>;
+    fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error>;
 
     /// Converts the message to compact JSON format.
     fn to_json(&self) -> Result<String, serde_json::Error>;
@@ -25,9 +25,9 @@ pub trait MessageDisplay {
 }
 
 impl<T: Message> MessageDisplay for T {
-    fn to_yaml(&self) -> Result<String, serde_yml::Error> {
+    fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error> {
         let data = self.to_structured_data();
-        serde_yml::to_string(&data)
+        serde_yaml_ng::to_string(&data)
     }
 
     fn to_json(&self) -> Result<String, serde_json::Error> {
@@ -1213,9 +1213,9 @@ fn created_pdr_to_json_data(
 
 // Implementation for Box<dyn Message>
 impl MessageDisplay for Box<dyn Message> {
-    fn to_yaml(&self) -> Result<String, serde_yml::Error> {
+    fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error> {
         let data = self.to_structured_data();
-        serde_yml::to_string(&data)
+        serde_yaml_ng::to_string(&data)
     }
 
     fn to_json(&self) -> Result<String, serde_json::Error> {

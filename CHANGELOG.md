@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2025-10-18
+
+### Changed
+- **Dependencies**: Migrated from unmaintained `serde_yaml` 0.9 to actively maintained `serde_yaml_ng` 0.10
+  - Addresses lib.rs maintenance warnings and security advisories (RUSTSEC-2025-0067, RUSTSEC-2025-0068)
+  - `serde_yaml_ng` is a maintained fork with same API, drop-in replacement
+  - Passes cargo audit with zero security vulnerabilities
+
+### Fixed
+- **Package Distribution**: Added `exclude` field to Cargo.toml to prevent publishing binary test fixtures
+  - Excludes Go interoperability test binaries (~9.6 MB)
+  - Excludes shell scripts and benchmark artifacts
+  - Reduces published crate size and resolves lib.rs binary file warning
+  - Development/testing files remain available in repository
+
+### Security
+- Removed potential security concerns by excluding compiled binaries from published package
+- Updated to maintained dependency to receive ongoing security updates
+
 ## [0.1.2] - 2025-10-09
 
 ### Added
@@ -138,5 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - YAML/JSON message display capabilities
 - Example applications (heartbeat, session management, PCAP reader)
 
+[0.1.3]: https://github.com/xandlom/rs-pfcp/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/xandlom/rs-pfcp/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/xandlom/rs-pfcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/xandlom/rs-pfcp/releases/tag/v0.1.0
