@@ -146,12 +146,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 println!("===========================");
                 match msg.msg_type() {
                     MsgType::AssociationSetupRequest => {
-                        let cause_ie =
-                            Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-
                         let response_bytes = AssociationSetupResponseBuilder::new(msg.sequence())
+                            .cause_accepted()
                             .node_id(std::net::Ipv4Addr::new(127, 0, 0, 1))
-                            .cause(cause_ie)
                             .marshal();
                         socket.send_to(&response_bytes, src)?;
                     }
@@ -243,17 +240,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                             },
                         );
 
-                        let cause_ie =
-                            Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
                         let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
 
                         // Build response with all created PDRs
-                        let mut response_builder = SessionEstablishmentResponseBuilder::new(
-                            seid,
-                            msg.sequence(),
-                            cause_ie,
-                        )
-                        .fseid_ie(fseid_ie);
+                        let mut response_builder =
+                            SessionEstablishmentResponseBuilder::accepted(seid, msg.sequence())
+                                .fseid_ie(fseid_ie);
 
                         // Add all created PDRs to the response
                         for created_pdr in created_pdrs {
@@ -281,14 +273,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                         next_sequence += 1;
                     }
                     MsgType::SessionModificationRequest => {
-                        let cause_ie =
-                            Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-
                         let res = SessionModificationResponseBuilder::new(
                             msg.seid().unwrap(),
                             msg.sequence(),
                         )
-                        .cause(cause_ie)
+                        .cause_accepted()
                         .build();
                         socket.send_to(&res.marshal(), src)?;
                     }
@@ -331,14 +320,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                             sessions.remove(&seid);
                         }
 
-                        let cause_ie =
-                            Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-
                         let res = SessionDeletionResponseBuilder::new(
                             msg.seid().unwrap(),
                             msg.sequence(),
                         )
-                        .cause(cause_ie)
+                        .cause_accepted()
                         .build();
                         socket.send_to(&res.marshal(), src)?;
                     }

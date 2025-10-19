@@ -175,7 +175,7 @@ impl AssociationSetupRequestBuilder {
     ///
     /// // From FQDN
     /// let request = AssociationSetupRequestBuilder::new(1)
-    ///     .node_id("smf.example.com");
+    ///     .node_id_fqdn("smf.example.com");
     ///
     /// // From IP address
     /// let request = AssociationSetupRequestBuilder::new(1)

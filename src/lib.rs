@@ -69,8 +69,8 @@
 //! #     .unwrap();
 //! # let create_qer = CreateQerBuilder::open_gate(QerId::new(1)).build().unwrap();
 //! let request = SessionEstablishmentRequestBuilder::new(session_id, sequence_number)
-//!     .node_id(node_id.to_ie())
-//!     .fseid(Ie::new(IeType::Fseid, fseid.marshal()))
+//!     .node_id(Ipv4Addr::new(10, 0, 0, 1))
+//!     .fseid(0x11111111, "2001:db8::1".parse::<std::net::Ipv6Addr>().unwrap())
 //!     .create_pdrs(vec![create_pdr.to_ie()])
 //!     .create_fars(vec![create_far.to_ie()])
 //!     .create_qers(vec![create_qer.to_ie()])

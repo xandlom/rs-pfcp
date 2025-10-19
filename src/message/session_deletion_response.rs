@@ -139,8 +139,39 @@ impl SessionDeletionResponseBuilder {
         }
     }
 
-    /// Sets the cause IE (required).
-    pub fn cause(mut self, cause: Ie) -> Self {
+    /// Sets the cause from a CauseValue.
+    ///
+    /// For convenience, use [`cause_accepted`] or [`cause_rejected`]. For full control, use [`cause_ie`].
+    ///
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    /// [`cause_ie`]: #method.cause_ie
+    pub fn cause(mut self, cause_value: crate::ie::cause::CauseValue) -> Self {
+        use crate::ie::cause::Cause;
+        use crate::ie::{Ie, IeType};
+        let cause = Cause::new(cause_value);
+        self.cause = Some(Ie::new(IeType::Cause, cause.marshal().to_vec()));
+        self
+    }
+
+    /// Convenience method to set cause to Request Accepted.
+    pub fn cause_accepted(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestAccepted)
+    }
+
+    /// Convenience method to set cause to Request Rejected.
+    pub fn cause_rejected(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestRejected)
+    }
+
+    /// Sets the cause IE directly (required).
+    ///
+    /// For common cases, use [`cause`], [`cause_accepted`], or [`cause_rejected`].
+    ///
+    /// [`cause`]: #method.cause
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    pub fn cause_ie(mut self, cause: Ie) -> Self {
         self.cause = Some(cause);
         self
     }
@@ -210,7 +241,7 @@ mod tests {
         let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
 
         let response = SessionDeletionResponseBuilder::new(12345, 67890)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .build();
 
         assert_eq!(response.sequence(), 67890);
@@ -229,7 +260,7 @@ mod tests {
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x01]);
 
         let response = SessionDeletionResponseBuilder::new(11111, 22222)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .offending_ie(offending_ie.clone())
             .build();
 
@@ -250,7 +281,7 @@ mod tests {
         let ie3 = Ie::new(IeType::Unknown, vec![0xEE, 0xFF]);
 
         let response = SessionDeletionResponseBuilder::new(33333, 44444)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .ie(ie1.clone())
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
@@ -273,7 +304,7 @@ mod tests {
         let additional_ie = Ie::new(IeType::Unknown, vec![0xAB, 0xCD, 0xEF]);
 
         let response = SessionDeletionResponseBuilder::new(55555, 66666)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .offending_ie(offending_ie.clone())
             .ie(additional_ie.clone())
             .build();
@@ -292,7 +323,7 @@ mod tests {
         let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
 
         let result = SessionDeletionResponseBuilder::new(12345, 67890)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .try_build();
 
         assert!(result.is_ok());
@@ -327,7 +358,7 @@ mod tests {
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x12, 0x34]);
 
         let original = SessionDeletionResponseBuilder::new(98765, 54321)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .offending_ie(offending_ie)
             .build();
 

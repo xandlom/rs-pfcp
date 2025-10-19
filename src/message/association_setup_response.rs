@@ -176,8 +176,70 @@ impl AssociationSetupResponseBuilder {
         }
     }
 
-    /// Sets the cause IE (required).
-    pub fn cause(mut self, cause: Ie) -> Self {
+    /// Sets the cause from a CauseValue.
+    ///
+    /// Accepts a CauseValue enum. For common cases, use convenience methods like
+    /// [`cause_accepted`] or [`cause_rejected`]. For full control, use [`cause_ie`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::association_setup_response::AssociationSetupResponseBuilder;
+    /// use rs_pfcp::ie::cause::CauseValue;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let response = AssociationSetupResponseBuilder::new(1)
+    ///     .cause(CauseValue::RequestAccepted)
+    ///     .node_id(Ipv4Addr::new(127, 0, 0, 1))
+    ///     .build();
+    /// ```
+    ///
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    /// [`cause_ie`]: #method.cause_ie
+    pub fn cause(mut self, cause_value: crate::ie::cause::CauseValue) -> Self {
+        use crate::ie::cause::Cause;
+        use crate::ie::{Ie, IeType};
+        let cause = Cause::new(cause_value);
+        self.cause = Some(Ie::new(IeType::Cause, cause.marshal().to_vec()));
+        self
+    }
+
+    /// Convenience method to set cause to Request Accepted.
+    ///
+    /// Equivalent to `.cause(CauseValue::RequestAccepted)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::association_setup_response::AssociationSetupResponseBuilder;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let response = AssociationSetupResponseBuilder::new(1)
+    ///     .cause_accepted()
+    ///     .node_id(Ipv4Addr::new(127, 0, 0, 1))
+    ///     .build();
+    /// ```
+    pub fn cause_accepted(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestAccepted)
+    }
+
+    /// Convenience method to set cause to Request Rejected.
+    ///
+    /// Equivalent to `.cause(CauseValue::RequestRejected)`.
+    pub fn cause_rejected(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestRejected)
+    }
+
+    /// Sets the cause IE directly (required).
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`cause`], [`cause_accepted`], or [`cause_rejected`].
+    ///
+    /// [`cause`]: #method.cause
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    pub fn cause_ie(mut self, cause: Ie) -> Self {
         self.cause = Some(cause);
         self
     }
@@ -352,7 +414,7 @@ mod tests {
         let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
         let response = AssociationSetupResponseBuilder::new(12345)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .build();
 
@@ -378,7 +440,7 @@ mod tests {
         let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02, 0x03]);
 
         let response = AssociationSetupResponseBuilder::new(67890)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .up_function_features(up_features_ie.clone())
             .build();
@@ -402,7 +464,7 @@ mod tests {
         let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x04, 0x05, 0x06]);
 
         let response = AssociationSetupResponseBuilder::new(11111)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .cp_function_features(cp_features_ie.clone())
             .build();
@@ -427,7 +489,7 @@ mod tests {
         let recovery_time_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_time.marshal().to_vec());
 
         let response = AssociationSetupResponseBuilder::new(22222)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .recovery_time_stamp_ie(recovery_time_ie.clone())
             .build();
@@ -453,7 +515,7 @@ mod tests {
         let ie3 = Ie::new(IeType::Unknown, vec![0xEE, 0xFF]);
 
         let response = AssociationSetupResponseBuilder::new(33333)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .ie(ie1.clone())
             .ies(vec![ie2.clone(), ie3.clone()])
@@ -485,7 +547,7 @@ mod tests {
         let additional_ie = Ie::new(IeType::Unknown, vec![0xFF, 0xEE, 0xDD]);
 
         let response = AssociationSetupResponseBuilder::new(44444)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .up_function_features(up_features_ie.clone())
             .cp_function_features(cp_features_ie.clone())
@@ -512,7 +574,7 @@ mod tests {
         let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
         let result = AssociationSetupResponseBuilder::new(55555)
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .node_id_ie(node_id_ie.clone())
             .try_build();
 
@@ -545,7 +607,7 @@ mod tests {
         let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
 
         let result = AssociationSetupResponseBuilder::new(77777)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .try_build();
 
         assert!(result.is_err());
@@ -573,7 +635,7 @@ mod tests {
         let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
 
         AssociationSetupResponseBuilder::new(99999)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .build();
     }
 
@@ -588,7 +650,7 @@ mod tests {
         let up_features_ie = Ie::new(IeType::UpFunctionFeatures, vec![0xAB, 0xCD]);
 
         let original = AssociationSetupResponseBuilder::new(11110)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .node_id_ie(node_id_ie)
             .up_function_features(up_features_ie)
             .build();

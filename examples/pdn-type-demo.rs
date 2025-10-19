@@ -55,10 +55,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Fseid::new(0x123456789ABCDEF0, Some(Ipv4Addr::new(10, 0, 0, 1)), None).marshal(),
     );
 
-    let session_resp = SessionEstablishmentResponseBuilder::new(0x987654321, 1001, cause_ie)
-        .fseid_ie(fseid_ie.clone())
-        .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
-        .build()?;
+    let session_resp =
+        SessionEstablishmentResponseBuilder::new_with_ie(0x987654321, 1001, cause_ie)
+            .fseid_ie(fseid_ie.clone())
+            .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
+            .build()?;
 
     println!("   📥 Session Establishment Response created with PDN Type: IPv4v6");
     println!(

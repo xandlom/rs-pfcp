@@ -159,7 +159,54 @@ pub struct SessionEstablishmentResponseBuilder {
 }
 
 impl SessionEstablishmentResponseBuilder {
-    pub fn new(seid: u64, seq: u32, cause: Ie) -> Self {
+    /// Creates a new SessionEstablishmentResponse builder with a CauseValue.
+    ///
+    /// For convenience, use [`accepted()`] or [`rejected()`] constructors.
+    /// For full IE control, use [`new_with_ie()`].
+    ///
+    /// [`accepted()`]: #method.accepted
+    /// [`rejected()`]: #method.rejected
+    /// [`new_with_ie()`]: #method.new_with_ie
+    pub fn new(seid: u64, seq: u32, cause: crate::ie::cause::CauseValue) -> Self {
+        use crate::ie::cause::Cause;
+        use crate::ie::{Ie, IeType};
+        let cause_ie = Ie::new(IeType::Cause, Cause::new(cause).marshal().to_vec());
+        SessionEstablishmentResponseBuilder {
+            seid,
+            seq,
+            cause: Some(cause_ie),
+            offending_ie: None,
+            fseid: None,
+            created_pdrs: Vec::new(),
+            pdn_type: None,
+            load_control_information: None,
+            overload_control_information: None,
+            ies: Vec::new(),
+        }
+    }
+
+    /// Convenience constructor for an accepted response.
+    ///
+    /// Equivalent to `new(seid, seq, CauseValue::RequestAccepted)`.
+    pub fn accepted(seid: u64, seq: u32) -> Self {
+        Self::new(seid, seq, crate::ie::cause::CauseValue::RequestAccepted)
+    }
+
+    /// Convenience constructor for a rejected response.
+    ///
+    /// Equivalent to `new(seid, seq, CauseValue::RequestRejected)`.
+    pub fn rejected(seid: u64, seq: u32) -> Self {
+        Self::new(seid, seq, crate::ie::cause::CauseValue::RequestRejected)
+    }
+
+    /// Creates a new SessionEstablishmentResponse builder with a cause IE.
+    ///
+    /// For common cases, use [`new()`], [`accepted()`], or [`rejected()`].
+    ///
+    /// [`new()`]: #method.new
+    /// [`accepted()`]: #method.accepted
+    /// [`rejected()`]: #method.rejected
+    pub fn new_with_ie(seid: u64, seq: u32, cause: Ie) -> Self {
         SessionEstablishmentResponseBuilder {
             seid,
             seq,
