@@ -12,7 +12,7 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 - Zero-copy binary protocol implementation
 - 25 message types (100% coverage)
 - 104+ Information Elements (IEs) with 272+ enum variants
-- 898+ comprehensive tests with round-trip validation
+- 1,007 comprehensive tests with round-trip validation
 - Builder patterns for ergonomic API
 - MSRV: Rust 1.90.0
 
@@ -24,7 +24,7 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 # Build the library
 cargo build
 
-# Run all tests (898+ tests)
+# Run all tests (1,007 tests)
 cargo test
 
 # Run specific IE or message tests
@@ -114,13 +114,13 @@ cargo doc --no-deps --all-features
 rs-pfcp/
 ├── src/
 │   ├── lib.rs           # Library root with module exports
-│   ├── ie/              # Information Elements (104+ types)
+│   ├── ie/              # Information Elements (104+ IE types with 272+ variants)
 │   │   ├── mod.rs       # IE type enum and common traits
 │   │   ├── f_teid.rs    # F-TEID with CHOOSE flags
 │   │   ├── pdr_id.rs    # Packet Detection Rule ID
 │   │   ├── create_pdr.rs # Grouped IE with builder
 │   │   └── ...
-│   └── message/         # PFCP Messages (25 types)
+│   └── message/         # PFCP Messages (25 types - 100% coverage)
 │       ├── mod.rs       # Message trait and parser
 │       ├── heartbeat_request.rs
 │       ├── session_establishment_request.rs
