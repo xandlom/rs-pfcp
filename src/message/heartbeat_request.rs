@@ -406,11 +406,6 @@ mod tests {
 
     #[test]
     fn test_heartbeat_request_ergonomic_ipv6() {
-        // Note: Due to a limitation in SourceIpAddress unmarshal logic, IPv6-only
-        // addresses cannot be correctly round-tripped. The unmarshal always tries
-        // to parse IPv4 first from the first 4 bytes, leaving insufficient bytes
-        // for IPv6. This test verifies the builder API works, but we can't verify
-        // the round-trip without fixing the SourceIpAddress IE.
         let ipv6 = Ipv6Addr::new(0x2001, 0, 0, 0, 0, 0, 0, 1);
 
         let request = HeartbeatRequestBuilder::new(12345)
@@ -421,8 +416,16 @@ mod tests {
         let ie = request.source_ip_address.unwrap();
         assert_eq!(ie.ie_type, IeType::SourceIpAddress);
 
-        // Verify the IE contains the IPv6 address bytes
-        assert_eq!(ie.payload.len(), 16); // IPv6 is 16 bytes
+        // Verify the IE contains flags + IPv6 address bytes
+        assert_eq!(ie.payload.len(), 17); // 1 byte flags + 16 bytes IPv6
+        assert_eq!(ie.payload[0], 0x01); // V6 flag only
+
+        // Verify round-trip now works correctly
+        let source_ip = SourceIpAddress::unmarshal(&ie.payload).unwrap();
+        assert_eq!(source_ip.ipv6, Some(ipv6));
+        assert_eq!(source_ip.ipv4, None);
+        assert!(source_ip.v6);
+        assert!(!source_ip.v4);
     }
 
     #[test]
