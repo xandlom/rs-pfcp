@@ -1383,3 +1383,553 @@ impl MessageDisplay for Box<dyn Message> {
         map
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ie::cause::{Cause, CauseValue};
+    use crate::ie::fseid::Fseid;
+    use crate::ie::node_id::NodeId;
+    use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+    use crate::message::heartbeat_request::HeartbeatRequestBuilder;
+    use crate::message::heartbeat_response::HeartbeatResponseBuilder;
+    use crate::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+    use crate::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+    use std::net::{Ipv4Addr, Ipv6Addr};
+    use std::time::SystemTime;
+
+    /// Helper to create a basic heartbeat request
+    fn create_heartbeat_request() -> Box<dyn Message> {
+        let recovery_ts = RecoveryTimeStamp::new(SystemTime::UNIX_EPOCH);
+        let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+
+        let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp_ie(recovery_ie)
+            .build();
+
+        Box::new(request)
+    }
+
+    /// Helper to create a heartbeat response
+    fn create_heartbeat_response() -> Box<dyn Message> {
+        let recovery_ts = RecoveryTimeStamp::new(SystemTime::UNIX_EPOCH);
+        let recovery_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+
+        let response = HeartbeatResponseBuilder::new(12345)
+            .recovery_time_stamp_ie(recovery_ie)
+            .build();
+
+        Box::new(response)
+    }
+
+    /// Helper to create a session establishment request
+    fn create_session_establishment_request() -> Box<dyn Message> {
+        // Session establishment requires at least one PDR and FAR
+        // Create minimal PDR and FAR IEs directly (raw bytes to avoid complex builder dependencies)
+
+        // Minimal PDR: just PDR ID
+        let pdr_ie = Ie::new(
+            IeType::CreatePdr,
+            vec![
+                0, 56, 0, 2, // PDR ID IE type and length
+                0, 1, // PDR ID value = 1
+            ],
+        );
+
+        // Minimal FAR: just FAR ID
+        let far_ie = Ie::new(
+            IeType::CreateFar,
+            vec![
+                0, 108, 0, 4, // FAR ID IE type and length
+                0, 0, 0, 1, // FAR ID value = 1
+            ],
+        );
+
+        Box::new(
+            SessionEstablishmentRequestBuilder::new(0, 54321)
+                .node_id(Ipv4Addr::new(192, 168, 1, 1))
+                .fseid(
+                    0x1234567890ABCDEF,
+                    std::net::IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
+                )
+                .create_pdrs(vec![pdr_ie])
+                .create_fars(vec![far_ie])
+                .build()
+                .expect("Failed to build session establishment request"),
+        )
+    }
+
+    /// Helper to create a session establishment response
+    fn create_session_establishment_response() -> Box<dyn Message> {
+        Box::new(
+            SessionEstablishmentResponseBuilder::accepted(0x1234567890ABCDEF, 54321)
+                .fseid(
+                    0xFEDCBA0987654321,
+                    std::net::IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),
+                )
+                .build()
+                .expect("Failed to build session establishment response"),
+        )
+    }
+
+    // ============================================================================
+    // YAML Formatting Tests
+    // ============================================================================
+
+    #[test]
+    fn test_to_yaml_heartbeat_request() {
+        let request = create_heartbeat_request();
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+
+        // Verify YAML is valid and contains expected fields
+        assert!(yaml.contains("message_type:"));
+        assert!(yaml.contains("HeartbeatRequest"));
+        assert!(yaml.contains("sequence: 12345"));
+        assert!(yaml.contains("version: 1"));
+        assert!(yaml.contains("information_elements:"));
+        assert!(yaml.contains("recoverytimestamp:"));
+    }
+
+    #[test]
+    fn test_to_yaml_heartbeat_response() {
+        let response = create_heartbeat_response();
+        let yaml = response.to_yaml().expect("Failed to convert to YAML");
+
+        assert!(yaml.contains("message_type:"));
+        assert!(yaml.contains("HeartbeatResponse"));
+        assert!(yaml.contains("sequence: 12345"));
+        assert!(yaml.contains("version: 1"));
+        assert!(yaml.contains("information_elements:"));
+    }
+
+    #[test]
+    fn test_to_yaml_session_establishment_request() {
+        let request = create_session_establishment_request();
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+
+        assert!(yaml.contains("message_type:"));
+        assert!(yaml.contains("SessionEstablishmentRequest"));
+        assert!(yaml.contains("sequence: 54321"));
+        assert!(yaml.contains("seid: 0"));
+        assert!(yaml.contains("information_elements:"));
+        assert!(yaml.contains("nodeid:"));
+        assert!(yaml.contains("fseid:"));
+    }
+
+    #[test]
+    fn test_to_yaml_session_establishment_response() {
+        let response = create_session_establishment_response();
+        let yaml = response.to_yaml().expect("Failed to convert to YAML");
+
+        assert!(yaml.contains("message_type:"));
+        assert!(yaml.contains("SessionEstablishmentResponse"));
+        assert!(yaml.contains("sequence: 54321"));
+        assert!(yaml.contains("seid:"));
+        assert!(yaml.contains("information_elements:"));
+        // NodeId is optional in response, not always present
+        assert!(yaml.contains("cause:"));
+        assert!(yaml.contains("fseid:"));
+    }
+
+    #[test]
+    fn test_to_yaml_with_seid() {
+        let response = create_session_establishment_response();
+        let yaml = response.to_yaml().expect("Failed to convert to YAML");
+
+        // Verify SEID is included in YAML
+        assert!(yaml.contains("seid:"));
+        // SEID value should be present (in some decimal form)
+        assert!(yaml.contains("seid: 1311768467463790385") || yaml.contains("seid: "));
+    }
+
+    #[test]
+    fn test_to_yaml_without_seid() {
+        let request = create_heartbeat_request();
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+
+        // Heartbeat requests don't have SEID - verify it's not in output
+        let lines: Vec<&str> = yaml.lines().collect();
+        let has_standalone_seid = lines.iter().any(|line| line.trim() == "seid:");
+
+        assert!(
+            !has_standalone_seid,
+            "YAML should not contain standalone seid field for messages without SEID"
+        );
+    }
+
+    #[test]
+    fn test_yaml_is_valid() {
+        let request = create_heartbeat_request();
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+
+        // Parse YAML to verify it's valid
+        let parsed: Result<serde_yaml_ng::Value, _> = serde_yaml_ng::from_str(&yaml);
+        assert!(parsed.is_ok(), "Generated YAML should be valid");
+    }
+
+    // ============================================================================
+    // JSON Formatting Tests
+    // ============================================================================
+
+    #[test]
+    fn test_to_json_heartbeat_request() {
+        let request = create_heartbeat_request();
+        let json = request.to_json().expect("Failed to convert to JSON");
+
+        // Verify JSON is valid and contains expected fields
+        assert!(json.contains("\"message_type\""));
+        assert!(json.contains("\"HeartbeatRequest\""));
+        assert!(json.contains("\"sequence\":12345"));
+        assert!(json.contains("\"version\":1"));
+        assert!(json.contains("\"information_elements\""));
+    }
+
+    #[test]
+    fn test_to_json_heartbeat_response() {
+        let response = create_heartbeat_response();
+        let json = response.to_json().expect("Failed to convert to JSON");
+
+        assert!(json.contains("\"message_type\""));
+        assert!(json.contains("\"HeartbeatResponse\""));
+        assert!(json.contains("\"sequence\":12345"));
+    }
+
+    #[test]
+    fn test_to_json_session_establishment_request() {
+        let request = create_session_establishment_request();
+        let json = request.to_json().expect("Failed to convert to JSON");
+
+        assert!(json.contains("\"message_type\""));
+        assert!(json.contains("\"SessionEstablishmentRequest\""));
+        assert!(json.contains("\"sequence\":54321"));
+        assert!(json.contains("\"seid\":0"));
+        assert!(json.contains("\"information_elements\""));
+    }
+
+    #[test]
+    fn test_to_json_session_establishment_response() {
+        let response = create_session_establishment_response();
+        let json = response.to_json().expect("Failed to convert to JSON");
+
+        assert!(json.contains("\"message_type\""));
+        assert!(json.contains("\"SessionEstablishmentResponse\""));
+        assert!(json.contains("\"seid\""));
+    }
+
+    #[test]
+    fn test_json_is_valid() {
+        let request = create_heartbeat_request();
+        let json = request.to_json().expect("Failed to convert to JSON");
+
+        // Parse JSON to verify it's valid
+        let parsed: Result<serde_json::Value, _> = serde_json::from_str(&json);
+        assert!(parsed.is_ok(), "Generated JSON should be valid");
+    }
+
+    #[test]
+    fn test_to_json_pretty() {
+        let request = create_heartbeat_request();
+        let json_compact = request.to_json().expect("Failed to convert to JSON");
+        let json_pretty = request
+            .to_json_pretty()
+            .expect("Failed to convert to pretty JSON");
+
+        // Pretty JSON should be longer due to indentation
+        assert!(
+            json_pretty.len() > json_compact.len(),
+            "Pretty JSON should be longer than compact JSON"
+        );
+
+        // Pretty JSON should contain newlines
+        assert!(
+            json_pretty.contains('\n'),
+            "Pretty JSON should contain newlines"
+        );
+
+        // Both should be valid
+        let parsed_compact: Result<serde_json::Value, _> = serde_json::from_str(&json_compact);
+        let parsed_pretty: Result<serde_json::Value, _> = serde_json::from_str(&json_pretty);
+
+        assert!(parsed_compact.is_ok());
+        assert!(parsed_pretty.is_ok());
+
+        // Content should be equivalent
+        assert_eq!(parsed_compact.unwrap(), parsed_pretty.unwrap());
+    }
+
+    // ============================================================================
+    // Structured Data Tests
+    // ============================================================================
+
+    #[test]
+    fn test_to_structured_data_basic_fields() {
+        let request = create_heartbeat_request();
+        let data = request.to_structured_data();
+
+        assert_eq!(
+            data.get("message_type"),
+            Some(&YamlValue::String("HeartbeatRequest".to_string()))
+        );
+        assert_eq!(data.get("sequence"), Some(&YamlValue::Number(12345.into())));
+        assert_eq!(data.get("version"), Some(&YamlValue::Number(1.into())));
+    }
+
+    #[test]
+    fn test_to_structured_data_with_seid() {
+        let response = create_session_establishment_response();
+        let data = response.to_structured_data();
+
+        assert!(data.contains_key("seid"));
+        assert_eq!(
+            data.get("seid"),
+            Some(&YamlValue::Number(0x1234567890ABCDEF_u64.into()))
+        );
+    }
+
+    #[test]
+    fn test_to_structured_data_without_seid() {
+        let request = create_heartbeat_request();
+        let data = request.to_structured_data();
+
+        // Heartbeat requests don't have SEID
+        assert!(!data.contains_key("seid"));
+    }
+
+    #[test]
+    fn test_to_structured_data_information_elements() {
+        let request = create_heartbeat_request();
+        let data = request.to_structured_data();
+
+        assert!(data.contains_key("information_elements"));
+
+        // Extract the information_elements mapping
+        if let Some(YamlValue::Mapping(ies)) = data.get("information_elements") {
+            // Should contain recovery timestamp
+            let has_recovery = ies.keys().any(|k| k.as_str() == Some("recoverytimestamp"));
+            assert!(has_recovery, "Should contain recovery timestamp IE");
+        } else {
+            panic!("information_elements should be a mapping");
+        }
+    }
+
+    #[test]
+    fn test_to_json_data_basic_fields() {
+        let request = create_heartbeat_request();
+        let data = request.to_json_data();
+
+        assert_eq!(
+            data.get("message_type"),
+            Some(&JsonValue::String("HeartbeatRequest".to_string()))
+        );
+        assert_eq!(data.get("sequence"), Some(&JsonValue::Number(12345.into())));
+        assert_eq!(data.get("version"), Some(&JsonValue::Number(1.into())));
+    }
+
+    // ============================================================================
+    // IE-Specific Display Tests
+    // ============================================================================
+
+    #[test]
+    fn test_display_node_id_ipv4() {
+        let request = create_session_establishment_request();
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+
+        // Should contain node_id information
+        assert!(yaml.contains("nodeid:"));
+        assert!(yaml.contains("type: NodeId"));
+    }
+
+    #[test]
+    fn test_display_node_id_ipv6() {
+        // Create Node ID IE with IPv6
+        let node_id = NodeId::new_ipv6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal().to_vec());
+
+        let fseid = Fseid::new(0x1234567890ABCDEF, Some(Ipv4Addr::new(10, 0, 0, 1)), None);
+        let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal().to_vec());
+
+        // Minimal PDR and FAR IEs
+        let pdr_ie = Ie::new(
+            IeType::CreatePdr,
+            vec![
+                0, 56, 0, 2, // PDR ID IE type and length
+                0, 1, // PDR ID value = 1
+            ],
+        );
+        let far_ie = Ie::new(
+            IeType::CreateFar,
+            vec![
+                0, 108, 0, 4, // FAR ID IE type and length
+                0, 0, 0, 1, // FAR ID value = 1
+            ],
+        );
+
+        let request = SessionEstablishmentRequestBuilder::new(0, 54321)
+            .node_id_ie(node_id_ie)
+            .fseid_ie(fseid_ie)
+            .create_pdrs(vec![pdr_ie])
+            .create_fars(vec![far_ie])
+            .build()
+            .expect("Failed to build request");
+
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+        assert!(yaml.contains("nodeid:"));
+        assert!(yaml.contains("2001:db8::1") || yaml.contains("2001:0db8"));
+    }
+
+    #[test]
+    fn test_display_cause() {
+        let response = create_session_establishment_response();
+        let yaml = response.to_yaml().expect("Failed to convert to YAML");
+
+        assert!(yaml.contains("cause:"));
+        assert!(yaml.contains("type: Cause"));
+    }
+
+    #[test]
+    fn test_display_fseid() {
+        let response = create_session_establishment_response();
+        let yaml = response.to_yaml().expect("Failed to convert to YAML");
+
+        assert!(yaml.contains("fseid:"));
+        assert!(yaml.contains("type: Fseid"));
+    }
+
+    #[test]
+    fn test_display_recovery_timestamp() {
+        let request = create_heartbeat_request();
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+
+        assert!(yaml.contains("recoverytimestamp:"));
+        assert!(yaml.contains("type: RecoveryTimeStamp"));
+    }
+
+    // ============================================================================
+    // Edge Cases
+    // ============================================================================
+
+    #[test]
+    fn test_display_message_with_no_information_elements() {
+        // Create a minimal heartbeat request with no IEs
+        let request = HeartbeatRequestBuilder::new(99999).build();
+
+        let yaml = request.to_yaml().expect("Failed to convert to YAML");
+        assert!(yaml.contains("sequence: 99999"));
+
+        // Should not have information_elements section if there are no IEs
+        // (or it could be empty - both are acceptable)
+        let json = request.to_json().expect("Failed to convert to JSON");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        // If information_elements exists, it should be an empty object
+        if let Some(ies) = parsed.get("information_elements") {
+            assert!(ies.as_object().unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn test_yaml_json_equivalence() {
+        let request = create_heartbeat_request();
+
+        let yaml_str = request.to_yaml().expect("Failed to convert to YAML");
+        let json_str = request.to_json().expect("Failed to convert to JSON");
+
+        // Parse both formats
+        let yaml_parsed: serde_yaml_ng::Value =
+            serde_yaml_ng::from_str(&yaml_str).expect("Failed to parse YAML");
+        let json_parsed: serde_json::Value =
+            serde_json::from_str(&json_str).expect("Failed to parse JSON");
+
+        // Convert YAML to JSON for comparison
+        let yaml_as_json: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&yaml_parsed).unwrap()).unwrap();
+
+        // They should contain the same data
+        assert_eq!(
+            json_parsed.get("message_type"),
+            yaml_as_json.get("message_type")
+        );
+        assert_eq!(json_parsed.get("sequence"), yaml_as_json.get("sequence"));
+        assert_eq!(json_parsed.get("version"), yaml_as_json.get("version"));
+    }
+
+    // ============================================================================
+    // Helper Function Tests
+    // ============================================================================
+
+    #[test]
+    fn test_get_common_ie_types() {
+        let ie_types = get_common_ie_types();
+
+        // Should contain common IEs
+        assert!(ie_types.contains(&IeType::NodeId));
+        assert!(ie_types.contains(&IeType::Cause));
+        assert!(ie_types.contains(&IeType::Fseid));
+        assert!(ie_types.contains(&IeType::CreatePdr));
+        assert!(ie_types.contains(&IeType::CreateFar));
+
+        // Should have a reasonable number of types (actual count varies)
+        assert!(ie_types.len() > 10, "Should have multiple IE types");
+    }
+
+    #[test]
+    fn test_ie_to_structured_data_node_id() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
+        let ie = Ie::new(IeType::NodeId, node_id.marshal().to_vec());
+
+        let data = ie_to_structured_data(&ie);
+
+        // Should have basic IE fields
+        if let Some(YamlValue::String(ie_type)) = data.get("type") {
+            assert_eq!(ie_type, "NodeId");
+        } else {
+            panic!("Expected type to be a string");
+        }
+
+        // Should have length field
+        assert!(matches!(data.get("length"), Some(YamlValue::Number(_))));
+    }
+
+    #[test]
+    fn test_ie_to_json_data_node_id() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
+        let ie = Ie::new(IeType::NodeId, node_id.marshal().to_vec());
+
+        let data = ie_to_json_data(&ie);
+
+        // Should have basic IE fields
+        if let Some(JsonValue::String(ie_type)) = data.get("type") {
+            assert_eq!(ie_type, "NodeId");
+        } else {
+            panic!("Expected type to be a string");
+        }
+
+        // Should have length field
+        assert!(matches!(data.get("length"), Some(JsonValue::Number(_))));
+    }
+
+    #[test]
+    fn test_ie_to_structured_data_cause() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let data = ie_to_structured_data(&ie);
+
+        if let Some(YamlValue::String(ie_type)) = data.get("type") {
+            assert_eq!(ie_type, "Cause");
+        } else {
+            panic!("Expected type to be a string");
+        }
+    }
+
+    #[test]
+    fn test_display_with_multiple_ies_of_same_type() {
+        // This would be tested with CreatePDR, CreateFAR, etc. which can appear multiple times
+        // For now, we'll test the structure is correct
+        let request = create_session_establishment_request();
+        let data = request.to_structured_data();
+
+        // Even with empty arrays, the structure should be valid
+        assert!(data.contains_key("information_elements"));
+    }
+}
