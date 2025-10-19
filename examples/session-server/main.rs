@@ -278,8 +278,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                             msg.sequence(),
                         )
                         .cause_accepted()
-                        .build();
-                        socket.send_to(&res.marshal(), src)?;
+                        .marshal();
+                        socket.send_to(&res, src)?;
                     }
                     MsgType::SessionDeletionRequest => {
                         let seid = msg.seid().unwrap();
@@ -320,13 +320,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                             sessions.remove(&seid);
                         }
 
-                        let res = SessionDeletionResponseBuilder::new(
-                            msg.seid().unwrap(),
-                            msg.sequence(),
-                        )
-                        .cause_accepted()
-                        .build();
-                        socket.send_to(&res.marshal(), src)?;
+                        let res = SessionDeletionResponseBuilder::new(seid, msg.sequence())
+                            .cause_accepted()
+                            .marshal();
+                        socket.send_to(&res, src)?;
                     }
                     MsgType::SessionReportResponse => {
                         println!(
