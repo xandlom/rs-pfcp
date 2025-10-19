@@ -23,7 +23,6 @@
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use rs_pfcp::ie::{
-    cause::CauseValue,
     create_far::{CreateFar, CreateFarBuilder},
     create_pdr::CreatePdrBuilder,
     create_qer::{CreateQer, CreateQerBuilder},
@@ -39,7 +38,7 @@ use rs_pfcp::ie::{
     update_far::UpdateFarBuilder,
     update_forwarding_parameters::UpdateForwardingParameters,
     update_qer::UpdateQerBuilder,
-    Ie, IeType,
+    IeType,
 };
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequestBuilder,
@@ -95,12 +94,10 @@ fn handle_session_report_request(
     }
 
     // Send Session Report Response with RequestAccepted
-    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-    let response = SessionReportResponseBuilder::new(msg.seid().unwrap(), msg.sequence(), cause_ie)
-        .build()
-        .unwrap();
+    let response_bytes =
+        SessionReportResponseBuilder::accepted(msg.seid().unwrap(), msg.sequence()).marshal()?;
 
-    socket.send_to(&response.marshal(), src)?;
+    socket.send_to(&response_bytes, src)?;
     println!("  Sent Session Report Response (RequestAccepted)");
 
     Ok(())

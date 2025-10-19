@@ -203,7 +203,56 @@ pub struct SessionReportResponseBuilder {
 }
 
 impl SessionReportResponseBuilder {
-    pub fn new(seid: u64, seq: u32, cause: Ie) -> Self {
+    /// Creates a new SessionReportResponse builder with a CauseValue.
+    ///
+    /// For convenience, use [`accepted()`] or [`rejected()`] constructors.
+    /// For full IE control, use [`new_with_ie()`].
+    ///
+    /// [`accepted()`]: #method.accepted
+    /// [`rejected()`]: #method.rejected
+    /// [`new_with_ie()`]: #method.new_with_ie
+    pub fn new(seid: u64, seq: u32, cause: crate::ie::cause::CauseValue) -> Self {
+        use crate::ie::cause::Cause;
+        use crate::ie::{Ie, IeType};
+        let cause_ie = Ie::new(IeType::Cause, Cause::new(cause).marshal().to_vec());
+        SessionReportResponseBuilder {
+            seid,
+            seq,
+            cause: Some(cause_ie),
+            offending_ie: None,
+            update_bar_within_session_report_response: None,
+            pfcpsrrsp_flags: None,
+            cp_function_features: None,
+            usage_reports: Vec::new(),
+            failed_rules_id: None,
+            additional_usage_reports_information: None,
+            created_updated_usage_reports: Vec::new(),
+            ies: Vec::new(),
+        }
+    }
+
+    /// Convenience constructor for an accepted response.
+    ///
+    /// Equivalent to `new(seid, seq, CauseValue::RequestAccepted)`.
+    pub fn accepted(seid: u64, seq: u32) -> Self {
+        Self::new(seid, seq, crate::ie::cause::CauseValue::RequestAccepted)
+    }
+
+    /// Convenience constructor for a rejected response.
+    ///
+    /// Equivalent to `new(seid, seq, CauseValue::RequestRejected)`.
+    pub fn rejected(seid: u64, seq: u32) -> Self {
+        Self::new(seid, seq, crate::ie::cause::CauseValue::RequestRejected)
+    }
+
+    /// Creates a new SessionReportResponse builder with a cause IE.
+    ///
+    /// For common cases, use [`new()`], [`accepted()`], or [`rejected()`].
+    ///
+    /// [`new()`]: #method.new
+    /// [`accepted()`]: #method.accepted
+    /// [`rejected()`]: #method.rejected
+    pub fn new_with_ie(seid: u64, seq: u32, cause: Ie) -> Self {
         SessionReportResponseBuilder {
             seid,
             seq,
@@ -323,5 +372,15 @@ impl SessionReportResponseBuilder {
             created_updated_usage_reports: self.created_updated_usage_reports,
             ies: self.ies,
         })
+    }
+
+    /// Builds and marshals the SessionReportResponse directly to bytes.
+    ///
+    /// This is a convenience method that combines [`build()`] and [`Message::marshal()`].
+    ///
+    /// [`build()`]: #method.build
+    /// [`Message::marshal()`]: trait.Message.html#tymethod.marshal
+    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+        Ok(self.build()?.marshal())
     }
 }

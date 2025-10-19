@@ -482,7 +482,7 @@ fn test_session_report_response_builder() {
     );
     let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x05, 0x06]);
 
-    let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
+    let res = SessionReportResponseBuilder::new_with_ie(seid, sequence, cause_ie.clone())
         .usage_reports(vec![usage_report_ie.clone()])
         .cp_function_features(cp_features_ie.clone())
         .build()
@@ -529,7 +529,7 @@ fn test_session_report_response_builder_comprehensive() {
 
     let additional_ie = Ie::new(IeType::Timer, vec![0x10, 0x11, 0x12, 0x13]);
 
-    let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
+    let res = SessionReportResponseBuilder::new_with_ie(seid, sequence, cause_ie.clone())
         .offending_ie(offending_ie.clone())
         .update_bar_within_session_report_response(update_bar_ie.clone())
         .pfcpsrrsp_flags(pfcpsrrsp_flags_ie.clone())
@@ -586,7 +586,7 @@ fn test_session_report_response_find_ie() {
     );
     let unknown_ie = Ie::new(IeType::Timer, vec![0x03, 0x04]);
 
-    let res = SessionReportResponseBuilder::new(seid, sequence, cause_ie.clone())
+    let res = SessionReportResponseBuilder::new_with_ie(seid, sequence, cause_ie.clone())
         .usage_reports(vec![usage_report_ie.clone()])
         .ies(vec![unknown_ie.clone()])
         .build()

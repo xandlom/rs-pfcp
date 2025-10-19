@@ -284,6 +284,16 @@ impl SessionReportRequestBuilder {
             ies: self.ies,
         }
     }
+
+    /// Builds and marshals the SessionReportRequest directly to bytes.
+    ///
+    /// This is a convenience method that combines [`build()`] and [`Message::marshal()`].
+    ///
+    /// [`build()`]: #method.build
+    /// [`Message::marshal()`]: trait.Message.html#tymethod.marshal
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]
