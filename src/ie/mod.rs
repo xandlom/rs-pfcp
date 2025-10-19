@@ -812,7 +812,9 @@ impl Ie {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "IE too short"));
         }
 
-        let ie_type = IeType::from(u16::from_be_bytes([b[0], b[1]]));
+        // Read raw type value to preserve vendor bit (0x8000)
+        let raw_type = u16::from_be_bytes([b[0], b[1]]);
+        let ie_type = IeType::from(raw_type);
         let length = u16::from_be_bytes([b[2], b[3]]);
 
         // Security: Reject zero-length IEs except for explicitly allowlisted types.
@@ -824,13 +826,14 @@ impl Ie {
                 io::ErrorKind::InvalidData,
                 format!(
                     "Zero-length IE not allowed for {:?} (IE type: {})",
-                    ie_type, ie_type as u16
+                    ie_type, raw_type
                 ),
             ));
         }
 
         let mut offset = 4;
-        let enterprise_id = if (ie_type as u16) & 0x8000 != 0 {
+        // Check vendor bit in RAW type value, not converted IeType
+        let enterprise_id = if raw_type & 0x8000 != 0 {
             if b.len() < 6 {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -843,7 +846,17 @@ impl Ie {
             None
         };
 
-        let end = offset + length as usize;
+        // For vendor-specific IEs, length includes enterprise ID (2 bytes)
+        // So actual payload length = length - 2
+        let payload_length = if enterprise_id.is_some() && length >= 2 {
+            length - 2
+        } else if enterprise_id.is_some() {
+            0 // Edge case: vendor IE with length < 2
+        } else {
+            length
+        };
+
+        let end = offset + payload_length as usize;
         if b.len() < end {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -1213,5 +1226,507 @@ mod tests {
         let ni_result = NetworkInstance::unmarshal(&ie.payload);
         assert!(ni_result.is_ok());
         assert_eq!(ni_result.unwrap().instance, "");
+    }
+
+    // ========================================================================
+    // IE Type Conversion Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_type_from_u16_core_types() {
+        // Test core IE types conversion from u16
+        assert_eq!(IeType::from(1), IeType::CreatePdr);
+        assert_eq!(IeType::from(2), IeType::Pdi);
+        assert_eq!(IeType::from(3), IeType::CreateFar);
+        assert_eq!(IeType::from(19), IeType::Cause);
+        assert_eq!(IeType::from(56), IeType::PdrId);
+        assert_eq!(IeType::from(57), IeType::Fseid);
+        assert_eq!(IeType::from(60), IeType::NodeId);
+        assert_eq!(IeType::from(108), IeType::FarId);
+        assert_eq!(IeType::from(109), IeType::QerId);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_session_types() {
+        // Test session-related IE types
+        assert_eq!(IeType::from(8), IeType::CreatedPdr);
+        assert_eq!(IeType::from(9), IeType::UpdatePdr);
+        assert_eq!(IeType::from(10), IeType::UpdateFar);
+        assert_eq!(IeType::from(15), IeType::RemovePdr);
+        assert_eq!(IeType::from(16), IeType::RemoveFar);
+        assert_eq!(IeType::from(85), IeType::CreateBar);
+        assert_eq!(IeType::from(86), IeType::UpdateBar);
+        assert_eq!(IeType::from(87), IeType::RemoveBar);
+        assert_eq!(IeType::from(88), IeType::BarId);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_network_types() {
+        // Test network-related IE types
+        assert_eq!(IeType::from(20), IeType::SourceInterface);
+        assert_eq!(IeType::from(21), IeType::Fteid);
+        assert_eq!(IeType::from(22), IeType::NetworkInstance);
+        assert_eq!(IeType::from(42), IeType::DestinationInterface);
+        assert_eq!(IeType::from(84), IeType::OuterHeaderCreation);
+        assert_eq!(IeType::from(95), IeType::OuterHeaderRemoval);
+        assert_eq!(IeType::from(192), IeType::SourceIpAddress);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_qos_types() {
+        // Test QoS-related IE types
+        assert_eq!(IeType::from(25), IeType::GateStatus);
+        assert_eq!(IeType::from(26), IeType::Mbr);
+        assert_eq!(IeType::from(27), IeType::Gbr);
+        assert_eq!(IeType::from(29), IeType::Precedence);
+        assert_eq!(IeType::from(30), IeType::TransportLevelMarking);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_monitoring_types() {
+        // Test monitoring and reporting IE types
+        assert_eq!(IeType::from(62), IeType::MeasurementMethod);
+        assert_eq!(IeType::from(63), IeType::UsageReportTrigger);
+        assert_eq!(IeType::from(66), IeType::VolumeMeasurement);
+        assert_eq!(IeType::from(67), IeType::DurationMeasurement);
+        assert_eq!(IeType::from(96), IeType::RecoveryTimeStamp);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_tsn_types() {
+        // Test TSN (Time-Sensitive Networking) IE types
+        assert_eq!(IeType::from(194), IeType::CreateBridgeInfoForTsc);
+        assert_eq!(IeType::from(195), IeType::CreatedBridgeInfoForTsc);
+        assert_eq!(IeType::from(198), IeType::TsnBridgeId);
+        assert_eq!(IeType::from(206), IeType::TsnTimeDomainNumber);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_5g_types() {
+        // Test 5G-specific IE types
+        assert_eq!(IeType::from(113), IeType::PdnType);
+        assert_eq!(IeType::from(159), IeType::ApnDnn);
+        assert_eq!(IeType::from(160), IeType::TgppInterfaceType);
+        assert_eq!(IeType::from(257), IeType::Snssai);
+    }
+
+    #[test]
+    fn test_ie_type_from_u16_unknown() {
+        // Test unknown IE type
+        assert_eq!(IeType::from(9999), IeType::Unknown);
+        assert_eq!(IeType::from(0), IeType::Unknown);
+        assert_eq!(IeType::from(65535), IeType::Unknown);
+    }
+
+    #[test]
+    fn test_ie_type_to_u16_round_trip() {
+        // Test that IE types can be converted to u16 and back
+        let test_types = vec![
+            IeType::CreatePdr,
+            IeType::Cause,
+            IeType::NodeId,
+            IeType::Fteid,
+            IeType::PdrId,
+            IeType::FarId,
+            IeType::Snssai,
+            IeType::SourceIpAddress,
+        ];
+
+        for ie_type in test_types {
+            let as_u16 = ie_type as u16;
+            let back = IeType::from(as_u16);
+            assert_eq!(back, ie_type, "Round-trip failed for {:?}", ie_type);
+        }
+    }
+
+    // ========================================================================
+    // IE Construction Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_new() {
+        let payload = vec![0x01, 0x02, 0x03];
+        let ie = Ie::new(IeType::Cause, payload.clone());
+
+        assert_eq!(ie.ie_type, IeType::Cause);
+        assert_eq!(ie.enterprise_id, None);
+        assert_eq!(ie.payload, payload);
+        assert_eq!(ie.child_ies.len(), 0);
+        assert!(!ie.is_vendor_specific());
+    }
+
+    #[test]
+    fn test_ie_new_vendor_specific() {
+        let payload = vec![0xAA, 0xBB];
+        let ie = Ie::new_vendor_specific(IeType::Unknown, 12345, payload.clone());
+
+        assert_eq!(ie.ie_type, IeType::Unknown);
+        assert_eq!(ie.enterprise_id, Some(12345));
+        assert_eq!(ie.payload, payload);
+        assert!(ie.is_vendor_specific());
+    }
+
+    #[test]
+    fn test_ie_new_grouped() {
+        // Create child IEs
+        let child1 = Ie::new(IeType::PdrId, vec![0x00, 0x01]);
+        let child2 = Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]);
+
+        let grouped = Ie::new_grouped(IeType::CreatePdr, vec![child1.clone(), child2.clone()]);
+
+        assert_eq!(grouped.ie_type, IeType::CreatePdr);
+        assert_eq!(grouped.enterprise_id, None);
+        assert_eq!(grouped.child_ies.len(), 2);
+
+        // Payload should contain marshaled child IEs
+        let expected_payload = {
+            let mut v = Vec::new();
+            v.extend_from_slice(&child1.marshal());
+            v.extend_from_slice(&child2.marshal());
+            v
+        };
+        assert_eq!(grouped.payload, expected_payload);
+    }
+
+    // ========================================================================
+    // IE Property Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_len_simple() {
+        let ie = Ie::new(IeType::Cause, vec![0x01]);
+        // Type (2) + Length (2) + Payload (1) = 5, but len() returns header+payload size
+        assert_eq!(ie.len(), 5);
+    }
+
+    #[test]
+    fn test_ie_len_vendor_specific() {
+        let ie = Ie::new_vendor_specific(IeType::Unknown, 123, vec![0xAA, 0xBB]);
+        // Type (2) + Length (2) + Enterprise ID (2) + Payload (2) = 8
+        assert_eq!(ie.len(), 8);
+    }
+
+    #[test]
+    fn test_ie_is_empty() {
+        let empty = Ie::new(IeType::NetworkInstance, vec![]);
+        assert!(empty.is_empty());
+
+        let not_empty = Ie::new(IeType::Cause, vec![0x01]);
+        assert!(!not_empty.is_empty());
+    }
+
+    #[test]
+    fn test_ie_is_vendor_specific_with_enterprise_id() {
+        let ie = Ie::new_vendor_specific(IeType::Unknown, 100, vec![0x01]);
+        assert!(ie.is_vendor_specific());
+    }
+
+    #[test]
+    fn test_ie_is_vendor_specific_with_flag() {
+        // Create IE with type that has bit 15 set (0x8000)
+        // Since we can't modify the enum value, we test via unmarshal
+        let vendor_ie_bytes = vec![
+            0x80, 0x01, // Type with vendor bit set (32769)
+            0x00, 0x02, // Length (2 bytes for enterprise ID)
+            0x00, 0x0A, // Enterprise ID (10)
+        ];
+        let ie = Ie::unmarshal(&vendor_ie_bytes).unwrap();
+        assert!(ie.is_vendor_specific());
+        assert_eq!(ie.enterprise_id, Some(10));
+    }
+
+    // ========================================================================
+    // IE Marshal/Unmarshal Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_marshal_simple() {
+        let ie = Ie::new(IeType::Cause, vec![0x01]);
+        let marshaled = ie.marshal();
+
+        assert_eq!(marshaled[0..2], [0x00, 0x13]); // Type 19
+        assert_eq!(marshaled[2..4], [0x00, 0x01]); // Length 1
+        assert_eq!(marshaled[4], 0x01); // Payload
+    }
+
+    #[test]
+    fn test_ie_marshal_vendor_specific() {
+        let ie = Ie::new_vendor_specific(IeType::Unknown, 12345, vec![0xAA, 0xBB]);
+        let marshaled = ie.marshal();
+
+        assert_eq!(marshaled[0..2], [0x00, 0x00]); // Type 0 (Unknown)
+        assert_eq!(marshaled[2..4], [0x00, 0x04]); // Length 4 (2 for eid + 2 for payload)
+        assert_eq!(marshaled[4..6], [0x30, 0x39]); // Enterprise ID 12345
+        assert_eq!(marshaled[6..8], [0xAA, 0xBB]); // Payload
+    }
+
+    #[test]
+    fn test_ie_unmarshal_simple_round_trip() {
+        let original = Ie::new(IeType::PdrId, vec![0x00, 0x42]);
+        let marshaled = original.marshal();
+        let unmarshaled = Ie::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.ie_type, original.ie_type);
+        assert_eq!(unmarshaled.enterprise_id, original.enterprise_id);
+        assert_eq!(unmarshaled.payload, original.payload);
+    }
+
+    #[test]
+    fn test_ie_unmarshal_vendor_specific_round_trip() {
+        // Test unmarshal of vendor-specific IE with enterprise bit set
+        let vendor_ie_bytes = vec![
+            0x80, 0x01, // Type with vendor bit set (32769)
+            0x00, 0x05, // Length (2 for enterprise ID + 3 for payload)
+            0x03, 0xE7, // Enterprise ID (999)
+            0x01, 0x02, 0x03, // Payload
+        ];
+
+        let unmarshaled = Ie::unmarshal(&vendor_ie_bytes).unwrap();
+        assert!(unmarshaled.is_vendor_specific());
+        assert_eq!(unmarshaled.enterprise_id, Some(999));
+        assert_eq!(unmarshaled.payload, vec![0x01, 0x02, 0x03]);
+    }
+
+    #[test]
+    fn test_ie_unmarshal_too_short() {
+        let short_buffer = vec![0x00, 0x13, 0x00]; // Only 3 bytes
+        let result = Ie::unmarshal(&short_buffer);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_unmarshal_payload_length_mismatch() {
+        let malformed = vec![
+            0x00, 0x13, // Type: Cause
+            0x00, 0x05, // Length: 5
+            0x01, // Payload: only 1 byte (expected 5)
+        ];
+        let result = Ie::unmarshal(&malformed);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_unmarshal_vendor_specific_too_short() {
+        // Buffer too short for enterprise ID parsing
+        let malformed = vec![
+            0x80, 0x01, // Type with vendor bit
+            0x00, 0x02, // Length: 2
+            0x00, // Only 1 byte (need 2 for enterprise ID)
+        ];
+        let result = Ie::unmarshal(&malformed);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(
+            err.to_string().contains("Vendor-specific") || err.to_string().contains("too short")
+        );
+    }
+
+    // ========================================================================
+    // IE Value Accessor Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_as_u8() {
+        let ie = Ie::new(IeType::Cause, vec![0x42]);
+        assert_eq!(ie.as_u8().unwrap(), 0x42);
+    }
+
+    #[test]
+    fn test_ie_as_u8_empty_payload() {
+        let ie = Ie::new(IeType::NetworkInstance, vec![]);
+        let result = ie.as_u8();
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_as_u16() {
+        let ie = Ie::new(IeType::PdrId, vec![0x12, 0x34]);
+        assert_eq!(ie.as_u16().unwrap(), 0x1234);
+    }
+
+    #[test]
+    fn test_ie_as_u16_too_short() {
+        let ie = Ie::new(IeType::PdrId, vec![0x12]);
+        let result = ie.as_u16();
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_as_u32() {
+        let ie = Ie::new(IeType::FarId, vec![0x12, 0x34, 0x56, 0x78]);
+        assert_eq!(ie.as_u32().unwrap(), 0x12345678);
+    }
+
+    #[test]
+    fn test_ie_as_u32_too_short() {
+        let ie = Ie::new(IeType::FarId, vec![0x12, 0x34]);
+        let result = ie.as_u32();
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_as_u64() {
+        let ie = Ie::new(
+            IeType::Fseid,
+            vec![0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0],
+        );
+        assert_eq!(ie.as_u64().unwrap(), 0x123456789ABCDEF0);
+    }
+
+    #[test]
+    fn test_ie_as_u64_too_short() {
+        let ie = Ie::new(IeType::Fseid, vec![0x12, 0x34, 0x56, 0x78]);
+        let result = ie.as_u64();
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_as_string() {
+        let ie = Ie::new(
+            IeType::NetworkInstance,
+            b"internet.mnc001.mcc001.gprs".to_vec(),
+        );
+        assert_eq!(ie.as_string().unwrap(), "internet.mnc001.mcc001.gprs");
+    }
+
+    #[test]
+    fn test_ie_as_string_invalid_utf8() {
+        let ie = Ie::new(IeType::NetworkInstance, vec![0xFF, 0xFE, 0xFD]);
+        let result = ie.as_string();
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    // ========================================================================
+    // Grouped IE Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_as_ies_simple() {
+        // Create a grouped IE with two children
+        let child1 = Ie::new(IeType::PdrId, vec![0x00, 0x01]);
+        let child2 = Ie::new(IeType::Precedence, vec![0x00, 0x64]);
+
+        let mut grouped = Ie::new_grouped(IeType::CreatePdr, vec![child1, child2]);
+
+        let children = grouped.as_ies().unwrap();
+        assert_eq!(children.len(), 2);
+        assert_eq!(children[0].ie_type, IeType::PdrId);
+        assert_eq!(children[1].ie_type, IeType::Precedence);
+    }
+
+    #[test]
+    fn test_ie_as_ies_cached() {
+        // Create a grouped IE
+        let child = Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x01]);
+        let mut grouped = Ie::new_grouped(IeType::CreateFar, vec![child]);
+
+        // First call parses children
+        let children1 = grouped.as_ies().unwrap();
+        assert_eq!(children1.len(), 1);
+
+        // Second call should return cached children
+        let children2 = grouped.as_ies().unwrap();
+        assert_eq!(children2.len(), 1);
+        assert_eq!(children2[0].ie_type, IeType::FarId);
+    }
+
+    #[test]
+    fn test_ie_as_ies_empty_payload() {
+        let mut ie = Ie::new(IeType::CreatePdr, vec![]);
+        let children = ie.as_ies().unwrap();
+        assert_eq!(children.len(), 0);
+    }
+
+    #[test]
+    fn test_ie_as_ies_malformed_child() {
+        // Payload contains incomplete child IE
+        let mut ie = Ie::new(IeType::CreatePdr, vec![0x00, 0x38]); // Only type, no length
+        let result = ie.as_ies();
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn test_ie_as_ies_nested() {
+        // Create nested grouped IEs
+        let inner_child = Ie::new(IeType::SourceInterface, vec![0x00]);
+        let inner_grouped = Ie::new_grouped(IeType::Pdi, vec![inner_child]);
+
+        let pdr_id = Ie::new(IeType::PdrId, vec![0x00, 0x01]);
+        let mut outer_grouped = Ie::new_grouped(IeType::CreatePdr, vec![pdr_id, inner_grouped]);
+
+        let children = outer_grouped.as_ies().unwrap();
+        assert_eq!(children.len(), 2);
+        assert_eq!(children[0].ie_type, IeType::PdrId);
+        assert_eq!(children[1].ie_type, IeType::Pdi);
+
+        // Parse nested children
+        let mut pdi = children[1].clone();
+        let nested_children = pdi.as_ies().unwrap();
+        assert_eq!(nested_children.len(), 1);
+        assert_eq!(nested_children[0].ie_type, IeType::SourceInterface);
+    }
+
+    // ========================================================================
+    // Edge Cases and Integration Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_large_payload() {
+        // Test with maximum reasonable payload size
+        let large_payload = vec![0x42; 1000];
+        let ie = Ie::new(IeType::NetworkInstance, large_payload.clone());
+        let marshaled = ie.marshal();
+        let unmarshaled = Ie::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.payload, large_payload);
+    }
+
+    #[test]
+    fn test_ie_all_ie_types_round_trip() {
+        // Test a sample of all IE type categories
+        let test_types = vec![
+            (IeType::CreatePdr, vec![0x01, 0x02]),
+            (IeType::Cause, vec![0x01]),
+            (IeType::NodeId, vec![0x00, 0x01, 0x02, 0x03, 0x04]),
+            (IeType::Fseid, vec![0x01; 8]),
+            (IeType::Snssai, vec![0x01, 0x02, 0x03, 0x04]),
+            (IeType::SourceIpAddress, vec![0x01; 4]),
+            (IeType::RecoveryTimeStamp, vec![0x00, 0x00, 0x00, 0x01]),
+        ];
+
+        for (ie_type, payload) in test_types {
+            let original = Ie::new(ie_type, payload);
+            let marshaled = original.marshal();
+            let unmarshaled = Ie::unmarshal(&marshaled).unwrap();
+
+            assert_eq!(
+                unmarshaled.ie_type, original.ie_type,
+                "Failed for {:?}",
+                ie_type
+            );
+            assert_eq!(
+                unmarshaled.payload, original.payload,
+                "Failed for {:?}",
+                ie_type
+            );
+        }
     }
 }
