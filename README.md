@@ -18,9 +18,31 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 - 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - All 70 Information Elements implemented
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 854 comprehensive tests with full round-trip serialization validation
-- 🛠️ **Developer Friendly** - 100% builder pattern coverage with type-safe validation
+- 🧪 **Battle Tested** - 916 comprehensive tests with full round-trip serialization validation
+- 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - YAML/JSON message display, network interface support, and robust examples
+
+### Ergonomic Builder API
+
+Build and send PFCP messages in just 2-3 lines:
+
+```rust
+// Session responses with convenience methods
+let response = SessionEstablishmentResponseBuilder::accepted(seid, seq)
+    .fseid(upf_seid, upf_ip)
+    .marshal()?;
+
+// Or with cause values
+let response = SessionModificationResponseBuilder::new(seid, seq)
+    .cause_accepted()
+    .marshal();
+
+// Requests with type-safe builders
+let request = AssociationSetupRequestBuilder::new(seq)
+    .node_id(Ipv4Addr::new(10, 0, 0, 1))
+    .recovery_time_stamp(SystemTime::now())
+    .marshal();
+```
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
@@ -42,27 +64,35 @@ rs-pfcp = "0.1.3"
 ### Basic Usage
 
 ```rust
-use rs_pfcp::message::{SessionEstablishmentRequest, SessionEstablishmentRequestBuilder};
-use rs_pfcp::ie::{NodeId, Cause, CauseValue};
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+use std::net::Ipv4Addr;
 
-// Create a session establishment request
-let request = SessionEstablishmentRequestBuilder::new(session_id, sequence_number)
-    .node_id(NodeId::from_ipv4("10.0.0.1".parse()?))
-    .fseid(fseid_ie)
-    .create_pdrs(vec![create_pdr_ie])
-    .create_fars(vec![create_far_ie])
-    .build()?;
+// Create a session establishment request with ergonomic builders
+let request_bytes = SessionEstablishmentRequestBuilder::new(session_id, sequence_number)
+    .node_id(Ipv4Addr::new(10, 0, 0, 1))           // Direct IP address
+    .fseid(0x123456789ABCDEF0, my_ip_addr)         // SEID + IP
+    .create_pdrs(vec![pdr.to_ie()])
+    .create_fars(vec![far.to_ie()])
+    .marshal()?;                                    // Direct marshaling
 
-// Serialize to bytes for network transmission
-let bytes = request.marshal();
+// Send over network
+socket.send(&request_bytes)?;
 
-// Parse received messages
-let parsed_msg = rs_pfcp::message::parse(&bytes)?;
+// Parse received messages and respond
+let parsed_msg = rs_pfcp::message::parse(&received_bytes)?;
 match parsed_msg.msg_type() {
     MsgType::SessionEstablishmentRequest => {
         // Handle session establishment
         println!("Received session establishment for SEID: {:016x}",
                  parsed_msg.seid().unwrap_or(0));
+
+        // Create response with convenience methods
+        let response_bytes = SessionEstablishmentResponseBuilder::accepted(seid, sequence)
+            .fseid(upf_seid, upf_ip)
+            .marshal()?;
+
+        socket.send(&response_bytes)?;
     }
     _ => {} // Handle other message types
 }

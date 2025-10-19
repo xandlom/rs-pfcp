@@ -22,8 +22,7 @@ cargo add rs-pfcp
 ### Hello PFCP: Send a Heartbeat
 
 ```rust
-use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
-use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
+use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
 use std::net::UdpSocket;
 use std::time::SystemTime;
 
@@ -31,19 +30,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Create UDP socket
     let socket = UdpSocket::bind("0.0.0.0:0")?;
 
-    // 2. Build heartbeat message
-    let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
-    let heartbeat = HeartbeatRequest::new(
-        1,  // sequence number
-        Some(recovery_ts.to_ie()),
-        None,
-        vec![],
-    );
+    // 2. Build and marshal heartbeat in one step
+    let bytes = HeartbeatRequestBuilder::new(1)  // sequence number
+        .recovery_time_stamp(SystemTime::now())
+        .marshal();
 
-    // 3. Marshal to bytes
-    let bytes = heartbeat.marshal();
-
-    // 4. Send over UDP
+    // 3. Send over UDP
     socket.send_to(&bytes, "127.0.0.1:8805")?;
     println!("✓ Sent heartbeat!");
 
@@ -55,6 +47,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```bash
 cargo run
 ```
+
+### Modern Builder API
+
+rs-pfcp provides ergonomic builders that make PFCP programming enjoyable:
+
+```rust
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+use std::net::Ipv4Addr;
+
+// Requests: Type-safe with convenience methods
+let request_bytes = SessionEstablishmentRequestBuilder::new(seid, seq)
+    .node_id(Ipv4Addr::new(10, 0, 0, 1))     // Direct IP
+    .fseid(cp_seid, cp_ip)                   // SEID + IP
+    .create_pdrs(vec![pdr.to_ie()])
+    .create_fars(vec![far.to_ie()])
+    .marshal()?;                             // Direct to bytes
+
+// Responses: Convenience constructors
+let response_bytes = SessionEstablishmentResponseBuilder::accepted(seid, seq)
+    .fseid(upf_seid, upf_ip)
+    .created_pdr(created_pdr_ie)
+    .marshal()?;
+
+// Or with explicit cause
+let response_bytes = SessionModificationResponseBuilder::new(seid, seq)
+    .cause_accepted()
+    .marshal();
+```
+
+**Key Benefits:**
+- **Concise**: 2-3 lines instead of 10+
+- **Type-safe**: Compile-time validation
+- **Direct marshaling**: `.marshal()` returns bytes directly
+- **Convenience methods**: `.accepted()`, `.cause_accepted()`, etc.
 
 ## Common Patterns
 

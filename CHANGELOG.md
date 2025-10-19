@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### 🎨 Ergonomic Builder API (Major Usability Improvement)
+- **Message Builders**: Added ergonomic convenience methods to all 10 core message builders
+  - `HeartbeatRequest/Response`: `.recovery_time_stamp(SystemTime)` for direct timestamp
+  - `AssociationSetupRequest/Response`: `.node_id(IpAddr)`, `.node_id_fqdn(&str)` for direct addressing
+  - `SessionEstablishmentRequest`: `.node_id(IpAddr)`, `.fseid(u64, IpAddr)` for type-safe construction
+  - `SessionEstablishmentResponse`: `.accepted(seid, seq)`, `.rejected(seid, seq)` convenience constructors
+  - `SessionModification/Deletion Response`: `.cause_accepted()`, `.cause_rejected()`, `.cause(CauseValue)`
+  - `SessionReportResponse`: `.accepted(seid, seq)`, `.rejected(seid, seq)` convenience constructors
+
+- **Direct Marshaling**: All builders now support `.marshal()` for one-step building and serialization
+  - Eliminates need for intermediate `.build()` calls
+  - More efficient (no intermediate Message allocation)
+  - Cleaner API: `builder.method().marshal()` instead of `builder.method().build()?.marshal()`
+
+- **Backward Compatibility**: All existing APIs preserved with `_ie` suffix for raw IE control
+  - Example: `.cause()` now accepts `CauseValue`, `.cause_ie()` accepts raw `Ie`
+
+### Changed
+- **Test Coverage**: Increased from 854 to 916 tests (+62 builder ergonomics tests)
+- **Code Reduction**: Examples simplified by 40-50% through ergonomic builders
+  - heartbeat-server: 9 lines → 4 lines (55% reduction)
+  - session-server: Response building simplified by 3+ lines per message type
+
+### Documentation
+- **README.md**: Added "Ergonomic Builder API" section with code examples
+- **quickstart.md**: Updated with modern builder patterns and convenience methods
+- Examples updated to showcase new ergonomic APIs
+
 ## [0.1.3] - 2025-10-18
 
 ### Changed
