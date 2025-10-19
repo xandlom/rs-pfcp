@@ -1,6 +1,8 @@
-# CLAUDE.md
+# Claude Code Comprehensive Guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides detailed guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+> **Note:** This is a comprehensive reference with detailed examples, security analysis, and advanced patterns. For a quick-start overview, see [../CLAUDE.md](../CLAUDE.md) in the repository root.
 
 ## Project Overview
 
@@ -480,4 +482,20 @@ The project includes a pre-commit hook that automatically runs:
 - **Security scan**: Detects potential secrets in staged changes
 - **Benchmark validation**: Ensures benchmark project compiles
 
-The hook is automatically installed and helps maintain code quality. See `.git-hooks-setup.md` for details.
+The hook is automatically installed and helps maintain code quality. See [docs/development/git-hooks.md](../docs/development/git-hooks.md) for details.
+
+## Related Documentation
+
+- **Quick Start Guide**: [../CLAUDE.md](../CLAUDE.md) - Concise overview for quick reference
+- **API Documentation**: [../docs/guides/api-guide.md](../docs/guides/api-guide.md) - Complete API usage guide
+- **Architecture Docs**: [../docs/architecture/](../docs/architecture/) - Design documentation (6,325 lines)
+  - [Overview](../docs/architecture/overview.md) - System architecture
+  - [Message Layer](../docs/architecture/message-layer.md) - Message design (691 lines)
+  - [IE Layer](../docs/architecture/ie-layer.md) - IE architecture (1,019 lines)
+  - [Builder Patterns](../docs/architecture/builder-patterns.md) - Builder philosophy (467 lines)
+  - [Error Handling](../docs/architecture/error-handling.md) - Error patterns (875 lines)
+  - [Security Architecture](../docs/architecture/security.md) - Security design (389 lines)
+- **Reference Documentation**: [../docs/reference/](../docs/reference/)
+  - [IE Support](../docs/reference/ie-support.md) - Complete IE implementation status
+  - [3GPP Compliance](../docs/reference/3gpp-compliance.md) - Compliance verification
+- **Contributing**: [../CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
