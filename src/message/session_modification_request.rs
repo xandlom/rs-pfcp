@@ -772,3 +772,589 @@ impl SessionModificationRequestBuilder {
 }
 
 impl SessionModificationRequest {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+    // ========================================================================
+    // Builder Basic Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_minimal() {
+        let msg = SessionModificationRequestBuilder::new(0x1234567890ABCDEF, 100).build();
+
+        assert_eq!(msg.header.seid, 0x1234567890ABCDEF);
+        assert_eq!(msg.header.sequence_number, 100);
+        assert_eq!(msg.msg_type(), MsgType::SessionModificationRequest);
+        assert!(msg.fseid.is_none());
+        assert!(msg.create_pdrs.is_none());
+    }
+
+    #[test]
+    fn test_builder_with_fseid() {
+        let msg = SessionModificationRequestBuilder::new(0xABCD, 200)
+            .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+            .build();
+
+        assert!(msg.fseid.is_some());
+        let fseid_ie = msg.fseid.unwrap();
+        assert_eq!(fseid_ie.ie_type, IeType::Fseid);
+    }
+
+    #[test]
+    fn test_builder_with_fseid_ipv6() {
+        let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+        let msg = SessionModificationRequestBuilder::new(0x1111, 300)
+            .fseid(0x2222, ipv6)
+            .build();
+
+        assert!(msg.fseid.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_fseid_ipaddr() {
+        let ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+        let msg = SessionModificationRequestBuilder::new(0x3333, 400)
+            .fseid(0x4444, ip)
+            .build();
+
+        assert!(msg.fseid.is_some());
+    }
+
+    // ========================================================================
+    // Create Operations Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_create_pdrs() {
+        let pdr_ie = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x5555, 500)
+            .create_pdrs(vec![pdr_ie.clone()])
+            .build();
+
+        assert!(msg.create_pdrs.is_some());
+        let pdrs = msg.create_pdrs.unwrap();
+        assert_eq!(pdrs.len(), 1);
+        assert_eq!(pdrs[0].ie_type, IeType::CreatePdr);
+    }
+
+    #[test]
+    fn test_builder_create_fars() {
+        let far_ie = Ie::new(IeType::CreateFar, vec![0, 108, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x6666, 600)
+            .create_fars(vec![far_ie.clone()])
+            .build();
+
+        assert!(msg.create_fars.is_some());
+        assert_eq!(msg.create_fars.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_builder_create_multiple_pdrs() {
+        let pdr1 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+        let pdr2 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 2]);
+        let pdr3 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 3]);
+
+        let msg = SessionModificationRequestBuilder::new(0x7777, 700)
+            .create_pdrs(vec![pdr1, pdr2, pdr3])
+            .build();
+
+        assert!(msg.create_pdrs.is_some());
+        assert_eq!(msg.create_pdrs.unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_builder_create_urrs() {
+        let urr_ie = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x8888, 800)
+            .create_urrs(vec![urr_ie])
+            .build();
+
+        assert!(msg.create_urrs.is_some());
+    }
+
+    #[test]
+    fn test_builder_create_qers() {
+        let qer_ie = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x9999, 900)
+            .create_qers(vec![qer_ie])
+            .build();
+
+        assert!(msg.create_qers.is_some());
+    }
+
+    #[test]
+    fn test_builder_create_bars() {
+        let bar_ie = Ie::new(IeType::CreateBar, vec![0, 85, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xAAAA, 1000)
+            .create_bars(vec![bar_ie])
+            .build();
+
+        assert!(msg.create_bars.is_some());
+    }
+
+    #[test]
+    fn test_builder_create_traffic_endpoints() {
+        let te_ie = Ie::new(IeType::CreateTrafficEndpoint, vec![0, 131, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xBBBB, 1100)
+            .create_traffic_endpoints(vec![te_ie])
+            .build();
+
+        assert!(msg.create_traffic_endpoints.is_some());
+    }
+
+    // ========================================================================
+    // Update Operations Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_update_pdrs() {
+        let update_pdr = Ie::new(IeType::UpdatePdr, vec![0, 9, 0, 2, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xCCCC, 1200)
+            .update_pdrs(vec![update_pdr])
+            .build();
+
+        assert!(msg.update_pdrs.is_some());
+        assert_eq!(msg.update_pdrs.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_builder_update_fars() {
+        let update_far = Ie::new(IeType::UpdateFar, vec![0, 10, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xDDDD, 1300)
+            .update_fars(vec![update_far])
+            .build();
+
+        assert!(msg.update_fars.is_some());
+    }
+
+    #[test]
+    fn test_builder_update_urrs() {
+        let update_urr = Ie::new(IeType::UpdateUrr, vec![0, 13, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xEEEE, 1400)
+            .update_urrs(vec![update_urr])
+            .build();
+
+        assert!(msg.update_urrs.is_some());
+    }
+
+    #[test]
+    fn test_builder_update_qers() {
+        let update_qer = Ie::new(IeType::UpdateQer, vec![0, 15, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xFFFF, 1500)
+            .update_qers(vec![update_qer])
+            .build();
+
+        assert!(msg.update_qers.is_some());
+    }
+
+    #[test]
+    fn test_builder_update_bars() {
+        let update_bar = Ie::new(IeType::UpdateBar, vec![0, 86, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x1111, 1600)
+            .update_bars(vec![update_bar])
+            .build();
+
+        assert!(msg.update_bars.is_some());
+    }
+
+    #[test]
+    fn test_builder_update_traffic_endpoints() {
+        let update_te = Ie::new(IeType::UpdateTrafficEndpoint, vec![0, 160, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x2222, 1700)
+            .update_traffic_endpoints(vec![update_te])
+            .build();
+
+        assert!(msg.update_traffic_endpoints.is_some());
+    }
+
+    // ========================================================================
+    // Remove Operations Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_remove_pdrs() {
+        let remove_pdr = Ie::new(IeType::RemovePdr, vec![0, 15, 0, 2, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x3333, 1800)
+            .remove_pdrs(vec![remove_pdr])
+            .build();
+
+        assert!(msg.remove_pdrs.is_some());
+        assert_eq!(msg.remove_pdrs.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_builder_remove_fars() {
+        let remove_far = Ie::new(IeType::RemoveFar, vec![0, 16, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x4444, 1900)
+            .remove_fars(vec![remove_far])
+            .build();
+
+        assert!(msg.remove_fars.is_some());
+    }
+
+    #[test]
+    fn test_builder_remove_urrs() {
+        let remove_urr = Ie::new(IeType::RemoveUrr, vec![0, 19, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x5555, 2000)
+            .remove_urrs(vec![remove_urr])
+            .build();
+
+        assert!(msg.remove_urrs.is_some());
+    }
+
+    #[test]
+    fn test_builder_remove_qers() {
+        let remove_qer = Ie::new(IeType::RemoveQer, vec![0, 21, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x6666, 2100)
+            .remove_qers(vec![remove_qer])
+            .build();
+
+        assert!(msg.remove_qers.is_some());
+    }
+
+    #[test]
+    fn test_builder_remove_bars() {
+        let remove_bar = Ie::new(IeType::RemoveBar, vec![0, 87, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x7777, 2200)
+            .remove_bars(vec![remove_bar])
+            .build();
+
+        assert!(msg.remove_bars.is_some());
+    }
+
+    #[test]
+    fn test_builder_remove_traffic_endpoints() {
+        let remove_te = Ie::new(IeType::RemoveTrafficEndpoint, vec![0, 161, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x8888, 2300)
+            .remove_traffic_endpoints(vec![remove_te])
+            .build();
+
+        assert!(msg.remove_traffic_endpoints.is_some());
+    }
+
+    // ========================================================================
+    // Combined Operations Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_create_update_remove_combined() {
+        let create_pdr = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 5]);
+        let update_pdr = Ie::new(IeType::UpdatePdr, vec![0, 9, 0, 2, 0, 2]);
+        let remove_pdr = Ie::new(IeType::RemovePdr, vec![0, 15, 0, 2, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0x9999, 2400)
+            .create_pdrs(vec![create_pdr])
+            .update_pdrs(vec![update_pdr])
+            .remove_pdrs(vec![remove_pdr])
+            .build();
+
+        assert!(msg.create_pdrs.is_some());
+        assert!(msg.update_pdrs.is_some());
+        assert!(msg.remove_pdrs.is_some());
+    }
+
+    #[test]
+    fn test_builder_all_rule_types() {
+        let create_pdr = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+        let create_far = Ie::new(IeType::CreateFar, vec![0, 108, 0, 4, 0, 0, 0, 1]);
+        let create_urr = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+        let create_qer = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xAAAA, 2500)
+            .create_pdrs(vec![create_pdr])
+            .create_fars(vec![create_far])
+            .create_urrs(vec![create_urr])
+            .create_qers(vec![create_qer])
+            .build();
+
+        assert!(msg.create_pdrs.is_some());
+        assert!(msg.create_fars.is_some());
+        assert!(msg.create_urrs.is_some());
+        assert!(msg.create_qers.is_some());
+    }
+
+    // ========================================================================
+    // Optional IE Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_with_pdn_type() {
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]); // IPv4
+
+        let msg = SessionModificationRequestBuilder::new(0xBBBB, 2600)
+            .pdn_type(pdn_ie)
+            .build();
+
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_apn_dnn() {
+        let apn_ie = Ie::new(
+            IeType::ApnDnn,
+            vec![8, 105, 110, 116, 101, 114, 110, 101, 116],
+        ); // "internet"
+
+        let msg = SessionModificationRequestBuilder::new(0xCCCC, 2700)
+            .apn_dnn(apn_ie)
+            .build();
+
+        assert!(msg.apn_dnn.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_user_plane_inactivity_timer() {
+        let timer_ie = Ie::new(IeType::UserPlaneInactivityTimer, vec![0, 0, 0, 60]); // 60 seconds
+
+        let msg = SessionModificationRequestBuilder::new(0xDDDD, 2800)
+            .user_plane_inactivity_timer(timer_ie)
+            .build();
+
+        assert!(msg.user_plane_inactivity_timer.is_some());
+    }
+
+    // ========================================================================
+    // Marshal/Unmarshal Round-Trip Tests
+    // ========================================================================
+
+    #[test]
+    fn test_marshal_unmarshal_minimal() {
+        let original = SessionModificationRequestBuilder::new(0x1234567890ABCDEF, 100).build();
+        let marshaled = original.marshal();
+        let parsed = crate::message::parse(&marshaled).unwrap();
+
+        assert_eq!(parsed.msg_type(), MsgType::SessionModificationRequest);
+        assert_eq!(parsed.sequence(), 100);
+        assert_eq!(parsed.seid(), Some(0x1234567890ABCDEF));
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_fseid() {
+        let original = SessionModificationRequestBuilder::new(0xABCD, 200)
+            .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionModificationRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.header.seid, 0xABCD);
+        assert_eq!(unmarshaled.header.sequence_number, 200);
+        assert!(unmarshaled.fseid.is_some());
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_operations() {
+        let create_pdr = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+        let update_far = Ie::new(IeType::UpdateFar, vec![0, 10, 0, 4, 0, 0, 0, 1]);
+        let remove_urr = Ie::new(IeType::RemoveUrr, vec![0, 19, 0, 4, 0, 0, 0, 1]);
+
+        let original = SessionModificationRequestBuilder::new(0x9999, 300)
+            .create_pdrs(vec![create_pdr])
+            .update_fars(vec![update_far])
+            .remove_urrs(vec![remove_urr])
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionModificationRequest::unmarshal(&marshaled).unwrap();
+
+        assert!(unmarshaled.create_pdrs.is_some());
+        assert!(unmarshaled.update_fars.is_some());
+        assert!(unmarshaled.remove_urrs.is_some());
+    }
+
+    // ========================================================================
+    // Builder Convenience Methods Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_direct_marshal() {
+        let bytes = SessionModificationRequestBuilder::new(0x1111, 400)
+            .fseid(0x2222, Ipv4Addr::new(192, 168, 1, 1))
+            .marshal();
+
+        assert!(!bytes.is_empty());
+        assert!(bytes.len() > 16); // Header + F-SEID
+    }
+
+    #[test]
+    fn test_builder_method_chaining() {
+        let msg = SessionModificationRequestBuilder::new(0x3333, 500)
+            .fseid(0x4444, Ipv4Addr::new(10, 0, 0, 1))
+            .create_pdrs(vec![Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1])])
+            .update_fars(vec![Ie::new(
+                IeType::UpdateFar,
+                vec![0, 10, 0, 4, 0, 0, 0, 1],
+            )])
+            .remove_urrs(vec![Ie::new(
+                IeType::RemoveUrr,
+                vec![0, 19, 0, 4, 0, 0, 0, 1],
+            )])
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x01]))
+            .build();
+
+        assert!(msg.fseid.is_some());
+        assert!(msg.create_pdrs.is_some());
+        assert!(msg.update_fars.is_some());
+        assert!(msg.remove_urrs.is_some());
+        assert!(msg.pdn_type.is_some());
+    }
+
+    // ========================================================================
+    // Message Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_message_trait_methods() {
+        let msg = SessionModificationRequestBuilder::new(0x5555, 600).build();
+
+        assert_eq!(msg.msg_type(), MsgType::SessionModificationRequest);
+        assert_eq!(msg.msg_name(), "SessionModificationRequest");
+        assert_eq!(msg.sequence(), 600);
+        assert_eq!(msg.seid(), Some(0x5555));
+        assert_eq!(msg.version(), 1);
+    }
+
+    #[test]
+    fn test_message_set_sequence() {
+        let mut msg = SessionModificationRequestBuilder::new(0x6666, 700).build();
+
+        assert_eq!(msg.sequence(), 700);
+        msg.set_sequence(800);
+        assert_eq!(msg.sequence(), 800);
+    }
+
+    #[test]
+    fn test_find_ie() {
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+        let msg = SessionModificationRequestBuilder::new(0x7777, 900)
+            .pdn_type(pdn_ie.clone())
+            .build();
+
+        // Test finding an IE that's in the explicit fields
+        let found = msg.find_ie(IeType::PdnType);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::PdnType);
+
+        // Test not finding an IE
+        let not_found = msg.find_ie(IeType::Cause);
+        assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_create_pdrs_accessible() {
+        let create_pdr = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+        let msg = SessionModificationRequestBuilder::new(0x8888, 1000)
+            .create_pdrs(vec![create_pdr.clone()])
+            .build();
+
+        // CreatePdrs are stored in the create_pdrs field, not via find_ie
+        assert!(msg.create_pdrs.is_some());
+        let pdrs = msg.create_pdrs.as_ref().unwrap();
+        assert_eq!(pdrs.len(), 1);
+        assert_eq!(pdrs[0].ie_type, IeType::CreatePdr);
+    }
+
+    // ========================================================================
+    // Edge Cases and Real-World Scenarios
+    // ========================================================================
+
+    #[test]
+    fn test_empty_modification() {
+        // Valid case: modification with no actual changes
+        let msg = SessionModificationRequestBuilder::new(0x8888, 1000).build();
+        let marshaled = msg.marshal();
+
+        assert!(!marshaled.is_empty());
+        // Should still have header
+        assert!(marshaled.len() >= 16);
+    }
+
+    #[test]
+    fn test_large_batch_modification() {
+        // Simulate adding many PDRs at once
+        let mut pdrs = Vec::new();
+        for i in 1..=50 {
+            pdrs.push(Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, i]));
+        }
+
+        let msg = SessionModificationRequestBuilder::new(0x9999, 1100)
+            .create_pdrs(pdrs)
+            .build();
+
+        assert!(msg.create_pdrs.is_some());
+        assert_eq!(msg.create_pdrs.unwrap().len(), 50);
+    }
+
+    #[test]
+    fn test_handover_scenario() {
+        // Typical handover: remove old access PDR, create new one
+        let remove_pdr = Ie::new(IeType::RemovePdr, vec![0, 15, 0, 2, 0, 1]);
+        let create_pdr = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 2]);
+
+        let msg = SessionModificationRequestBuilder::new(0xAAAA, 1200)
+            .remove_pdrs(vec![remove_pdr])
+            .create_pdrs(vec![create_pdr])
+            .build();
+
+        assert!(msg.remove_pdrs.is_some());
+        assert!(msg.create_pdrs.is_some());
+    }
+
+    #[test]
+    fn test_qos_modification_scenario() {
+        // Modify QoS: update QER
+        let update_qer = Ie::new(IeType::UpdateQer, vec![0, 15, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xBBBB, 1300)
+            .update_qers(vec![update_qer])
+            .build();
+
+        assert!(msg.update_qers.is_some());
+    }
+
+    #[test]
+    fn test_usage_reporting_modification() {
+        // Add usage reporting: create URR
+        let create_urr = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xCCCC, 1400)
+            .create_urrs(vec![create_urr])
+            .build();
+
+        assert!(msg.create_urrs.is_some());
+    }
+
+    #[test]
+    fn test_buffering_scenario() {
+        // Add buffering: create BAR
+        let create_bar = Ie::new(IeType::CreateBar, vec![0, 85, 0, 1, 1]);
+
+        let msg = SessionModificationRequestBuilder::new(0xDDDD, 1500)
+            .create_bars(vec![create_bar])
+            .build();
+
+        assert!(msg.create_bars.is_some());
+    }
+}
