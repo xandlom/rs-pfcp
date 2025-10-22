@@ -333,3 +333,401 @@ impl SessionEstablishmentResponseBuilder {
         Ok(self.build()?.marshal())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+    // ========================================================================
+    // Builder Basic Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_accepted_minimal() {
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x1234, 100)
+            .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.header.seid, 0x1234);
+        assert_eq!(msg.header.sequence_number, 100);
+        assert_eq!(msg.cause.ie_type, IeType::Cause);
+    }
+
+    #[test]
+    fn test_builder_rejected() {
+        let msg = SessionEstablishmentResponseBuilder::rejected(0xABCD, 200)
+            .fseid(0x9876, Ipv4Addr::new(10, 0, 0, 2))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.header.seid, 0xABCD);
+        assert_eq!(msg.header.sequence_number, 200);
+    }
+
+    #[test]
+    fn test_builder_with_fseid_ipv6() {
+        let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x1111, 300)
+            .fseid(0x2222, ipv6)
+            .build()
+            .unwrap();
+
+        assert!(!msg.fseid.is_empty());
+    }
+
+    #[test]
+    fn test_builder_with_fseid_ipaddr() {
+        let ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x3333, 400)
+            .fseid(0x4444, ip)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.fseid.ie_type, IeType::Fseid);
+    }
+
+    // ========================================================================
+    // Builder with Created PDRs
+    // ========================================================================
+
+    #[test]
+    fn test_builder_with_created_pdrs() {
+        let created_pdr = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x5555, 500)
+            .fseid(0x6666, Ipv4Addr::new(10, 0, 0, 1))
+            .created_pdr(created_pdr)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.created_pdrs.len(), 1);
+    }
+
+    #[test]
+    fn test_builder_with_multiple_created_pdrs() {
+        let pdr1 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
+        let pdr2 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 2]);
+        let pdr3 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 3]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x7777, 600)
+            .fseid(0x8888, Ipv4Addr::new(10, 0, 0, 1))
+            .created_pdr(pdr1)
+            .created_pdr(pdr2)
+            .created_pdr(pdr3)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.created_pdrs.len(), 3);
+    }
+
+    // ========================================================================
+    // Builder with Optional IEs
+    // ========================================================================
+
+    #[test]
+    fn test_builder_with_pdn_type() {
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x9999, 700)
+            .fseid(0xAAAA, Ipv4Addr::new(10, 0, 0, 1))
+            .pdn_type(pdn_ie)
+            .build()
+            .unwrap();
+
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_offending_ie() {
+        let offending = Ie::new(IeType::OffendingIe, vec![0, 1, 0, 2, 0, 1]);
+
+        let msg = SessionEstablishmentResponseBuilder::rejected(0xBBBB, 800)
+            .fseid(0xCCCC, Ipv4Addr::new(10, 0, 0, 1))
+            .offending_ie(offending)
+            .build()
+            .unwrap();
+
+        assert!(msg.offending_ie.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_load_control() {
+        let load_ie = Ie::new(IeType::LoadControlInformation, vec![0, 1, 2, 3]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xDDDD, 900)
+            .fseid(0xEEEE, Ipv4Addr::new(10, 0, 0, 1))
+            .load_control_information(load_ie)
+            .build()
+            .unwrap();
+
+        assert!(msg.load_control_information.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_overload_control() {
+        let overload_ie = Ie::new(IeType::OverloadControlInformation, vec![0, 1, 2, 3]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xFFFF, 1000)
+            .fseid(0x1111, Ipv4Addr::new(10, 0, 0, 1))
+            .overload_control_information(overload_ie)
+            .build()
+            .unwrap();
+
+        assert!(msg.overload_control_information.is_some());
+    }
+
+    // ========================================================================
+    // Builder Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_validation_missing_fseid() {
+        let result = SessionEstablishmentResponseBuilder::accepted(0x2222, 1100).build();
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("F-SEID"));
+    }
+
+    // ========================================================================
+    // Marshal/Unmarshal Round-Trip Tests
+    // ========================================================================
+
+    #[test]
+    fn test_marshal_unmarshal_accepted() {
+        let original = SessionEstablishmentResponseBuilder::accepted(0x3333, 1200)
+            .fseid(0x4444, Ipv4Addr::new(10, 0, 0, 1))
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let parsed = crate::message::parse(&marshaled).unwrap();
+
+        assert_eq!(parsed.msg_type(), MsgType::SessionEstablishmentResponse);
+        assert_eq!(parsed.sequence(), 1200);
+        assert_eq!(parsed.seid(), Some(0x3333));
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_rejected() {
+        let original = SessionEstablishmentResponseBuilder::rejected(0x5555, 1300)
+            .fseid(0x6666, Ipv4Addr::new(10, 0, 0, 1))
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionEstablishmentResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.header.seid, 0x5555);
+        assert_eq!(unmarshaled.header.sequence_number, 1300);
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_created_pdrs() {
+        let pdr = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
+
+        let original = SessionEstablishmentResponseBuilder::accepted(0x7777, 1400)
+            .fseid(0x8888, Ipv4Addr::new(10, 0, 0, 1))
+            .created_pdr(pdr)
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionEstablishmentResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.created_pdrs.len(), 1);
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_optional_ies() {
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+
+        let original = SessionEstablishmentResponseBuilder::accepted(0x9999, 1500)
+            .fseid(0xAAAA, Ipv4Addr::new(10, 0, 0, 1))
+            .pdn_type(pdn_ie)
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionEstablishmentResponse::unmarshal(&marshaled).unwrap();
+
+        assert!(unmarshaled.pdn_type.is_some());
+    }
+
+    // ========================================================================
+    // Message Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_message_trait_methods() {
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xBBBB, 1600)
+            .fseid(0xCCCC, Ipv4Addr::new(10, 0, 0, 1))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.msg_type(), MsgType::SessionEstablishmentResponse);
+        assert_eq!(msg.msg_name(), "SessionEstablishmentResponse");
+        assert_eq!(msg.sequence(), 1600);
+        assert_eq!(msg.seid(), Some(0xBBBB));
+        assert_eq!(msg.version(), 1);
+    }
+
+    #[test]
+    fn test_message_set_sequence() {
+        let mut msg = SessionEstablishmentResponseBuilder::accepted(0xDDDD, 1700)
+            .fseid(0xEEEE, Ipv4Addr::new(10, 0, 0, 1))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.sequence(), 1700);
+        msg.set_sequence(1800);
+        assert_eq!(msg.sequence(), 1800);
+    }
+
+    #[test]
+    fn test_find_ie() {
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xFFFF, 1900)
+            .fseid(0x1111, Ipv4Addr::new(10, 0, 0, 1))
+            .pdn_type(pdn_ie.clone())
+            .build()
+            .unwrap();
+
+        let found = msg.find_ie(IeType::PdnType);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::PdnType);
+
+        let cause_found = msg.find_ie(IeType::Cause);
+        assert!(cause_found.is_some());
+
+        let not_found = msg.find_ie(IeType::NodeId);
+        assert!(not_found.is_none());
+    }
+
+    // ========================================================================
+    // Convenience Methods Tests
+    // ========================================================================
+
+    #[test]
+    fn test_direct_marshal_from_builder() {
+        let bytes = SessionEstablishmentResponseBuilder::accepted(0x2222, 2000)
+            .fseid(0x3333, Ipv4Addr::new(10, 0, 0, 1))
+            .marshal()
+            .unwrap();
+
+        assert!(!bytes.is_empty());
+        assert!(bytes.len() > 16);
+    }
+
+    #[test]
+    fn test_builder_method_chaining() {
+        let pdr = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x4444, 2100)
+            .fseid(0x5555, Ipv4Addr::new(10, 0, 0, 1))
+            .created_pdr(pdr)
+            .pdn_type(pdn_ie)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.created_pdrs.len(), 1);
+        assert!(msg.pdn_type.is_some());
+    }
+
+    // ========================================================================
+    // Real-World Scenarios
+    // ========================================================================
+
+    #[test]
+    fn test_successful_ipv4_session() {
+        let pdr1 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
+        let pdr2 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 2]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x12345678, 2200)
+            .fseid(0x87654321, Ipv4Addr::new(192, 168, 1, 20))
+            .created_pdr(pdr1)
+            .created_pdr(pdr2)
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x01]))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.created_pdrs.len(), 2);
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_successful_ipv6_session() {
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xABCDEF01, 2300)
+            .fseid(0x01FEDCBA, Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 2))
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x02]))
+            .build()
+            .unwrap();
+
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_successful_dual_stack_session() {
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x11223344, 2400)
+            .fseid(0x44332211, Ipv4Addr::new(10, 0, 0, 2))
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x03]))
+            .build()
+            .unwrap();
+
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_rejected_with_offending_ie() {
+        let offending = Ie::new(IeType::OffendingIe, vec![0, 1, 0, 2, 0, 56]);
+
+        let msg = SessionEstablishmentResponseBuilder::rejected(0x55667788, 2500)
+            .fseid(0x88776655, Ipv4Addr::new(10, 0, 0, 1))
+            .offending_ie(offending)
+            .build()
+            .unwrap();
+
+        assert!(msg.offending_ie.is_some());
+    }
+
+    #[test]
+    fn test_response_with_load_control() {
+        let load_ie = Ie::new(IeType::LoadControlInformation, vec![0, 1, 2, 3]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x99AABBCC, 2600)
+            .fseid(0xCCBBAA99, Ipv4Addr::new(10, 0, 0, 1))
+            .load_control_information(load_ie)
+            .build()
+            .unwrap();
+
+        assert!(msg.load_control_information.is_some());
+    }
+
+    #[test]
+    fn test_response_with_overload_control() {
+        let overload_ie = Ie::new(IeType::OverloadControlInformation, vec![0, 1, 2, 3]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xDDEEFF00, 2700)
+            .fseid(0x00FFEEDD, Ipv4Addr::new(10, 0, 0, 1))
+            .overload_control_information(overload_ie)
+            .build()
+            .unwrap();
+
+        assert!(msg.overload_control_information.is_some());
+    }
+
+    #[test]
+    fn test_empty_created_pdrs_vec() {
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x11111111, 2800)
+            .fseid(0x22222222, Ipv4Addr::new(10, 0, 0, 1))
+            // No created PDRs in this case
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.created_pdrs.len(), 0);
+    }
+}

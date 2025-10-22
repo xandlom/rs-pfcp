@@ -892,4 +892,436 @@ mod tests {
         let err = result.unwrap_err();
         assert!(err.to_string().contains("Create FAR"));
     }
+
+    // ========================================================================
+    // Additional Comprehensive Builder Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_with_all_optional_ies() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let urr = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+        let qer = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 1]);
+        let bar = Ie::new(IeType::CreateBar, vec![0, 85, 0, 1, 1]);
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+        let apn_ie = Ie::new(
+            IeType::ApnDnn,
+            vec![8, 105, 110, 116, 101, 114, 110, 101, 116],
+        );
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x1234, 100)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x5678, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_urrs(vec![urr])
+            .create_qers(vec![qer])
+            .create_bars(vec![bar])
+            .pdn_type(pdn_ie)
+            .apn_dnn(apn_ie)
+            .build()
+            .unwrap();
+
+        assert!(!msg.create_urrs.is_empty());
+        assert!(!msg.create_qers.is_empty());
+        assert!(!msg.create_bars.is_empty());
+        assert!(msg.pdn_type.is_some());
+        assert!(msg.apn_dnn.is_some());
+    }
+
+    #[test]
+    fn test_builder_with_multiple_pdrs_and_fars() {
+        let pdr1 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+        let pdr2 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 2]);
+        let pdr3 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 3]);
+        let far1 = Ie::new(IeType::CreateFar, vec![0, 108, 0, 4, 0, 0, 0, 1]);
+        let far2 = Ie::new(IeType::CreateFar, vec![0, 108, 0, 4, 0, 0, 0, 2]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xABCD, 200)
+            .node_id(std::net::Ipv4Addr::new(192, 168, 1, 1))
+            .fseid(0x9876, std::net::Ipv4Addr::new(192, 168, 1, 2))
+            .create_pdrs(vec![pdr1, pdr2, pdr3])
+            .create_fars(vec![far1, far2])
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_pdrs.len(), 3);
+        assert_eq!(msg.create_fars.len(), 2);
+    }
+
+    #[test]
+    fn test_builder_with_traffic_endpoints() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let te = Ie::new(IeType::CreateTrafficEndpoint, vec![0, 131, 0, 1, 1]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x1111, 300)
+            .node_id(std::net::Ipv4Addr::new(10, 1, 1, 1))
+            .fseid(0x2222, std::net::Ipv4Addr::new(10, 1, 1, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_traffic_endpoints(vec![te])
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_traffic_endpoints.len(), 1);
+    }
+
+    #[test]
+    fn test_builder_with_user_plane_inactivity_timer() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let timer = Ie::new(IeType::UserPlaneInactivityTimer, vec![0, 0, 0, 60]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x3333, 400)
+            .node_id(std::net::Ipv4Addr::new(10, 2, 2, 1))
+            .fseid(0x4444, std::net::Ipv4Addr::new(10, 2, 2, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .user_plane_inactivity_timer(timer)
+            .build()
+            .unwrap();
+
+        assert!(msg.user_plane_inactivity_timer.is_some());
+    }
+
+    // ========================================================================
+    // Marshal/Unmarshal Round-Trip Tests
+    // ========================================================================
+
+    #[test]
+    fn test_marshal_unmarshal_minimal() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let original = SessionEstablishmentRequestBuilder::new(0x5555, 500)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x6666, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let parsed = crate::message::parse(&marshaled).unwrap();
+
+        assert_eq!(parsed.msg_type(), MsgType::SessionEstablishmentRequest);
+        assert_eq!(parsed.sequence(), 500);
+        assert_eq!(parsed.seid(), Some(0x5555));
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_optional_ies() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+        let apn_ie = Ie::new(
+            IeType::ApnDnn,
+            vec![8, 105, 110, 116, 101, 114, 110, 101, 116],
+        );
+
+        let original = SessionEstablishmentRequestBuilder::new(0x7777, 600)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x8888, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .pdn_type(pdn_ie)
+            .apn_dnn(apn_ie)
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionEstablishmentRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.header.seid, 0x7777);
+        assert_eq!(unmarshaled.header.sequence_number, 600);
+        assert!(unmarshaled.pdn_type.is_some());
+        assert!(unmarshaled.apn_dnn.is_some());
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_urrs_qers_bars() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let urr = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+        let qer = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 1]);
+        let bar = Ie::new(IeType::CreateBar, vec![0, 85, 0, 1, 1]);
+
+        let original = SessionEstablishmentRequestBuilder::new(0x9999, 700)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xAAAA, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_urrs(vec![urr])
+            .create_qers(vec![qer])
+            .create_bars(vec![bar])
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionEstablishmentRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.create_urrs.len(), 1);
+        assert_eq!(unmarshaled.create_qers.len(), 1);
+        assert_eq!(unmarshaled.create_bars.len(), 1);
+    }
+
+    // ========================================================================
+    // Message Trait Tests
+    // ========================================================================
+
+    #[test]
+    fn test_message_trait_methods() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xBBBB, 800)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xCCCC, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.msg_type(), MsgType::SessionEstablishmentRequest);
+        assert_eq!(msg.msg_name(), "SessionEstablishmentRequest");
+        assert_eq!(msg.sequence(), 800);
+        assert_eq!(msg.seid(), Some(0xBBBB));
+        assert_eq!(msg.version(), 1);
+    }
+
+    #[test]
+    fn test_message_set_sequence() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let mut msg = SessionEstablishmentRequestBuilder::new(0xDDDD, 900)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xEEEE, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.sequence(), 900);
+        msg.set_sequence(1000);
+        assert_eq!(msg.sequence(), 1000);
+    }
+
+    #[test]
+    fn test_find_ie() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xFFFF, 1100)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x1111, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .pdn_type(pdn_ie.clone())
+            .build()
+            .unwrap();
+
+        let found = msg.find_ie(IeType::PdnType);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::PdnType);
+
+        let node_found = msg.find_ie(IeType::NodeId);
+        assert!(node_found.is_some());
+
+        let not_found = msg.find_ie(IeType::Cause);
+        assert!(not_found.is_none());
+    }
+
+    // ========================================================================
+    // Real-World Scenario Tests
+    // ========================================================================
+
+    #[test]
+    fn test_ipv4_session_establishment() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x12345678, 1200)
+            .node_id(std::net::Ipv4Addr::new(192, 168, 1, 10))
+            .fseid(0x87654321, std::net::Ipv4Addr::new(192, 168, 1, 20))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x01])) // IPv4
+            .apn_dnn(Ie::new(
+                IeType::ApnDnn,
+                vec![8, 105, 110, 116, 101, 114, 110, 101, 116],
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.header.seid, 0x12345678);
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_ipv6_session_establishment() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xABCDEF01, 1300)
+            .node_id(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1))
+            .fseid(
+                0x01FEDCBA,
+                std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 2),
+            )
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x02])) // IPv6
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.header.seid, 0xABCDEF01);
+    }
+
+    #[test]
+    fn test_dual_stack_session_establishment() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x11223344, 1400)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x44332211, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x03])) // IPv4v6
+            .build()
+            .unwrap();
+
+        assert!(msg.pdn_type.is_some());
+    }
+
+    #[test]
+    fn test_session_with_usage_reporting() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let urr1 = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+        let urr2 = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 2]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x55667788, 1500)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x88776655, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_urrs(vec![urr1, urr2])
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_urrs.len(), 2);
+    }
+
+    #[test]
+    fn test_session_with_qos() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let qer1 = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 1]);
+        let qer2 = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 2]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x99AABBCC, 1600)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xCCBBAA99, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_qers(vec![qer1, qer2])
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_qers.len(), 2);
+    }
+
+    #[test]
+    fn test_session_with_buffering() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let bar = Ie::new(IeType::CreateBar, vec![0, 85, 0, 1, 1]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xDDEEFF00, 1700)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x00FFEEDD, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_bars(vec![bar])
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_bars.len(), 1);
+    }
+
+    #[test]
+    fn test_complex_session_all_rules() {
+        let pdr1 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 1]);
+        let pdr2 = Ie::new(IeType::CreatePdr, vec![0, 56, 0, 2, 0, 2]);
+        let far1 = Ie::new(IeType::CreateFar, vec![0, 108, 0, 4, 0, 0, 0, 1]);
+        let far2 = Ie::new(IeType::CreateFar, vec![0, 108, 0, 4, 0, 0, 0, 2]);
+        let urr = Ie::new(IeType::CreateUrr, vec![0, 81, 0, 4, 0, 0, 0, 1]);
+        let qer = Ie::new(IeType::CreateQer, vec![0, 109, 0, 4, 0, 0, 0, 1]);
+        let bar = Ie::new(IeType::CreateBar, vec![0, 85, 0, 1, 1]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x11111111, 1800)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x22222222, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(vec![pdr1, pdr2])
+            .create_fars(vec![far1, far2])
+            .create_urrs(vec![urr])
+            .create_qers(vec![qer])
+            .create_bars(vec![bar])
+            .pdn_type(Ie::new(IeType::PdnType, vec![0x01]))
+            .apn_dnn(Ie::new(
+                IeType::ApnDnn,
+                vec![8, 105, 110, 116, 101, 114, 110, 101, 116],
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_pdrs.len(), 2);
+        assert_eq!(msg.create_fars.len(), 2);
+        assert_eq!(msg.create_urrs.len(), 1);
+        assert_eq!(msg.create_qers.len(), 1);
+        assert_eq!(msg.create_bars.len(), 1);
+        assert!(msg.pdn_type.is_some());
+        assert!(msg.apn_dnn.is_some());
+    }
+
+    #[test]
+    fn test_fqdn_node_id() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x33333333, 1900)
+            .node_id_fqdn("smf.example.com")
+            .fseid(0x44444444, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.node_id.ie_type, IeType::NodeId);
+    }
+
+    #[test]
+    fn test_direct_marshal_from_builder() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let bytes = SessionEstablishmentRequestBuilder::new(0x55555555, 2000)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x66666666, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .marshal()
+            .unwrap();
+
+        assert!(!bytes.is_empty());
+        assert!(bytes.len() > 16); // More than just header
+    }
+
+    #[test]
+    fn test_empty_optional_vecs() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0x77777777, 2100)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x88888888, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_urrs(vec![]) // Empty vec
+            .create_qers(vec![])
+            .create_bars(vec![])
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_urrs.len(), 0);
+        assert_eq!(msg.create_qers.len(), 0);
+        assert_eq!(msg.create_bars.len(), 0);
+    }
 }
