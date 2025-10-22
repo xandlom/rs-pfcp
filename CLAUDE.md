@@ -389,6 +389,13 @@ Conventional commit format is appreciated (but not required):
 6. Publish: `cargo publish`
 7. Create GitHub release with changelog
 
+## Working with Modified Files
+
+When you see modified or untracked files in git status:
+- `src/message/mod.rs` - Core message type definitions and routing
+- Check `docs/analysis/` for planning documents and ongoing work
+- Untracked files in `docs/analysis/` may contain important context about future work
+
 ## Additional Resources
 
 ### Primary Documentation
@@ -396,6 +403,7 @@ Conventional commit format is appreciated (but not required):
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Documentation Hub: [docs/README.md](docs/README.md)
 - **Comprehensive Guide**: [.claude/claude-guide.md](.claude/claude-guide.md) - Detailed examples, security analysis, and advanced patterns
+- Planning Docs: [docs/analysis/](docs/analysis/) - Proposals, ongoing work, and future enhancements
 
 ### External Resources
 - Crate Documentation: https://docs.rs/rs-pfcp
