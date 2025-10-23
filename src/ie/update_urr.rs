@@ -589,4 +589,360 @@ mod tests {
         assert!(urr.subsequent_time_threshold.is_some());
         assert!(urr.inactivity_detection_time.is_some());
     }
+
+    #[test]
+    fn test_update_urr_only_measurement_method() {
+        let measurement = MeasurementMethod::new(true, false, false);
+        let urr = UpdateUrrBuilder::new(UrrId::new(10))
+            .measurement_method(measurement)
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.measurement_method, Some(measurement));
+        assert!(urr.volume_threshold.is_none());
+        assert!(urr.time_threshold.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_reporting_triggers() {
+        let triggers = ReportingTriggers::new()
+            .with_periodic(true)
+            .with_volume_threshold(true);
+
+        let urr = UpdateUrrBuilder::new(UrrId::new(11))
+            .reporting_triggers(triggers)
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.reporting_triggers, Some(triggers));
+        assert!(urr.measurement_method.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_monitoring_time() {
+        use std::time::SystemTime;
+        let monitoring = MonitoringTime::new(SystemTime::now());
+        let urr = UpdateUrrBuilder::new(UrrId::new(12))
+            .monitoring_time(monitoring)
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.monitoring_time, Some(monitoring));
+        assert!(urr.volume_threshold.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_volume_threshold() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(13))
+            .volume_threshold_bytes(1_000_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.volume_threshold.is_some());
+        assert!(urr.time_threshold.is_none());
+        assert!(urr.measurement_method.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_time_threshold() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(14))
+            .time_threshold_seconds(3600)
+            .build()
+            .unwrap();
+
+        assert!(urr.time_threshold.is_some());
+        assert!(urr.volume_threshold.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_subsequent_volume_threshold() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(15))
+            .subsequent_volume_threshold_bytes(500_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.subsequent_volume_threshold.is_some());
+        assert!(urr.volume_threshold.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_subsequent_time_threshold() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(16))
+            .subsequent_time_threshold_seconds(1800)
+            .build()
+            .unwrap();
+
+        assert!(urr.subsequent_time_threshold.is_some());
+        assert!(urr.time_threshold.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_only_inactivity_detection_time() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(17))
+            .inactivity_detection_time_seconds(600)
+            .build()
+            .unwrap();
+
+        assert!(urr.inactivity_detection_time.is_some());
+        assert!(urr.volume_threshold.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_all_optional_fields() {
+        use std::time::SystemTime;
+        let measurement = MeasurementMethod::new(true, true, true);
+        let triggers = ReportingTriggers::new()
+            .with_volume_threshold(true)
+            .with_time_threshold(true);
+        let monitoring = MonitoringTime::new(SystemTime::now());
+
+        let urr = UpdateUrrBuilder::new(UrrId::new(18))
+            .measurement_method(measurement)
+            .reporting_triggers(triggers)
+            .monitoring_time(monitoring)
+            .volume_threshold_bytes(5_000_000_000)
+            .time_threshold_seconds(7200)
+            .subsequent_volume_threshold_bytes(2_000_000_000)
+            .subsequent_time_threshold_seconds(3600)
+            .inactivity_detection_time_seconds(900)
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.measurement_method, Some(measurement));
+        assert_eq!(urr.reporting_triggers, Some(triggers));
+        assert_eq!(urr.monitoring_time, Some(monitoring));
+        assert!(urr.volume_threshold.is_some());
+        assert!(urr.time_threshold.is_some());
+        assert!(urr.subsequent_volume_threshold.is_some());
+        assert!(urr.subsequent_time_threshold.is_some());
+        assert!(urr.inactivity_detection_time.is_some());
+    }
+
+    #[test]
+    fn test_update_urr_volume_uplink_downlink_asymmetric() {
+        // Test different uplink/downlink values
+        let urr = UpdateUrrBuilder::new(UrrId::new(19))
+            .volume_threshold_uplink_downlink(2_000_000, 5_000_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.volume_threshold.is_some());
+        let vt = urr.volume_threshold.unwrap();
+        assert_eq!(vt.uplink_volume, Some(2_000_000));
+        assert_eq!(vt.downlink_volume, Some(5_000_000));
+        assert!(vt.total_volume.is_none());
+    }
+
+    #[test]
+    fn test_update_urr_volume_uplink_downlink_equal() {
+        // Test equal uplink/downlink values
+        let urr = UpdateUrrBuilder::new(UrrId::new(20))
+            .volume_threshold_uplink_downlink(3_000_000, 3_000_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.volume_threshold.is_some());
+        let vt = urr.volume_threshold.unwrap();
+        assert_eq!(vt.uplink_volume, Some(3_000_000));
+        assert_eq!(vt.downlink_volume, Some(3_000_000));
+    }
+
+    #[test]
+    fn test_update_urr_subsequent_volume_bytes() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(21))
+            .subsequent_volume_threshold_bytes(1_500_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.subsequent_volume_threshold.is_some());
+        let svt = urr.subsequent_volume_threshold.unwrap();
+        assert_eq!(svt.total_volume, Some(1_500_000));
+    }
+
+    #[test]
+    fn test_update_urr_both_volume_and_subsequent() {
+        // Test setting both primary and subsequent thresholds
+        let urr = UpdateUrrBuilder::new(UrrId::new(22))
+            .volume_threshold_uplink_downlink(5_000_000, 10_000_000)
+            .subsequent_volume_threshold_bytes(3_000_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.volume_threshold.is_some());
+        assert!(urr.subsequent_volume_threshold.is_some());
+        let vt = urr.volume_threshold.unwrap();
+        let svt = urr.subsequent_volume_threshold.unwrap();
+        assert_eq!(vt.uplink_volume, Some(5_000_000));
+        assert_eq!(svt.total_volume, Some(3_000_000));
+    }
+
+    #[test]
+    fn test_update_urr_real_world_quota_increase() {
+        // Common scenario: Increase quota after user payment
+        let urr = UpdateUrrBuilder::new(UrrId::new(23))
+            .volume_threshold_bytes(10_000_000_000) // Increase to 10GB
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.urr_id, UrrId::new(23));
+        assert!(urr.volume_threshold.is_some());
+        let vt = urr.volume_threshold.unwrap();
+        assert_eq!(vt.total_volume, Some(10_000_000_000));
+    }
+
+    #[test]
+    fn test_update_urr_real_world_change_reporting() {
+        // Change reporting to periodic instead of threshold-based
+        let triggers = ReportingTriggers::new()
+            .with_periodic(true)
+            .with_volume_threshold(false);
+
+        let urr = UpdateUrrBuilder::new(UrrId::new(24))
+            .reporting_triggers(triggers)
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.reporting_triggers, Some(triggers));
+    }
+
+    #[test]
+    fn test_update_urr_real_world_add_inactivity_detection() {
+        // Add inactivity detection to existing URR
+        let urr = UpdateUrrBuilder::new(UrrId::new(25))
+            .inactivity_detection_time_seconds(300) // 5 minutes
+            .build()
+            .unwrap();
+
+        assert!(urr.inactivity_detection_time.is_some());
+    }
+
+    #[test]
+    fn test_update_urr_marshal_minimal() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(26))
+            .volume_threshold_bytes(1_000_000)
+            .build()
+            .unwrap();
+
+        let marshaled = urr.marshal();
+        assert!(!marshaled.is_empty());
+        // Should contain at least URR ID and Volume Threshold IEs
+        assert!(marshaled.len() > 8); // At least 2 IEs with headers
+    }
+
+    #[test]
+    fn test_update_urr_marshal_comprehensive() {
+        let measurement = MeasurementMethod::new(true, true, false);
+        let triggers = ReportingTriggers::new().with_periodic(true);
+
+        let urr = UpdateUrrBuilder::new(UrrId::new(27))
+            .measurement_method(measurement)
+            .reporting_triggers(triggers)
+            .volume_threshold_bytes(5_000_000_000)
+            .time_threshold_seconds(3600)
+            .build()
+            .unwrap();
+
+        let marshaled = urr.marshal();
+        assert!(!marshaled.is_empty());
+        // Should contain multiple IEs
+        assert!(marshaled.len() > 20);
+    }
+
+    #[test]
+    fn test_update_urr_round_trip_all_fields() {
+        use std::time::SystemTime;
+        let measurement = MeasurementMethod::new(true, true, true);
+        let triggers = ReportingTriggers::new()
+            .with_volume_threshold(true)
+            .with_time_threshold(true);
+        let monitoring = MonitoringTime::new(SystemTime::now());
+
+        let original = UpdateUrrBuilder::new(UrrId::new(28))
+            .measurement_method(measurement)
+            .reporting_triggers(triggers)
+            .monitoring_time(monitoring)
+            .volume_threshold_bytes(4_000_000_000)
+            .time_threshold_seconds(5400)
+            .subsequent_volume_threshold_bytes(1_500_000_000)
+            .subsequent_time_threshold_seconds(2700)
+            .inactivity_detection_time_seconds(600)
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = UpdateUrr::unmarshal(&marshaled).unwrap();
+
+        // Verify all fields (monitoring_time loses nanosecond precision)
+        assert_eq!(unmarshaled.urr_id, original.urr_id);
+        assert_eq!(unmarshaled.measurement_method, original.measurement_method);
+        assert_eq!(unmarshaled.reporting_triggers, original.reporting_triggers);
+        assert!(unmarshaled.monitoring_time.is_some());
+        assert_eq!(unmarshaled.volume_threshold, original.volume_threshold);
+        assert_eq!(unmarshaled.time_threshold, original.time_threshold);
+        assert_eq!(
+            unmarshaled.subsequent_volume_threshold,
+            original.subsequent_volume_threshold
+        );
+        assert_eq!(
+            unmarshaled.subsequent_time_threshold,
+            original.subsequent_time_threshold
+        );
+        assert_eq!(
+            unmarshaled.inactivity_detection_time,
+            original.inactivity_detection_time
+        );
+    }
+
+    #[test]
+    fn test_update_urr_unmarshal_missing_urr_id() {
+        // Create invalid data without URR ID
+        let empty_data = vec![];
+        let result = UpdateUrr::unmarshal(&empty_data);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("URR ID"));
+    }
+
+    #[test]
+    fn test_update_urr_to_ie() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(29))
+            .volume_threshold_bytes(2_000_000_000)
+            .build()
+            .unwrap();
+
+        let ie = urr.to_ie();
+        assert_eq!(ie.ie_type, IeType::UpdateUrr);
+        assert!(!ie.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_validation_subsequent_without_primary() {
+        // It's valid to set subsequent thresholds without primary thresholds
+        // (updating subsequent only)
+        let urr = UpdateUrrBuilder::new(UrrId::new(30))
+            .subsequent_volume_threshold_bytes(500_000_000)
+            .subsequent_time_threshold_seconds(1800)
+            .build()
+            .unwrap();
+
+        assert!(urr.volume_threshold.is_none());
+        assert!(urr.time_threshold.is_none());
+        assert!(urr.subsequent_volume_threshold.is_some());
+        assert!(urr.subsequent_time_threshold.is_some());
+    }
+
+    #[test]
+    fn test_update_urr_builder_method_chaining() {
+        let urr = UpdateUrr::builder(UrrId::new(31))
+            .volume_threshold_bytes(1_000_000)
+            .time_threshold_seconds(300)
+            .subsequent_volume_threshold_bytes(500_000)
+            .build()
+            .unwrap();
+
+        assert_eq!(urr.urr_id, UrrId::new(31));
+        assert!(urr.volume_threshold.is_some());
+        assert!(urr.time_threshold.is_some());
+        assert!(urr.subsequent_volume_threshold.is_some());
+    }
 }
