@@ -271,4 +271,245 @@ mod tests {
 
         assert_eq!(original, unmarshaled);
     }
+
+    #[test]
+    fn test_builder_convenience_recovery_timestamp() {
+        let timestamp = SystemTime::now();
+        let response = HeartbeatResponseBuilder::new(1000)
+            .recovery_time_stamp(timestamp)
+            .build();
+
+        assert_eq!(response.sequence(), 1000);
+        assert!(response.recovery_time_stamp.is_some());
+
+        // Verify the IE was created correctly
+        let ie = response.recovery_time_stamp.unwrap();
+        assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
+
+        // Verify it can be unmarshaled
+        let recovered = RecoveryTimeStamp::unmarshal(&ie.payload).unwrap();
+        // SystemTime comparison with tolerance (within 1 second)
+        let duration = timestamp
+            .duration_since(recovered.timestamp)
+            .unwrap_or_else(|e| e.duration());
+        assert!(duration.as_secs() < 1);
+    }
+
+    #[test]
+    fn test_builder_marshal_convenience() {
+        let bytes = HeartbeatResponseBuilder::new(2000)
+            .recovery_time_stamp(SystemTime::now())
+            .marshal();
+
+        assert!(!bytes.is_empty());
+        // Should be able to unmarshal the bytes
+        let unmarshaled = HeartbeatResponse::unmarshal(&bytes).unwrap();
+        assert_eq!(unmarshaled.sequence(), 2000);
+    }
+
+    #[test]
+    fn test_find_ie_recovery_timestamp() {
+        let response = HeartbeatResponseBuilder::new(3000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let found = response.find_ie(IeType::RecoveryTimeStamp);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::RecoveryTimeStamp);
+    }
+
+    #[test]
+    fn test_find_ie_in_additional_ies() {
+        let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
+        let response = HeartbeatResponseBuilder::new(4000)
+            .ie(custom_ie.clone())
+            .build();
+
+        let found = response.find_ie(IeType::UserPlaneIpResourceInformation);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), &custom_ie);
+    }
+
+    #[test]
+    fn test_find_ie_not_found() {
+        let response = HeartbeatResponseBuilder::new(5000).build();
+
+        let found = response.find_ie(IeType::RecoveryTimeStamp);
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn test_set_sequence() {
+        let mut response = HeartbeatResponseBuilder::new(6000).build();
+
+        assert_eq!(response.sequence(), 6000);
+        response.set_sequence(9999);
+        assert_eq!(response.sequence(), 9999);
+    }
+
+    #[test]
+    fn test_seid_should_be_none() {
+        // Heartbeat messages never have SEID
+        let response = HeartbeatResponseBuilder::new(7000).build();
+        assert!(response.seid().is_none());
+    }
+
+    #[test]
+    fn test_recovery_timestamp_unix_epoch() {
+        let epoch = SystemTime::UNIX_EPOCH;
+        let response = HeartbeatResponseBuilder::new(8000)
+            .recovery_time_stamp(epoch)
+            .build();
+
+        let marshaled = response.marshal();
+        let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 8000);
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+    }
+
+    #[test]
+    fn test_recovery_timestamp_future() {
+        use std::time::Duration;
+        let future = SystemTime::now() + Duration::from_secs(3600 * 24 * 365); // 1 year from now
+        let response = HeartbeatResponseBuilder::new(9000)
+            .recovery_time_stamp(future)
+            .build();
+
+        let marshaled = response.marshal();
+        let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 9000);
+    }
+
+    #[test]
+    fn test_with_multiple_additional_ies() {
+        let ie1 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x01]);
+        let ie2 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x02]);
+        let ie3 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x03]);
+
+        let response = HeartbeatResponseBuilder::new(10000)
+            .recovery_time_stamp(SystemTime::now())
+            .ie(ie1.clone())
+            .ie(ie2.clone())
+            .ie(ie3.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 10000);
+        assert!(response.recovery_time_stamp.is_some());
+        assert_eq!(response.ies.len(), 3);
+
+        // Round trip
+        let marshaled = response.marshal();
+        let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 10000);
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(unmarshaled.ies.len(), 3);
+    }
+
+    #[test]
+    fn test_unmarshal_empty_message() {
+        // Valid header with no IEs (all optional for heartbeat)
+        let response = HeartbeatResponseBuilder::new(11000).build();
+        let marshaled = response.marshal();
+        let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.sequence(), 11000);
+        assert!(unmarshaled.recovery_time_stamp.is_none());
+        assert!(unmarshaled.ies.is_empty());
+    }
+
+    #[test]
+    fn test_header_length_calculation() {
+        // Minimal message
+        let minimal = HeartbeatResponseBuilder::new(12000).build();
+        let minimal_bytes = minimal.marshal();
+        assert_eq!(minimal.header.length, 4); // Just header overhead
+
+        // With recovery timestamp
+        let with_ts = HeartbeatResponseBuilder::new(13000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let with_ts_bytes = with_ts.marshal();
+        assert!(with_ts.header.length > minimal.header.length);
+
+        // Verify unmarshal works
+        HeartbeatResponse::unmarshal(&minimal_bytes).unwrap();
+        HeartbeatResponse::unmarshal(&with_ts_bytes).unwrap();
+    }
+
+    #[test]
+    fn test_builder_method_chaining() {
+        let response = HeartbeatResponseBuilder::new(14000)
+            .recovery_time_stamp(SystemTime::now())
+            .ie(Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA]))
+            .ies(vec![
+                Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xBB]),
+                Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xCC]),
+            ])
+            .build();
+
+        assert_eq!(response.sequence(), 14000);
+        assert!(response.recovery_time_stamp.is_some());
+        assert_eq!(response.ies.len(), 3);
+    }
+
+    #[test]
+    fn test_multiple_roundtrips() {
+        // Test that we can roundtrip multiple times without loss
+        let original = HeartbeatResponseBuilder::new(15000)
+            .recovery_time_stamp(SystemTime::now())
+            .ie(Ie::new(
+                IeType::UserPlaneIpResourceInformation,
+                vec![0x12, 0x34],
+            ))
+            .build();
+
+        let bytes1 = original.marshal();
+        let unmarshaled1 = HeartbeatResponse::unmarshal(&bytes1).unwrap();
+
+        let bytes2 = unmarshaled1.marshal();
+        let unmarshaled2 = HeartbeatResponse::unmarshal(&bytes2).unwrap();
+
+        let bytes3 = unmarshaled2.marshal();
+        let unmarshaled3 = HeartbeatResponse::unmarshal(&bytes3).unwrap();
+
+        // All should be identical
+        assert_eq!(unmarshaled1, unmarshaled2);
+        assert_eq!(unmarshaled2, unmarshaled3);
+    }
+
+    #[test]
+    fn test_ergonomic_one_liner() {
+        let bytes = HeartbeatResponseBuilder::new(16000)
+            .recovery_time_stamp(SystemTime::now())
+            .marshal();
+
+        assert!(!bytes.is_empty());
+        assert!(HeartbeatResponse::unmarshal(&bytes).is_ok());
+    }
+
+    #[test]
+    fn test_full_roundtrip_with_all_features() {
+        let ie1 = Ie::new(
+            IeType::UserPlaneIpResourceInformation,
+            vec![0x01, 0x02, 0x03],
+        );
+        let ie2 = Ie::new(
+            IeType::UserPlaneIpResourceInformation,
+            vec![0x04, 0x05, 0x06],
+        );
+
+        let original = HeartbeatResponseBuilder::new(17000)
+            .recovery_time_stamp(SystemTime::now())
+            .ie(ie1)
+            .ie(ie2)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.sequence(), 17000);
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(unmarshaled.ies.len(), 2);
+    }
 }

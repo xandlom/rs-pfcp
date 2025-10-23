@@ -660,4 +660,398 @@ mod tests {
 
         assert_eq!(original, unmarshaled);
     }
+
+    #[test]
+    fn test_builder_convenience_cause_accepted() {
+        let response = AssociationSetupResponseBuilder::new(1000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(192, 168, 1, 1))
+            .build();
+
+        assert_eq!(response.sequence(), 1000);
+        assert!(!response.cause.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_convenience_cause_rejected() {
+        let response = AssociationSetupResponseBuilder::new(2000)
+            .cause_rejected()
+            .node_id(Ipv4Addr::new(192, 168, 1, 2))
+            .build();
+
+        assert_eq!(response.sequence(), 2000);
+        assert!(!response.cause.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_convenience_cause_value() {
+        let response = AssociationSetupResponseBuilder::new(3000)
+            .cause(CauseValue::SystemFailure)
+            .node_id(Ipv4Addr::new(192, 168, 1, 3))
+            .build();
+
+        assert_eq!(response.sequence(), 3000);
+        assert!(!response.cause.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_convenience_node_id_ipv4() {
+        let response = AssociationSetupResponseBuilder::new(4000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .build();
+
+        assert_eq!(response.sequence(), 4000);
+        assert!(!response.node_id.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_convenience_node_id_ipv6() {
+        let response = AssociationSetupResponseBuilder::new(5000)
+            .cause_accepted()
+            .node_id(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1))
+            .build();
+
+        assert_eq!(response.sequence(), 5000);
+        assert!(!response.node_id.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_convenience_node_id_fqdn() {
+        let response = AssociationSetupResponseBuilder::new(6000)
+            .cause_accepted()
+            .node_id_fqdn("upf.example.com")
+            .build();
+
+        assert_eq!(response.sequence(), 6000);
+        assert!(!response.node_id.payload.is_empty());
+    }
+
+    #[test]
+    fn test_builder_convenience_recovery_timestamp() {
+        let response = AssociationSetupResponseBuilder::new(7000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 1, 1, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        assert_eq!(response.sequence(), 7000);
+        assert!(response.recovery_time_stamp.is_some());
+    }
+
+    #[test]
+    fn test_builder_marshal_convenience() {
+        let bytes = AssociationSetupResponseBuilder::new(8000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(172, 16, 0, 1))
+            .marshal();
+
+        assert!(!bytes.is_empty());
+        // Should be able to unmarshal the bytes
+        let unmarshaled = AssociationSetupResponse::unmarshal(&bytes).unwrap();
+        assert_eq!(unmarshaled.sequence(), 8000);
+    }
+
+    #[test]
+    fn test_find_ie_cause() {
+        let response = AssociationSetupResponseBuilder::new(9000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 2, 2, 2))
+            .build();
+
+        let found = response.find_ie(IeType::Cause);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::Cause);
+    }
+
+    #[test]
+    fn test_find_ie_node_id() {
+        let response = AssociationSetupResponseBuilder::new(10000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 3, 3, 3))
+            .build();
+
+        let found = response.find_ie(IeType::NodeId);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::NodeId);
+    }
+
+    #[test]
+    fn test_find_ie_up_function_features() {
+        let up_features = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02]);
+        let response = AssociationSetupResponseBuilder::new(11000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 4, 4, 4))
+            .up_function_features(up_features.clone())
+            .build();
+
+        let found = response.find_ie(IeType::UpFunctionFeatures);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), &up_features);
+    }
+
+    #[test]
+    fn test_find_ie_cp_function_features() {
+        let cp_features = Ie::new(IeType::CpFunctionFeatures, vec![0x03, 0x04]);
+        let response = AssociationSetupResponseBuilder::new(12000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 5, 5, 5))
+            .cp_function_features(cp_features.clone())
+            .build();
+
+        let found = response.find_ie(IeType::CpFunctionFeatures);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), &cp_features);
+    }
+
+    #[test]
+    fn test_find_ie_recovery_timestamp() {
+        let response = AssociationSetupResponseBuilder::new(13000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 6, 6, 6))
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let found = response.find_ie(IeType::RecoveryTimeStamp);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::RecoveryTimeStamp);
+    }
+
+    #[test]
+    fn test_find_ie_in_additional_ies() {
+        let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
+        let response = AssociationSetupResponseBuilder::new(14000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 7, 7, 7))
+            .ie(custom_ie.clone())
+            .build();
+
+        let found = response.find_ie(IeType::UserPlaneIpResourceInformation);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), &custom_ie);
+    }
+
+    #[test]
+    fn test_find_ie_not_found() {
+        let response = AssociationSetupResponseBuilder::new(15000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 8, 8, 8))
+            .build();
+
+        let found = response.find_ie(IeType::UpFunctionFeatures);
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn test_set_sequence() {
+        let mut response = AssociationSetupResponseBuilder::new(16000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 9, 9, 9))
+            .build();
+
+        assert_eq!(response.sequence(), 16000);
+        response.set_sequence(54321);
+        assert_eq!(response.sequence(), 54321);
+    }
+
+    #[test]
+    fn test_recovery_timestamp_unix_epoch() {
+        let epoch = SystemTime::UNIX_EPOCH;
+        let response = AssociationSetupResponseBuilder::new(17000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 10, 10, 10))
+            .recovery_time_stamp(epoch)
+            .build();
+
+        let marshaled = response.marshal();
+        let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 17000);
+    }
+
+    #[test]
+    fn test_recovery_timestamp_future() {
+        use std::time::Duration;
+        let future = SystemTime::now() + Duration::from_secs(3600 * 24 * 365); // 1 year from now
+        let response = AssociationSetupResponseBuilder::new(18000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 11, 11, 11))
+            .recovery_time_stamp(future)
+            .build();
+
+        let marshaled = response.marshal();
+        let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 18000);
+    }
+
+    #[test]
+    fn test_multiple_additional_ies() {
+        let ie1 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x01]);
+        let ie2 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x02]);
+        let ie3 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x03]);
+
+        let response = AssociationSetupResponseBuilder::new(19000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 12, 12, 12))
+            .ie(ie1.clone())
+            .ie(ie2.clone())
+            .ie(ie3.clone())
+            .build();
+
+        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.ies[0], ie1);
+        assert_eq!(response.ies[1], ie2);
+        assert_eq!(response.ies[2], ie3);
+    }
+
+    #[test]
+    fn test_all_features_combined() {
+        let up_features = Ie::new(IeType::UpFunctionFeatures, vec![0xFF, 0xFE]);
+        let cp_features = Ie::new(IeType::CpFunctionFeatures, vec![0xFD, 0xFC]);
+        let custom_ie1 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x11]);
+        let custom_ie2 = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x22]);
+
+        let response = AssociationSetupResponseBuilder::new(20000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 13, 13, 13))
+            .up_function_features(up_features.clone())
+            .cp_function_features(cp_features.clone())
+            .recovery_time_stamp(SystemTime::now())
+            .ie(custom_ie1.clone())
+            .ie(custom_ie2.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 20000);
+        assert_eq!(response.up_function_features, Some(up_features));
+        assert_eq!(response.cp_function_features, Some(cp_features));
+        assert!(response.recovery_time_stamp.is_some());
+        assert_eq!(response.ies.len(), 2);
+    }
+
+    #[test]
+    fn test_unmarshal_missing_cause() {
+        // Create a minimal header without Cause
+        let mut header = Header::new(MsgType::AssociationSetupResponse, false, 0, 1);
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_ie = Ie::new(IeType::NodeId, node_id.marshal());
+
+        header.length = node_ie.len() + (header.len() - 4);
+        let mut buf = header.marshal();
+        buf.extend_from_slice(&node_ie.marshal());
+
+        let result = AssociationSetupResponse::unmarshal(&buf);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("Cause"));
+    }
+
+    #[test]
+    fn test_unmarshal_missing_node_id() {
+        // Create a minimal header with only Cause (no Node ID)
+        let mut header = Header::new(MsgType::AssociationSetupResponse, false, 0, 1);
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        header.length = cause_ie.len() + (header.len() - 4);
+        let mut buf = header.marshal();
+        buf.extend_from_slice(&cause_ie.marshal());
+
+        let result = AssociationSetupResponse::unmarshal(&buf);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("Node ID"));
+    }
+
+    #[test]
+    fn test_full_roundtrip_with_all_features() {
+        let up_features = Ie::new(IeType::UpFunctionFeatures, vec![0xAA, 0xBB, 0xCC]);
+        let cp_features = Ie::new(IeType::CpFunctionFeatures, vec![0xDD, 0xEE, 0xFF]);
+        let custom_ie = Ie::new(
+            IeType::UserPlaneIpResourceInformation,
+            vec![0x01, 0x02, 0x03, 0x04],
+        );
+
+        let original = AssociationSetupResponseBuilder::new(21000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(192, 168, 50, 50))
+            .up_function_features(up_features)
+            .cp_function_features(cp_features)
+            .recovery_time_stamp(SystemTime::now())
+            .ie(custom_ie)
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.sequence(), 21000);
+        assert!(unmarshaled.up_function_features.is_some());
+        assert!(unmarshaled.cp_function_features.is_some());
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(unmarshaled.ies.len(), 1);
+    }
+
+    #[test]
+    fn test_various_cause_values() {
+        let causes = [
+            CauseValue::RequestAccepted,
+            CauseValue::RequestRejected,
+            CauseValue::SessionContextNotFound,
+            CauseValue::MandatoryIeMissing,
+            CauseValue::ConditionalIeMissing,
+            CauseValue::InvalidLength,
+            CauseValue::SystemFailure,
+        ];
+
+        for (idx, cause_value) in causes.iter().enumerate() {
+            let response = AssociationSetupResponseBuilder::new((22000 + idx) as u32)
+                .cause(*cause_value)
+                .node_id(Ipv4Addr::new(10, 14, 14, idx as u8))
+                .build();
+
+            let marshaled = response.marshal();
+            let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
+            assert_eq!(unmarshaled.sequence(), (22000 + idx) as u32);
+        }
+    }
+
+    #[test]
+    fn test_rejected_response() {
+        let response = AssociationSetupResponseBuilder::new(29000)
+            .cause_rejected()
+            .node_id(Ipv4Addr::new(10, 15, 15, 15))
+            .build();
+
+        let marshaled = response.marshal();
+        let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 29000);
+    }
+
+    #[test]
+    fn test_accepted_with_all_optional_ies() {
+        let up_features = Ie::new(IeType::UpFunctionFeatures, vec![0xAB, 0xCD, 0xEF]);
+        let cp_features = Ie::new(IeType::CpFunctionFeatures, vec![0x12, 0x34, 0x56]);
+
+        let response = AssociationSetupResponseBuilder::new(30000)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 16, 16, 16))
+            .up_function_features(up_features.clone())
+            .cp_function_features(cp_features.clone())
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        assert_eq!(response.sequence(), 30000);
+        assert!(response.up_function_features.is_some());
+        assert!(response.cp_function_features.is_some());
+        assert!(response.recovery_time_stamp.is_some());
+
+        // Round trip test
+        let marshaled = response.marshal();
+        let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 30000);
+        assert!(unmarshaled.up_function_features.is_some());
+        assert!(unmarshaled.cp_function_features.is_some());
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+    }
 }

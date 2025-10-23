@@ -466,4 +466,219 @@ mod tests {
         assert!(!bytes.is_empty());
         assert!(HeartbeatRequest::unmarshal(&bytes).is_ok());
     }
+
+    #[test]
+    fn test_find_ie_recovery_timestamp() {
+        let request = HeartbeatRequestBuilder::new(1000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let found = request.find_ie(IeType::RecoveryTimeStamp);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::RecoveryTimeStamp);
+    }
+
+    #[test]
+    fn test_find_ie_source_ip_address() {
+        let request = HeartbeatRequestBuilder::new(2000)
+            .source_ip_address(Ipv4Addr::new(10, 0, 0, 1))
+            .build();
+
+        let found = request.find_ie(IeType::SourceIpAddress);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().ie_type, IeType::SourceIpAddress);
+    }
+
+    #[test]
+    fn test_find_ie_in_additional_ies() {
+        let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
+        let request = HeartbeatRequestBuilder::new(3000)
+            .ie(custom_ie.clone())
+            .build();
+
+        let found = request.find_ie(IeType::UserPlaneIpResourceInformation);
+        assert!(found.is_some());
+        assert_eq!(found.unwrap(), &custom_ie);
+    }
+
+    #[test]
+    fn test_find_ie_not_found() {
+        let request = HeartbeatRequestBuilder::new(4000).build();
+
+        let found = request.find_ie(IeType::RecoveryTimeStamp);
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn test_set_sequence() {
+        let mut request = HeartbeatRequestBuilder::new(5000).build();
+
+        assert_eq!(request.sequence(), 5000);
+        request.set_sequence(9999);
+        assert_eq!(request.sequence(), 9999);
+    }
+
+    #[test]
+    fn test_seid_should_be_none() {
+        // Heartbeat messages never have SEID
+        let request = HeartbeatRequestBuilder::new(6000).build();
+        assert!(request.seid().is_none());
+    }
+
+    #[test]
+    fn test_recovery_timestamp_unix_epoch() {
+        let epoch = SystemTime::UNIX_EPOCH;
+        let request = HeartbeatRequestBuilder::new(7000)
+            .recovery_time_stamp(epoch)
+            .build();
+
+        let marshaled = request.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 7000);
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+    }
+
+    #[test]
+    fn test_recovery_timestamp_future() {
+        use std::time::Duration;
+        let future = SystemTime::now() + Duration::from_secs(3600 * 24 * 365); // 1 year from now
+        let request = HeartbeatRequestBuilder::new(8000)
+            .recovery_time_stamp(future)
+            .build();
+
+        let marshaled = request.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 8000);
+    }
+
+    #[test]
+    fn test_source_ip_ipv4_roundtrip() {
+        let ipv4 = Ipv4Addr::new(192, 168, 50, 50);
+        let request = HeartbeatRequestBuilder::new(9000)
+            .source_ip_address(ipv4)
+            .build();
+
+        let marshaled = request.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.sequence(), 9000);
+        assert!(unmarshaled.source_ip_address.is_some());
+
+        let ie = unmarshaled.source_ip_address.unwrap();
+        let source_ip = SourceIpAddress::unmarshal(&ie.payload).unwrap();
+        assert_eq!(source_ip.ipv4, Some(ipv4));
+    }
+
+    #[test]
+    fn test_source_ip_ipv6_roundtrip() {
+        let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+        let request = HeartbeatRequestBuilder::new(10000)
+            .source_ip_address(ipv6)
+            .build();
+
+        let marshaled = request.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.sequence(), 10000);
+        assert!(unmarshaled.source_ip_address.is_some());
+
+        let ie = unmarshaled.source_ip_address.unwrap();
+        let source_ip = SourceIpAddress::unmarshal(&ie.payload).unwrap();
+        assert_eq!(source_ip.ipv6, Some(ipv6));
+    }
+
+    #[test]
+    fn test_all_optional_ies_combined() {
+        let request = HeartbeatRequestBuilder::new(11000)
+            .recovery_time_stamp(SystemTime::now())
+            .source_ip_address(Ipv4Addr::new(10, 1, 1, 1))
+            .ie(Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x01]))
+            .ie(Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x02]))
+            .build();
+
+        assert_eq!(request.sequence(), 11000);
+        assert!(request.recovery_time_stamp.is_some());
+        assert!(request.source_ip_address.is_some());
+        assert_eq!(request.ies.len(), 2);
+
+        // Round trip
+        let marshaled = request.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled.sequence(), 11000);
+        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert!(unmarshaled.source_ip_address.is_some());
+        assert_eq!(unmarshaled.ies.len(), 2);
+    }
+
+    #[test]
+    fn test_unmarshal_empty_message() {
+        // Valid header with no IEs (all optional for heartbeat)
+        let request = HeartbeatRequestBuilder::new(12000).build();
+        let marshaled = request.marshal();
+        let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.sequence(), 12000);
+        assert!(unmarshaled.recovery_time_stamp.is_none());
+        assert!(unmarshaled.source_ip_address.is_none());
+        assert!(unmarshaled.ies.is_empty());
+    }
+
+    #[test]
+    fn test_header_length_calculation() {
+        // Minimal message
+        let minimal = HeartbeatRequestBuilder::new(13000).build();
+        let minimal_bytes = minimal.marshal();
+        assert_eq!(minimal.header.length, 4); // Just header overhead
+
+        // With recovery timestamp
+        let with_ts = HeartbeatRequestBuilder::new(14000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let with_ts_bytes = with_ts.marshal();
+        assert!(with_ts.header.length > minimal.header.length);
+
+        // Verify unmarshal works
+        HeartbeatRequest::unmarshal(&minimal_bytes).unwrap();
+        HeartbeatRequest::unmarshal(&with_ts_bytes).unwrap();
+    }
+
+    #[test]
+    fn test_builder_method_chaining() {
+        let request = HeartbeatRequestBuilder::new(15000)
+            .recovery_time_stamp(SystemTime::now())
+            .source_ip_address(Ipv4Addr::new(10, 2, 2, 2))
+            .ie(Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA]))
+            .ies(vec![
+                Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xBB]),
+                Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xCC]),
+            ])
+            .build();
+
+        assert_eq!(request.sequence(), 15000);
+        assert!(request.recovery_time_stamp.is_some());
+        assert!(request.source_ip_address.is_some());
+        assert_eq!(request.ies.len(), 3);
+    }
+
+    #[test]
+    fn test_multiple_roundtrips() {
+        // Test that we can roundtrip multiple times without loss
+        let original = HeartbeatRequestBuilder::new(16000)
+            .recovery_time_stamp(SystemTime::now())
+            .source_ip_address(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 1))
+            .build();
+
+        let bytes1 = original.marshal();
+        let unmarshaled1 = HeartbeatRequest::unmarshal(&bytes1).unwrap();
+
+        let bytes2 = unmarshaled1.marshal();
+        let unmarshaled2 = HeartbeatRequest::unmarshal(&bytes2).unwrap();
+
+        let bytes3 = unmarshaled2.marshal();
+        let unmarshaled3 = HeartbeatRequest::unmarshal(&bytes3).unwrap();
+
+        // All should be identical
+        assert_eq!(unmarshaled1, unmarshaled2);
+        assert_eq!(unmarshaled2, unmarshaled3);
+    }
 }
