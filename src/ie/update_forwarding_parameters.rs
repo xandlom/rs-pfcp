@@ -279,4 +279,279 @@ mod tests {
         let result = UpdateForwardingParameters::unmarshal(&[0xFF]);
         assert!(result.is_err());
     }
+
+    // Individual field tests
+    #[test]
+    fn test_update_forwarding_parameters_destination_interface_only() {
+        let dest_interface = DestinationInterface::new(Interface::Access);
+        let params =
+            UpdateForwardingParameters::new().with_destination_interface(dest_interface.clone());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.destination_interface, Some(dest_interface));
+        assert_eq!(unmarshaled.network_instance, None);
+        assert_eq!(unmarshaled.transport_level_marking, None);
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_network_instance_only() {
+        let network_instance = NetworkInstance::new("5g-data");
+        let params =
+            UpdateForwardingParameters::new().with_network_instance(network_instance.clone());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.destination_interface, None);
+        assert_eq!(unmarshaled.network_instance, Some(network_instance));
+        assert_eq!(unmarshaled.transport_level_marking, None);
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_transport_level_marking_only() {
+        let transport_marking = TransportLevelMarking::new(32); // DSCP value (6 bits: 0-63)
+        let params = UpdateForwardingParameters::new()
+            .with_transport_level_marking(transport_marking.clone());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.destination_interface, None);
+        assert_eq!(unmarshaled.transport_level_marking, Some(transport_marking));
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_outer_header_creation() {
+        use crate::ie::outer_header_creation::OuterHeaderCreation;
+        use std::net::Ipv4Addr;
+
+        let outer_header = OuterHeaderCreation::gtpu_ipv4(0x12345678, Ipv4Addr::new(10, 0, 0, 1));
+        let params =
+            UpdateForwardingParameters::new().with_outer_header_creation(outer_header.clone());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.outer_header_creation, Some(outer_header));
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_proxying() {
+        use crate::ie::proxying::Proxying;
+
+        let proxying = Proxying::both();
+        let params = UpdateForwardingParameters::new().with_proxying(proxying);
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.proxying, Some(proxying));
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_three_gpp_interface_type() {
+        use crate::ie::three_gpp_interface_type::{ThreeGppInterfaceType, ThreeGppInterfaceTypeIe};
+
+        let interface_type = ThreeGppInterfaceTypeIe::new(ThreeGppInterfaceType::S1U);
+        let params =
+            UpdateForwardingParameters::new().with_three_gpp_interface_type(interface_type);
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.three_gpp_interface_type, Some(interface_type));
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_header_enrichment() {
+        use crate::ie::header_enrichment::{HeaderEnrichment, HeaderType};
+
+        let header_enrichment = HeaderEnrichment::new(
+            HeaderType::HttpHeaderField,
+            "X-Custom-Header".to_string(),
+            "CustomValue".to_string(),
+        );
+        let params =
+            UpdateForwardingParameters::new().with_header_enrichment(header_enrichment.clone());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.header_enrichment, Some(header_enrichment));
+    }
+
+    // Comprehensive field combination tests
+    #[test]
+    fn test_update_forwarding_parameters_all_fields() {
+        use crate::ie::header_enrichment::{HeaderEnrichment, HeaderType};
+        use crate::ie::outer_header_creation::OuterHeaderCreation;
+        use crate::ie::proxying::Proxying;
+        use crate::ie::three_gpp_interface_type::{ThreeGppInterfaceType, ThreeGppInterfaceTypeIe};
+        use std::net::Ipv4Addr;
+
+        let dest_interface = DestinationInterface::new(Interface::Core);
+        let network_instance = NetworkInstance::new("internet");
+        let transport_marking = TransportLevelMarking::new(42);
+        let outer_header =
+            OuterHeaderCreation::gtpu_ipv4(0x98765432, Ipv4Addr::new(192, 168, 1, 1));
+        let proxying = Proxying::arp();
+        let interface_type = ThreeGppInterfaceTypeIe::new(ThreeGppInterfaceType::N3);
+        let header_enrichment = HeaderEnrichment::new(
+            HeaderType::HttpHeaderField,
+            "X-5G-Session".to_string(),
+            "active".to_string(),
+        );
+
+        let params = UpdateForwardingParameters::new()
+            .with_destination_interface(dest_interface.clone())
+            .with_network_instance(network_instance.clone())
+            .with_transport_level_marking(transport_marking.clone())
+            .with_outer_header_creation(outer_header.clone())
+            .with_proxying(proxying)
+            .with_three_gpp_interface_type(interface_type)
+            .with_header_enrichment(header_enrichment.clone());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled.destination_interface, Some(dest_interface));
+        assert_eq!(unmarshaled.network_instance, Some(network_instance));
+        assert_eq!(unmarshaled.transport_level_marking, Some(transport_marking));
+        assert_eq!(unmarshaled.outer_header_creation, Some(outer_header));
+        assert_eq!(unmarshaled.proxying, Some(proxying));
+        assert_eq!(unmarshaled.three_gpp_interface_type, Some(interface_type));
+        assert_eq!(unmarshaled.header_enrichment, Some(header_enrichment));
+    }
+
+    // Real-world scenario tests
+    #[test]
+    fn test_update_forwarding_parameters_5g_uplink_scenario() {
+        use crate::ie::outer_header_creation::OuterHeaderCreation;
+        use std::net::Ipv4Addr;
+
+        // SMF updates forwarding for UL traffic to UPF
+        let params = UpdateForwardingParameters::new()
+            .with_destination_interface(DestinationInterface::new(Interface::Core))
+            .with_network_instance(NetworkInstance::new("internet"))
+            .with_outer_header_creation(OuterHeaderCreation::gtpu_ipv4(
+                0xAABBCCDD,
+                Ipv4Addr::new(10, 20, 30, 1),
+            ));
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(params, unmarshaled);
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_5g_downlink_with_qos() {
+        use crate::ie::outer_header_creation::OuterHeaderCreation;
+        use std::net::Ipv4Addr;
+
+        // SMF updates forwarding for DL traffic with QoS marking
+        let params = UpdateForwardingParameters::new()
+            .with_destination_interface(DestinationInterface::new(Interface::Access))
+            .with_transport_level_marking(TransportLevelMarking::new(46)) // EF - Expedited Forwarding
+            .with_outer_header_creation(OuterHeaderCreation::gtpu_ipv4(
+                0x11223344,
+                Ipv4Addr::new(192, 168, 10, 5),
+            ));
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(params, unmarshaled);
+        assert_eq!(unmarshaled.transport_level_marking.unwrap().dscp, 46);
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_proxy_arp_enabled() {
+        use crate::ie::proxying::Proxying;
+
+        // Enable proxy ARP for special routing scenarios
+        let params = UpdateForwardingParameters::new()
+            .with_destination_interface(DestinationInterface::new(Interface::Dn))
+            .with_network_instance(NetworkInstance::new("lan"))
+            .with_proxying(Proxying::arp());
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert!(unmarshaled.proxying.unwrap().arp);
+        assert!(!unmarshaled.proxying.unwrap().inp);
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_http_header_injection() {
+        use crate::ie::header_enrichment::{HeaderEnrichment, HeaderType};
+
+        // Inject custom HTTP headers for DPI or value-added services
+        let params = UpdateForwardingParameters::new()
+            .with_destination_interface(DestinationInterface::new(Interface::Core))
+            .with_header_enrichment(HeaderEnrichment::new(
+                HeaderType::HttpHeaderField,
+                "X-Subscriber-ID".to_string(),
+                "user12345".to_string(),
+            ));
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        let header = unmarshaled.header_enrichment.unwrap();
+        assert_eq!(header.name, "X-Subscriber-ID");
+        assert_eq!(header.value, "user12345");
+    }
+
+    // Round-trip tests
+    #[test]
+    fn test_update_forwarding_parameters_round_trip_empty() {
+        let params = UpdateForwardingParameters::new();
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(params, unmarshaled);
+        assert!(marshaled.is_empty()); // No fields = no marshaled data
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_round_trip_partial() {
+        let params = UpdateForwardingParameters::new()
+            .with_destination_interface(DestinationInterface::new(Interface::Access))
+            .with_transport_level_marking(TransportLevelMarking::new(32));
+
+        let marshaled = params.marshal();
+        let unmarshaled = UpdateForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(params, unmarshaled);
+    }
+
+    // Utility tests
+    #[test]
+    fn test_update_forwarding_parameters_default() {
+        let params1 = UpdateForwardingParameters::new();
+        let params2 = UpdateForwardingParameters::default();
+
+        assert_eq!(params1, params2);
+        assert!(params1.destination_interface.is_none());
+        assert!(params1.network_instance.is_none());
+    }
+
+    // Error handling tests
+    #[test]
+    fn test_update_forwarding_parameters_unmarshal_empty_buffer() {
+        let result = UpdateForwardingParameters::unmarshal(&[]);
+        assert!(result.is_ok()); // Empty buffer = no fields, valid
+        assert_eq!(result.unwrap(), UpdateForwardingParameters::new());
+    }
+
+    #[test]
+    fn test_update_forwarding_parameters_unmarshal_truncated_ie() {
+        // Incomplete IE header (needs at least 4 bytes for Type + Length)
+        let invalid_data = [0x00, 0x42, 0x00]; // Partial IE
+        let result = UpdateForwardingParameters::unmarshal(&invalid_data);
+        assert!(result.is_err());
+    }
 }
