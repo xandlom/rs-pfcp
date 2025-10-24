@@ -12,7 +12,7 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 - Zero-copy binary protocol implementation
 - 25 message types (100% coverage)
 - 104+ Information Elements (IEs) with 272+ enum variants
-- 1,007 comprehensive tests with round-trip validation
+- 1,322 comprehensive tests with round-trip validation (~89% coverage)
 - Builder patterns for ergonomic API
 - MSRV: Rust 1.90.0
 
@@ -24,7 +24,7 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 # Build the library
 cargo build
 
-# Run all tests (1,007 tests)
+# Run all tests (1,322 tests)
 cargo test
 
 # Run specific IE or message tests
