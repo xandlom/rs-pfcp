@@ -333,8 +333,45 @@ impl NodeReportResponseBuilder {
         self
     }
 
-    /// Sets the cause IE (required).
-    pub fn cause(mut self, cause: Ie) -> Self {
+    /// Sets the cause from a CauseValue (required).
+    ///
+    /// Accepts a CauseValue enum. For common cases, use convenience methods like
+    /// [`cause_accepted`] or [`cause_rejected`]. For full control, use [`cause_ie`].
+    ///
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    /// [`cause_ie`]: #method.cause_ie
+    pub fn cause(mut self, cause_value: crate::ie::cause::CauseValue) -> Self {
+        use crate::ie::cause::Cause;
+        use crate::ie::{Ie, IeType};
+        let cause = Cause::new(cause_value);
+        self.cause = Some(Ie::new(IeType::Cause, cause.marshal().to_vec()));
+        self
+    }
+
+    /// Convenience method to set cause to Request Accepted.
+    ///
+    /// Equivalent to `.cause(CauseValue::RequestAccepted)`.
+    pub fn cause_accepted(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestAccepted)
+    }
+
+    /// Convenience method to set cause to Request Rejected.
+    ///
+    /// Equivalent to `.cause(CauseValue::RequestRejected)`.
+    pub fn cause_rejected(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestRejected)
+    }
+
+    /// Sets the cause IE directly (required).
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`cause`], [`cause_accepted`], or [`cause_rejected`].
+    ///
+    /// [`cause`]: #method.cause
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    pub fn cause_ie(mut self, cause: Ie) -> Self {
         self.cause = Some(cause);
         self
     }
@@ -400,14 +437,13 @@ impl NodeReportResponseBuilder {
     /// # Example
     /// ```
     /// use rs_pfcp::message::node_report_response::NodeReportResponseBuilder;
-    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}, node_id::NodeId};
+    /// use rs_pfcp::ie::{Ie, IeType, cause::CauseValue, node_id::NodeId};
     /// use std::net::Ipv4Addr;
     ///
     /// let node_id = Ie::new(IeType::NodeId, NodeId::IPv4(Ipv4Addr::new(127, 0, 0, 1)).marshal().to_vec());
-    /// let cause = Ie::new(IeType::Cause, Cause::new(CauseValue::RequestAccepted).marshal().to_vec());
     /// let bytes = NodeReportResponseBuilder::new(1)
     ///     .node_id(node_id)
-    ///     .cause(cause)
+    ///     .cause(CauseValue::RequestAccepted)
     ///     .marshal();
     /// ```
     pub fn marshal(self) -> Vec<u8> {
@@ -432,7 +468,7 @@ mod builder_tests {
 
         let response = NodeReportResponseBuilder::new(12345)
             .node_id(node_id_ie.clone())
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .build();
 
         assert_eq!(response.sequence(), 12345);
@@ -456,7 +492,7 @@ mod builder_tests {
 
         let response = NodeReportResponseBuilder::new(67890)
             .node_id(node_id_ie.clone())
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .offending_ie(offending_ie.clone())
             .build();
 
@@ -480,7 +516,7 @@ mod builder_tests {
 
         let response = NodeReportResponseBuilder::new(11111)
             .node_id(node_id_ie.clone())
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .ie(ie1.clone())
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
@@ -507,7 +543,7 @@ mod builder_tests {
 
         let response = NodeReportResponseBuilder::new(22222)
             .node_id(node_id_ie.clone())
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .offending_ie(offending_ie.clone())
             .ie(additional_ie.clone())
             .build();
@@ -530,7 +566,7 @@ mod builder_tests {
 
         let result = NodeReportResponseBuilder::new(33333)
             .node_id(node_id_ie.clone())
-            .cause(cause_ie.clone())
+            .cause_ie(cause_ie.clone())
             .try_build();
 
         assert!(result.is_ok());
@@ -546,7 +582,7 @@ mod builder_tests {
         let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
 
         let result = NodeReportResponseBuilder::new(44444)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .try_build();
 
         assert!(result.is_err());
@@ -579,7 +615,7 @@ mod builder_tests {
         let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
 
         NodeReportResponseBuilder::new(66666)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .build();
     }
 
@@ -606,7 +642,7 @@ mod builder_tests {
 
         let original = NodeReportResponseBuilder::new(88888)
             .node_id(node_id_ie)
-            .cause(cause_ie)
+            .cause_ie(cause_ie)
             .offending_ie(offending_ie)
             .build();
 

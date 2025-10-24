@@ -3,7 +3,7 @@
 //! The PFCP Session Set Modification Response message is sent by the UPF to the SMF
 //! as a response to the Session Set Modification Request message.
 
-use crate::ie::cause::{Cause, CauseValue};
+use crate::ie::cause::CauseValue;
 use crate::ie::offending_ie::OffendingIe;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
@@ -117,7 +117,45 @@ impl SessionSetModificationResponseBuilder {
         }
     }
 
-    pub fn cause(mut self, cause: Ie) -> Self {
+    /// Sets the cause from a CauseValue (required).
+    ///
+    /// Accepts a CauseValue enum. For common cases, use convenience methods like
+    /// [`cause_accepted`] or [`cause_rejected`]. For full control, use [`cause_ie`].
+    ///
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    /// [`cause_ie`]: #method.cause_ie
+    pub fn cause(mut self, cause_value: crate::ie::cause::CauseValue) -> Self {
+        use crate::ie::cause::Cause;
+        use crate::ie::{Ie, IeType};
+        let cause = Cause::new(cause_value);
+        self.cause = Some(Ie::new(IeType::Cause, cause.marshal().to_vec()));
+        self
+    }
+
+    /// Convenience method to set cause to Request Accepted.
+    ///
+    /// Equivalent to `.cause(CauseValue::RequestAccepted)`.
+    pub fn cause_accepted(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestAccepted)
+    }
+
+    /// Convenience method to set cause to Request Rejected.
+    ///
+    /// Equivalent to `.cause(CauseValue::RequestRejected)`.
+    pub fn cause_rejected(self) -> Self {
+        self.cause(crate::ie::cause::CauseValue::RequestRejected)
+    }
+
+    /// Sets the cause IE directly (required).
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`cause`], [`cause_accepted`], or [`cause_rejected`].
+    ///
+    /// [`cause`]: #method.cause
+    /// [`cause_accepted`]: #method.cause_accepted
+    /// [`cause_rejected`]: #method.cause_rejected
+    pub fn cause_ie(mut self, cause: Ie) -> Self {
         self.cause = Some(cause);
         self
     }
@@ -170,12 +208,12 @@ impl SessionSetModificationResponseBuilder {
     /// # Example
     /// ```
     /// use rs_pfcp::message::session_set_modification_response::SessionSetModificationResponseBuilder;
-    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}};
+    /// use rs_pfcp::ie::cause::CauseValue;
     ///
-    /// let cause = Ie::new(IeType::Cause, Cause::new(CauseValue::RequestAccepted).marshal().to_vec());
     /// let bytes = SessionSetModificationResponseBuilder::new(1)
-    ///     .cause(cause)
-    ///     .marshal();
+    ///     .cause(CauseValue::RequestAccepted)
+    ///     .marshal()
+    ///     .unwrap();
     /// ```
     pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
         Ok(self.build()?.marshal())
@@ -186,9 +224,8 @@ impl SessionSetModificationResponseBuilder {
 impl SessionSetModificationResponse {
     /// Create a successful response
     pub fn success(seq: u32) -> Result<Self, io::Error> {
-        let cause = Cause::new(CauseValue::RequestAccepted);
         SessionSetModificationResponseBuilder::new(seq)
-            .cause(Ie::new(IeType::Cause, cause.marshal().to_vec()))
+            .cause(CauseValue::RequestAccepted)
             .build()
     }
 
@@ -200,9 +237,8 @@ impl SessionSetModificationResponse {
                 "Cannot use RequestAccepted as rejection cause",
             ));
         }
-        let cause = Cause::new(cause_value);
         SessionSetModificationResponseBuilder::new(seq)
-            .cause(Ie::new(IeType::Cause, cause.marshal().to_vec()))
+            .cause(cause_value)
             .build()
     }
 
@@ -218,12 +254,11 @@ impl SessionSetModificationResponse {
                 "Cannot use RequestAccepted as rejection cause",
             ));
         }
-        let cause = Cause::new(cause_value);
         let offending_ie_data = OffendingIe::new(offending_ie_type as u16);
         let offending_ie = Ie::new(IeType::OffendingIe, offending_ie_data.marshal().to_vec());
 
         SessionSetModificationResponseBuilder::new(seq)
-            .cause(Ie::new(IeType::Cause, cause.marshal().to_vec()))
+            .cause(cause_value)
             .offending_ie(offending_ie)
             .build()
     }
@@ -232,14 +267,14 @@ impl SessionSetModificationResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::{Ie, IeType};
+    use crate::ie::{cause::Cause, Ie, IeType};
 
     #[test]
     fn test_session_set_modification_response_basic() {
         let cause_data = Cause::new(CauseValue::RequestAccepted);
         let cause = Ie::new(IeType::Cause, cause_data.marshal().to_vec());
         let response = SessionSetModificationResponseBuilder::new(123)
-            .cause(cause)
+            .cause_ie(cause)
             .build()
             .unwrap();
 
@@ -258,7 +293,7 @@ mod tests {
         let offending_ie = Ie::new(IeType::OffendingIe, offending_ie_data.marshal().to_vec());
 
         let response = SessionSetModificationResponseBuilder::new(456)
-            .cause(cause)
+            .cause_ie(cause)
             .offending_ie(offending_ie)
             .build()
             .unwrap();
@@ -328,7 +363,7 @@ mod tests {
         let offending_ie = Ie::new(IeType::OffendingIe, offending_ie_data.marshal().to_vec());
 
         let original = SessionSetModificationResponseBuilder::new(999)
-            .cause(cause)
+            .cause_ie(cause)
             .offending_ie(offending_ie)
             .build()
             .unwrap();

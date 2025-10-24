@@ -17,17 +17,10 @@ use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::ie::{
-    cause::{Cause, CauseValue},
-    create_pdr::CreatePdr,
-    created_pdr::CreatedPdr,
-    duration_measurement::DurationMeasurement,
-    f_teid::FteidBuilder,
-    sequence_number::SequenceNumber,
-    urr_id::UrrId,
-    usage_report::UsageReportBuilder,
-    usage_report_trigger::UsageReportTrigger,
-    volume_measurement::VolumeMeasurement,
-    Ie, IeType,
+    cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr,
+    duration_measurement::DurationMeasurement, f_teid::FteidBuilder,
+    sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReportBuilder,
+    usage_report_trigger::UsageReportTrigger, volume_measurement::VolumeMeasurement, Ie, IeType,
 };
 use rs_pfcp::message::{
     association_release_response::AssociationReleaseResponseBuilder,
@@ -109,12 +102,6 @@ struct HandlerContext<'a> {
 // Helper Functions
 // ============================================================================
 
-/// Create a Cause IE with the given cause value
-fn create_cause_ie(cause_value: CauseValue) -> Ie {
-    let cause = Cause::new(cause_value);
-    Ie::new(IeType::Cause, cause.marshal().to_vec())
-}
-
 // ============================================================================
 // Message Handler Functions
 // ============================================================================
@@ -141,7 +128,7 @@ fn handle_pfd_management_request(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing PFD Management Request");
     let response = PfdManagementResponseBuilder::new(msg.sequence())
-        .cause(create_cause_ie(CauseValue::RequestAccepted))
+        .cause(CauseValue::RequestAccepted)
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -168,7 +155,7 @@ fn handle_association_update_request(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Association Update Request");
     let response = AssociationUpdateResponseBuilder::new(msg.sequence())
-        .cause(create_cause_ie(CauseValue::RequestAccepted))
+        .cause(CauseValue::RequestAccepted)
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -181,7 +168,7 @@ fn handle_association_release_request(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Association Release Request");
     let response = AssociationReleaseResponseBuilder::new(msg.sequence())
-        .cause(create_cause_ie(CauseValue::RequestAccepted))
+        .cause(CauseValue::RequestAccepted)
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -194,7 +181,7 @@ fn handle_node_report_request(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Node Report Request");
     let response = NodeReportResponseBuilder::new(msg.sequence())
-        .cause(create_cause_ie(CauseValue::RequestAccepted))
+        .cause(CauseValue::RequestAccepted)
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -207,7 +194,7 @@ fn handle_session_set_deletion_request(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Session Set Deletion Request");
     let response = SessionSetDeletionResponseBuilder::new(msg.sequence())
-        .cause(create_cause_ie(CauseValue::RequestAccepted))
+        .cause(CauseValue::RequestAccepted)
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -220,7 +207,7 @@ fn handle_session_set_modification_request(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Session Set Modification Request");
     let response = SessionSetModificationResponseBuilder::new(msg.sequence())
-        .cause(create_cause_ie(CauseValue::RequestAccepted))
+        .cause(CauseValue::RequestAccepted)
         .marshal()?;
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
