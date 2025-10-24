@@ -162,6 +162,24 @@ impl SessionSetModificationResponseBuilder {
             ies: self.ies,
         })
     }
+
+    /// Builds the SessionSetModificationResponse message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method that combines `build()` and `marshal()`.
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::message::session_set_modification_response::SessionSetModificationResponseBuilder;
+    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}};
+    ///
+    /// let cause = Ie::new(IeType::Cause, Cause::new(CauseValue::RequestAccepted).marshal().to_vec());
+    /// let bytes = SessionSetModificationResponseBuilder::new(1)
+    ///     .cause(cause)
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+        Ok(self.build()?.marshal())
+    }
 }
 
 /// Convenience constructors for common response scenarios

@@ -142,7 +142,6 @@ fn handle_pfd_management_request(
     println!("  Processing PFD Management Request");
     let response = PfdManagementResponseBuilder::new(msg.sequence())
         .cause(create_cause_ie(CauseValue::RequestAccepted))
-        .build()
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -170,7 +169,6 @@ fn handle_association_update_request(
     println!("  Processing Association Update Request");
     let response = AssociationUpdateResponseBuilder::new(msg.sequence())
         .cause(create_cause_ie(CauseValue::RequestAccepted))
-        .build()
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -184,7 +182,6 @@ fn handle_association_release_request(
     println!("  Processing Association Release Request");
     let response = AssociationReleaseResponseBuilder::new(msg.sequence())
         .cause(create_cause_ie(CauseValue::RequestAccepted))
-        .build()
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -198,7 +195,6 @@ fn handle_node_report_request(
     println!("  Processing Node Report Request");
     let response = NodeReportResponseBuilder::new(msg.sequence())
         .cause(create_cause_ie(CauseValue::RequestAccepted))
-        .build()
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -212,7 +208,6 @@ fn handle_session_set_deletion_request(
     println!("  Processing Session Set Deletion Request");
     let response = SessionSetDeletionResponseBuilder::new(msg.sequence())
         .cause(create_cause_ie(CauseValue::RequestAccepted))
-        .build()
         .marshal();
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
@@ -226,8 +221,7 @@ fn handle_session_set_modification_request(
     println!("  Processing Session Set Modification Request");
     let response = SessionSetModificationResponseBuilder::new(msg.sequence())
         .cause(create_cause_ie(CauseValue::RequestAccepted))
-        .build()?
-        .marshal();
+        .marshal()?;
     ctx.socket.send_to(&response, ctx.src)?;
     Ok(())
 }

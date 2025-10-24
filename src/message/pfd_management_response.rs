@@ -177,6 +177,24 @@ impl PfdManagementResponseBuilder {
             self.ies,
         ))
     }
+
+    /// Builds the PfdManagementResponse message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method that combines `build()` and `marshal()`.
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::message::pfd_management_response::PfdManagementResponseBuilder;
+    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}};
+    ///
+    /// let cause = Ie::new(IeType::Cause, Cause::new(CauseValue::RequestAccepted).marshal().to_vec());
+    /// let bytes = PfdManagementResponseBuilder::new(1)
+    ///     .cause(cause)
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]

@@ -158,6 +158,27 @@ impl AssociationReleaseResponseBuilder {
             node_id,
         ))
     }
+
+    /// Builds the AssociationReleaseResponse message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method that combines `build()` and `marshal()`.
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::message::association_release_response::AssociationReleaseResponseBuilder;
+    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}, node_id::NodeId};
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let cause = Ie::new(IeType::Cause, Cause::new(CauseValue::RequestAccepted).marshal().to_vec());
+    /// let node_id = Ie::new(IeType::NodeId, NodeId::IPv4(Ipv4Addr::new(127, 0, 0, 1)).marshal().to_vec());
+    /// let bytes = AssociationReleaseResponseBuilder::new(1)
+    ///     .cause(cause)
+    ///     .node_id(node_id)
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]

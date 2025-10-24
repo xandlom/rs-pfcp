@@ -392,6 +392,27 @@ impl NodeReportResponseBuilder {
             self.ies,
         ))
     }
+
+    /// Builds the NodeReportResponse message and marshals it to bytes in one step.
+    ///
+    /// This is a convenience method that combines `build()` and `marshal()`.
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::message::node_report_response::NodeReportResponseBuilder;
+    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}, node_id::NodeId};
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let node_id = Ie::new(IeType::NodeId, NodeId::IPv4(Ipv4Addr::new(127, 0, 0, 1)).marshal().to_vec());
+    /// let cause = Ie::new(IeType::Cause, Cause::new(CauseValue::RequestAccepted).marshal().to_vec());
+    /// let bytes = NodeReportResponseBuilder::new(1)
+    ///     .node_id(node_id)
+    ///     .cause(cause)
+    ///     .marshal();
+    /// ```
+    pub fn marshal(self) -> Vec<u8> {
+        self.build().marshal()
+    }
 }
 
 #[cfg(test)]
