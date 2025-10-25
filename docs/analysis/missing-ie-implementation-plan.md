@@ -1,0 +1,489 @@
+# Missing IE Implementation Plan
+
+**Project:** rs-pfcp
+**Created:** 2025-01-25
+**Status:** Planning
+**Target Release:** 0.1.5 and beyond
+
+---
+
+## Executive Summary
+
+**Current State:**
+- **Total IE Types Defined:** 273 (in IeType enum)
+- **Total IE Modules Implemented:** 106
+- **Missing Implementations:** 167 IEs (61% gap)
+- **Compliance Status:** Core PFCP (R15/R16) complete, R17/R18 advanced features missing
+
+**Strategy:**
+Focus on Priority 1 (Core Missing) and Priority 2 (Commonly Used) for v0.1.5, defer advanced R17/R18 features.
+
+---
+
+## Gap Analysis
+
+### Implementation Status by Category
+
+| Category | Total | Implemented | Missing | Priority |
+|----------|-------|-------------|---------|----------|
+| **Core Session Management** | 35 | 33 | 2 | P1 (Critical) |
+| **Usage Reporting** | 15 | 8 | 7 | P1 (Critical) |
+| **Node/Association** | 12 | 8 | 4 | P2 (High) |
+| **QoS & Traffic** | 20 | 15 | 5 | P2 (High) |
+| **Ethernet (R16)** | 15 | 1 | 14 | P3 (Medium) |
+| **5G Advanced (R17)** | 25 | 5 | 20 | P3 (Medium) |
+| **TSN (R17)** | 18 | 0 | 18 | P4 (Low) |
+| **ATSSS (R17)** | 15 | 0 | 15 | P4 (Low) |
+| **QoS Monitoring (R17)** | 12 | 0 | 12 | P4 (Low) |
+| **Redundancy (R18)** | 8 | 0 | 8 | P4 (Low) |
+| **Other Advanced** | 25 | 0 | 25 | P4 (Low) |
+
+---
+
+## Priority 1: Critical Missing IEs (v0.1.5 Target)
+
+### Core Session Management (2 Missing)
+
+**Impact:** These are fundamental to PFCP session lifecycle
+
+| IE # | Name | Module | Complexity | Effort | Notes |
+|------|------|--------|------------|--------|-------|
+| 17 | Remove URR | `remove_urr` | Low | 2h | Simple IE, similar to RemovePdr/RemoveFar |
+| 87 | Remove BAR | `remove_bar` | Low | 2h | Simple IE, similar to other Remove* IEs |
+
+**Subtotal:** 4 hours
+
+### Usage Reporting (7 Missing - Select 4 for v0.1.5)
+
+**Impact:** Required for complete usage reporting support
+
+| IE # | Name | Module | Complexity | Effort | Notes |
+|------|------|--------|------------|--------|-------|
+| **78** | **UsageReportWithinSessionModificationResponse** | `usage_report_within_session_modification_response` | Medium | 4h | **CRITICAL** - Grouped IE |
+| **79** | **UsageReportWithinSessionDeletionResponse** | `usage_report_within_session_deletion_response` | Medium | 4h | **CRITICAL** - Grouped IE |
+| **80** | **UsageReportWithinSessionReportRequest** | `usage_report_within_session_report_request` | Medium | 4h | **CRITICAL** - Already used in messages |
+| 82 | Linked URR ID | `linked_urr_id` | Low | 2h | Simple u32 IE |
+| 83 | Downlink Data Report | `downlink_data_report` | Medium | 4h | Grouped IE with child IEs |
+| 77 | Query URR | `query_urr` | Low | 2h | Deferred - not commonly used |
+| 64 | Measurement Period | `measurement_period` | Low | 2h | Deferred - optional |
+
+**Selected for v0.1.5:** 78, 79, 80, 82
+**Subtotal:** 14 hours
+
+### v0.1.5 Priority 1 Total: 18 hours (6 IEs)
+
+---
+
+## Priority 2: Commonly Used IEs (Post v0.1.5)
+
+### Node/Association Management (4 Missing)
+
+| IE # | Name | Module | Complexity | Effort | Notes |
+|------|------|--------|------------|--------|-------|
+| 43 | UP Function Features | `up_function_features` | Medium | 4h | Bitflags for UPF capabilities |
+| 89 | CP Function Features | `cp_function_features` | Medium | 4h | Bitflags for SMF capabilities |
+| 111 | PFCP Association Release Request | `pfcp_association_release_request` | Low | 2h | Simple grouped IE |
+| 112 | Graceful Release Period | `graceful_release_period` | Low | 2h | Timer IE |
+
+**Subtotal:** 12 hours
+
+### QoS & Traffic Control (5 Missing)
+
+| IE # | Name | Module | Complexity | Effort | Notes |
+|------|------|--------|------------|--------|-------|
+| 94 | Packet Rate | `packet_rate` | Medium | 3h | UL/DL rate limits |
+| 97 | DL Flow Level Marking | `dl_flow_level_marking` | Low | 2h | DSCP marking |
+| 193 | Packet Rate Status | `packet_rate_status` | Medium | 3h | Rate reporting |
+| 251 | QER Control Indications | `qer_control_indications` | Low | 2h | Bitflags |
+| 252 | Packet Rate Status Report | `packet_rate_status_report` | Medium | 3h | Grouped IE |
+
+**Subtotal:** 13 hours
+
+### Error Handling & Reporting (3 Missing)
+
+| IE # | Name | Module | Complexity | Effort | Notes |
+|------|------|--------|------------|--------|-------|
+| 39 | Report Type | `report_type` | Low | 2h | Bitflags for report triggers |
+| 99 | Error Indication Report | `error_indication_report` | Medium | 4h | Grouped IE |
+| 114 | Failed Rule ID | `failed_rule_id` | Low | 2h | Error reporting |
+
+**Subtotal:** 8 hours
+
+### Advanced Identifiers (5 Missing)
+
+| IE # | Name | Module | Complexity | Effort | Notes |
+|------|------|--------|------------|--------|-------|
+| 124 | QFI (QoS Flow Identifier) | `qfi` | Low | 2h | 5G QoS flow ID (6 bits) |
+| 123 | RQI (Reflective QoS Indicator) | `rqi` | Low | 1h | Boolean flag |
+| 91 | Application Instance ID | `application_instance_id` | Low | 2h | String identifier |
+| 92 | Flow Information | `flow_information` | Medium | 3h | Flow description |
+| 128 | Created Traffic Endpoint | `created_traffic_endpoint` | Medium | 4h | Response IE |
+
+**Subtotal:** 12 hours
+
+### **Priority 2 Total: 45 hours (17 IEs)**
+
+---
+
+## Priority 3: Ethernet Support (R16) - Medium Priority
+
+### Ethernet Packet Filtering (8 IEs)
+
+| IE # | Name | Complexity | Effort | Notes |
+|------|------|------------|--------|-------|
+| 132 | Ethernet Packet Filter | Medium | 4h | MAC filtering rules |
+| 133 | MAC Address | Low | 2h | 6-byte MAC address |
+| 134 | C-TAG | Low | 2h | Customer VLAN tag |
+| 135 | S-TAG | Low | 2h | Service VLAN tag |
+| 136 | Ethertype | Low | 2h | Ethernet type field |
+| 138 | Ethernet Filter ID | Low | 1h | Filter identifier |
+| 139 | Ethernet Filter Properties | Low | 2h | Filter configuration |
+| 146 | Ethernet Inactivity Timer | Low | 2h | Timeout value |
+
+**Subtotal:** 17 hours
+
+### Ethernet Session Management (6 IEs)
+
+| IE # | Name | Complexity | Effort | Notes |
+|------|------|------------|--------|-------|
+| 142 | Ethernet PDU Session Information | Medium | 3h | Session context |
+| 143 | Ethernet Traffic Information | Medium | 4h | Traffic statistics |
+| 144 | MAC Addresses Detected | Low | 3h | MAC learning |
+| 145 | MAC Addresses Removed | Low | 3h | MAC aging |
+| 254 | Ethernet Context Information | Medium | 4h | R18 enhancement |
+| 143 | Already implemented | - | - | EthernetTrafficInformation exists |
+
+**Subtotal:** 17 hours
+
+### **Priority 3 Total: 34 hours (13 IEs excluding implemented)**
+
+---
+
+## Priority 4: Advanced 5G Features (R17/R18) - Low Priority
+
+### Multi-Access/ATSSS (15 IEs)
+
+Support for Access Traffic Steering, Switching, and Splitting
+
+- ATSSS Control Parameters (220-227, 231): 8 IEs
+- Multi-Path TCP (MPTCP): 222, 225, 228, 265
+- Access Availability: 216-219
+- PMF/Link-specific: 224, 227, 229, 230
+
+**Estimated Effort:** 50 hours (deferred to v0.2.0+)
+
+### TSN Support (18 IEs)
+
+Time-Sensitive Networking for industrial 5G
+
+- TSN Bridge Management: 194-198, 202
+- Clock Synchronization: 203-210
+- Session Report Rules: 211-215
+
+**Estimated Effort:** 60 hours (deferred to v0.2.0+)
+
+### QoS Monitoring & Reporting (12 IEs)
+
+Advanced R17 QoS features
+
+- Packet Delay Monitoring: 234-236, 245
+- QoS Reporting: 237-240, 242-248
+- GTP-U Path QoS: 238-241
+
+**Estimated Effort:** 40 hours (deferred to v0.2.0+)
+
+### Network Slicing & Multi-Access (20 IEs)
+
+Already partially supported (S-NSSAI exists)
+
+- MAR (Multi-Access Rules): 165-176
+- Steering Control: 171-174
+- Access Forwarding: 166, 167, 175, 176
+- IP Multicast: 188-192
+
+**Estimated Effort:** 65 hours (deferred to v0.2.0+)
+
+### Redundancy & Reliability (R18) (8 IEs)
+
+- Redundant Transmission: 255, 270
+- Bridge Management: 266
+- Transport Delay: 271
+- Data Status: 260
+
+**Estimated Effort:** 25 hours (deferred to v0.2.0+)
+
+### **Priority 4 Total: ~240 hours (83 IEs) - Future releases**
+
+---
+
+## Implementation Phases
+
+### Phase 1: v0.1.5 Release (Q1 2025)
+
+**Goal:** Complete core PFCP functionality
+**Effort:** 18 hours
+**IEs to Implement:** 6 IEs
+
+1. **Core Session Management (2 IEs - 4h)**
+   - Remove URR (IE 17)
+   - Remove BAR (IE 87)
+
+2. **Usage Reporting (4 IEs - 14h)**
+   - UsageReportWithinSessionModificationResponse (IE 78)
+   - UsageReportWithinSessionDeletionResponse (IE 79)
+   - UsageReportWithinSessionReportRequest (IE 80)
+   - Linked URR ID (IE 82)
+
+**Deliverables:**
+- 6 new IE implementations with tests
+- Complete usage reporting support
+- Updated IE support documentation
+- Release notes
+
+### Phase 2: v0.1.6 Release (Q2 2025)
+
+**Goal:** Node management and common features
+**Effort:** 45 hours
+**IEs to Implement:** 17 IEs
+
+1. **Node/Association (4 IEs - 12h)**
+   - UP Function Features
+   - CP Function Features
+   - PFCP Association Release Request
+   - Graceful Release Period
+
+2. **QoS & Traffic (5 IEs - 13h)**
+   - Packet Rate
+   - DL Flow Level Marking
+   - Packet Rate Status
+   - QER Control Indications
+   - Packet Rate Status Report
+
+3. **Error Handling (3 IEs - 8h)**
+   - Report Type
+   - Error Indication Report
+   - Failed Rule ID
+
+4. **Advanced IDs (5 IEs - 12h)**
+   - QFI
+   - RQI
+   - Application Instance ID
+   - Flow Information
+   - Created Traffic Endpoint
+
+### Phase 3: v0.2.0 Release (Q3 2025)
+
+**Goal:** Ethernet support for R16 compliance
+**Effort:** 34 hours
+**IEs to Implement:** 13 Ethernet IEs
+
+Focus on Ethernet packet filtering and session management for industrial/enterprise 5G use cases.
+
+### Phase 4: v0.3.0+ (2025 H2 - 2026)
+
+**Goal:** Advanced R17/R18 features
+**Effort:** ~240 hours
+**IEs to Implement:** 83 advanced IEs
+
+Implement based on user demand:
+- ATSSS (Multi-access)
+- TSN (Time-sensitive networking)
+- Advanced QoS monitoring
+- Network slicing enhancements
+
+---
+
+## Implementation Guidelines
+
+### IE Implementation Checklist
+
+For each new IE, follow this process:
+
+1. **Module Creation** (30 min)
+   ```rust
+   // src/ie/new_ie.rs
+   pub struct NewIe {
+       // Fields per 3GPP TS 29.244
+   }
+
+   impl NewIe {
+       pub fn new(...) -> Self { ... }
+       pub fn marshal(&self) -> Vec<u8> { ... }
+       pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> { ... }
+       pub fn to_ie(&self) -> Ie { ... }
+   }
+   ```
+
+2. **Add to mod.rs** (5 min)
+   - Add `pub mod new_ie;` declaration
+   - Add IE type to `IeType` enum
+   - Add mapping in `From<u16>` implementation
+
+3. **Write Tests** (1-2 hours)
+   - Round-trip marshal/unmarshal
+   - Edge cases (zero values, max values)
+   - Error cases (short buffer, invalid data)
+   - Real-world scenarios
+
+4. **Documentation** (30 min)
+   - Doc comments with 3GPP section references
+   - Example usage
+   - Update IE support doc
+
+5. **Integration** (30 min)
+   - Update relevant message builders if needed
+   - Update examples if applicable
+
+**Total per simple IE:** 3-4 hours
+**Total per complex IE:** 4-6 hours
+
+### Testing Standards
+
+All IEs must have:
+- ✅ Round-trip marshal/unmarshal test
+- ✅ Error handling tests (short buffer, invalid data)
+- ✅ Edge case tests (zero, max values)
+- ✅ Real-world scenario tests
+- ✅ `to_ie()` conversion test
+- ✅ Documentation examples compile
+
+### Code Quality
+
+- Follow existing patterns in `src/ie/`
+- Use builder patterns for complex IEs (>3 fields)
+- Include 3GPP TS 29.244 section references
+- Maintain 90%+ test coverage
+- Pass all clippy checks
+
+---
+
+## Resource Requirements
+
+### Phase 1 (v0.1.5)
+- **Developer Time:** 18 hours (1 week part-time)
+- **Review Time:** 4 hours
+- **Documentation:** 2 hours
+- **Total:** 24 hours
+
+### Phase 2 (v0.1.6)
+- **Developer Time:** 45 hours (2-3 weeks part-time)
+- **Review Time:** 10 hours
+- **Documentation:** 5 hours
+- **Total:** 60 hours
+
+### Phase 3 (v0.2.0)
+- **Developer Time:** 34 hours (2 weeks part-time)
+- **Review Time:** 8 hours
+- **Documentation:** 4 hours
+- **Total:** 46 hours
+
+### Long-term (v0.3.0+)
+- **Developer Time:** ~240 hours (12 weeks part-time)
+- **Review Time:** ~50 hours
+- **Documentation:** ~20 hours
+- **Total:** ~310 hours
+
+---
+
+## Success Metrics
+
+### v0.1.5 Goals
+- ✅ 100% core session management IE coverage
+- ✅ Complete usage reporting support
+- ✅ All priority 1 IEs implemented
+- ✅ Test coverage maintained at 89%+
+- ✅ Zero regression in existing tests
+
+### v0.1.6 Goals
+- ✅ Node/association management complete
+- ✅ Common QoS features implemented
+- ✅ Error reporting enhanced
+- ✅ 5G QFI support added
+- ✅ Test count: 1,400+
+
+### v0.2.0 Goals
+- ✅ Ethernet R16 support
+- ✅ Industrial 5G use cases enabled
+- ✅ Test coverage: 90%+
+
+### Long-term (v0.3.0+)
+- ✅ R17/R18 advanced features based on demand
+- ✅ ATSSS/TSN support for specific use cases
+- ✅ Maintain 3GPP compliance
+
+---
+
+## Risk Assessment
+
+### High Risk
+- **Time Estimates:** Complex grouped IEs may take longer than estimated
+  - **Mitigation:** Start with simpler IEs, refine estimates
+
+- **3GPP Spec Interpretation:** Some advanced IEs have unclear specifications
+  - **Mitigation:** Reference other implementations, consult 3GPP change requests
+
+### Medium Risk
+- **Test Coverage:** Maintaining 90%+ coverage with new IEs
+  - **Mitigation:** Strict testing requirements, automated coverage checks
+
+- **Breaking Changes:** Adding IEs shouldn't break existing code
+  - **Mitigation:** Semantic versioning, deprecation warnings
+
+### Low Risk
+- **Performance:** New IEs using same patterns shouldn't impact performance
+  - **Mitigation:** Continue benchmarking
+
+---
+
+## Dependencies
+
+### External
+- 3GPP TS 29.244 specification (Release 18)
+- Test PCAP files for validation
+- Reference implementations (free5gc, open5gs)
+
+### Internal
+- Existing IE infrastructure in `src/ie/`
+- Message layer support in `src/message/`
+- Test framework and coverage tools
+
+---
+
+## Next Steps
+
+### Immediate (This Week)
+1. Review and approve this plan
+2. Create GitHub issues for Phase 1 IEs
+3. Set up tracking milestone for v0.1.5
+
+### Phase 1 Kickoff (Next Week)
+1. Implement Remove URR (IE 17)
+2. Implement Remove BAR (IE 87)
+3. Begin usage reporting IEs (78, 79, 80)
+
+### Documentation
+1. Update CHANGELOG.md with plan
+2. Create GitHub project board for tracking
+3. Add implementation notes to CLAUDE.md
+
+---
+
+## Appendix: Complete Missing IE List
+
+### By IE Number (172 Total Missing)
+
+See script output above for complete enumeration.
+
+### By 3GPP Release
+
+- **Release 15 (Core):** ~10 missing IEs (Priority 1-2)
+- **Release 16 (Ethernet):** ~15 missing IEs (Priority 3)
+- **Release 17 (Advanced):** ~80 missing IEs (Priority 4)
+- **Release 18 (Latest):** ~67 missing IEs (Priority 4)
+
+---
+
+**Document Version:** 1.0
+**Last Updated:** 2025-01-25
+**Next Review:** After Phase 1 completion
+**Owner:** Development Team
