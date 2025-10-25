@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2025-10-25
+
+### Added
+
+#### 🎯 Complete Usage Reporting Support (Phase 1 Missing IE Implementation)
+- **Usage Report Wrapper IEs**: Context-specific wrappers per 3GPP TS 29.244
+  - `UsageReportSmr` (IE 78): Usage Report within Session Modification Response
+  - `UsageReportSdr` (IE 79): Usage Report within Session Deletion Response
+  - `UsageReportSrr` (IE 80): Usage Report within Session Report Request
+  - Composition pattern with shared `UsageReport` core
+- **Linked URR ID** (IE 82): For linking related Usage Reporting Rules
+- **Remove URR** (IE 17): Now exposed in module exports (already implemented)
+- **Remove BAR** (IE 87): Simple IE for removing Buffering Action Rules
+
+#### 📨 Enhanced Message Layer
+- **SessionModificationResponse**: Added `usage_reports`, `load_control_information`, `overload_control_information` fields
+- **SessionDeletionResponse**: Added `usage_reports`, `load_control_information`, `overload_control_information` fields
+- **Response Builder Enhancements**: Added `.marshal()` convenience method for one-step build+serialize
+- **Builder API**: Added `.usage_report()` and `.usage_reports()` methods to response builders
+
+#### 📚 Documentation
+- **CLAUDE.md**: Added comprehensive project guide for AI assistants (c89e47d)
+- **Missing IE Implementation Plan**: Complete roadmap for 161 remaining IEs (38b31e6)
+- **Test Coverage Plan**: Updated with Phase 1-3 completion status (8023f58, f905e85)
+
+### Changed
+
+#### ✨ Builder API Improvements
+- **Cause API Simplification** (92abd34): Response builders now accept `CauseValue` directly instead of raw `Ie`
+  - `.cause_accepted()`, `.cause_rejected()`, `.cause(CauseValue)` convenience methods
+  - More ergonomic and type-safe than previous `.cause_ie(Ie)` approach
+  - Backward compatible: `_ie` variants still available
+
+#### 🧪 Test Coverage Expansion
+- **Test Count**: Increased from 916 to 1,367 tests (+451 tests, +49% increase!)
+- **Message Layer Tests**: Comprehensive builder tests for all message types
+  - Association & Heartbeat builder tests (b78f80a)
+  - Session Establishment Request/Response tests (9deaa11)
+  - Session Modification Request builder tests (a86360b)
+  - Message dispatching and Generic message tests (93d80f7)
+- **IE Layer Tests**: Deep coverage for key IEs
+  - Volume Measurement comprehensive tests (e359aa6)
+  - Update Forwarding Parameters tests (54556f7)
+  - UE IP Address tests (ffafdf7)
+  - Reporting Triggers tests (c037b7d, 2d52e76)
+  - IE dispatching and vendor-specific IE tests (6a54bf3)
+- **Display System Tests**: Complete test suite for YAML/JSON formatting (d5a0675)
+
+#### 📦 Dependencies
+- **bitflags**: Updated from 2.9.4 to 2.10.0 (be5d20e)
+- **clap**: Updated from 4.5.48 to 4.5.49 (47eeecc)
+- **codecov-action**: Bumped from v4 to v5 (252eac9)
+
+#### 🏗️ Code Organization
+- **session-server**: Modularized message handling for better maintainability (f04b28b)
+
+### Fixed
+- **Source IP Address** (178682e): Implemented full 3GPP TS 29.244 spec compliance
+
+### Implementation Details
+
+**Core Session Management**: ✅ 100% Complete (35/35 IEs)
+**Usage Reporting**: 12/15 IEs (80% complete, 3 deferred to future)
+**Overall IE Coverage**: 112/273 modules implemented (41%)
+
+**Zero Regressions**: All 1,367 tests passing, no breaking changes
+
 ## [0.1.4] - 2025-01-19
 
 ### Added
@@ -189,6 +256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - YAML/JSON message display capabilities
 - Example applications (heartbeat, session management, PCAP reader)
 
+[0.1.5]: https://github.com/xandlom/rs-pfcp/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/xandlom/rs-pfcp/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/xandlom/rs-pfcp/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/xandlom/rs-pfcp/compare/v0.1.1...v0.1.2
