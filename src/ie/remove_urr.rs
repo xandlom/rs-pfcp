@@ -1,4 +1,5 @@
-use crate::ie::{Ie, IeType, UrrId};
+use crate::ie::urr_id::UrrId;
+use crate::ie::{Ie, IeType};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +36,7 @@ mod tests {
         let urr = RemoveUrr::new(UrrId::new(0x12345678));
         let marshaled = urr.marshal();
         assert_eq!(marshaled, vec![0x12, 0x34, 0x56, 0x78]);
-        
+
         let unmarshaled = RemoveUrr::unmarshal(&marshaled).unwrap();
         assert_eq!(urr, unmarshaled);
     }

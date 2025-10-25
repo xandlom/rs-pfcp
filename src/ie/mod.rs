@@ -71,6 +71,7 @@ pub mod remove_far;
 pub mod remove_pdr;
 pub mod remove_qer;
 pub mod remove_traffic_endpoint;
+pub mod remove_urr;
 pub mod reporting_triggers;
 pub mod sdf_filter;
 pub mod sequence_number;
