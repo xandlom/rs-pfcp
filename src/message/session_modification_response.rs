@@ -11,7 +11,10 @@ pub struct SessionModificationResponse {
     pub cause: Ie,
     pub offending_ie: Option<Ie>,
     pub created_pdr: Option<Ie>,
+    pub load_control_information: Option<Ie>,
+    pub overload_control_information: Option<Ie>,
     pub pdn_type: Option<Ie>,
+    pub usage_reports: Vec<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -26,7 +29,16 @@ impl Message for SessionModificationResponse {
         if let Some(ie) = &self.created_pdr {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.overload_control_information {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.pdn_type {
+            payload_len += ie.len();
+        }
+        for ie in &self.usage_reports {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -42,7 +54,16 @@ impl Message for SessionModificationResponse {
         if let Some(ie) = &self.created_pdr {
             data.extend_from_slice(&ie.marshal());
         }
+        if let Some(ie) = &self.load_control_information {
+            data.extend_from_slice(&ie.marshal());
+        }
+        if let Some(ie) = &self.overload_control_information {
+            data.extend_from_slice(&ie.marshal());
+        }
         if let Some(ie) = &self.pdn_type {
+            data.extend_from_slice(&ie.marshal());
+        }
+        for ie in &self.usage_reports {
             data.extend_from_slice(&ie.marshal());
         }
         for ie in &self.ies {
@@ -56,7 +77,10 @@ impl Message for SessionModificationResponse {
         let mut cause = None;
         let mut offending_ie = None;
         let mut created_pdr = None;
+        let mut load_control_information = None;
+        let mut overload_control_information = None;
         let mut pdn_type = None;
+        let mut usage_reports = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -67,7 +91,10 @@ impl Message for SessionModificationResponse {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
                 IeType::CreatedPdr => created_pdr = Some(ie),
+                IeType::LoadControlInformation => load_control_information = Some(ie),
+                IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 IeType::PdnType => pdn_type = Some(ie),
+                IeType::UsageReportWithinSessionModificationResponse => usage_reports.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -79,7 +106,10 @@ impl Message for SessionModificationResponse {
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
             offending_ie,
             created_pdr,
+            load_control_information,
+            overload_control_information,
             pdn_type,
+            usage_reports,
             ies,
         })
     }
@@ -109,20 +139,27 @@ impl Message for SessionModificationResponse {
             IeType::Cause => Some(&self.cause),
             IeType::OffendingIe => self.offending_ie.as_ref(),
             IeType::CreatedPdr => self.created_pdr.as_ref(),
+            IeType::LoadControlInformation => self.load_control_information.as_ref(),
+            IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
             IeType::PdnType => self.pdn_type.as_ref(),
+            IeType::UsageReportWithinSessionModificationResponse => self.usage_reports.first(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
 }
 
 impl SessionModificationResponse {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         seid: u64,
         seq: u32,
         cause_ie: Ie,
         offending_ie: Option<Ie>,
         created_pdr: Option<Ie>,
+        load_control_information: Option<Ie>,
+        overload_control_information: Option<Ie>,
         pdn_type: Option<Ie>,
+        usage_reports: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
@@ -133,7 +170,16 @@ impl SessionModificationResponse {
         if let Some(ie) = &created_pdr {
             payload_len += ie.len();
         }
+        if let Some(ie) = &load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &overload_control_information {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &pdn_type {
+            payload_len += ie.len();
+        }
+        for ie in &usage_reports {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -145,7 +191,10 @@ impl SessionModificationResponse {
             cause: cause_ie,
             offending_ie,
             created_pdr,
+            load_control_information,
+            overload_control_information,
             pdn_type,
+            usage_reports,
             ies,
         }
     }
@@ -159,7 +208,10 @@ pub struct SessionModificationResponseBuilder {
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     created_pdr: Option<Ie>,
+    load_control_information: Option<Ie>,
+    overload_control_information: Option<Ie>,
     pdn_type: Option<Ie>,
+    usage_reports: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -172,7 +224,10 @@ impl SessionModificationResponseBuilder {
             cause: None,
             offending_ie: None,
             created_pdr: None,
+            load_control_information: None,
+            overload_control_information: None,
             pdn_type: None,
+            usage_reports: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -226,9 +281,36 @@ impl SessionModificationResponseBuilder {
         self
     }
 
+    /// Sets the load control information IE (optional).
+    pub fn load_control_information(mut self, load_control_information: Ie) -> Self {
+        self.load_control_information = Some(load_control_information);
+        self
+    }
+
+    /// Sets the overload control information IE (optional).
+    pub fn overload_control_information(mut self, overload_control_information: Ie) -> Self {
+        self.overload_control_information = Some(overload_control_information);
+        self
+    }
+
     /// Sets the PDN type IE (optional).
     pub fn pdn_type(mut self, pdn_type: Ie) -> Self {
         self.pdn_type = Some(pdn_type);
+        self
+    }
+
+    /// Adds usage reports (optional).
+    ///
+    /// Usage reports in Session Modification Response should use IE type 78
+    /// (UsageReportWithinSessionModificationResponse).
+    pub fn usage_reports(mut self, mut usage_reports: Vec<Ie>) -> Self {
+        self.usage_reports.append(&mut usage_reports);
+        self
+    }
+
+    /// Adds a single usage report (optional).
+    pub fn usage_report(mut self, usage_report: Ie) -> Self {
+        self.usage_reports.push(usage_report);
         self
     }
 
@@ -259,7 +341,10 @@ impl SessionModificationResponseBuilder {
             cause,
             self.offending_ie,
             self.created_pdr,
+            self.load_control_information,
+            self.overload_control_information,
             self.pdn_type,
+            self.usage_reports,
             self.ies,
         )
     }
@@ -279,7 +364,10 @@ impl SessionModificationResponseBuilder {
             cause,
             self.offending_ie,
             self.created_pdr,
+            self.load_control_information,
+            self.overload_control_information,
             self.pdn_type,
+            self.usage_reports,
             self.ies,
         ))
     }
@@ -294,6 +382,10 @@ impl SessionModificationResponseBuilder {
 mod tests {
     use super::*;
     use crate::ie::cause::*;
+    use crate::ie::sequence_number::SequenceNumber;
+    use crate::ie::urr_id::UrrId;
+    use crate::ie::usage_report::UsageReportBuilder;
+    use crate::ie::usage_report_smr::UsageReportSmr;
 
     #[test]
     fn test_session_modification_response_builder_minimal() {
@@ -474,5 +566,69 @@ mod tests {
         let unmarshaled = SessionModificationResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_session_modification_response_with_usage_reports() {
+        // Create a usage report using the typed wrapper
+        let usage_report =
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(100))
+                .with_volume_data(5000000, 3000000, 2000000)
+                .build()
+                .unwrap();
+
+        let usage_report_smr = UsageReportSmr::new(usage_report);
+        let usage_report_ie = usage_report_smr.to_ie();
+
+        // Verify the IE has the correct type
+        assert_eq!(
+            usage_report_ie.ie_type,
+            IeType::UsageReportWithinSessionModificationResponse
+        );
+
+        // Build a Session Modification Response with the usage report
+        let response = SessionModificationResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .usage_report(usage_report_ie.clone())
+            .build();
+
+        assert_eq!(response.usage_reports.len(), 1);
+        assert_eq!(response.usage_reports[0], usage_report_ie);
+        assert_eq!(
+            response.find_ie(IeType::UsageReportWithinSessionModificationResponse),
+            Some(&usage_report_ie)
+        );
+
+        // Test marshal/unmarshal round trip
+        let marshaled = response.marshal();
+        let unmarshaled = SessionModificationResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.usage_reports.len(), 1);
+    }
+
+    #[test]
+    fn test_session_modification_response_with_multiple_usage_reports() {
+        let usage_report1 = UsageReportSmr::new(
+            UsageReportBuilder::periodic_usage_report(UrrId::new(1), SequenceNumber::new(1))
+                .build()
+                .unwrap(),
+        );
+        let usage_report2 = UsageReportSmr::new(
+            UsageReportBuilder::volume_threshold_report(UrrId::new(2), SequenceNumber::new(2))
+                .build()
+                .unwrap(),
+        );
+
+        let response = SessionModificationResponseBuilder::new(11111, 22222)
+            .cause_accepted()
+            .usage_reports(vec![usage_report1.to_ie(), usage_report2.to_ie()])
+            .build();
+
+        assert_eq!(response.usage_reports.len(), 2);
+
+        // Test round trip
+        let marshaled = response.marshal();
+        let unmarshaled = SessionModificationResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
     }
 }

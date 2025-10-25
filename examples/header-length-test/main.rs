@@ -11,7 +11,7 @@ fn main() {
     // Test Session Deletion Response
     println!("1. Session Deletion Response:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    let response = SessionDeletionResponse::new(1, 4, cause_ie, None, vec![]);
+    let response = SessionDeletionResponse::new(1, 4, cause_ie, None, None, None, vec![], vec![]);
     test_message_length(&response, "SessionDeletionResponse");
 
     println!();
@@ -19,7 +19,18 @@ fn main() {
     // Test Session Modification Response
     println!("2. Session Modification Response:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    let response = SessionModificationResponse::new(1, 3, cause_ie, None, None, None, vec![]);
+    let response = SessionModificationResponse::new(
+        1,
+        3,
+        cause_ie,
+        None,
+        None,
+        None,
+        None,
+        None,
+        vec![],
+        vec![],
+    );
     test_message_length(&response, "SessionModificationResponse");
 
     println!();

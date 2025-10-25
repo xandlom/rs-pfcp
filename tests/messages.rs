@@ -312,8 +312,16 @@ fn test_session_deletion_response_marshal_unmarshal() {
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-    let res =
-        SessionDeletionResponse::new(0x1122334455667788, 0x112233, cause_ie.clone(), None, vec![]);
+    let res = SessionDeletionResponse::new(
+        0x1122334455667788,
+        0x112233,
+        cause_ie.clone(),
+        None,
+        None,
+        None,
+        vec![],
+        vec![],
+    );
 
     let serialized = res.marshal();
     let unmarshaled = SessionDeletionResponse::unmarshal(&serialized).unwrap();
@@ -367,7 +375,10 @@ fn test_session_modification_response_marshal_unmarshal() {
         cause: cause_ie.clone(),
         offending_ie: None,
         created_pdr: Some(pdr_ie.clone()),
+        load_control_information: None,
+        overload_control_information: None,
         pdn_type: None,
+        usage_reports: vec![],
         ies: vec![],
     };
 

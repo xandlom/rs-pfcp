@@ -89,7 +89,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cause_ie,
         None,
         None,
+        None,
+        None,
         Some(ipv4_pdn.clone()), // ✅ PDN Type included in response to confirm change
+        vec![],
         vec![],
     );
 

@@ -8,6 +8,9 @@ pub struct SessionDeletionResponse {
     pub header: Header,
     pub cause: Ie,
     pub offending_ie: Option<Ie>,
+    pub load_control_information: Option<Ie>,
+    pub overload_control_information: Option<Ie>,
+    pub usage_reports: Vec<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -19,6 +22,15 @@ impl Message for SessionDeletionResponse {
         if let Some(ie) = &self.offending_ie {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.overload_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.usage_reports {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -27,6 +39,15 @@ impl Message for SessionDeletionResponse {
         let mut buffer = header.marshal();
         buffer.extend_from_slice(&self.cause.marshal());
         if let Some(ie) = &self.offending_ie {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        if let Some(ie) = &self.load_control_information {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        if let Some(ie) = &self.overload_control_information {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        for ie in &self.usage_reports {
             buffer.extend_from_slice(&ie.marshal());
         }
         for ie in &self.ies {
@@ -40,6 +61,9 @@ impl Message for SessionDeletionResponse {
         let mut cursor = header.len() as usize;
         let mut cause = None;
         let mut offending_ie = None;
+        let mut load_control_information = None;
+        let mut overload_control_information = None;
+        let mut usage_reports = Vec::new();
         let mut ies = Vec::new();
 
         while cursor < data.len() {
@@ -49,6 +73,9 @@ impl Message for SessionDeletionResponse {
             match ie.ie_type {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
+                IeType::LoadControlInformation => load_control_information = Some(ie),
+                IeType::OverloadControlInformation => overload_control_information = Some(ie),
+                IeType::UsageReportWithinSessionDeletionResponse => usage_reports.push(ie),
                 _ => ies.push(ie),
             }
             cursor += ie_len;
@@ -60,6 +87,9 @@ impl Message for SessionDeletionResponse {
                 std::io::Error::new(std::io::ErrorKind::InvalidData, "Cause IE not found")
             })?,
             offending_ie,
+            load_control_information,
+            overload_control_information,
+            usage_reports,
             ies,
         })
     }
@@ -85,23 +115,41 @@ impl Message for SessionDeletionResponse {
     }
 
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        if self.cause.ie_type == ie_type {
-            return Some(&self.cause);
+        match ie_type {
+            IeType::Cause => Some(&self.cause),
+            IeType::OffendingIe => self.offending_ie.as_ref(),
+            IeType::LoadControlInformation => self.load_control_information.as_ref(),
+            IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
+            IeType::UsageReportWithinSessionDeletionResponse => self.usage_reports.first(),
+            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
-        if let Some(ie) = &self.offending_ie {
-            if ie.ie_type == ie_type {
-                return Some(ie);
-            }
-        }
-        self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
 }
 
 impl SessionDeletionResponse {
-    pub fn new(seid: u64, seq: u32, cause_ie: Ie, offending_ie: Option<Ie>, ies: Vec<Ie>) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        seid: u64,
+        seq: u32,
+        cause_ie: Ie,
+        offending_ie: Option<Ie>,
+        load_control_information: Option<Ie>,
+        overload_control_information: Option<Ie>,
+        usage_reports: Vec<Ie>,
+        ies: Vec<Ie>,
+    ) -> Self {
         let mut header = Header::new(MsgType::SessionDeletionResponse, true, seid, seq);
         let mut payload_len = cause_ie.len();
         if let Some(ie) = &offending_ie {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &overload_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &usage_reports {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -112,6 +160,9 @@ impl SessionDeletionResponse {
             header,
             cause: cause_ie,
             offending_ie,
+            load_control_information,
+            overload_control_information,
+            usage_reports,
             ies,
         }
     }
@@ -124,6 +175,9 @@ pub struct SessionDeletionResponseBuilder {
     sequence: u32,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
+    load_control_information: Option<Ie>,
+    overload_control_information: Option<Ie>,
+    usage_reports: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -135,6 +189,9 @@ impl SessionDeletionResponseBuilder {
             sequence,
             cause: None,
             offending_ie: None,
+            load_control_information: None,
+            overload_control_information: None,
+            usage_reports: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -182,6 +239,33 @@ impl SessionDeletionResponseBuilder {
         self
     }
 
+    /// Sets the load control information IE (optional).
+    pub fn load_control_information(mut self, load_control_information: Ie) -> Self {
+        self.load_control_information = Some(load_control_information);
+        self
+    }
+
+    /// Sets the overload control information IE (optional).
+    pub fn overload_control_information(mut self, overload_control_information: Ie) -> Self {
+        self.overload_control_information = Some(overload_control_information);
+        self
+    }
+
+    /// Adds usage reports (optional).
+    ///
+    /// Usage reports in Session Deletion Response should use IE type 79
+    /// (UsageReportWithinSessionDeletionResponse).
+    pub fn usage_reports(mut self, mut usage_reports: Vec<Ie>) -> Self {
+        self.usage_reports.append(&mut usage_reports);
+        self
+    }
+
+    /// Adds a single usage report (optional).
+    pub fn usage_report(mut self, usage_report: Ie) -> Self {
+        self.usage_reports.push(usage_report);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -203,7 +287,16 @@ impl SessionDeletionResponseBuilder {
             .cause
             .expect("Cause IE is required for SessionDeletionResponse");
 
-        SessionDeletionResponse::new(self.seid, self.sequence, cause, self.offending_ie, self.ies)
+        SessionDeletionResponse::new(
+            self.seid,
+            self.sequence,
+            cause,
+            self.offending_ie,
+            self.load_control_information,
+            self.overload_control_information,
+            self.usage_reports,
+            self.ies,
+        )
     }
 
     /// Tries to build the SessionDeletionResponse message.
@@ -220,6 +313,9 @@ impl SessionDeletionResponseBuilder {
             self.sequence,
             cause,
             self.offending_ie,
+            self.load_control_information,
+            self.overload_control_information,
+            self.usage_reports,
             self.ies,
         ))
     }
@@ -234,6 +330,10 @@ impl SessionDeletionResponseBuilder {
 mod tests {
     use super::*;
     use crate::ie::cause::*;
+    use crate::ie::sequence_number::SequenceNumber;
+    use crate::ie::urr_id::UrrId;
+    use crate::ie::usage_report::UsageReportBuilder;
+    use crate::ie::usage_report_sdr::UsageReportSdr;
 
     #[test]
     fn test_session_deletion_response_builder_minimal() {
@@ -366,5 +466,44 @@ mod tests {
         let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_session_deletion_response_with_usage_reports() {
+        // Create a usage report using the typed wrapper for final session usage
+        let usage_report =
+            UsageReportBuilder::stop_of_traffic_report(UrrId::new(1), SequenceNumber::new(100))
+                .with_volume_data(10000000, 6000000, 4000000)
+                .with_duration(7200)
+                .build()
+                .unwrap();
+
+        let usage_report_sdr = UsageReportSdr::new(usage_report);
+        let usage_report_ie = usage_report_sdr.to_ie();
+
+        // Verify the IE has the correct type
+        assert_eq!(
+            usage_report_ie.ie_type,
+            IeType::UsageReportWithinSessionDeletionResponse
+        );
+
+        // Build a Session Deletion Response with the usage report
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .usage_report(usage_report_ie.clone())
+            .build();
+
+        assert_eq!(response.usage_reports.len(), 1);
+        assert_eq!(response.usage_reports[0], usage_report_ie);
+        assert_eq!(
+            response.find_ie(IeType::UsageReportWithinSessionDeletionResponse),
+            Some(&usage_report_ie)
+        );
+
+        // Test marshal/unmarshal round trip
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.usage_reports.len(), 1);
     }
 }

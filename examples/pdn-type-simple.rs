@@ -42,7 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cause_ie,                 // Cause IE
         None,                     // Offending IE
         None,                     // Created PDR
+        None,                     // Load control information
+        None,                     // Overload control information
         Some(ipv4v6_pdn.clone()), // ✅ PDN Type IE - THIS IS THE KEY FIX!
+        vec![],                   // Usage reports
         vec![],                   // Additional IEs
     );
 
