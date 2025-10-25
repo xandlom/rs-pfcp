@@ -5,8 +5,8 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 ## Implementation Status Summary
 
 **Total IEs Defined**: 272+ (comprehensive 3GPP TS 29.244 Release 18+ coverage)
-**Implemented IEs**: 104+ core IEs with 272+ enum variants
-**Test Coverage**: 700+ comprehensive tests
+**Implemented IEs**: 110 core IEs with 272+ enum variants
+**Test Coverage**: 1,364 comprehensive tests
 **Compliance Level**: 🎉 **COMPLETE 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ## Core PFCP Information Elements (Implemented)
@@ -78,7 +78,9 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Inactivity Detection Time              | 36   | ✅ Yes  | Session inactivity timeout |
 | Volume Measurement                     | 66   | ✅ Yes  | Measured data volumes |
 | Duration Measurement                   | 67   | ✅ Yes  | Measured session duration |
-| Usage Report                           | 80   | ✅ Yes  | Complete usage reporting |
+| Usage Report Within Session Mod. Resp. | 78   | ✅ Yes  | Usage report in modification response |
+| Usage Report Within Session Del. Resp. | 79   | ✅ Yes  | Usage report in deletion response |
+| Usage Report Within Session Report Req.| 80   | ✅ Yes  | Usage report in session report request |
 
 ### Network Slicing and 5G Features (Release 18)
 | IE Name                                | Type | Status | Description |
@@ -134,6 +136,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | PDR ID                                 | 56   | ✅ Yes  | Packet Detection Rule ID |
 | FAR ID                                 | 108  | ✅ Yes  | Forwarding Action Rule ID |
 | URR ID                                 | 81   | ✅ Yes  | Usage Reporting Rule ID |
+| Linked URR ID                          | 82   | ✅ Yes  | Linked Usage Reporting Rule ID |
 | QER ID                                 | 109  | ✅ Yes  | QoS Enforcement Rule ID |
 
 ## Key Implementation Features
@@ -145,7 +148,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 - ✅ **Full node management** and association handling
 - ✅ **3GPP compliant F-TEID encoding** with CHOOSE/CHOOSE_ID flags
 - ✅ **Release 18 enhanced features** including network slicing and multi-access
-- ✅ **700+ comprehensive tests** with full serialization validation
+- ✅ **1,364 comprehensive tests** with full serialization validation
 
 ### F-TEID Implementation Highlights
 ```rust
