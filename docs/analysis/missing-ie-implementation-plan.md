@@ -2,30 +2,44 @@
 
 **Project:** rs-pfcp
 **Created:** 2025-10-25
-**Status:** Phase 1 Complete - Ready for v0.1.5 Release
-**Target Release:** 0.1.5 and beyond
+**Last Updated:** 2025-10-26
+**Status:** Phase 2 In Progress - Sprint 1 Complete, Sprint 2 Underway
+**Target Release:** 0.1.6 (Phase 2)
 
 ---
 
 ## Executive Summary
 
-**Current State (Updated 2025-10-25):**
+**Current State (Updated 2025-10-26 - Phase 2 Progress):**
 - **Total IE Types Defined:** 273 (in IeType enum)
-- **Total IE Modules Implemented:** 112 (+6 from Phase 1)
-- **Missing Implementations:** 161 IEs (59% gap, down from 61%)
-- **Compliance Status:** Core PFCP (R15/R16) complete, R17/R18 advanced features missing
-- **Test Count:** 1,367 tests passing (+7 from Phase 1)
-- **Test Coverage:** ~89% maintained
+- **Total IE Modules Implemented:** 119 (+7 from Phase 2 Sprint 1 + 1 from Sprint 2)
+- **Missing Implementations:** 154 IEs (56% gap, down from 59%)
+- **Compliance Status:** Core PFCP (R15/R16) complete, R17/R18 advanced features mostly missing
+- **Test Count:** 1,522 tests passing (+155 from Phase 2)
+- **Test Coverage:** ~90% maintained and improved
 
-**Phase 1 Achievements (v0.1.5):**
+**Phase 1 Achievements (v0.1.5 - RELEASED):** ✅
 - ✅ All 6 Priority 1 IEs implemented and tested
 - ✅ Complete usage reporting support across all message types
 - ✅ Message layer integration for Session Modification/Deletion Response
 - ✅ Zero regression - all existing tests passing
-- ✅ Ready for v0.1.5 release
+- ✅ v0.1.5 release published
+
+**Phase 2 Sprint 1 Achievements (v0.1.6 - COMPLETE):** ✅
+- ✅ RQI (IE 123) - Reflective QoS Indicator - 15 tests
+- ✅ QFI (IE 124) - QoS Flow Identifier - 17 tests
+- ✅ Application Instance ID (IE 91) - Application identification - 16 tests
+- ✅ DL Flow Level Marking (IE 97) - Downlink DSCP marking - 15 tests
+- ✅ Report Type (IE 39) - Report type indicators - 40 tests
+- ✅ Failed Rule ID (IE 114) - Error indication - 29 tests
+- ✅ 131 tests added, all passing
+
+**Phase 2 Sprint 2 Progress (In Progress):** 🚀
+- ✅ Averaging Window (IE 115) - QoS monitoring time window - 23 tests
+- ⏳ Remaining: 4 IEs identified for implementation
 
 **Strategy:**
-Phase 1 (Priority 1 IEs) complete. Ready to release v0.1.5 with complete usage reporting support. Phase 2 (17 commonly used IEs) scheduled for v0.1.6.
+Phase 1 complete and released as v0.1.5. Phase 2 Sprint 1 complete with 6 commonly-used IEs. Sprint 2 in progress with high-value IEs. Target v0.1.6 release with Phase 2 completion.
 
 ---
 
@@ -276,36 +290,50 @@ Already partially supported (S-NSSAI exists)
 - `ec29c05` - feat(ie): implement Phase 1 simple IEs (Remove BAR, Linked URR ID)
 - `0d27951` - feat(ie): expose Remove URR IE in module exports
 
-### Phase 2: v0.1.6 Release (Q2 2025)
+### Phase 2: v0.1.6 Release (October 2025)
 
-**Goal:** Node management and common features
-**Effort:** 45 hours
+**Goal:** High-priority IEs for 5G QoS, monitoring, and error handling
+**Estimated Effort:** 45 hours
 **IEs to Implement:** 17 IEs
+**Status:** Sprint 1 COMPLETE ✅ | Sprint 2 In Progress 🚀
 
-1. **Node/Association (4 IEs - 12h)**
-   - UP Function Features
-   - CP Function Features
-   - PFCP Association Release Request
-   - Graceful Release Period
+#### Sprint 1 - COMPLETED ✅ (7 IEs, ~10 hours actual)
+1. **5G QoS Identifiers (2 IEs)**
+   - ✅ RQI (IE 123) - Reflective QoS Indicator - 15 tests
+   - ✅ QFI (IE 124) - QoS Flow Identifier - 17 tests
 
-2. **QoS & Traffic (5 IEs - 13h)**
-   - Packet Rate
-   - DL Flow Level Marking
-   - Packet Rate Status
-   - QER Control Indications
-   - Packet Rate Status Report
+2. **Application Identification (1 IE)**
+   - ✅ Application Instance ID (IE 91) - Application instance - 16 tests
 
-3. **Error Handling (3 IEs - 8h)**
-   - Report Type
-   - Error Indication Report
-   - Failed Rule ID
+3. **QoS Marking (1 IE)**
+   - ✅ DL Flow Level Marking (IE 97) - Downlink DSCP marking - 15 tests
 
-4. **Advanced IDs (5 IEs - 12h)**
-   - QFI
-   - RQI
-   - Application Instance ID
-   - Flow Information
-   - Created Traffic Endpoint
+4. **Reporting (2 IEs)**
+   - ✅ Report Type (IE 39) - Report type flags - 40 tests
+   - ✅ Failed Rule ID (IE 114) - Error rule identification - 29 tests
+
+**Sprint 1 Commits:**
+- `70d8207` - feat(ie): implement Phase 2 Sprint 1 - Part 1 (RQI, QFI, Application Instance ID)
+- `6620d5a` - feat(ie): implement Phase 2 Sprint 1 - Part 1 & 2 (DL Flow Level Marking, Report Type, Failed Rule ID)
+
+#### Sprint 2 - In Progress 🚀 (2+ IEs, ~5 hours)
+1. **QoS Monitoring (1 IE - COMPLETE ✅)**
+   - ✅ Averaging Window (IE 115) - Measurement window in milliseconds - 23 tests
+
+2. **Remaining High-Priority IEs (4 IEs - In Progress)**
+   - ⏳ Flow Information (IE 92)
+   - ⏳ Error Indication Report (IE 99)
+   - ⏳ Additional pending review
+
+**Sprint 2 Commits:**
+- `87a52ba` - feat(ie): implement Averaging Window (IE 115) - QoS monitoring time window
+
+#### Phase 2 Statistics
+- **IEs Completed:** 7 of 17 (41%)
+- **Tests Added:** 155 tests (131 Sprint 1 + 24 Sprint 2)
+- **Total Tests:** 1,522 passing
+- **Effort:** ~10 hours actual / 45 hours estimated (22% complete)
+- **Code Quality:** 100% pass rate, all checks passing
 
 ### Phase 3: v0.2.0 Release (Q3 2025)
 
