@@ -3,6 +3,7 @@
 use std::io;
 
 pub mod activate_predefined_rules;
+pub mod activation_time;
 pub mod additional_usage_reports_information;
 pub mod alternative_smf_ip_address;
 pub mod apn_dnn;
@@ -24,6 +25,7 @@ pub mod create_traffic_endpoint;
 pub mod create_urr;
 pub mod created_pdr;
 pub mod deactivate_predefined_rules;
+pub mod deactivation_time;
 pub mod destination_interface;
 pub mod dl_buffering_duration;
 pub mod dl_flow_level_marking;
