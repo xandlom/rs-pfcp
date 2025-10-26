@@ -50,6 +50,7 @@ pub mod mbr;
 pub mod measurement_method;
 pub mod metric;
 pub mod monitoring_time;
+pub mod multiplier;
 pub mod network_instance;
 pub mod node_id;
 pub mod offending_ie;
