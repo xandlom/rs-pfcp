@@ -57,6 +57,7 @@ pub mod offending_ie;
 pub mod outer_header_creation;
 pub mod outer_header_removal;
 pub mod overload_control_information;
+pub mod paging_policy_indicator;
 pub mod path_failure_report;
 pub mod pdi;
 pub mod pdn_type;
