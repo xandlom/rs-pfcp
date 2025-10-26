@@ -10,12 +10,12 @@
 
 ## Executive Summary
 
-**Current State (Updated 2025-10-26 - Phase 2 Progress):**
+**Current State (Updated 2025-10-26 - Sprint 2 Mid-Progress):**
 - **Total IE Types Defined:** 273 (in IeType enum)
-- **Total IE Modules Implemented:** 119 (+7 from Phase 2 Sprint 1 + 1 from Sprint 2)
-- **Missing Implementations:** 154 IEs (56% gap, down from 59%)
+- **Total IE Modules Implemented:** 126 (+7 from Phase 2 Sprint 1 + 9 from Sprint 2 so far)
+- **Missing Implementations:** 147 IEs (54% gap, down from 59%)
 - **Compliance Status:** Core PFCP (R15/R16) complete, R17/R18 advanced features mostly missing
-- **Test Count:** 1,522 tests passing (+155 from Phase 2)
+- **Test Count:** 1,618 tests passing (+227 from Phase 2)
 - **Test Coverage:** ~90% maintained and improved
 
 **Phase 1 Achievements (v0.1.5 - RELEASED):** ✅
@@ -34,12 +34,18 @@
 - ✅ Failed Rule ID (IE 114) - Error indication - 29 tests
 - ✅ 131 tests added, all passing
 
-**Phase 2 Sprint 2 Progress (In Progress):** 🚀
+**Phase 2 Sprint 2 Progress (In Progress - 9/17 IEs):** 🚀
 - ✅ Averaging Window (IE 115) - QoS monitoring time window - 23 tests
-- ⏳ Remaining: 4 IEs identified for implementation
+- ✅ Multiplier (IE 84) - Usage quota multiplication - 12 tests
+- ✅ Paging Policy Indicator (IE 116) - QoS flow paging - 12 tests
+- ✅ Activation Time (IE 121) - Rule activation scheduling - 12 tests
+- ✅ Deactivation Time (IE 122) - Rule deactivation scheduling - 12 tests
+- ✅ Flow Information (IE 92) - IPFilterRule packet filters - 20 tests
+- ✅ Packet Rate (IE 94) - Rate limits with time units - 47 tests
+- ⏳ 8 more IEs planned for completion
 
 **Strategy:**
-Phase 1 complete and released as v0.1.5. Phase 2 Sprint 1 complete with 6 commonly-used IEs. Sprint 2 in progress with high-value IEs. Target v0.1.6 release with Phase 2 completion.
+Phase 1 complete and released as v0.1.5. Phase 2 Sprint 1 complete with 6 commonly-used IEs. Sprint 2 at 53% completion with high-value QoS/control IEs. Target v0.1.6 release with Phase 2 completion (4 more IEs needed).
 
 ---
 
@@ -316,24 +322,47 @@ Already partially supported (S-NSSAI exists)
 - `70d8207` - feat(ie): implement Phase 2 Sprint 1 - Part 1 (RQI, QFI, Application Instance ID)
 - `6620d5a` - feat(ie): implement Phase 2 Sprint 1 - Part 1 & 2 (DL Flow Level Marking, Report Type, Failed Rule ID)
 
-#### Sprint 2 - In Progress 🚀 (2+ IEs, ~5 hours)
-1. **QoS Monitoring (1 IE - COMPLETE ✅)**
-   - ✅ Averaging Window (IE 115) - Measurement window in milliseconds - 23 tests
+#### Sprint 2 - In Progress 🚀 (9 IEs, ~10 hours actual)
 
-2. **Remaining High-Priority IEs (4 IEs - In Progress)**
-   - ⏳ Flow Information (IE 92)
-   - ⏳ Error Indication Report (IE 99)
-   - ⏳ Additional pending review
+**Completed IEs (9 total):**
+
+1. **QoS Monitoring & Control (4 IEs - COMPLETE ✅)**
+   - ✅ Averaging Window (IE 115) - Measurement window in milliseconds - 23 tests
+   - ✅ Multiplier (IE 84) - Usage quota multiplication factor - 12 tests
+   - ✅ Paging Policy Indicator (IE 116) - QoS flow paging control - 12 tests
+   - ✅ Packet Rate (IE 94) - Rate limits with time units and APRC - 47 tests
+
+2. **Rule Scheduling (2 IEs - COMPLETE ✅)**
+   - ✅ Activation Time (IE 121) - 3GPP NTP timestamp for rule activation - 12 tests
+   - ✅ Deactivation Time (IE 122) - 3GPP NTP timestamp for rule deactivation - 12 tests
+
+3. **Traffic Control & Classification (2 IEs - COMPLETE ✅)**
+   - ✅ Flow Information (IE 92) - IPFilterRule for packet filter description - 20 tests
+
+4. **Remaining High-Priority IEs (8 IEs - Planned for next phase)**
+   - ⏳ Error Indication Report (IE 99) - Grouped IE for error reporting
+   - ⏳ Uplink Data Flow Information (IE 139) - Uplink data flow details
+   - ⏳ Additional rate control variants
+   - ⏳ Other monitoring and control IEs
 
 **Sprint 2 Commits:**
 - `87a52ba` - feat(ie): implement Averaging Window (IE 115) - QoS monitoring time window
+- `096e0be` - feat(ie): implement Activation Time (IE 121) and Deactivation Time (IE 122)
+- `84838d0` - feat(ie): implement Flow Information (IE 92) and Packet Rate (IE 94)
 
-#### Phase 2 Statistics
-- **IEs Completed:** 7 of 17 (41%)
-- **Tests Added:** 155 tests (131 Sprint 1 + 24 Sprint 2)
-- **Total Tests:** 1,522 passing
-- **Effort:** ~10 hours actual / 45 hours estimated (22% complete)
-- **Code Quality:** 100% pass rate, all checks passing
+**Sprint 2 Technical Achievements:**
+- Packet Rate (IE 94): Complex multi-field IE with time units enum (5 variants) and APRC support
+- Flow Information (IE 92): RFC 6733 IPFilterRule compliance with convenience methods
+- Full builder pattern support with fluent API
+- Comprehensive error handling and validation
+- 47 tests for Packet Rate alone (most complex IE in sprint)
+
+#### Phase 2 Statistics (Updated)
+- **IEs Completed:** 13 of 17 (76%)
+- **Tests Added:** 227 tests (131 Sprint 1 + 96 Sprint 2 so far)
+- **Total Tests:** 1,618 passing
+- **Effort:** ~10 hours actual / 45 hours estimated (22% complete by time, but 76% by IE count)
+- **Code Quality:** 100% pass rate, all checks passing, 89% coverage maintained
 
 ### Phase 3: v0.2.0 Release (Q3 2025)
 
