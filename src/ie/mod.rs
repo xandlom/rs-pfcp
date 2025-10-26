@@ -11,6 +11,7 @@ pub mod application_id;
 pub mod application_ids_pfds;
 pub mod application_instance_id;
 pub mod apply_action;
+pub mod averaging_window;
 pub mod bar;
 pub mod bar_id;
 pub mod cause;
