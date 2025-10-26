@@ -36,7 +36,7 @@ impl UPFunctionFeatures {
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "Not enough data for UPFunctionFeatures",
@@ -57,7 +57,8 @@ mod tests {
 
     #[test]
     fn test_up_function_features_marshal_unmarshal() {
-        let features = UPFunctionFeatures::BUCP | UPFunctionFeatures::PFDM | UPFunctionFeatures::MPTCP;
+        let features =
+            UPFunctionFeatures::BUCP | UPFunctionFeatures::PFDM | UPFunctionFeatures::MPTCP;
         let marshaled = features.marshal();
         let unmarshaled = UPFunctionFeatures::unmarshal(&marshaled).unwrap();
         assert_eq!(features, unmarshaled);
