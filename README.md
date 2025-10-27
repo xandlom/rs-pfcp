@@ -16,9 +16,9 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - 112+ Information Elements implemented with complete core session management
+- 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - 120+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 1,367 comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 1,712 comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - YAML/JSON message display, network interface support, and robust examples
 
@@ -46,9 +46,9 @@ let request = AssociationSetupRequestBuilder::new(seq)
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **104+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
-- ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags
-- ✅ **5G Core Integration** - Session establishment, modification, deletion, and usage reporting
+- ✅ **120+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting
+- ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
 
 ## 🏃‍♂️ Quick Start
 
@@ -174,7 +174,7 @@ rs-pfcp/
 # Build the library
 cargo build
 
-# Run all tests (1,367 tests)
+# Run all tests (1,712 tests)
 cargo test
 
 # Run specific test category
