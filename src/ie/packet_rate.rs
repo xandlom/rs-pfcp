@@ -402,6 +402,7 @@ impl PacketRate {
     /// ```
     /// use rs_pfcp::ie::packet_rate::PacketRate;
     /// use rs_pfcp::ie::packet_rate::TimeUnit;
+    /// use rs_pfcp::ie::IeType;
     ///
     /// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000)?;
     /// let ie = rate.to_ie()?;

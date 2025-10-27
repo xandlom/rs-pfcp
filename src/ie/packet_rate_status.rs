@@ -31,16 +31,20 @@ use std::io;
 /// ```
 /// use rs_pfcp::ie::packet_rate_status::PacketRateStatus;
 ///
+/// # fn example() -> Result<(), std::io::Error> {
 /// // Create with uplink remaining packets
 /// let prs = PacketRateStatus::new(true, false, false);
-/// let mut prs = prs.with_remaining_uplink_packets(1000);
+/// let prs = prs.with_remaining_uplink_packets(1000);
+/// let prs = prs.with_validity_time([0x00; 8]);
 /// assert!(prs.uplink_present());
 ///
 /// // Marshal and unmarshal
 /// let bytes = prs.marshal()?;
 /// let parsed = PacketRateStatus::unmarshal(&bytes)?;
 /// assert_eq!(prs, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok(())
+/// # }
+/// # example().ok();
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PacketRateStatus {
