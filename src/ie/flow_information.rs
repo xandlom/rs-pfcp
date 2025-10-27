@@ -9,7 +9,7 @@ use std::io;
 /// Flow Information
 ///
 /// Specifies a packet filter rule in IPFilterRule format per RFC 6733 and 3GPP TS 29.212.
-/// The rule follows the format: `permit out <protocol> from <src-addr> [port] to <dst-addr> [port]`
+/// The rule follows the format: `permit out \<protocol\> from \<src-addr\> [port] to \<dst-addr\> [port]`
 ///
 /// # 3GPP Reference
 /// 3GPP TS 29.244 Section 8.2.61
@@ -18,7 +18,7 @@ use std::io;
 ///
 /// # Structure
 /// - Variable length: UTF-8 encoded IPFilterRule string (max 255 bytes)
-/// - Format: "permit out <protocol> from <source> to <destination>"
+/// - Format: "permit out \<protocol\> from \<source\> to \<destination\>"
 ///   - Action: always "permit"
 ///   - Direction: always "out"
 ///   - Protocol: decimal number or "ip" (not used)
