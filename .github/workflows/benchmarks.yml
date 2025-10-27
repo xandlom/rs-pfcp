@@ -44,7 +44,7 @@ jobs:
         cargo bench --bench ie_operations -- --sample-size 20
 
     - name: Store benchmark results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: benchmark-results
         path: target/criterion/
@@ -104,7 +104,7 @@ jobs:
         echo '```' >> $GITHUB_STEP_SUMMARY
 
     - name: Upload comparison results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: benchmark-comparison
         path: target/criterion/
