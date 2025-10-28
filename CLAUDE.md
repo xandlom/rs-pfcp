@@ -11,8 +11,8 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 **Key characteristics:**
 - Zero-copy binary protocol implementation
 - 25 message types (100% coverage)
-- 104+ Information Elements (IEs) with 272+ enum variants
-- 1,322 comprehensive tests with round-trip validation (~89% coverage)
+- 120+ Information Elements (IEs) with 272+ enum variants
+- 1,712 comprehensive tests with round-trip validation
 - Builder patterns for ergonomic API
 - MSRV: Rust 1.90.0
 
@@ -24,7 +24,7 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 # Build the library
 cargo build
 
-# Run all tests (1,322 tests)
+# Run all tests (1,712 tests)
 cargo test
 
 # Run specific IE or message tests
@@ -34,6 +34,9 @@ cargo test test_pdr_id_marshal # Test specific function
 
 # Run with verbose output
 cargo test -- --nocapture
+
+# Run tests with custom timeout (single-threaded)
+cargo test -- --test-threads=1 --nocapture
 
 # Run integration tests only
 cargo test --test messages
@@ -183,6 +186,12 @@ Only 3 IEs are allowed to have zero-length values per 3GPP spec:
 3. `DeactivatePredefinedRules` (IE Type 107)
 
 All other zero-length IEs MUST be rejected with `InvalidData` error.
+
+**Security Considerations:**
+- Zero-length IE validation protects against DoS attacks at protocol level
+- All IEs include descriptive error messages with 3GPP TS 29.244 compliance references
+- Validation performed in `Ie::unmarshal()` before IE-specific parsing
+- See `docs/analysis/ongoing/zero-length-ie-validation.md` for implementation details and audit status
 
 **Display System:**
 Messages support YAML/JSON formatting via `display::format_message()`:
@@ -395,6 +404,12 @@ When you see modified or untracked files in git status:
 - `src/message/mod.rs` - Core message type definitions and routing
 - Check `docs/analysis/` for planning documents and ongoing work
 - Untracked files in `docs/analysis/` may contain important context about future work
+
+### Recent Development Phases
+- **Phase 2 Sprint 2**: ✅ Completed (17/17 IEs) - Advanced rate/status IEs, flow information, timing controls (1,712 tests passing)
+- See `docs/analysis/` for detailed phase planning and IE implementation status
+- Check `docs/reference/ie-support.md` for current IE implementation counts and compliance status
+- `docs/analysis/ongoing/zero-length-ie-validation.md` tracks security validation improvements
 
 ## Additional Resources
 
