@@ -6,11 +6,11 @@ Technical reference documentation for rs-pfcp implementation details and complia
 
 ### [IE Support](ie-support.md)
 Complete Information Element implementation status:
-- 104+ implemented core IEs
-- 272+ enum variants defined
-- Implementation status for each IE
+- 120+ implemented core IEs
+- 274 IE type enum variants defined
+- 136 IE implementation modules
 - 3GPP TS 29.244 Release 18 mapping
-- Test coverage information
+- Comprehensive test coverage
 
 **Use this to**: Check if a specific IE is implemented
 

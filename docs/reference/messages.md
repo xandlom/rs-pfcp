@@ -184,6 +184,27 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 - **Key IEs**: Node ID, Cause, Offending IE (optional)
 - **Usage**: Confirm bulk session deletions or report errors
 
+#### Session Set Modification Request (Type 16) ✅
+- **Purpose**: Modify session set to redirect reports to alternative SMF
+- **Implementation**: `SessionSetModificationRequest`
+- **Builder**: `SessionSetModificationRequestBuilder`
+- **Key IEs**: Alternative SMF IP Address (mandatory), FQ-CSID (optional), Group ID (optional), CP IP Address (optional)
+- **Usage**: SMF set management and session handover scenarios
+- **Features**:
+  - Support for IPv4/IPv6 alternative SMF addresses
+  - Multiple FQ-CSID, Group ID, and CP IP Address IEs
+  - Fluent builder API with add methods
+
+#### Session Set Modification Response (Type 17) ✅
+- **Purpose**: Response to session set modification requests
+- **Implementation**: `SessionSetModificationResponse`
+- **Builder**: `SessionSetModificationResponseBuilder`
+- **Key IEs**: Cause (mandatory), Offending IE (optional)
+- **Usage**: Acknowledge session set modifications or report errors
+- **Features**:
+  - Convenience constructors (`success()`, `reject()`, `reject_with_offending_ie()`)
+  - Fluent builder with cause helpers (`cause_accepted()`, `cause_rejected()`)
+
 ### 7. Version and Error Management Messages
 
 #### Version Not Supported Response (Type 11) ✅
@@ -273,6 +294,34 @@ let del_req = SessionDeletionRequestBuilder::new(seid, seq)
     .build();
 ```
 
+### Session Set Management
+```rust
+use rs_pfcp::message::session_set_modification_request::SessionSetModificationRequestBuilder;
+use rs_pfcp::message::session_set_modification_response::SessionSetModificationResponse;
+use rs_pfcp::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
+use std::net::Ipv4Addr;
+
+// Request UPF to send subsequent reports to alternative SMF
+let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 100, 1));
+let set_mod_req = SessionSetModificationRequestBuilder::new(seq)
+    .alternative_smf_ip_address(alt_smf_ip)
+    .build()?;
+
+// UPF sends successful response
+let set_mod_resp = SessionSetModificationResponse::success(seq)?;
+
+// Or reject with cause
+let set_mod_resp = SessionSetModificationResponse::reject(
+    seq,
+    CauseValue::RuleCreationModificationFailure
+)?;
+
+// Bulk session deletion
+let set_del_req = SessionSetDeletionRequestBuilder::new(seq)
+    .node_id(node_id)
+    .build();
+```
+
 ### Event-Driven Reporting
 ```rust
 // Handle incoming Session Reports
@@ -309,9 +358,9 @@ The rs-pfcp library implements PFCP messages according to:
 | Session Management | 8/8 | 8 | 100% |
 | PFD Management | 2/2 | 2 | 100% |
 | Node Reporting | 2/2 | 2 | 100% |
-| Session Set Management | 2/2 | 2 | 100% |
+| Session Set Management | 4/4 | 4 | 100% |
 | Version/Error Management | 1/1 | 1 | 100% |
-| **Total** | **23/23** | **23** | **100%** |
+| **Total** | **25/25** | **25** | **100%** |
 
 🎉 **The library provides COMPLETE coverage of all defined PFCP message types with 100% implementation!**
 
