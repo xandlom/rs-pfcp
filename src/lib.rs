@@ -119,6 +119,8 @@
 //!
 //! - [`ie`] - Information Elements (IEs) as defined in 3GPP TS 29.244
 //! - [`message`] - PFCP message types for session and association management
+//! - [`comparison`] - Message comparison tools for testing, debugging, and validation
 
+pub mod comparison;
 pub mod ie;
 pub mod message;
