@@ -138,6 +138,23 @@ impl Message for SessionDeletionRequest {
         }
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.smf_fseid];
+        if let Some(ref ie) = self.node_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.cp_fseid {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcpsm_req_flags {
+            result.push(ie);
+        }
+        result.extend(self.urr_ids.iter());
+        result.extend(self.usage_reports.iter());
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 impl SessionDeletionRequest {

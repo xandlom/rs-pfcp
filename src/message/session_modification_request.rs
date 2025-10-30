@@ -313,6 +313,96 @@ impl Message for SessionModificationRequest {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = Vec::new();
+        if let Some(ref ie) = self.fseid {
+            result.push(ie);
+        }
+        if let Some(ref vec) = self.remove_pdrs {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.remove_fars {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.remove_urrs {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.remove_qers {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.remove_bars {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.remove_traffic_endpoints {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.create_pdrs {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.create_fars {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.create_urrs {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.create_qers {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.create_bars {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.create_traffic_endpoints {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.update_pdrs {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.update_fars {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.update_urrs {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.update_qers {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.update_bars {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.update_traffic_endpoints {
+            result.extend(vec.iter());
+        }
+        if let Some(ref ie) = self.pdn_type {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.user_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.s_nssai {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.trace_information {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.recovery_time_stamp {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.apn_dnn {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.user_plane_inactivity_timer {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcpsm_req_flags {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 pub struct SessionModificationRequestBuilder {

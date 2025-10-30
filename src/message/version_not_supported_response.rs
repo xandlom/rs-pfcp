@@ -93,6 +93,10 @@ impl Message for VersionNotSupportedResponse {
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        self.ies.iter().collect()
+    }
 }
 
 /// Builder for VersionNotSupportedResponse message.

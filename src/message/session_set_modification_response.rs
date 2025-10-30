@@ -98,6 +98,15 @@ impl Message for SessionSetModificationResponse {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.cause];
+        if let Some(ref ie) = self.offending_ie {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 pub struct SessionSetModificationResponseBuilder {

@@ -117,18 +117,9 @@ fn compare_headers(
 fn collect_ies(msg: &dyn Message) -> HashMap<IeType, Vec<Ie>> {
     let mut ie_map: HashMap<IeType, Vec<Ie>> = HashMap::new();
 
-    // Get all IEs - this depends on message implementation
-    // For now, we'll iterate through known IE types
-    for ie_type_value in 0u16..=300 {
-        let ie_type = IeType::from(ie_type_value);
-        if ie_type == IeType::Unknown {
-            continue;
-        }
-
-        let ies = msg.find_all_ies(ie_type);
-        if !ies.is_empty() {
-            ie_map.insert(ie_type, ies.iter().map(|ie| (*ie).clone()).collect());
-        }
+    // Get all IEs from the message
+    for ie in msg.all_ies() {
+        ie_map.entry(ie.ie_type).or_default().push(ie.clone());
     }
 
     ie_map

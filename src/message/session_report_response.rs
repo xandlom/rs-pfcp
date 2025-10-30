@@ -145,6 +145,32 @@ impl Message for SessionReportResponse {
             }
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.cause];
+        if let Some(ref ie) = self.offending_ie {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.update_bar_within_session_report_response {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcpsrrsp_flags {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            result.push(ie);
+        }
+        result.extend(self.usage_reports.iter());
+        if let Some(ref ie) = self.failed_rules_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            result.push(ie);
+        }
+        result.extend(self.created_updated_usage_reports.iter());
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 impl SessionReportResponse {

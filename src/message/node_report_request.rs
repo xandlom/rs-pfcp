@@ -153,6 +153,18 @@ impl Message for NodeReportRequest {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.node_id];
+        if let Some(ref ie) = self.node_report_type {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.user_plane_path_failure_report {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 /// Builder for NodeReportRequest message.

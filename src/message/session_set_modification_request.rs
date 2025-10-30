@@ -225,6 +225,21 @@ impl Message for SessionSetModificationRequest {
             _ => self.ies.iter().filter(|ie| ie.ie_type == ie_type).collect(),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.alternative_smf_ip_address_ie];
+        if let Some(ref vec) = self.fq_csids_ies {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.group_ids_ies {
+            result.extend(vec.iter());
+        }
+        if let Some(ref vec) = self.cp_ip_addresses_ies {
+            result.extend(vec.iter());
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 pub struct SessionSetModificationRequestBuilder {

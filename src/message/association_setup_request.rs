@@ -104,6 +104,18 @@ impl Message for AssociationSetupRequest {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.node_id, &self.recovery_time_stamp];
+        if let Some(ref ie) = self.up_function_features {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 impl AssociationSetupRequest {

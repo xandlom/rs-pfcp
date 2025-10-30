@@ -204,6 +204,15 @@ impl Message for SessionSetDeletionRequest {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.node_id];
+        if let Some(ref ie) = self.fseid_set {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 #[cfg(test)]

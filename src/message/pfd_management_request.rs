@@ -169,6 +169,12 @@ impl Message for PfdManagementRequest {
             }
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        // Note: PfdManagementRequest uses type-safe fields (NodeId and ApplicationIdsPfds)
+        // that are not stored as Ie. Only return IEs from the ies vector.
+        self.ies.iter().collect()
+    }
 }
 
 /// Builder for PfdManagementRequest message.

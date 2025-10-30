@@ -146,6 +146,22 @@ pub trait Message {
             vec![]
         }
     }
+
+    /// Get all IEs from the message.
+    ///
+    /// Returns a vector containing references to all Information Elements
+    /// present in the message, regardless of type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::{Message, heartbeat_request::HeartbeatRequest};
+    ///
+    /// let request = HeartbeatRequest::new(123, None, None, vec![]);
+    /// let all_ies = request.all_ies();
+    /// println!("Message contains {} IEs", all_ies.len());
+    /// ```
+    fn all_ies(&self) -> Vec<&Ie>;
 }
 
 // A generic message for unknown message types.
@@ -199,6 +215,10 @@ impl Message for Generic {
 
     fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie> {
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
+    }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        self.ies.iter().collect()
     }
 }
 

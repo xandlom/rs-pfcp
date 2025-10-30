@@ -70,6 +70,10 @@ impl Message for AssociationReleaseRequest {
             _ => None,
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        vec![&self.node_id]
+    }
 }
 
 impl AssociationReleaseRequest {

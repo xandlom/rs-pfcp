@@ -143,6 +143,25 @@ impl Message for SessionEstablishmentResponse {
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = vec![&self.cause, &self.fseid];
+        if let Some(ref ie) = self.offending_ie {
+            result.push(ie);
+        }
+        result.extend(self.created_pdrs.iter());
+        if let Some(ref ie) = self.pdn_type {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.load_control_information {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.overload_control_information {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 pub struct SessionEstablishmentResponseBuilder {

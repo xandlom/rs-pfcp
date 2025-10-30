@@ -127,6 +127,31 @@ impl Message for SessionReportRequest {
             }
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = Vec::new();
+        if let Some(ref ie) = self.report_type {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.downlink_data_report {
+            result.push(ie);
+        }
+        result.extend(self.usage_reports.iter());
+        if let Some(ref ie) = self.load_control_information {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.overload_control_information {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcpsrreq_flags {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 impl SessionReportRequest {

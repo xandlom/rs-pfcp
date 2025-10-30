@@ -81,6 +81,10 @@ impl Message for AssociationReleaseResponse {
             _ => None,
         }
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        vec![&self.cause, &self.node_id]
+    }
 }
 
 impl AssociationReleaseResponse {

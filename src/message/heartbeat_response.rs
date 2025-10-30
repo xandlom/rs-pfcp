@@ -99,6 +99,15 @@ impl Message for HeartbeatResponse {
         }
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
+
+    fn all_ies(&self) -> Vec<&Ie> {
+        let mut result = Vec::new();
+        if let Some(ref ie) = self.recovery_time_stamp {
+            result.push(ie);
+        }
+        result.extend(self.ies.iter());
+        result
+    }
 }
 
 /// Builder for HeartbeatResponse message.
