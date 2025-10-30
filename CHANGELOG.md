@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### 🔍 Message Comparison Framework
+- **Complete comparison module** (~3,900 lines) for testing, debugging, validation, and compliance auditing
+  - Fluent builder API with method chaining
+  - Four preset modes: strict, test, semantic, and audit
+  - 79 comprehensive unit tests, all 1,764 library tests passing
+- **Semantic Comparison** for F-TEID (IE 21) and UE IP Address (IE 93)
+  - Compares by functional meaning, not byte encoding
+  - F-TEID: Compares TEID + IPs + CHOOSE flags, ignores v4/v6 flags
+  - UE IP Address: Compares actual IPs, ignores v4/v6 flags
+  - Per 3GPP TS 29.244, v4/v6 flags are encoding details
+- **Timestamp Tolerance Comparison** for 8 timestamp IE types
+  - Configurable tolerance window (in seconds)
+  - RecoveryTimeStamp, StartTime, EndTime, TimeOfFirstPacket, TimeOfLastPacket
+  - ActivationTime, DeactivationTime, MonitoringTime
+  - Bidirectional time difference handling (order-independent)
+- **Flexible IE Filtering**
+  - Blacklist mode: Ignore specific IE types
+  - Whitelist mode: Focus only on specified IEs
+  - Timestamp-aware: Ignore all 8 timestamp types at once
+- **Configurable Comparison Options**
+  - Header field control: Ignore sequence, SEID, priority individually
+  - Optional IE handling: 4 modes (strict, ignore missing, require left/right)
+  - IE multiplicity: 3 modes (exact match, set equality, lenient)
+  - Performance options: Max reported differences, early exit
+- **Rich Result Types**
+  - Detailed match/mismatch reporting with reasons
+  - ComparisonStats: Total IEs, exact/semantic matches, mismatch count, match rate
+  - HeaderMatch: Individual header field comparison results
+  - IeMismatch: Type, reason, optional payload hex dumps
+- **Diff Generation**
+  - YAML-formatted output for human readability
+  - 6 difference types: HeaderField, IeValue, IeCount, LeftOnly, RightOnly, GroupedIeStructure
+  - Optional hex payload dumps (first 16 bytes, truncated for longer)
+  - Configurable detail level
+
+#### ⚡ Performance Optimization
+- **Message trait enhancement**: Added `all_ies()` method for efficient IE collection
+  - Implemented across all 26 message types (Generic + 25 concrete)
+  - Performance improvement: O(300*n) → O(n)
+  - Eliminates 300 method calls per message comparison
+  - 689 lines of implementation code
+
+### Documentation
+- **README.md**: Added comparison module section with examples
+- **docs/guides/comparison-guide.md**: Comprehensive 600+ line guide
+  - Overview, quick start, all comparison modes
+  - Semantic comparison details with rationale
+  - Configuration options, working with results
+  - 5 common use cases with code examples
+  - Advanced features and troubleshooting
+  - Best practices
+- **Updated test counts**: 1,764 tests (was 1,712, +52 tests)
+- **Updated architecture diagrams**: Added comparison module structure
+
+### Changed
+- **Test suite expansion**: Added 79 comparison module tests (50 core + 17 semantic + 12 timestamp)
+- **Message trait**: Added `all_ies()` for efficient IE iteration
+
 ## [0.1.5] - 2025-10-25
 
 ### Added

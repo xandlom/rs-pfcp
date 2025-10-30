@@ -18,9 +18,9 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 - 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - 120+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 1,712 comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 1,764 comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
-- 📊 **Production Ready** - YAML/JSON message display, network interface support, and robust examples
+- 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
 ### Ergonomic Builder API
 
@@ -98,6 +98,51 @@ match parsed_msg.msg_type() {
 }
 ```
 
+### Message Comparison & Validation
+
+Compare PFCP messages for testing, debugging, and validation:
+
+```rust
+use rs_pfcp::comparison::MessageComparator;
+
+// Test mode - ignore transient fields (sequence, timestamps)
+let result = MessageComparator::new(&msg1, &msg2)
+    .test_mode()
+    .compare()?;
+
+if result.is_match {
+    println!("✓ Messages match functionally");
+} else {
+    println!("Differences found:");
+    for mismatch in &result.ie_mismatches {
+        println!("  - {:?}: {:?}", mismatch.ie_type, mismatch.reason);
+    }
+}
+
+// Semantic comparison with timestamp tolerance
+let result = MessageComparator::new(&msg1, &msg2)
+    .semantic_mode()                    // Compare F-TEID, UE IP by meaning
+    .timestamp_tolerance(5)              // 5 second tolerance
+    .ignore_sequence()
+    .compare()?;
+
+// Generate detailed diff
+let result = MessageComparator::new(&msg1, &msg2)
+    .generate_diff(true)
+    .compare()?;
+
+if let Some(diff) = result.diff {
+    println!("{}", diff);  // YAML-formatted differences
+}
+```
+
+**Features:**
+- **Multiple comparison modes** - Strict, semantic, test, and audit presets
+- **Semantic comparison** - F-TEID, UE IP Address compared by function, not bytes
+- **Timestamp tolerance** - Configurable window for timestamp comparison
+- **Flexible IE filtering** - Ignore specific IEs, focus on subsets, or handle timestamps
+- **Detailed reporting** - Match statistics, mismatch details, YAML diffs
+
 ### Network Examples
 
 The library includes comprehensive examples for real-world scenarios:
@@ -122,15 +167,20 @@ cd examples && ./test_session_report.sh lo
 
 ```
 rs-pfcp/
-├── src/ie/              # Information Elements (70 types)
+├── src/ie/              # Information Elements (120+ types)
 │   ├── f_teid.rs        # F-TEID with 3GPP compliant CHOOSE flags
 │   ├── pdn_type.rs      # PDN connection types (IPv4/IPv6/Non-IP)
 │   ├── snssai.rs        # 5G Network Slicing identifiers
 │   └── ...
-├── src/message/         # PFCP Messages (18 types)
+├── src/message/         # PFCP Messages (25 types)
 │   ├── session_*.rs     # Session lifecycle management
 │   ├── association_*.rs # Node association handling
 │   └── heartbeat.rs     # Keep-alive mechanism
+├── src/comparison/      # Message comparison framework
+│   ├── builder.rs       # Fluent comparison API
+│   ├── semantic.rs      # Semantic comparison (F-TEID, UE IP, timestamps)
+│   ├── options.rs       # Configuration options
+│   └── result.rs        # Result types and statistics
 └── examples/            # Production-ready examples
     ├── session-server/  # UPF simulator
     ├── session-client/  # SMF simulator
@@ -152,11 +202,13 @@ rs-pfcp/
 |----------|---------|
 | **[Documentation Hub](docs/)** | Complete documentation index |
 | **[API Guide](docs/guides/api-guide.md)** | Comprehensive API reference and usage patterns |
+| **[Comparison Guide](docs/guides/comparison-guide.md)** | Message comparison, testing, and validation |
 | **[IE Support](docs/reference/ie-support.md)** | Complete Information Element implementation status |
 | **[Messages Reference](docs/reference/messages.md)** | Message types, usage patterns, and code examples |
 | **[Examples Guide](docs/guides/examples-guide.md)** | Running and understanding example applications |
 
 ### Guides & Tutorials
+- **[Comparison Guide](docs/guides/comparison-guide.md)** - Testing and validating PFCP messages
 - **[Deployment Guide](docs/guides/deployment-guide.md)** - Production deployment strategies
 - **[Session Report Demo](docs/guides/session-report-demo.md)** - Quota management walkthrough
 - **[Git Hooks Setup](docs/development/git-hooks.md)** - Development workflow automation
@@ -174,7 +226,7 @@ rs-pfcp/
 # Build the library
 cargo build
 
-# Run all tests (1,712 tests)
+# Run all tests (1,764 tests)
 cargo test
 
 # Run specific test category

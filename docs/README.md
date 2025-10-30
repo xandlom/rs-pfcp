@@ -17,6 +17,7 @@ Step-by-step tutorials and practical guides:
 - **[Benchmarking Guide](guides/benchmarking.md)** ⭐ - Performance testing and optimization
 - **[Coverage Guide](guides/coverage.md)** ⭐ - Code coverage analysis (67.64% current)
 - **[API Guide](guides/api-guide.md)** - Comprehensive API reference and usage patterns
+- **[Comparison Guide](guides/comparison-guide.md)** - Message comparison, testing, and validation
 - **[Deployment Guide](guides/deployment-guide.md)** - Production deployment strategies
 - **[Examples Guide](guides/examples-guide.md)** - Running and understanding the example applications
 - **[Session Report Demo](guides/session-report-demo.md)** - Complete walkthrough of quota management and usage reporting
@@ -66,6 +67,7 @@ Historical analysis and ongoing work:
 ### Most Commonly Used Documents
 - [Main README](../README.md) - Start here!
 - [API Guide](guides/api-guide.md) - How to use the library
+- [Comparison Guide](guides/comparison-guide.md) - Testing and validation
 - [IE Support](reference/ie-support.md) - What's implemented
 - [Examples Guide](guides/examples-guide.md) - Example applications
 
@@ -122,6 +124,7 @@ Documentation improvements are always welcome! When contributing:
 ### I want to...
 - **Learn the basics** → [Main README](../README.md)
 - **Use the API** → [API Guide](guides/api-guide.md)
+- **Compare and test messages** → [Comparison Guide](guides/comparison-guide.md)
 - **Deploy to production** → [Deployment Guide](guides/deployment-guide.md)
 - **Run examples** → [Examples Guide](guides/examples-guide.md)
 - **Check feature support** → [IE Support](reference/ie-support.md)
@@ -133,7 +136,7 @@ Documentation improvements are always welcome! When contributing:
 
 | Category | Documents | Status |
 |----------|-----------|--------|
-| User Guides | 4 | ✅ Complete |
+| User Guides | 10 | ✅ Complete |
 | Reference | 4 | ✅ Complete |
 | Development | 1 | 🔄 Growing |
 | Architecture | 10 | ✅ Complete |
@@ -155,5 +158,5 @@ Documentation improvements are always welcome! When contributing:
 
 ---
 
-**Last Updated**: 2025-10-18
-**Version**: 0.1.3
+**Last Updated**: 2025-10-30
+**Version**: 0.1.6 (unreleased)
