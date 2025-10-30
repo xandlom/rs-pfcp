@@ -303,10 +303,30 @@ fn compare_single_ie(
     ie_type: IeType,
     options: &ComparisonOptions,
 ) -> Result<IeComparisonResult, io::Error> {
-    // Use semantic comparison if requested
+    // Use semantic comparison if requested and available for this IE type
     if options.use_semantic_for_ie(ie_type) {
-        // TODO: Implement semantic comparison for specific IE types
-        // For now, fall through to exact comparison
+        if let Some(semantic_result) =
+            crate::comparison::semantic::compare_semantically_with_tolerance(
+                ie_type,
+                &left.payload,
+                &right.payload,
+                options.timestamp_tolerance_secs,
+            )?
+        {
+            return match semantic_result {
+                crate::comparison::semantic::SemanticMatch::Match => {
+                    Ok(IeComparisonResult::Match(IeMatchType::Semantic))
+                }
+                crate::comparison::semantic::SemanticMatch::Mismatch { details } => {
+                    Ok(IeComparisonResult::Mismatch(
+                        MismatchReason::SemanticMismatch { details },
+                        Some(left.payload.clone()),
+                        Some(right.payload.clone()),
+                    ))
+                }
+            };
+        }
+        // If semantic comparison not available for this IE type, fall through to exact comparison
     }
 
     // Exact payload comparison

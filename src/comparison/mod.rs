@@ -140,6 +140,7 @@ pub mod builder;
 pub mod diff;
 pub mod options;
 pub mod result;
+pub mod semantic;
 
 pub use builder::MessageComparator;
 pub use diff::{Difference, HeaderField, MessageDiff};
@@ -148,3 +149,4 @@ pub use result::{
     ComparisonResult, ComparisonStats, HeaderMatch, IeMatch, IeMatchType, IeMismatch,
     MismatchReason,
 };
+pub use semantic::{compare_semantically, SemanticMatch};
