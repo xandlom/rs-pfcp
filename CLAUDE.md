@@ -79,6 +79,14 @@ cargo run --example session-client -- --address 127.0.0.1 --sessions 5
 # Analyze PCAP files
 cargo run --example pcap-reader -- --pcap traffic.pcap --format yaml --pfcp-only
 
+# Demo message comparison and validation (5 comprehensive demos)
+cargo run --example message-comparison          # Run all demos
+cargo run --example message-comparison roundtrip   # Round-trip validation
+cargo run --example message-comparison semantic    # Semantic comparison
+cargo run --example message-comparison timestamp   # Timestamp tolerance
+cargo run --example message-comparison validation  # Message validation
+cargo run --example message-comparison diff        # Diff generation
+
 # Demo quota exhaustion and usage reporting
 cd examples && ./test_session_report.sh lo
 ```

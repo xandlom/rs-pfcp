@@ -157,6 +157,10 @@ cargo run --example session-client -- --address 127.0.0.1 --sessions 5
 # Analyze captured PFCP traffic
 cargo run --example pcap-reader -- --pcap traffic.pcap --format yaml
 
+# Demo message comparison and validation
+cargo run --example message-comparison          # All demos
+cargo run --example message-comparison semantic # Specific demo
+
 # Demo quota exhaustion reporting
 cd examples && ./test_session_report.sh lo
 ```
