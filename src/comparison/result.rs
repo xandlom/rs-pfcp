@@ -264,6 +264,9 @@ pub enum IeMatchType {
 
     /// Multiple instances all matched
     MultipleMatched,
+
+    /// Grouped IE matched via deep recursive comparison of child IEs
+    DeepGrouped,
 }
 
 /// IE that didn't match between messages.
@@ -311,8 +314,12 @@ pub enum MismatchReason {
 
     /// Grouped IE children don't match
     GroupedIeMismatch {
-        /// Number of child mismatches
+        /// Number of child IE mismatches
         child_mismatches: usize,
+        /// Number of IEs only in left message
+        missing_in_right: usize,
+        /// Number of IEs only in right message
+        missing_in_left: usize,
     },
 
     /// Custom semantic comparison failed
@@ -332,8 +339,19 @@ impl std::fmt::Display for MismatchReason {
             } => write!(f, "count differs ({} vs {})", left_count, right_count),
             MismatchReason::MissingInRight => write!(f, "missing in right message"),
             MismatchReason::MissingInLeft => write!(f, "missing in left message"),
-            MismatchReason::GroupedIeMismatch { child_mismatches } => {
-                write!(f, "grouped IE has {} child mismatch(es)", child_mismatches)
+            MismatchReason::GroupedIeMismatch {
+                child_mismatches,
+                missing_in_right,
+                missing_in_left,
+            } => {
+                let mut parts = vec![format!("{} child mismatch(es)", child_mismatches)];
+                if *missing_in_right > 0 {
+                    parts.push(format!("{} missing in right", missing_in_right));
+                }
+                if *missing_in_left > 0 {
+                    parts.push(format!("{} missing in left", missing_in_left));
+                }
+                write!(f, "grouped IE: {}", parts.join(", "))
             }
             MismatchReason::SemanticMismatch { details } => {
                 write!(f, "semantic mismatch: {}", details)
