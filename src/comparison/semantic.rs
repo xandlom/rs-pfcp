@@ -223,25 +223,11 @@ fn compare_ue_ip_address(left: &UeIpAddress, right: &UeIpAddress) -> SemanticMat
 /// * `right` - Second timestamp
 /// * `tolerance_secs` - Maximum allowed difference in seconds
 ///
-/// # Examples
+/// # Note
 ///
-/// ```ignore
-/// // Internal function - use compare_semantically_with_tolerance instead
-/// use rs_pfcp::comparison::semantic::compare_timestamp;
-/// use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
-/// use std::time::{SystemTime, Duration};
-///
-/// let time1 = RecoveryTimeStamp::new(SystemTime::now());
-/// let time2 = RecoveryTimeStamp::new(SystemTime::now() + Duration::from_secs(3));
-///
-/// // Within 5 second tolerance - should match
-/// let result = compare_timestamp(&time1, &time2, 5);
-/// assert!(result.is_match());
-///
-/// // Outside 2 second tolerance - should not match
-/// let result = compare_timestamp(&time1, &time2, 2);
-/// assert!(!result.is_match());
-/// ```
+/// This is an internal function. For public API, use
+/// [`compare_semantically_with_tolerance`](crate::comparison::semantic::compare_semantically_with_tolerance)
+/// which handles timestamp comparison for all timestamp IE types.
 fn compare_timestamp(
     left: &RecoveryTimeStamp,
     right: &RecoveryTimeStamp,
