@@ -225,7 +225,8 @@ fn compare_ue_ip_address(left: &UeIpAddress, right: &UeIpAddress) -> SemanticMat
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
+/// // Internal function - use compare_semantically_with_tolerance instead
 /// use rs_pfcp::comparison::semantic::compare_timestamp;
 /// use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
 /// use std::time::{SystemTime, Duration};
