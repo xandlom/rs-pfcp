@@ -27,6 +27,7 @@ pub struct SessionEstablishmentRequest {
     pub apn_dnn: Option<Ie>,
     pub user_plane_inactivity_timer: Option<Ie>,
     pub pfcpsm_req_flags: Option<Ie>,
+    pub ethernet_pdu_session_information: Option<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -80,6 +81,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ie) = &self.pfcpsm_req_flags {
             data.extend_from_slice(&ie.marshal());
         }
+        if let Some(ie) = &self.ethernet_pdu_session_information {
+            data.extend_from_slice(&ie.marshal());
+        }
         for ie in &self.ies {
             data.extend_from_slice(&ie.marshal());
         }
@@ -105,6 +109,7 @@ impl Message for SessionEstablishmentRequest {
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
+        let mut ethernet_pdu_session_information = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -129,6 +134,9 @@ impl Message for SessionEstablishmentRequest {
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
+                IeType::EthernetPduSessionInformation => {
+                    ethernet_pdu_session_information = Some(ie)
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -169,6 +177,7 @@ impl Message for SessionEstablishmentRequest {
             apn_dnn,
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
+            ethernet_pdu_session_information,
             ies,
         })
     }
@@ -206,6 +215,7 @@ impl Message for SessionEstablishmentRequest {
             IeType::ApnDnn => self.apn_dnn.as_ref(),
             IeType::UserPlaneInactivityTimer => self.user_plane_inactivity_timer.as_ref(),
             IeType::PfcpsmReqFlags => self.pfcpsm_req_flags.as_ref(),
+            IeType::EthernetPduSessionInformation => self.ethernet_pdu_session_information.as_ref(),
             IeType::CreatePdr => self.create_pdrs.first(),
             IeType::CreateFar => self.create_fars.first(),
             IeType::CreateUrr => self.create_urrs.first(),
@@ -268,6 +278,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
+        if let Some(ref ie) = self.ethernet_pdu_session_information {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -293,6 +306,7 @@ pub struct SessionEstablishmentRequestBuilder {
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
+    ethernet_pdu_session_information: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -318,6 +332,7 @@ impl SessionEstablishmentRequestBuilder {
             apn_dnn: None,
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
+            ethernet_pdu_session_information: None,
             ies: Vec::new(),
         }
     }
@@ -522,6 +537,14 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn ethernet_pdu_session_information(
+        mut self,
+        ethernet_pdu_session_information: Ie,
+    ) -> Self {
+        self.ethernet_pdu_session_information = Some(ethernet_pdu_session_information);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -593,6 +616,9 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.ethernet_pdu_session_information {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -623,6 +649,7 @@ impl SessionEstablishmentRequestBuilder {
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
+            ethernet_pdu_session_information: self.ethernet_pdu_session_information,
             ies: self.ies,
         })
     }

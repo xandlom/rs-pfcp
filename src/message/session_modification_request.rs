@@ -36,6 +36,7 @@ pub struct SessionModificationRequest {
     pub apn_dnn: Option<Ie>,
     pub user_plane_inactivity_timer: Option<Ie>,
     pub pfcpsm_req_flags: Option<Ie>,
+    pub ethernet_context_information: Option<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -162,6 +163,9 @@ impl Message for SessionModificationRequest {
         if let Some(ie) = &self.pfcpsm_req_flags {
             data.extend_from_slice(&ie.marshal());
         }
+        if let Some(ie) = &self.ethernet_context_information {
+            data.extend_from_slice(&ie.marshal());
+        }
         for ie in &self.ies {
             data.extend_from_slice(&ie.marshal());
         }
@@ -198,6 +202,7 @@ impl Message for SessionModificationRequest {
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
+        let mut ethernet_context_information = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -239,6 +244,7 @@ impl Message for SessionModificationRequest {
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
+                IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -274,6 +280,7 @@ impl Message for SessionModificationRequest {
             apn_dnn,
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
+            ethernet_context_information,
             ies,
         })
     }
@@ -310,6 +317,7 @@ impl Message for SessionModificationRequest {
             IeType::ApnDnn => self.apn_dnn.as_ref(),
             IeType::UserPlaneInactivityTimer => self.user_plane_inactivity_timer.as_ref(),
             IeType::PfcpsmReqFlags => self.pfcpsm_req_flags.as_ref(),
+            IeType::EthernetContextInformation => self.ethernet_context_information.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
@@ -400,6 +408,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
+        if let Some(ref ie) = self.ethernet_context_information {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -436,6 +447,7 @@ pub struct SessionModificationRequestBuilder {
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
+    ethernet_context_information: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -472,6 +484,7 @@ impl SessionModificationRequestBuilder {
             apn_dnn: None,
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
+            ethernet_context_information: None,
             ies: Vec::new(),
         }
     }
@@ -671,6 +684,11 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn ethernet_context_information(mut self, ethernet_context_information: Ie) -> Self {
+        self.ethernet_context_information = Some(ethernet_context_information);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -798,6 +816,9 @@ impl SessionModificationRequestBuilder {
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.ethernet_context_information {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -838,6 +859,7 @@ impl SessionModificationRequestBuilder {
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
+            ethernet_context_information: self.ethernet_context_information,
             ies: self.ies,
         }
     }
