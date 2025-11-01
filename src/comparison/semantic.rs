@@ -226,7 +226,7 @@ fn compare_ue_ip_address(left: &UeIpAddress, right: &UeIpAddress) -> SemanticMat
 /// # Note
 ///
 /// This is an internal function. For public API, use
-/// [`compare_semantically_with_tolerance`](crate::comparison::semantic::compare_semantically_with_tolerance)
+/// [`compare_semantically_with_tolerance`]
 /// which handles timestamp comparison for all timestamp IE types.
 fn compare_timestamp(
     left: &RecoveryTimeStamp,
