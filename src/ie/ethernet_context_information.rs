@@ -145,9 +145,14 @@ impl Default for EthernetContextInformation {
 ///     .unwrap();
 ///
 /// // Report both detected and removed
+/// let mac3 = MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+/// let mac4 = MacAddress::new([0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC]);
+/// let detected2 = MacAddressesDetected::new(vec![mac3]).unwrap();
+/// let removed2 = MacAddressesRemoved::new(vec![mac4]).unwrap();
+///
 /// let context3 = EthernetContextInformationBuilder::new()
-///     .mac_addresses_detected(detected)
-///     .mac_addresses_removed(removed)
+///     .mac_addresses_detected(detected2)
+///     .mac_addresses_removed(removed2)
 ///     .build()
 ///     .unwrap();
 /// ```

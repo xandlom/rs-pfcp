@@ -27,12 +27,12 @@ use std::io;
 ///
 /// // Create with single MAC address
 /// let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-/// let removed = MacAddressesRemoved::new(vec![mac1]);
+/// let removed = MacAddressesRemoved::new(vec![mac1]).unwrap();
 /// assert_eq!(removed.addresses().len(), 1);
 ///
 /// // Create with multiple MAC addresses
 /// let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-/// let removed2 = MacAddressesRemoved::new(vec![mac1, mac2]);
+/// let removed2 = MacAddressesRemoved::new(vec![mac1, mac2]).unwrap();
 /// assert_eq!(removed2.addresses().len(), 2);
 ///
 /// // Marshal and unmarshal
@@ -64,7 +64,7 @@ impl MacAddressesRemoved {
     /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
     /// let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-    /// let removed = MacAddressesRemoved::new(vec![mac]);
+    /// let removed = MacAddressesRemoved::new(vec![mac]).unwrap();
     /// assert_eq!(removed.addresses().len(), 1);
     /// ```
     pub fn new(addresses: Vec<MacAddress>) -> Result<Self, io::Error> {
