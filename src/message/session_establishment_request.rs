@@ -681,6 +681,7 @@ mod tests {
             ue_ip_address: None,
             sdf_filter: None,
             application_id: None,
+            ethernet_packet_filter: None,
         };
 
         // Create minimal PDR

@@ -228,6 +228,7 @@ impl CreatePdr {
             None,
             None,
             None,
+            None,
         );
 
         CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None)
@@ -238,6 +239,7 @@ impl CreatePdr {
 
         let pdi = Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Core),
+            None,
             None,
             None,
             None,
@@ -265,6 +267,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         let create_pdr = CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None);
 
@@ -280,6 +283,7 @@ mod tests {
         let precedence = Precedence::new(100);
         let pdi = Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Access),
+            None,
             None,
             None,
             None,
@@ -319,6 +323,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
         let create_pdr = CreatePdrBuilder::new(pdr_id)
@@ -337,6 +342,7 @@ mod tests {
         let precedence = Precedence::new(200);
         let pdi = Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Core),
+            None,
             None,
             None,
             None,

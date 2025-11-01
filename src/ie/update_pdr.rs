@@ -334,6 +334,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
 
         let pdr = UpdatePdrBuilder::new(PdrId::new(2))
@@ -463,6 +464,7 @@ mod tests {
         let precedence = Precedence::new(150);
         let pdi = Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Core),
+            None,
             None,
             None,
             None,

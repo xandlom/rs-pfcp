@@ -3,8 +3,9 @@
 //! Packet Detection Information (PDI) IE and its sub-IEs.
 
 use crate::ie::{
-    f_teid::Fteid, network_instance::NetworkInstance, sdf_filter::SdfFilter,
-    source_interface::SourceInterface, ue_ip_address::UeIpAddress, Ie, IeType,
+    ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid, network_instance::NetworkInstance,
+    sdf_filter::SdfFilter, source_interface::SourceInterface, ue_ip_address::UeIpAddress, Ie,
+    IeType,
 };
 
 /// Represents the Packet Detection Information.
@@ -16,6 +17,7 @@ pub struct Pdi {
     pub ue_ip_address: Option<UeIpAddress>,
     pub sdf_filter: Option<SdfFilter>,
     pub application_id: Option<String>,
+    pub ethernet_packet_filter: Option<EthernetPacketFilter>,
 }
 
 impl Pdi {
@@ -27,6 +29,7 @@ impl Pdi {
         ue_ip_address: Option<UeIpAddress>,
         sdf_filter: Option<SdfFilter>,
         application_id: Option<String>,
+        ethernet_packet_filter: Option<EthernetPacketFilter>,
     ) -> Self {
         Pdi {
             source_interface,
@@ -35,6 +38,7 @@ impl Pdi {
             ue_ip_address,
             sdf_filter,
             application_id,
+            ethernet_packet_filter,
         }
     }
 
@@ -57,6 +61,9 @@ impl Pdi {
         if let Some(app_id) = &self.application_id {
             ies.push(Ie::new(IeType::ApplicationId, app_id.as_bytes().to_vec()));
         }
+        if let Some(eth_filter) = &self.ethernet_packet_filter {
+            ies.push(eth_filter.to_ie());
+        }
 
         let mut data = Vec::new();
         for ie in ies {
@@ -73,6 +80,7 @@ impl Pdi {
         let mut ue_ip_address = None;
         let mut sdf_filter = None;
         let mut application_id = None;
+        let mut ethernet_packet_filter = None;
 
         let mut offset = 0;
         while offset < payload.len() {
@@ -96,6 +104,9 @@ impl Pdi {
                 IeType::ApplicationId => {
                     application_id = Some(ie.as_string()?);
                 }
+                IeType::EthernetPacketFilter => {
+                    ethernet_packet_filter = Some(EthernetPacketFilter::unmarshal(&ie.payload)?);
+                }
                 _ => (),
             }
             offset += ie.len() as usize;
@@ -113,6 +124,7 @@ impl Pdi {
             ue_ip_address,
             sdf_filter,
             application_id,
+            ethernet_packet_filter,
         })
     }
 
@@ -164,6 +176,7 @@ pub struct PdiBuilder {
     ue_ip_address: Option<UeIpAddress>,
     sdf_filter: Option<SdfFilter>,
     application_id: Option<String>,
+    ethernet_packet_filter: Option<EthernetPacketFilter>,
 }
 
 impl PdiBuilder {
@@ -217,6 +230,15 @@ impl PdiBuilder {
         self
     }
 
+    /// Sets the Ethernet packet filter.
+    ///
+    /// This provides Ethernet-layer packet filtering based on MAC addresses,
+    /// VLAN tags, and Ethertype for Ethernet PDU sessions.
+    pub fn ethernet_packet_filter(mut self, filter: EthernetPacketFilter) -> Self {
+        self.ethernet_packet_filter = Some(filter);
+        self
+    }
+
     /// Builds the PDI with validation.
     ///
     /// # Errors
@@ -237,6 +259,7 @@ impl PdiBuilder {
             ue_ip_address: self.ue_ip_address,
             sdf_filter: self.sdf_filter,
             application_id: self.application_id,
+            ethernet_packet_filter: self.ethernet_packet_filter,
         })
     }
 
