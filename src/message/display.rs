@@ -292,37 +292,24 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                     &ie.payload,
                 )
             {
-                if let Some(ref detected) = eth_ctx.mac_addresses_detected {
-                    let mac_list: Vec<YamlValue> = detected
-                        .addresses()
-                        .iter()
-                        .map(|mac| {
+                // EthernetContextInformation contains Vec of MAC Addresses Detected IEs
+                let detected_lists: Vec<YamlValue> = eth_ctx
+                    .mac_addresses_detected
+                    .iter()
+                    .flat_map(|detected| {
+                        detected.addresses().iter().map(|mac| {
                             YamlValue::String(format!(
                                 "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
                                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
                             ))
                         })
-                        .collect();
+                    })
+                    .collect();
+
+                if !detected_lists.is_empty() {
                     map.insert(
                         "mac_addresses_detected".to_string(),
-                        YamlValue::Sequence(mac_list),
-                    );
-                }
-
-                if let Some(ref removed) = eth_ctx.mac_addresses_removed {
-                    let mac_list: Vec<YamlValue> = removed
-                        .addresses()
-                        .iter()
-                        .map(|mac| {
-                            YamlValue::String(format!(
-                                "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
-                            ))
-                        })
-                        .collect();
-                    map.insert(
-                        "mac_addresses_removed".to_string(),
-                        YamlValue::Sequence(mac_list),
+                        YamlValue::Sequence(detected_lists),
                     );
                 }
             }

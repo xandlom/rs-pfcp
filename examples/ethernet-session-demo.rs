@@ -2,15 +2,22 @@
 //!
 //! This example demonstrates how to create PFCP messages for Ethernet PDU sessions
 //! in 5G networks, including session establishment and modification with MAC address
-//! learning. The marshaled messages are saved to a PCAP file for analysis with Wireshark.
+//! provisioning. The marshaled messages are saved to a PCAP file for analysis with Wireshark.
 //!
 //! # Features Demonstrated
 //!
 //! - Ethernet PDU session establishment
 //! - Ethernet packet filtering with MAC addresses and VLAN tags
-//! - MAC address learning events (detection/removal)
+//! - MAC address provisioning (SMF → UPF) via Ethernet Context Information
 //! - Session modification with Ethernet context information
 //! - PCAP file generation for Wireshark analysis
+//!
+//! # Note on MAC Address Reporting
+//!
+//! Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information (IE Type 254)
+//! is used for SMF → UPF provisioning and only contains MAC Addresses Detected.
+//! For UPF → SMF reporting of MAC learning events (both detected and removed),
+//! use Ethernet Traffic Information IE (Type 143) - not yet implemented
 //!
 //! # Usage
 //!
@@ -40,7 +47,6 @@ use rs_pfcp::ie::{
     fseid::Fseid,
     mac_address::MacAddress,
     mac_addresses_detected::MacAddressesDetected,
-    mac_addresses_removed::MacAddressesRemoved,
     pdi::PdiBuilder,
     pdr_id::PdrId,
     precedence::Precedence,
@@ -199,21 +205,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // ============================================================================
-    // 3. Session Modification Request - Report MAC Address Learning
+    // 3. Session Modification Request - Provision MAC Addresses
     // ============================================================================
 
     seq_num += 1;
-    println!("3️⃣  Creating Session Modification Request with MAC Address Learning");
+    println!("3️⃣  Creating Session Modification Request with MAC Address Provisioning");
     println!("{}", "-".repeat(60));
 
     // Simulate MAC address learning events
-    // Note: MAC Addresses Detected/Removed use raw 6-byte values
+    // Note: Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information
+    // is used for SMF→UPF provisioning and only contains MAC Addresses Detected.
+    // For UPF→SMF reporting of both detected and removed MACs, use Ethernet
+    // Traffic Information IE (Type 143) - not yet implemented.
     let detected_mac1 = [0x00, 0x50, 0x56, 0xAA, 0xBB, 0xCC];
     let detected_mac2 = [0x00, 0x50, 0x56, 0xDD, 0xEE, 0xFF];
-    let removed_mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 
-    println!("   📡 MAC Address Learning Events:");
-    println!("      • Detected MACs:");
+    println!("   📡 MAC Address Provisioning (SMF → UPF):");
+    println!("      • Detected MACs to provision:");
     println!(
         "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
         detected_mac1[0],
@@ -232,24 +240,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         detected_mac2[4],
         detected_mac2[5]
     );
-    println!("      • Removed MACs:");
-    println!(
-        "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        removed_mac[0],
-        removed_mac[1],
-        removed_mac[2],
-        removed_mac[3],
-        removed_mac[4],
-        removed_mac[5]
-    );
 
-    // Create Ethernet Context Information with MAC learning events
+    // Create Ethernet Context Information to provision detected MAC addresses
+    // Note: Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information
+    // only contains MAC Addresses Detected (for SMF→UPF provisioning).
+    // For UPF→SMF reporting, see Ethernet Traffic Information IE (Type 143).
     let mac_detected = MacAddressesDetected::new(vec![detected_mac1, detected_mac2])?;
-    let mac_removed = MacAddressesRemoved::new(vec![removed_mac])?;
 
     let eth_context_info = EthernetContextInformationBuilder::new()
-        .mac_addresses_detected(mac_detected)
-        .mac_addresses_removed(mac_removed)
+        .add_mac_addresses_detected(mac_detected)
         .build()?;
 
     let eth_context_ie = eth_context_info.to_ie();
@@ -265,7 +264,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mod_req_bytes.len()
     );
     println!("      • Includes Ethernet Context Information");
-    println!("      • Reports 2 detected MACs and 1 removed MAC");
+    println!("      • Provisions 2 detected MACs (SMF → UPF)");
 
     // Write to PCAP
     write_pfcp_packet(&mut pcap_writer, &mod_req_bytes, smf_ip, upf_ip, 8805)?;
@@ -273,7 +272,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // ============================================================================
-    // 4. Session Modification Response - Acknowledge MAC Learning
+    // 4. Session Modification Response - Acknowledge MAC Provisioning
     // ============================================================================
 
     println!("4️⃣  Creating Session Modification Response");
@@ -288,7 +287,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mod_resp_bytes.len()
     );
     println!("      • Cause: Request accepted");
-    println!("      • Acknowledges MAC learning events");
+    println!("      • Acknowledges MAC address provisioning");
 
     // Write to PCAP
     write_pfcp_packet(&mut pcap_writer, &mod_resp_bytes, upf_ip, smf_ip, 8805)?;
@@ -305,7 +304,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📊 Summary:");
     println!("   • Created 4 PFCP messages for Ethernet PDU session");
     println!("   • Session Establishment Request/Response with Ethernet PDU info");
-    println!("   • Session Modification Request/Response with MAC learning");
+    println!("   • Session Modification Request/Response with MAC provisioning");
     println!("   • All messages saved to: ethernet_session.pcap");
     println!();
     println!("🔍 Next Steps:");
@@ -318,9 +317,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   3. Verify the following IEs are present:");
     println!("      • Ethernet PDU Session Information (IE Type 142)");
     println!("      • Ethernet Packet Filter (IE Type 132)");
-    println!("      • Ethernet Context Information (IE Type 145)");
+    println!("      • Ethernet Context Information (IE Type 254)");
     println!("      • MAC Addresses Detected (IE Type 144)");
-    println!("      • MAC Addresses Removed (IE Type 158)");
     println!("      • C-TAG (IE Type 134)");
     println!("      • S-TAG (IE Type 135)");
     println!("      • Ethernet Inactivity Timer (IE Type 146)");

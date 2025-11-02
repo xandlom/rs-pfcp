@@ -1,24 +1,31 @@
 //! Ethernet Context Information Element
 //!
-//! The Ethernet Context Information IE is a grouped IE that provides additional context
-//! for Ethernet PDU sessions. Per 3GPP TS 29.244 Section 7.5.4.21 Table 7.5.4.21-1
-//! (IE type 254), this is an R18 enhancement for advanced Ethernet session management.
+//! The Ethernet Context Information IE is a grouped IE used by SMF to provision MAC addresses
+//! to the UPF for Ethernet PDU sessions. Per 3GPP TS 29.244 Section 7.5.4.21 Table 7.5.4.21-1
+//! (IE type 254), this IE is used in PFCP Session Modification Request messages.
+//!
+//! NOTE: This IE contains only MAC Addresses Detected (for provisioning from SMF to UPF).
+//! For reporting MAC address events from UPF to SMF, see Ethernet Traffic Information IE (143).
 
 use crate::ie::mac_addresses_detected::MacAddressesDetected;
-use crate::ie::mac_addresses_removed::MacAddressesRemoved;
 use crate::ie::{Ie, IeType};
 use std::io;
 
 /// Ethernet Context Information (Grouped IE)
 ///
-/// Provides additional Ethernet session context including MAC address learning events.
+/// Used by SMF to provision MAC addresses to UPF for Ethernet PDU sessions.
 ///
 /// # 3GPP Reference
-/// 3GPP TS 29.244 Section 7.5.4.21 Table 7.5.4.21-1 (IE Type 254) - R18
+/// 3GPP TS 29.244 Section 7.5.4.21 Table 7.5.4.21-1 (IE Type 254)
 ///
 /// # Structure (Grouped IE containing):
-/// - MAC Addresses Detected (optional)
-/// - MAC Addresses Removed (optional)
+/// - MAC Addresses Detected (mandatory when IE is present, may appear multiple times)
+///
+/// Per spec: "Several IEs with the same IE type may be present to provision multiple
+/// lists of MAC addresses (e.g. with different V-LAN tags)."
+///
+/// # Direction
+/// SMF → UPF (provisioning)
 ///
 /// # Examples
 ///
@@ -26,47 +33,66 @@ use std::io;
 /// use rs_pfcp::ie::ethernet_context_information::{EthernetContextInformation, EthernetContextInformationBuilder};
 /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
 ///
-/// // Create with detected MAC addresses (raw 6-byte values)
+/// // Provision single MAC address
 /// let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 ///
 /// let context = EthernetContextInformationBuilder::new()
-///     .mac_addresses_detected(detected)
+///     .add_mac_addresses_detected(detected)
+///     .build()
+///     .unwrap();
+///
+/// // Provision multiple MAC address lists (e.g., different VLANs)
+/// let vlan100_macs = MacAddressesDetected::new(vec![
+///     [0x00, 0x11, 0x22, 0x33, 0x44, 0x55]
+/// ]).unwrap();
+/// let vlan200_macs = MacAddressesDetected::new(vec![
+///     [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+/// ]).unwrap();
+///
+/// let context2 = EthernetContextInformationBuilder::new()
+///     .add_mac_addresses_detected(vlan100_macs)
+///     .add_mac_addresses_detected(vlan200_macs)
 ///     .build()
 ///     .unwrap();
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EthernetContextInformation {
-    /// MAC Addresses Detected (optional)
-    pub mac_addresses_detected: Option<MacAddressesDetected>,
-    /// MAC Addresses Removed (optional)
-    pub mac_addresses_removed: Option<MacAddressesRemoved>,
+    /// MAC Addresses Detected (mandatory when IE is present, multiple instances allowed)
+    /// Per 3GPP TS 29.244 Table 7.5.4.21-1
+    pub mac_addresses_detected: Vec<MacAddressesDetected>,
 }
 
 impl EthernetContextInformation {
-    /// Create a new empty Ethernet Context Information
-    pub fn new() -> Self {
+    /// Create a new Ethernet Context Information with MAC addresses
+    ///
+    /// # Arguments
+    /// * `mac_addresses_detected` - List of MAC Addresses Detected IEs (at least one required)
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::ethernet_context_information::EthernetContextInformation;
+    /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
+    ///
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+    /// let detected = MacAddressesDetected::new(vec![mac]).unwrap();
+    /// let context = EthernetContextInformation::new(vec![detected]);
+    /// ```
+    pub fn new(mac_addresses_detected: Vec<MacAddressesDetected>) -> Self {
         EthernetContextInformation {
-            mac_addresses_detected: None,
-            mac_addresses_removed: None,
+            mac_addresses_detected,
         }
     }
 
     /// Marshal Ethernet Context Information to bytes (grouped IE format)
     pub fn marshal(&self) -> Vec<u8> {
-        let mut ies = Vec::new();
-
-        if let Some(detected) = &self.mac_addresses_detected {
-            ies.push(detected.to_ie());
-        }
-        if let Some(removed) = &self.mac_addresses_removed {
-            ies.push(removed.to_ie());
-        }
-
         let mut data = Vec::new();
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
+
+        // Marshal all MAC Addresses Detected IEs
+        for detected in &self.mac_addresses_detected {
+            data.extend_from_slice(&detected.to_ie().marshal());
         }
+
         data
     }
 
@@ -74,19 +100,18 @@ impl EthernetContextInformation {
     ///
     /// # Arguments
     /// * `payload` - Grouped IE payload containing child IEs
+    ///
+    /// # Errors
+    /// Returns error if no MAC Addresses Detected IE is present (mandatory per spec)
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        let mut mac_addresses_detected = None;
-        let mut mac_addresses_removed = None;
+        let mut mac_addresses_detected = Vec::new();
 
         let mut offset = 0;
         while offset < payload.len() {
             let ie = Ie::unmarshal(&payload[offset..])?;
             match ie.ie_type {
                 IeType::MacAddressesDetected => {
-                    mac_addresses_detected = Some(MacAddressesDetected::unmarshal(&ie.payload)?);
-                }
-                IeType::MacAddressesRemoved => {
-                    mac_addresses_removed = Some(MacAddressesRemoved::unmarshal(&ie.payload)?);
+                    mac_addresses_detected.push(MacAddressesDetected::unmarshal(&ie.payload)?);
                 }
                 _ => {
                     // Ignore unknown IEs for forward compatibility
@@ -95,21 +120,22 @@ impl EthernetContextInformation {
             offset += ie.len() as usize;
         }
 
+        // Validate that at least one MAC Addresses Detected IE is present (mandatory per spec)
+        if mac_addresses_detected.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Ethernet Context Information requires at least one MAC Addresses Detected IE per 3GPP TS 29.244 Table 7.5.4.21-1",
+            ));
+        }
+
         Ok(EthernetContextInformation {
             mac_addresses_detected,
-            mac_addresses_removed,
         })
     }
 
     /// Convert to generic IE
     pub fn to_ie(&self) -> Ie {
         Ie::new(IeType::EthernetContextInformation, self.marshal())
-    }
-}
-
-impl Default for EthernetContextInformation {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -122,70 +148,68 @@ impl Default for EthernetContextInformation {
 /// ```
 /// use rs_pfcp::ie::ethernet_context_information::EthernetContextInformationBuilder;
 /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-/// use rs_pfcp::ie::mac_addresses_removed::MacAddressesRemoved;
 ///
-/// // Report detected MAC addresses (raw 6-byte values)
+/// // Provision single MAC address list
 /// let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 ///
 /// let context = EthernetContextInformationBuilder::new()
-///     .mac_addresses_detected(detected)
+///     .add_mac_addresses_detected(detected)
 ///     .build()
 ///     .unwrap();
 ///
-/// // Report removed MAC addresses
-/// let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
-/// let removed = MacAddressesRemoved::new(vec![mac2]).unwrap();
+/// // Provision multiple MAC address lists (e.g., different VLANs)
+/// let vlan100 = MacAddressesDetected::new(vec![[0x00, 0x11, 0x22, 0x33, 0x44, 0x55]]).unwrap();
+/// let vlan200 = MacAddressesDetected::new(vec![[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]]).unwrap();
 ///
 /// let context2 = EthernetContextInformationBuilder::new()
-///     .mac_addresses_removed(removed)
-///     .build()
-///     .unwrap();
-///
-/// // Report both detected and removed
-/// let mac3 = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
-/// let mac4 = [0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC];
-/// let detected2 = MacAddressesDetected::new(vec![mac3]).unwrap();
-/// let removed2 = MacAddressesRemoved::new(vec![mac4]).unwrap();
-///
-/// let context3 = EthernetContextInformationBuilder::new()
-///     .mac_addresses_detected(detected2)
-///     .mac_addresses_removed(removed2)
+///     .add_mac_addresses_detected(vlan100)
+///     .add_mac_addresses_detected(vlan200)
 ///     .build()
 ///     .unwrap();
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct EthernetContextInformationBuilder {
-    mac_addresses_detected: Option<MacAddressesDetected>,
-    mac_addresses_removed: Option<MacAddressesRemoved>,
+    mac_addresses_detected: Vec<MacAddressesDetected>,
 }
 
 impl EthernetContextInformationBuilder {
     /// Create a new builder
     pub fn new() -> Self {
         EthernetContextInformationBuilder {
-            mac_addresses_detected: None,
-            mac_addresses_removed: None,
+            mac_addresses_detected: Vec::new(),
         }
     }
 
-    /// Set MAC addresses detected
-    pub fn mac_addresses_detected(mut self, detected: MacAddressesDetected) -> Self {
-        self.mac_addresses_detected = Some(detected);
+    /// Add a MAC Addresses Detected IE
+    ///
+    /// Can be called multiple times to add multiple MAC address lists
+    /// (e.g., for different VLANs)
+    pub fn add_mac_addresses_detected(mut self, detected: MacAddressesDetected) -> Self {
+        self.mac_addresses_detected.push(detected);
         self
     }
 
-    /// Set MAC addresses removed
-    pub fn mac_addresses_removed(mut self, removed: MacAddressesRemoved) -> Self {
-        self.mac_addresses_removed = Some(removed);
+    /// Set all MAC Addresses Detected IEs at once
+    pub fn mac_addresses_detected(mut self, detected: Vec<MacAddressesDetected>) -> Self {
+        self.mac_addresses_detected = detected;
         self
     }
 
     /// Build the Ethernet Context Information
+    ///
+    /// # Errors
+    /// Returns error if no MAC Addresses Detected IE has been added (mandatory per spec)
     pub fn build(self) -> Result<EthernetContextInformation, io::Error> {
+        if self.mac_addresses_detected.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Ethernet Context Information requires at least one MAC Addresses Detected IE per 3GPP TS 29.244 Table 7.5.4.21-1",
+            ));
+        }
+
         Ok(EthernetContextInformation {
             mac_addresses_detected: self.mac_addresses_detected,
-            mac_addresses_removed: self.mac_addresses_removed,
         })
     }
 }
@@ -196,16 +220,20 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_new() {
-        let context = EthernetContextInformation::new();
-        assert!(context.mac_addresses_detected.is_none());
-        assert!(context.mac_addresses_removed.is_none());
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let detected = MacAddressesDetected::new(vec![mac]).unwrap();
+        let context = EthernetContextInformation::new(vec![detected.clone()]);
+
+        assert_eq!(context.mac_addresses_detected.len(), 1);
+        assert_eq!(context.mac_addresses_detected[0], detected);
     }
 
     #[test]
     fn test_ethernet_context_information_builder_empty() {
-        let context = EthernetContextInformationBuilder::new().build().unwrap();
-        assert!(context.mac_addresses_detected.is_none());
-        assert!(context.mac_addresses_removed.is_none());
+        // Builder should fail when no MAC addresses added (mandatory per spec)
+        let result = EthernetContextInformationBuilder::new().build();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("at least one"));
     }
 
     #[test]
@@ -214,52 +242,39 @@ mod tests {
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
 
         let context = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected.clone())
+            .add_mac_addresses_detected(detected.clone())
             .build()
             .unwrap();
 
-        assert_eq!(context.mac_addresses_detected, Some(detected));
-        assert!(context.mac_addresses_removed.is_none());
+        assert_eq!(context.mac_addresses_detected.len(), 1);
+        assert_eq!(context.mac_addresses_detected[0], detected);
     }
 
     #[test]
-    fn test_ethernet_context_information_builder_with_removed() {
-        let mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
-        let removed = MacAddressesRemoved::new(vec![mac]).unwrap();
-
-        let context = EthernetContextInformationBuilder::new()
-            .mac_addresses_removed(removed.clone())
-            .build()
-            .unwrap();
-
-        assert!(context.mac_addresses_detected.is_none());
-        assert_eq!(context.mac_addresses_removed, Some(removed));
-    }
-
-    #[test]
-    fn test_ethernet_context_information_builder_comprehensive() {
+    fn test_ethernet_context_information_builder_multiple_detected() {
         let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
 
-        let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
-        let removed = MacAddressesRemoved::new(vec![mac2]).unwrap();
+        let detected1 = MacAddressesDetected::new(vec![mac1]).unwrap();
+        let detected2 = MacAddressesDetected::new(vec![mac2]).unwrap();
 
         let context = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected.clone())
-            .mac_addresses_removed(removed.clone())
+            .add_mac_addresses_detected(detected1.clone())
+            .add_mac_addresses_detected(detected2.clone())
             .build()
             .unwrap();
 
-        assert_eq!(context.mac_addresses_detected, Some(detected));
-        assert_eq!(context.mac_addresses_removed, Some(removed));
+        assert_eq!(context.mac_addresses_detected.len(), 2);
+        assert_eq!(context.mac_addresses_detected[0], detected1);
+        assert_eq!(context.mac_addresses_detected[1], detected2);
     }
 
     #[test]
-    fn test_ethernet_context_information_round_trip_empty() {
-        let original = EthernetContextInformation::new();
-        let marshaled = original.marshal();
-        let unmarshaled = EthernetContextInformation::unmarshal(&marshaled).unwrap();
-        assert_eq!(original, unmarshaled);
+    fn test_ethernet_context_information_unmarshal_empty() {
+        // Empty payload should fail (mandatory MAC Addresses Detected per spec)
+        let result = EthernetContextInformation::unmarshal(&[]);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("at least one"));
     }
 
     #[test]
@@ -268,7 +283,7 @@ mod tests {
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
 
         let original = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected)
+            .add_mac_addresses_detected(detected)
             .build()
             .unwrap();
 
@@ -283,12 +298,12 @@ mod tests {
         let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
         let mac3 = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
 
-        let detected = MacAddressesDetected::new(vec![mac1, mac2]).unwrap();
-        let removed = MacAddressesRemoved::new(vec![mac3]).unwrap();
+        let detected1 = MacAddressesDetected::new(vec![mac1, mac2]).unwrap();
+        let detected2 = MacAddressesDetected::new(vec![mac3]).unwrap();
 
         let original = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected)
-            .mac_addresses_removed(removed)
+            .add_mac_addresses_detected(detected1)
+            .add_mac_addresses_detected(detected2)
             .build()
             .unwrap();
 
@@ -303,7 +318,7 @@ mod tests {
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
 
         let context = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected)
+            .add_mac_addresses_detected(detected)
             .build()
             .unwrap();
 
@@ -317,50 +332,33 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_scenarios() {
-        // Scenario 1: New MAC address learned
-        let new_mac = [0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E];
-        let detected = MacAddressesDetected::new(vec![new_mac]).unwrap();
+        // Scenario 1: Provision single MAC address
+        let mac = [0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E];
+        let detected = MacAddressesDetected::new(vec![mac]).unwrap();
         let context1 = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected)
+            .add_mac_addresses_detected(detected)
             .build()
             .unwrap();
-        assert!(context1.mac_addresses_detected.is_some());
+        assert_eq!(context1.mac_addresses_detected.len(), 1);
 
-        // Scenario 2: MAC address aged out
-        let old_mac = [0x00, 0x50, 0x56, 0xC0, 0x00, 0x01];
-        let removed = MacAddressesRemoved::new(vec![old_mac]).unwrap();
-        let context2 = EthernetContextInformationBuilder::new()
-            .mac_addresses_removed(removed)
-            .build()
-            .unwrap();
-        assert!(context2.mac_addresses_removed.is_some());
-
-        // Scenario 3: MAC address table update (both detected and removed)
-        let new_devices = vec![
+        // Scenario 2: Provision multiple MAC address lists (different VLANs)
+        let vlan100_macs = vec![
             [0x11, 0x22, 0x33, 0x44, 0x55, 0x66],
             [0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC],
         ];
-        let old_devices = vec![[0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22]];
+        let vlan200_macs = vec![[0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22]];
 
-        let detected = MacAddressesDetected::new(new_devices).unwrap();
-        let removed = MacAddressesRemoved::new(old_devices).unwrap();
+        let detected_vlan100 = MacAddressesDetected::new(vlan100_macs).unwrap();
+        let detected_vlan200 = MacAddressesDetected::new(vlan200_macs).unwrap();
 
-        let context3 = EthernetContextInformationBuilder::new()
-            .mac_addresses_detected(detected)
-            .mac_addresses_removed(removed)
+        let context2 = EthernetContextInformationBuilder::new()
+            .add_mac_addresses_detected(detected_vlan100.clone())
+            .add_mac_addresses_detected(detected_vlan200.clone())
             .build()
             .unwrap();
 
-        assert!(context3.mac_addresses_detected.is_some());
-        assert!(context3.mac_addresses_removed.is_some());
-        assert_eq!(context3.mac_addresses_detected.unwrap().count(), 2);
-        assert_eq!(context3.mac_addresses_removed.unwrap().count(), 1);
-    }
-
-    #[test]
-    fn test_ethernet_context_information_default() {
-        let context = EthernetContextInformation::default();
-        assert!(context.mac_addresses_detected.is_none());
-        assert!(context.mac_addresses_removed.is_none());
+        assert_eq!(context2.mac_addresses_detected.len(), 2);
+        assert_eq!(context2.mac_addresses_detected[0].count(), 2);
+        assert_eq!(context2.mac_addresses_detected[1].count(), 1);
     }
 }
