@@ -270,6 +270,77 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                 map.extend(created_pdr_to_structured_data(&created_pdr));
             }
         }
+        IeType::EthernetPduSessionInformation => {
+            if let Ok(eth_pdu_info) =
+                crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation::unmarshal(
+                    &ie.payload,
+                )
+            {
+                map.insert(
+                    "untagged".to_string(),
+                    YamlValue::Bool(eth_pdu_info.is_untagged()),
+                );
+                map.insert(
+                    "has_ethernet_header".to_string(),
+                    YamlValue::Bool(eth_pdu_info.has_ethernet_header()),
+                );
+            }
+        }
+        IeType::EthernetContextInformation => {
+            if let Ok(eth_ctx) =
+                crate::ie::ethernet_context_information::EthernetContextInformation::unmarshal(
+                    &ie.payload,
+                )
+            {
+                if let Some(ref detected) = eth_ctx.mac_addresses_detected {
+                    let mac_list: Vec<YamlValue> = detected
+                        .addresses()
+                        .iter()
+                        .map(|mac| {
+                            let octets = mac.octets();
+                            YamlValue::String(format!(
+                                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                                octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+                            ))
+                        })
+                        .collect();
+                    map.insert(
+                        "mac_addresses_detected".to_string(),
+                        YamlValue::Sequence(mac_list),
+                    );
+                }
+
+                if let Some(ref removed) = eth_ctx.mac_addresses_removed {
+                    let mac_list: Vec<YamlValue> = removed
+                        .addresses()
+                        .iter()
+                        .map(|mac| {
+                            let octets = mac.octets();
+                            YamlValue::String(format!(
+                                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                                octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+                            ))
+                        })
+                        .collect();
+                    map.insert(
+                        "mac_addresses_removed".to_string(),
+                        YamlValue::Sequence(mac_list),
+                    );
+                }
+            }
+        }
+        IeType::EthernetInactivityTimer => {
+            if let Ok(timer) =
+                crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer::unmarshal(
+                    &ie.payload,
+                )
+            {
+                map.insert(
+                    "timer_seconds".to_string(),
+                    YamlValue::Number(timer.seconds().into()),
+                );
+            }
+        }
         _ => {
             // For unknown IEs, just show hex payload if it's not too long
             if ie.payload.len() <= 32 {
@@ -321,6 +392,9 @@ fn get_common_ie_types() -> Vec<IeType> {
         IeType::RemoveQer,
         IeType::LoadControlInformation,
         IeType::OffendingIe,
+        IeType::EthernetPduSessionInformation,
+        IeType::EthernetContextInformation,
+        IeType::EthernetInactivityTimer,
     ]
 }
 
@@ -578,6 +652,156 @@ fn create_pdr_to_structured_data(
         "source_interface".to_string(),
         YamlValue::String(format!("{:?}", create_pdr.pdi.source_interface.value)),
     );
+
+    // Add F-TEID if present
+    if let Some(ref fteid) = create_pdr.pdi.f_teid {
+        let mut fteid_map = BTreeMap::new();
+        fteid_map.insert(
+            "teid".to_string(),
+            YamlValue::String(format!("0x{:08x}", fteid.teid)),
+        );
+        if let Some(ipv4) = fteid.ipv4_address {
+            fteid_map.insert("ipv4".to_string(), YamlValue::String(ipv4.to_string()));
+        }
+        if let Some(ipv6) = fteid.ipv6_address {
+            fteid_map.insert("ipv6".to_string(), YamlValue::String(ipv6.to_string()));
+        }
+        pdi_map.insert(
+            "f_teid".to_string(),
+            YamlValue::Mapping(
+                fteid_map
+                    .into_iter()
+                    .map(|(k, v)| (YamlValue::String(k), v))
+                    .collect(),
+            ),
+        );
+    }
+
+    // Add UE IP Address if present
+    if let Some(ref ue_ip) = create_pdr.pdi.ue_ip_address {
+        let mut ue_ip_map = BTreeMap::new();
+        if let Some(ipv4) = ue_ip.ipv4_address {
+            ue_ip_map.insert("ipv4".to_string(), YamlValue::String(ipv4.to_string()));
+        }
+        if let Some(ipv6) = ue_ip.ipv6_address {
+            ue_ip_map.insert("ipv6".to_string(), YamlValue::String(ipv6.to_string()));
+        }
+        pdi_map.insert(
+            "ue_ip_address".to_string(),
+            YamlValue::Mapping(
+                ue_ip_map
+                    .into_iter()
+                    .map(|(k, v)| (YamlValue::String(k), v))
+                    .collect(),
+            ),
+        );
+    }
+
+    // Add Network Instance if present
+    if let Some(ref ni) = create_pdr.pdi.network_instance {
+        pdi_map.insert(
+            "network_instance".to_string(),
+            YamlValue::String(ni.instance.clone()),
+        );
+    }
+
+    // Add SDF Filter if present
+    if let Some(ref sdf) = create_pdr.pdi.sdf_filter {
+        pdi_map.insert(
+            "sdf_filter".to_string(),
+            YamlValue::String(format!("{:?}", sdf)),
+        );
+    }
+
+    // Add Application ID if present
+    if let Some(ref app_id) = create_pdr.pdi.application_id {
+        pdi_map.insert(
+            "application_id".to_string(),
+            YamlValue::String(app_id.clone()),
+        );
+    }
+
+    // Add Ethernet Packet Filter if present
+    if let Some(ref eth_filter) = create_pdr.pdi.ethernet_packet_filter {
+        let mut eth_filter_map = BTreeMap::new();
+        eth_filter_map.insert(
+            "filter_id".to_string(),
+            YamlValue::Number(eth_filter.ethernet_filter_id.value().into()),
+        );
+
+        if let Some(ref props) = eth_filter.ethernet_filter_properties {
+            eth_filter_map.insert(
+                "bidirectional".to_string(),
+                YamlValue::Bool(props.is_bidirectional()),
+            );
+        }
+
+        if let Some(ref mac) = eth_filter.mac_address {
+            let octets = mac.octets();
+            eth_filter_map.insert(
+                "mac_address".to_string(),
+                YamlValue::String(format!(
+                    "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                    octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+                )),
+            );
+        }
+
+        if let Some(ref ethertype) = eth_filter.ethertype {
+            eth_filter_map.insert(
+                "ethertype".to_string(),
+                YamlValue::String(format!("0x{:04x}", ethertype.value())),
+            );
+        }
+
+        if let Some(ref c_tag) = eth_filter.c_tag {
+            let mut ctag_map = BTreeMap::new();
+            ctag_map.insert(
+                "pcp".to_string(),
+                YamlValue::Number(c_tag.priority().into()),
+            );
+            ctag_map.insert("dei".to_string(), YamlValue::Bool(c_tag.dei()));
+            ctag_map.insert("vid".to_string(), YamlValue::Number(c_tag.vid().into()));
+            eth_filter_map.insert(
+                "c_tag".to_string(),
+                YamlValue::Mapping(
+                    ctag_map
+                        .into_iter()
+                        .map(|(k, v)| (YamlValue::String(k), v))
+                        .collect(),
+                ),
+            );
+        }
+
+        if let Some(ref s_tag) = eth_filter.s_tag {
+            let mut stag_map = BTreeMap::new();
+            stag_map.insert(
+                "pcp".to_string(),
+                YamlValue::Number(s_tag.priority().into()),
+            );
+            stag_map.insert("dei".to_string(), YamlValue::Bool(s_tag.dei()));
+            stag_map.insert("vid".to_string(), YamlValue::Number(s_tag.vid().into()));
+            eth_filter_map.insert(
+                "s_tag".to_string(),
+                YamlValue::Mapping(
+                    stag_map
+                        .into_iter()
+                        .map(|(k, v)| (YamlValue::String(k), v))
+                        .collect(),
+                ),
+            );
+        }
+
+        pdi_map.insert(
+            "ethernet_packet_filter".to_string(),
+            YamlValue::Mapping(
+                eth_filter_map
+                    .into_iter()
+                    .map(|(k, v)| (YamlValue::String(k), v))
+                    .collect(),
+            ),
+        );
+    }
 
     map.insert(
         "pdi".to_string(),
