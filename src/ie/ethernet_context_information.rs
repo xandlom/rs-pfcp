@@ -25,10 +25,9 @@ use std::io;
 /// ```
 /// use rs_pfcp::ie::ethernet_context_information::{EthernetContextInformation, EthernetContextInformationBuilder};
 /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-/// use rs_pfcp::ie::mac_address::MacAddress;
 ///
-/// // Create with detected MAC addresses
-/// let mac1 = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// // Create with detected MAC addresses (raw 6-byte values)
+/// let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 ///
 /// let context = EthernetContextInformationBuilder::new()
@@ -124,10 +123,9 @@ impl Default for EthernetContextInformation {
 /// use rs_pfcp::ie::ethernet_context_information::EthernetContextInformationBuilder;
 /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
 /// use rs_pfcp::ie::mac_addresses_removed::MacAddressesRemoved;
-/// use rs_pfcp::ie::mac_address::MacAddress;
 ///
-/// // Report detected MAC addresses
-/// let mac1 = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// // Report detected MAC addresses (raw 6-byte values)
+/// let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 ///
 /// let context = EthernetContextInformationBuilder::new()
@@ -136,7 +134,7 @@ impl Default for EthernetContextInformation {
 ///     .unwrap();
 ///
 /// // Report removed MAC addresses
-/// let mac2 = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+/// let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
 /// let removed = MacAddressesRemoved::new(vec![mac2]).unwrap();
 ///
 /// let context2 = EthernetContextInformationBuilder::new()
@@ -145,8 +143,8 @@ impl Default for EthernetContextInformation {
 ///     .unwrap();
 ///
 /// // Report both detected and removed
-/// let mac3 = MacAddress::source([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
-/// let mac4 = MacAddress::source([0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC]);
+/// let mac3 = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
+/// let mac4 = [0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC];
 /// let detected2 = MacAddressesDetected::new(vec![mac3]).unwrap();
 /// let removed2 = MacAddressesRemoved::new(vec![mac4]).unwrap();
 ///

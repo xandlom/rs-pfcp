@@ -30,9 +30,17 @@ use std::io;
 /// ```
 /// use rs_pfcp::ie::mac_address::MacAddress;
 ///
-/// // Create from byte array
+/// // Create source MAC
 /// let mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-/// assert_eq!(mac.octets(), &[0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// assert_eq!(mac.source_mac, Some([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]));
+///
+/// // Create source and destination MAC
+/// let mac2 = MacAddress::source_and_dest(
+///     [0x00, 0x11, 0x22, 0x33, 0x44, 0x55],
+///     [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF],
+/// );
+/// assert!(mac2.source_mac.is_some());
+/// assert!(mac2.destination_mac.is_some());
 ///
 /// // Marshal and unmarshal
 /// let bytes = mac.marshal();
