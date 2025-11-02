@@ -52,7 +52,7 @@ use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_request::SessionModificationRequestBuilder,
-    session_modification_response::SessionModificationResponse, Message,
+    session_modification_response::SessionModificationResponseBuilder, Message,
 };
 use std::fs::File;
 use std::net::Ipv4Addr;
@@ -91,16 +91,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(60));
 
     // Create Ethernet Packet Filter for uplink traffic (Access → Core)
-    // Supports up to 16 MAC addresses per 3GPP TS 29.244
-    let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-    let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+    // Per 3GPP TS 29.244 Section 8.2.93, MAC Address IE can contain source and/or destination
+    let mac_filter = MacAddress::source_and_dest(
+        [0x00, 0x11, 0x22, 0x33, 0x44, 0x55], // Source MAC
+        [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF], // Destination MAC
+    );
     let c_tag = CTag::new(1, false, 100)?; // PCP=1, DEI=false, VID=100
     let s_tag = STag::new(2, false, 200)?; // PCP=2, DEI=false, VID=200
 
     let ethernet_filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
         .ethernet_filter_properties(EthernetFilterProperties::bidirectional())
-        .mac_address(src_mac)
-        .mac_address(dst_mac)
+        .mac_address(mac_filter)
         .c_tag(c_tag)
         .s_tag(s_tag)
         .ethertype(Ethertype::new(0x0800)) // IPv4
@@ -109,16 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📦 Ethernet Packet Filter:");
     println!("      • Filter ID: 1");
     println!("      • Direction: Bidirectional");
-    let src_octets = src_mac.octets();
-    println!(
-        "      • Source MAC: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        src_octets[0], src_octets[1], src_octets[2], src_octets[3], src_octets[4], src_octets[5]
-    );
-    let dst_octets = dst_mac.octets();
-    println!(
-        "      • Dest MAC: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        dst_octets[0], dst_octets[1], dst_octets[2], dst_octets[3], dst_octets[4], dst_octets[5]
-    );
+    println!("      • MAC Filter: {}", mac_filter);
     println!("      • C-TAG: VLAN ID 100 (PCP=1)");
     println!("      • S-TAG: VLAN ID 200 (PCP=2)");
     println!("      • EtherType: 0x0800 (IPv4)");
@@ -215,37 +207,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(60));
 
     // Simulate MAC address learning events
-    let detected_mac1 = MacAddress::new([0x00, 0x50, 0x56, 0xAA, 0xBB, 0xCC]);
-    let detected_mac2 = MacAddress::new([0x00, 0x50, 0x56, 0xDD, 0xEE, 0xFF]);
-    let removed_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    // Note: MAC Addresses Detected/Removed use raw 6-byte values
+    let detected_mac1 = [0x00, 0x50, 0x56, 0xAA, 0xBB, 0xCC];
+    let detected_mac2 = [0x00, 0x50, 0x56, 0xDD, 0xEE, 0xFF];
+    let removed_mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 
     println!("   📡 MAC Address Learning Events:");
     println!("      • Detected MACs:");
-    let det1_octets = detected_mac1.octets();
     println!(
         "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        det1_octets[0],
-        det1_octets[1],
-        det1_octets[2],
-        det1_octets[3],
-        det1_octets[4],
-        det1_octets[5]
+        detected_mac1[0],
+        detected_mac1[1],
+        detected_mac1[2],
+        detected_mac1[3],
+        detected_mac1[4],
+        detected_mac1[5]
     );
-    let det2_octets = detected_mac2.octets();
     println!(
         "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        det2_octets[0],
-        det2_octets[1],
-        det2_octets[2],
-        det2_octets[3],
-        det2_octets[4],
-        det2_octets[5]
+        detected_mac2[0],
+        detected_mac2[1],
+        detected_mac2[2],
+        detected_mac2[3],
+        detected_mac2[4],
+        detected_mac2[5]
     );
     println!("      • Removed MACs:");
-    let rem_octets = removed_mac.octets();
     println!(
         "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        rem_octets[0], rem_octets[1], rem_octets[2], rem_octets[3], rem_octets[4], rem_octets[5]
+        removed_mac[0],
+        removed_mac[1],
+        removed_mac[2],
+        removed_mac[3],
+        removed_mac[4],
+        removed_mac[5]
     );
 
     // Create Ethernet Context Information with MAC learning events
@@ -284,25 +279,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("4️⃣  Creating Session Modification Response");
     println!("{}", "-".repeat(60));
 
-    let cause_ie = Ie::new(
-        IeType::Cause,
-        Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
-    );
+    let mod_resp_bytes = SessionModificationResponseBuilder::new(up_seid, seq_num)
+        .cause_accepted()
+        .marshal();
 
-    let modification_resp = SessionModificationResponse::new(
-        up_seid,
-        seq_num,
-        cause_ie,
-        None,
-        None,
-        None,
-        None,
-        None,
-        vec![],
-        vec![],
-    );
-
-    let mod_resp_bytes = modification_resp.marshal();
     println!(
         "   ✅ Session Modification Response created ({} bytes)",
         mod_resp_bytes.len()

@@ -297,10 +297,9 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                         .addresses()
                         .iter()
                         .map(|mac| {
-                            let octets = mac.octets();
                             YamlValue::String(format!(
-                                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-                                octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+                                "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
                             ))
                         })
                         .collect();
@@ -315,10 +314,9 @@ fn ie_to_structured_data(ie: &Ie) -> YamlValue {
                         .addresses()
                         .iter()
                         .map(|mac| {
-                            let octets = mac.octets();
                             YamlValue::String(format!(
-                                "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-                                octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+                                "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
                             ))
                         })
                         .collect();
@@ -741,13 +739,7 @@ fn create_pdr_to_structured_data(
             let mac_list: Vec<YamlValue> = eth_filter
                 .mac_addresses
                 .iter()
-                .map(|mac| {
-                    let octets = mac.octets();
-                    YamlValue::String(format!(
-                        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-                        octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
-                    ))
-                })
+                .map(|mac| YamlValue::String(mac.to_string()))
                 .collect();
             eth_filter_map.insert("mac_addresses".to_string(), YamlValue::Sequence(mac_list));
         }

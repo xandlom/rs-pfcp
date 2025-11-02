@@ -28,7 +28,7 @@ use std::io;
 /// use rs_pfcp::ie::mac_address::MacAddress;
 ///
 /// // Create with detected MAC addresses
-/// let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// let mac1 = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 ///
 /// let context = EthernetContextInformationBuilder::new()
@@ -127,7 +127,7 @@ impl Default for EthernetContextInformation {
 /// use rs_pfcp::ie::mac_address::MacAddress;
 ///
 /// // Report detected MAC addresses
-/// let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// let mac1 = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 ///
 /// let context = EthernetContextInformationBuilder::new()
@@ -136,7 +136,7 @@ impl Default for EthernetContextInformation {
 ///     .unwrap();
 ///
 /// // Report removed MAC addresses
-/// let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+/// let mac2 = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
 /// let removed = MacAddressesRemoved::new(vec![mac2]).unwrap();
 ///
 /// let context2 = EthernetContextInformationBuilder::new()
@@ -145,8 +145,8 @@ impl Default for EthernetContextInformation {
 ///     .unwrap();
 ///
 /// // Report both detected and removed
-/// let mac3 = MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
-/// let mac4 = MacAddress::new([0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC]);
+/// let mac3 = MacAddress::source([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+/// let mac4 = MacAddress::source([0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC]);
 /// let detected2 = MacAddressesDetected::new(vec![mac3]).unwrap();
 /// let removed2 = MacAddressesRemoved::new(vec![mac4]).unwrap();
 ///
@@ -195,7 +195,6 @@ impl EthernetContextInformationBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::mac_address::MacAddress;
 
     #[test]
     fn test_ethernet_context_information_new() {
@@ -213,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_builder_with_detected() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
 
         let context = EthernetContextInformationBuilder::new()
@@ -227,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_builder_with_removed() {
-        let mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
         let removed = MacAddressesRemoved::new(vec![mac]).unwrap();
 
         let context = EthernetContextInformationBuilder::new()
@@ -241,8 +240,8 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_builder_comprehensive() {
-        let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-        let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
 
         let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
         let removed = MacAddressesRemoved::new(vec![mac2]).unwrap();
@@ -267,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_round_trip_with_detected() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
 
         let original = EthernetContextInformationBuilder::new()
@@ -282,9 +281,9 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_round_trip_comprehensive() {
-        let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-        let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-        let mac3 = MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+        let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        let mac3 = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
 
         let detected = MacAddressesDetected::new(vec![mac1, mac2]).unwrap();
         let removed = MacAddressesRemoved::new(vec![mac3]).unwrap();
@@ -302,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_context_information_to_ie() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
 
         let context = EthernetContextInformationBuilder::new()
@@ -321,7 +320,7 @@ mod tests {
     #[test]
     fn test_ethernet_context_information_scenarios() {
         // Scenario 1: New MAC address learned
-        let new_mac = MacAddress::new([0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E]);
+        let new_mac = [0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E];
         let detected = MacAddressesDetected::new(vec![new_mac]).unwrap();
         let context1 = EthernetContextInformationBuilder::new()
             .mac_addresses_detected(detected)
@@ -330,7 +329,7 @@ mod tests {
         assert!(context1.mac_addresses_detected.is_some());
 
         // Scenario 2: MAC address aged out
-        let old_mac = MacAddress::new([0x00, 0x50, 0x56, 0xC0, 0x00, 0x01]);
+        let old_mac = [0x00, 0x50, 0x56, 0xC0, 0x00, 0x01];
         let removed = MacAddressesRemoved::new(vec![old_mac]).unwrap();
         let context2 = EthernetContextInformationBuilder::new()
             .mac_addresses_removed(removed)
@@ -340,10 +339,10 @@ mod tests {
 
         // Scenario 3: MAC address table update (both detected and removed)
         let new_devices = vec![
-            MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]),
-            MacAddress::new([0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC]),
+            [0x11, 0x22, 0x33, 0x44, 0x55, 0x66],
+            [0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC],
         ];
-        let old_devices = vec![MacAddress::new([0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22])];
+        let old_devices = vec![[0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22]];
 
         let detected = MacAddressesDetected::new(new_devices).unwrap();
         let removed = MacAddressesRemoved::new(old_devices).unwrap();

@@ -1,37 +1,39 @@
 //! MAC Addresses Detected Information Element
 //!
-//! The MAC Addresses Detected IE contains a list of MAC addresses that have been detected
-//! on an Ethernet PDU session. Per 3GPP TS 29.244 Section 8.2.103, this IE is used for
-//! MAC address learning and reporting in Ethernet sessions.
+//! The MAC Addresses Detected IE contains a list of MAC address values that have been detected
+//! on an Ethernet PDU session. Per 3GPP TS 29.244 Section 8.2.103, this IE contains raw
+//! 6-byte MAC address values (not MAC Address IEs).
 
-use crate::ie::mac_address::MacAddress;
 use crate::ie::{Ie, IeType};
 use std::io;
 
 /// MAC Addresses Detected
 ///
-/// Contains a list of MAC addresses detected on an Ethernet PDU session.
+/// Contains a list of raw MAC address values detected on an Ethernet PDU session.
 ///
 /// # 3GPP Reference
 /// 3GPP TS 29.244 Section 8.2.103
 ///
 /// # Structure
-/// - Octet 5: Number of MAC addresses
-/// - Octets 6 to m: MAC address(es) (6 bytes each)
+/// - Octet 5: Number of MAC addresses (k)
+/// - Octets 6 to 11: MAC address value 1 (6 bytes)
+/// - Octets (o) to (o+5): MAC address value 2 (6 bytes)
+/// - ... MAC address value k
+///
+/// Note: This IE contains raw 6-byte MAC address values, not MAC Address IEs.
 ///
 /// # Examples
 ///
 /// ```
 /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-/// use rs_pfcp::ie::mac_address::MacAddress;
 ///
 /// // Create with single MAC address
-/// let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 /// let detected = MacAddressesDetected::new(vec![mac1]).unwrap();
 /// assert_eq!(detected.addresses().len(), 1);
 ///
 /// // Create with multiple MAC addresses
-/// let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+/// let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
 /// let detected2 = MacAddressesDetected::new(vec![mac1, mac2]).unwrap();
 /// assert_eq!(detected2.addresses().len(), 2);
 ///
@@ -42,8 +44,8 @@ use std::io;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MacAddressesDetected {
-    /// List of detected MAC addresses
-    addresses: Vec<MacAddress>,
+    /// List of detected MAC address values (6 bytes each)
+    addresses: Vec<[u8; 6]>,
 }
 
 impl MacAddressesDetected {
@@ -61,13 +63,12 @@ impl MacAddressesDetected {
     /// # Example
     /// ```
     /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-    /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
-    /// let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
     /// let detected = MacAddressesDetected::new(vec![mac]).unwrap();
     /// assert_eq!(detected.addresses().len(), 1);
     /// ```
-    pub fn new(addresses: Vec<MacAddress>) -> Result<Self, io::Error> {
+    pub fn new(addresses: Vec<[u8; 6]>) -> Result<Self, io::Error> {
         if addresses.len() > Self::MAX_ADDRESSES {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -96,18 +97,17 @@ impl MacAddressesDetected {
         }
     }
 
-    /// Get the list of detected MAC addresses
+    /// Get the list of detected MAC address values
     ///
     /// # Example
     /// ```
     /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-    /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
-    /// let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
     /// let detected = MacAddressesDetected::new(vec![mac]).unwrap();
     /// assert_eq!(detected.addresses()[0], mac);
     /// ```
-    pub fn addresses(&self) -> &[MacAddress] {
+    pub fn addresses(&self) -> &[[u8; 6]] {
         &self.addresses
     }
 
@@ -116,10 +116,9 @@ impl MacAddressesDetected {
     /// # Example
     /// ```
     /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-    /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
-    /// let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-    /// let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+    /// let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+    /// let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
     /// let detected = MacAddressesDetected::new(vec![mac1, mac2]).unwrap();
     /// assert_eq!(detected.count(), 2);
     /// ```
@@ -130,16 +129,16 @@ impl MacAddressesDetected {
     /// Marshal MAC Addresses Detected to bytes
     ///
     /// # Returns
-    /// Vector with count byte followed by MAC addresses (6 bytes each)
+    /// Vector with count byte followed by raw MAC address values (6 bytes each)
     pub fn marshal(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(1 + self.addresses.len() * 6);
 
         // Byte 0: Number of MAC addresses
         bytes.push(self.addresses.len() as u8);
 
-        // Bytes 1+: MAC addresses (6 bytes each)
+        // Bytes 1+: MAC address values (6 bytes each)
         for mac in &self.addresses {
-            bytes.extend_from_slice(&mac.marshal());
+            bytes.extend_from_slice(mac);
         }
 
         bytes
@@ -156,9 +155,8 @@ impl MacAddressesDetected {
     /// # Example
     /// ```
     /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-    /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
-    /// let mac = MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+    /// let mac = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
     /// let detected = MacAddressesDetected::new(vec![mac]).unwrap();
     /// let bytes = detected.marshal();
     /// let parsed = MacAddressesDetected::unmarshal(&bytes).unwrap();
@@ -202,7 +200,8 @@ impl MacAddressesDetected {
                 ));
             }
 
-            let mac = MacAddress::unmarshal(&data[offset..offset + 6])?;
+            let mut mac = [0u8; 6];
+            mac.copy_from_slice(&data[offset..offset + 6]);
             addresses.push(mac);
             offset += 6;
         }
@@ -215,10 +214,9 @@ impl MacAddressesDetected {
     /// # Example
     /// ```
     /// use rs_pfcp::ie::mac_addresses_detected::MacAddressesDetected;
-    /// use rs_pfcp::ie::mac_address::MacAddress;
     /// use rs_pfcp::ie::IeType;
     ///
-    /// let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
     /// let detected = MacAddressesDetected::new(vec![mac]).unwrap();
     /// let ie = detected.to_ie();
     /// assert_eq!(ie.ie_type, IeType::MacAddressesDetected);
@@ -241,7 +239,7 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_single() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
         assert_eq!(detected.count(), 1);
         assert_eq!(detected.addresses()[0], mac);
@@ -249,9 +247,9 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_multiple() {
-        let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-        let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
-        let mac3 = MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+        let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        let mac3 = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
 
         let detected = MacAddressesDetected::new(vec![mac1, mac2, mac3]).unwrap();
         assert_eq!(detected.count(), 3);
@@ -262,9 +260,7 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_too_many() {
-        let addresses: Vec<MacAddress> = (0..=255)
-            .map(|i| MacAddress::new([i as u8, 0, 0, 0, 0, 0]))
-            .collect();
+        let addresses: Vec<[u8; 6]> = (0..=255).map(|i| [i as u8, 0, 0, 0, 0, 0]).collect();
 
         let result = MacAddressesDetected::new(addresses);
         assert!(result.is_err());
@@ -284,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_marshal_single() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
         let bytes = detected.marshal();
 
@@ -295,8 +291,8 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_marshal_multiple() {
-        let mac1 = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-        let mac2 = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
 
         let detected = MacAddressesDetected::new(vec![mac1, mac2]).unwrap();
         let bytes = detected.marshal();
@@ -321,7 +317,7 @@ mod tests {
         assert_eq!(detected.count(), 1);
         assert_eq!(
             detected.addresses()[0],
-            MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55])
+            [0x00, 0x11, 0x22, 0x33, 0x44, 0x55]
         );
     }
 
@@ -336,11 +332,11 @@ mod tests {
         assert_eq!(detected.count(), 2);
         assert_eq!(
             detected.addresses()[0],
-            MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55])
+            [0x00, 0x11, 0x22, 0x33, 0x44, 0x55]
         );
         assert_eq!(
             detected.addresses()[1],
-            MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF])
+            [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
         );
     }
 
@@ -362,15 +358,15 @@ mod tests {
     fn test_mac_addresses_detected_round_trip() {
         let test_cases = vec![
             vec![],
-            vec![MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55])],
+            vec![[0x00, 0x11, 0x22, 0x33, 0x44, 0x55]],
             vec![
-                MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
-                MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
+                [0x00, 0x11, 0x22, 0x33, 0x44, 0x55],
+                [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF],
             ],
             vec![
-                MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]),
-                MacAddress::new([0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC]),
-                MacAddress::new([0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22]),
+                [0x11, 0x22, 0x33, 0x44, 0x55, 0x66],
+                [0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC],
+                [0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22],
             ],
         ];
 
@@ -389,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_to_ie() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let detected = MacAddressesDetected::new(vec![mac]).unwrap();
         let ie = detected.to_ie();
 
@@ -404,15 +400,15 @@ mod tests {
     #[test]
     fn test_mac_addresses_detected_scenarios() {
         // Scenario 1: Single device detected
-        let device1 = MacAddress::new([0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E]);
+        let device1 = [0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E];
         let detected1 = MacAddressesDetected::new(vec![device1]).unwrap();
         assert_eq!(detected1.count(), 1);
 
         // Scenario 2: Multiple devices on network segment
         let devices = vec![
-            MacAddress::new([0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E]),
-            MacAddress::new([0x00, 0x1B, 0x44, 0x11, 0x3A, 0x2F]),
-            MacAddress::new([0x00, 0x50, 0x56, 0xC0, 0x00, 0x01]),
+            [0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E],
+            [0x00, 0x1B, 0x44, 0x11, 0x3A, 0x2F],
+            [0x00, 0x50, 0x56, 0xC0, 0x00, 0x01],
         ];
         let detected2 = MacAddressesDetected::new(devices).unwrap();
         assert_eq!(detected2.count(), 3);

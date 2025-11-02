@@ -43,7 +43,7 @@ use std::io;
 ///     .unwrap();
 ///
 /// // Filter with MAC address and Ethertype
-/// let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// let mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
 /// let filter2 = EthernetPacketFilterBuilder::new(EthernetFilterId::new(2))
 ///     .mac_address(mac)
 ///     .ethertype(Ethertype::ipv4())
@@ -205,7 +205,7 @@ impl EthernetPacketFilter {
 ///     .unwrap();
 ///
 /// // IPv4 traffic filter with MAC address
-/// let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+/// let mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
 /// let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(2))
 ///     .bidirectional()
 ///     .mac_address(mac)
@@ -274,8 +274,8 @@ impl EthernetPacketFilterBuilder {
     /// use rs_pfcp::ie::ethernet_filter_id::EthernetFilterId;
     /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
-    /// let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-    /// let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+    /// let src_mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    /// let dst_mac = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     ///
     /// let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
     ///     .mac_address(src_mac)
@@ -297,8 +297,8 @@ impl EthernetPacketFilterBuilder {
     /// use rs_pfcp::ie::mac_address::MacAddress;
     ///
     /// let macs = vec![
-    ///     MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
-    ///     MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
+    ///     MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
+    ///     MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
     /// ];
     ///
     /// let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
@@ -383,7 +383,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_packet_filter_builder_with_mac() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
         let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(2))
             .mac_address(mac)
             .build()
@@ -420,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_packet_filter_builder_comprehensive() {
-        let mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let mac = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
         let ctag = CTag::new(5, true, 100).unwrap();
 
         let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(5))
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_packet_filter_round_trip_with_mac() {
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
         let original = EthernetPacketFilterBuilder::new(EthernetFilterId::new(2))
             .mac_address(mac)
             .build()
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_ethernet_packet_filter_round_trip_comprehensive() {
-        let mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let mac = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
         let ctag = CTag::new(3, false, 200).unwrap();
         let stag = STag::new(5, true, 500).unwrap();
 
@@ -486,7 +486,7 @@ mod tests {
     #[test]
     fn test_ethernet_packet_filter_unmarshal_missing_filter_id() {
         // Create payload without Filter ID
-        let mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
         let ie = mac.to_ie();
         let marshaled = ie.marshal();
 
@@ -515,7 +515,7 @@ mod tests {
     #[test]
     fn test_ethernet_packet_filter_scenarios() {
         // Scenario 1: Simple MAC-based filter
-        let mac = MacAddress::new([0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E]);
+        let mac = MacAddress::source([0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E]);
         let filter1 = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
             .mac_address(mac)
             .build()
@@ -550,7 +550,7 @@ mod tests {
         assert_eq!(filter4.s_tag, Some(stag));
 
         // Scenario 5: Bidirectional MAC + IPv6 filter
-        let mac = MacAddress::new([0x00, 0x50, 0x56, 0xC0, 0x00, 0x01]);
+        let mac = MacAddress::source([0x00, 0x50, 0x56, 0xC0, 0x00, 0x01]);
         let filter5 = EthernetPacketFilterBuilder::new(EthernetFilterId::new(5))
             .bidirectional()
             .mac_address(mac)
@@ -569,8 +569,8 @@ mod tests {
     #[test]
     fn test_ethernet_packet_filter_multiple_macs() {
         // Test with 2 MAC addresses (source and destination)
-        let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-        let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let src_mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let dst_mac = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
 
         let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
             .mac_address(src_mac)
@@ -586,9 +586,9 @@ mod tests {
     #[test]
     fn test_ethernet_packet_filter_multiple_macs_with_vec() {
         let macs = vec![
-            MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
-            MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
-            MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]),
+            MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
+            MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
+            MacAddress::source([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]),
         ];
 
         let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
@@ -606,7 +606,7 @@ mod tests {
         let mut builder = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1));
 
         for i in 0..16 {
-            let mac = MacAddress::new([i, i, i, i, i, i]);
+            let mac = MacAddress::source([i, i, i, i, i, i]);
             builder = builder.mac_address(mac);
         }
 
@@ -619,7 +619,7 @@ mod tests {
         // Test validation: more than 16 MAC addresses should fail
         let mut macs = Vec::new();
         for i in 0..17 {
-            macs.push(MacAddress::new([i, i, i, i, i, i]));
+            macs.push(MacAddress::source([i, i, i, i, i, i]));
         }
 
         let result = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
@@ -635,8 +635,8 @@ mod tests {
 
     #[test]
     fn test_ethernet_packet_filter_round_trip_multiple_macs() {
-        let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
-        let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        let src_mac = MacAddress::source([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let dst_mac = MacAddress::source([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
 
         let original = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
             .bidirectional()
