@@ -91,14 +91,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "-".repeat(60));
 
     // Create Ethernet Packet Filter for uplink traffic (Access → Core)
-    // Note: Current implementation supports one MAC address per filter
-    let mac_addr = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    // Supports up to 16 MAC addresses per 3GPP TS 29.244
+    let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
     let c_tag = CTag::new(1, false, 100)?; // PCP=1, DEI=false, VID=100
     let s_tag = STag::new(2, false, 200)?; // PCP=2, DEI=false, VID=200
 
     let ethernet_filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
         .ethernet_filter_properties(EthernetFilterProperties::bidirectional())
-        .mac_address(mac_addr)
+        .mac_address(src_mac)
+        .mac_address(dst_mac)
         .c_tag(c_tag)
         .s_tag(s_tag)
         .ethertype(Ethertype::new(0x0800)) // IPv4
@@ -107,10 +109,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📦 Ethernet Packet Filter:");
     println!("      • Filter ID: 1");
     println!("      • Direction: Bidirectional");
-    let octets = mac_addr.octets();
+    let src_octets = src_mac.octets();
     println!(
-        "      • MAC Address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+        "      • Source MAC: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        src_octets[0], src_octets[1], src_octets[2], src_octets[3], src_octets[4], src_octets[5]
+    );
+    let dst_octets = dst_mac.octets();
+    println!(
+        "      • Dest MAC: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        dst_octets[0], dst_octets[1], dst_octets[2], dst_octets[3], dst_octets[4], dst_octets[5]
     );
     println!("      • C-TAG: VLAN ID 100 (PCP=1)");
     println!("      • S-TAG: VLAN ID 200 (PCP=2)");

@@ -736,15 +736,20 @@ fn create_pdr_to_structured_data(
             );
         }
 
-        if let Some(ref mac) = eth_filter.mac_address {
-            let octets = mac.octets();
-            eth_filter_map.insert(
-                "mac_address".to_string(),
-                YamlValue::String(format!(
-                    "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-                    octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
-                )),
-            );
+        // Display all MAC addresses
+        if !eth_filter.mac_addresses.is_empty() {
+            let mac_list: Vec<YamlValue> = eth_filter
+                .mac_addresses
+                .iter()
+                .map(|mac| {
+                    let octets = mac.octets();
+                    YamlValue::String(format!(
+                        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                        octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]
+                    ))
+                })
+                .collect();
+            eth_filter_map.insert("mac_addresses".to_string(), YamlValue::Sequence(mac_list));
         }
 
         if let Some(ref ethertype) = eth_filter.ethertype {

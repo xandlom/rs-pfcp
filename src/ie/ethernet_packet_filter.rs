@@ -24,7 +24,7 @@ use std::io;
 /// # Structure (Grouped IE containing):
 /// - Ethernet Filter ID (mandatory)
 /// - Ethernet Filter Properties (optional)
-/// - MAC Address (optional, source or destination)
+/// - MAC Address (optional, may appear up to 16 times per 3GPP TS 29.244 Table 7.5.2.2-3)
 /// - Ethertype (optional)
 /// - C-TAG (optional)
 /// - S-TAG (optional)
@@ -56,8 +56,8 @@ pub struct EthernetPacketFilter {
     pub ethernet_filter_id: EthernetFilterId,
     /// Ethernet Filter Properties (optional)
     pub ethernet_filter_properties: Option<EthernetFilterProperties>,
-    /// MAC Address for filtering (optional)
-    pub mac_address: Option<MacAddress>,
+    /// MAC Addresses for filtering (optional, up to 16 per 3GPP TS 29.244)
+    pub mac_addresses: Vec<MacAddress>,
     /// Ethertype for filtering (optional)
     pub ethertype: Option<Ethertype>,
     /// C-TAG (Customer VLAN) (optional)
@@ -83,7 +83,7 @@ impl EthernetPacketFilter {
         EthernetPacketFilter {
             ethernet_filter_id,
             ethernet_filter_properties: None,
-            mac_address: None,
+            mac_addresses: Vec::new(),
             ethertype: None,
             c_tag: None,
             s_tag: None,
@@ -97,7 +97,8 @@ impl EthernetPacketFilter {
         if let Some(props) = &self.ethernet_filter_properties {
             ies.push(props.to_ie());
         }
-        if let Some(mac) = &self.mac_address {
+        // Add all MAC addresses (up to 16 per 3GPP spec)
+        for mac in &self.mac_addresses {
             ies.push(mac.to_ie());
         }
         if let Some(etype) = &self.ethertype {
@@ -127,7 +128,7 @@ impl EthernetPacketFilter {
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         let mut ethernet_filter_id = None;
         let mut ethernet_filter_properties = None;
-        let mut mac_address = None;
+        let mut mac_addresses = Vec::new();
         let mut ethertype = None;
         let mut c_tag = None;
         let mut s_tag = None;
@@ -144,7 +145,8 @@ impl EthernetPacketFilter {
                         Some(EthernetFilterProperties::unmarshal(&ie.payload)?);
                 }
                 IeType::MacAddress => {
-                    mac_address = Some(MacAddress::unmarshal(&ie.payload)?);
+                    // Collect all MAC Address IEs (up to 16 per spec)
+                    mac_addresses.push(MacAddress::unmarshal(&ie.payload)?);
                 }
                 IeType::Ethertype => {
                     ethertype = Some(Ethertype::unmarshal(&ie.payload)?);
@@ -170,7 +172,7 @@ impl EthernetPacketFilter {
                 )
             })?,
             ethernet_filter_properties,
-            mac_address,
+            mac_addresses,
             ethertype,
             c_tag,
             s_tag,
@@ -222,7 +224,7 @@ impl EthernetPacketFilter {
 pub struct EthernetPacketFilterBuilder {
     ethernet_filter_id: EthernetFilterId,
     ethernet_filter_properties: Option<EthernetFilterProperties>,
-    mac_address: Option<MacAddress>,
+    mac_addresses: Vec<MacAddress>,
     ethertype: Option<Ethertype>,
     c_tag: Option<CTag>,
     s_tag: Option<STag>,
@@ -237,7 +239,7 @@ impl EthernetPacketFilterBuilder {
         EthernetPacketFilterBuilder {
             ethernet_filter_id,
             ethernet_filter_properties: None,
-            mac_address: None,
+            mac_addresses: Vec::new(),
             ethertype: None,
             c_tag: None,
             s_tag: None,
@@ -262,9 +264,50 @@ impl EthernetPacketFilterBuilder {
         self
     }
 
-    /// Set MAC address filter
+    /// Add a MAC address filter
+    ///
+    /// Can be called multiple times to add up to 16 MAC addresses per 3GPP spec.
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::ethernet_packet_filter::EthernetPacketFilterBuilder;
+    /// use rs_pfcp::ie::ethernet_filter_id::EthernetFilterId;
+    /// use rs_pfcp::ie::mac_address::MacAddress;
+    ///
+    /// let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+    /// let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+    ///
+    /// let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+    ///     .mac_address(src_mac)
+    ///     .mac_address(dst_mac)
+    ///     .build()
+    ///     .unwrap();
+    /// ```
     pub fn mac_address(mut self, mac: MacAddress) -> Self {
-        self.mac_address = Some(mac);
+        self.mac_addresses.push(mac);
+        self
+    }
+
+    /// Set multiple MAC addresses at once
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::ethernet_packet_filter::EthernetPacketFilterBuilder;
+    /// use rs_pfcp::ie::ethernet_filter_id::EthernetFilterId;
+    /// use rs_pfcp::ie::mac_address::MacAddress;
+    ///
+    /// let macs = vec![
+    ///     MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
+    ///     MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
+    /// ];
+    ///
+    /// let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+    ///     .mac_addresses(macs)
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    pub fn mac_addresses(mut self, macs: Vec<MacAddress>) -> Self {
+        self.mac_addresses = macs;
         self
     }
 
@@ -287,11 +330,25 @@ impl EthernetPacketFilterBuilder {
     }
 
     /// Build the Ethernet Packet Filter
+    ///
+    /// # Errors
+    /// Returns error if more than 16 MAC addresses are specified (per 3GPP TS 29.244)
     pub fn build(self) -> Result<EthernetPacketFilter, io::Error> {
+        // Validate MAC address count per 3GPP spec
+        if self.mac_addresses.len() > 16 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "Ethernet Packet Filter can have at most 16 MAC addresses, got {}",
+                    self.mac_addresses.len()
+                ),
+            ));
+        }
+
         Ok(EthernetPacketFilter {
             ethernet_filter_id: self.ethernet_filter_id,
             ethernet_filter_properties: self.ethernet_filter_properties,
-            mac_address: self.mac_address,
+            mac_addresses: self.mac_addresses,
             ethertype: self.ethertype,
             c_tag: self.c_tag,
             s_tag: self.s_tag,
@@ -308,7 +365,7 @@ mod tests {
         let filter = EthernetPacketFilter::new(EthernetFilterId::new(1));
         assert_eq!(filter.ethernet_filter_id.value(), 1);
         assert!(filter.ethernet_filter_properties.is_none());
-        assert!(filter.mac_address.is_none());
+        assert!(filter.mac_addresses.is_empty());
         assert!(filter.ethertype.is_none());
         assert!(filter.c_tag.is_none());
         assert!(filter.s_tag.is_none());
@@ -333,7 +390,8 @@ mod tests {
             .unwrap();
 
         assert_eq!(filter.ethernet_filter_id.value(), 2);
-        assert_eq!(filter.mac_address, Some(mac));
+        assert_eq!(filter.mac_addresses.len(), 1);
+        assert_eq!(filter.mac_addresses[0], mac);
     }
 
     #[test]
@@ -378,7 +436,8 @@ mod tests {
             .ethernet_filter_properties
             .unwrap()
             .is_bidirectional());
-        assert_eq!(filter.mac_address, Some(mac));
+        assert_eq!(filter.mac_addresses.len(), 1);
+        assert_eq!(filter.mac_addresses[0], mac);
         assert_eq!(filter.ethertype, Some(Ethertype::ipv4()));
         assert_eq!(filter.c_tag, Some(ctag));
     }
@@ -461,7 +520,8 @@ mod tests {
             .mac_address(mac)
             .build()
             .unwrap();
-        assert_eq!(filter1.mac_address, Some(mac));
+        assert_eq!(filter1.mac_addresses.len(), 1);
+        assert_eq!(filter1.mac_addresses[0], mac);
 
         // Scenario 2: IPv4 traffic only
         let filter2 = EthernetPacketFilterBuilder::new(EthernetFilterId::new(2))
@@ -501,7 +561,94 @@ mod tests {
             .ethernet_filter_properties
             .unwrap()
             .is_bidirectional());
-        assert_eq!(filter5.mac_address, Some(mac));
+        assert_eq!(filter5.mac_addresses.len(), 1);
+        assert_eq!(filter5.mac_addresses[0], mac);
         assert_eq!(filter5.ethertype, Some(Ethertype::ipv6()));
+    }
+
+    #[test]
+    fn test_ethernet_packet_filter_multiple_macs() {
+        // Test with 2 MAC addresses (source and destination)
+        let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+
+        let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+            .mac_address(src_mac)
+            .mac_address(dst_mac)
+            .build()
+            .unwrap();
+
+        assert_eq!(filter.mac_addresses.len(), 2);
+        assert_eq!(filter.mac_addresses[0], src_mac);
+        assert_eq!(filter.mac_addresses[1], dst_mac);
+    }
+
+    #[test]
+    fn test_ethernet_packet_filter_multiple_macs_with_vec() {
+        let macs = vec![
+            MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]),
+            MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
+            MacAddress::new([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]),
+        ];
+
+        let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+            .mac_addresses(macs.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(filter.mac_addresses.len(), 3);
+        assert_eq!(filter.mac_addresses, macs);
+    }
+
+    #[test]
+    fn test_ethernet_packet_filter_max_macs() {
+        // Test with maximum 16 MAC addresses per 3GPP spec
+        let mut builder = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1));
+
+        for i in 0..16 {
+            let mac = MacAddress::new([i, i, i, i, i, i]);
+            builder = builder.mac_address(mac);
+        }
+
+        let filter = builder.build().unwrap();
+        assert_eq!(filter.mac_addresses.len(), 16);
+    }
+
+    #[test]
+    fn test_ethernet_packet_filter_too_many_macs() {
+        // Test validation: more than 16 MAC addresses should fail
+        let mut macs = Vec::new();
+        for i in 0..17 {
+            macs.push(MacAddress::new([i, i, i, i, i, i]));
+        }
+
+        let result = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+            .mac_addresses(macs)
+            .build();
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("at most 16 MAC addresses"));
+    }
+
+    #[test]
+    fn test_ethernet_packet_filter_round_trip_multiple_macs() {
+        let src_mac = MacAddress::new([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        let dst_mac = MacAddress::new([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+
+        let original = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+            .bidirectional()
+            .mac_address(src_mac)
+            .mac_address(dst_mac)
+            .ethertype(Ethertype::ipv4())
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = EthernetPacketFilter::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.mac_addresses.len(), 2);
     }
 }
