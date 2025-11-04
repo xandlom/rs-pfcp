@@ -413,27 +413,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("6️⃣  Creating Session Report Response");
     println!("{}", "-".repeat(60));
 
-    let cause_ie = Ie::new(
-        IeType::Cause,
-        Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
-    );
-
-    let report_resp = SessionReportResponse {
-        header: rs_pfcp::message::header::Header::new(
-            rs_pfcp::message::MsgType::SessionReportResponse,
-            true, // has_seid
-            up_seid,
-            seq_num,
-        ),
-        cause: Some(cause_ie),
-        offending_ie: None,
-        update_bar_response: None,
-        pfcpsrrsp_flags: None,
-        cp_f_seid: None,
-        n4_u_f_teid: None,
-        alternative_smf_ip_address: None,
-        ies: vec![],
-    };
+    let report_resp = rs_pfcp::message::session_report_response::SessionReportResponseBuilder::accepted(up_seid, seq_num)
+        .build()?;
 
     let report_resp_bytes = report_resp.marshal();
     println!(
