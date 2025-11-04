@@ -413,7 +413,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("6️⃣  Creating Session Report Response");
     println!("{}", "-".repeat(60));
 
-    let report_resp = rs_pfcp::message::session_report_response::SessionReportResponseBuilder::accepted(up_seid, seq_num)
+    let report_resp =
+        rs_pfcp::message::session_report_response::SessionReportResponseBuilder::accepted(
+            up_seid, seq_num,
+        )
         .build()?;
 
     let report_resp_bytes = report_resp.marshal();
