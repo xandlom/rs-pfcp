@@ -12,12 +12,11 @@
 //! - Session modification with Ethernet context information
 //! - PCAP file generation for Wireshark analysis
 //!
-//! # Note on MAC Address Reporting
+//! # MAC Address Reporting
 //!
-//! Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information (IE Type 254)
-//! is used for SMF → UPF provisioning and only contains MAC Addresses Detected.
-//! For UPF → SMF reporting of MAC learning events (both detected and removed),
-//! use Ethernet Traffic Information IE (Type 143) - not yet implemented
+//! This demo showcases both MAC address flows:
+//! 1. **SMF → UPF Provisioning**: Ethernet Context Information (IE Type 254) with MAC Addresses Detected
+//! 2. **UPF → SMF Reporting**: Ethernet Traffic Information (IE Type 143) in Usage Reports with both detected and removed MACs
 //!
 //! # Usage
 //!
@@ -42,23 +41,33 @@ use rs_pfcp::ie::{
     ethernet_inactivity_timer::EthernetInactivityTimer,
     ethernet_packet_filter::EthernetPacketFilterBuilder,
     ethernet_pdu_session_information::EthernetPduSessionInformation,
+    ethernet_traffic_information::EthernetTrafficInformationBuilder,
     ethertype::Ethertype,
     far_id::FarId,
     fseid::Fseid,
     mac_address::MacAddress,
     mac_addresses_detected::MacAddressesDetected,
+    mac_addresses_removed::MacAddressesRemoved,
     pdi::PdiBuilder,
     pdr_id::PdrId,
     precedence::Precedence,
+    report_type::ReportType,
     s_tag::STag,
+    sequence_number::SequenceNumber,
     source_interface::{SourceInterface, SourceInterfaceValue},
+    urr_id::UrrId,
+    usage_report::UsageReportBuilder,
+    usage_report_srr::UsageReportSrr,
+    usage_report_trigger::UsageReportTrigger,
     Ie, IeType,
 };
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_request::SessionModificationRequestBuilder,
-    session_modification_response::SessionModificationResponseBuilder, Message,
+    session_modification_response::SessionModificationResponseBuilder,
+    session_report_request::SessionReportRequest,
+    session_report_response::SessionReportResponse, Message,
 };
 use std::fs::File;
 use std::net::Ipv4Addr;
@@ -212,11 +221,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("3️⃣  Creating Session Modification Request with MAC Address Provisioning");
     println!("{}", "-".repeat(60));
 
-    // Simulate MAC address learning events
-    // Note: Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information
+    // Simulate MAC address learning events for SMF → UPF provisioning
+    // Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information
     // is used for SMF→UPF provisioning and only contains MAC Addresses Detected.
-    // For UPF→SMF reporting of both detected and removed MACs, use Ethernet
-    // Traffic Information IE (Type 143) - not yet implemented.
     let detected_mac1 = [0x00, 0x50, 0x56, 0xAA, 0xBB, 0xCC];
     let detected_mac2 = [0x00, 0x50, 0x56, 0xDD, 0xEE, 0xFF];
 
@@ -242,9 +249,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Create Ethernet Context Information to provision detected MAC addresses
-    // Note: Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information
+    // Per 3GPP TS 29.244 Table 7.5.4.21-1, Ethernet Context Information
     // only contains MAC Addresses Detected (for SMF→UPF provisioning).
-    // For UPF→SMF reporting, see Ethernet Traffic Information IE (Type 143).
     let mac_detected = MacAddressesDetected::new(vec![detected_mac1, detected_mac2])?;
 
     let eth_context_info = EthernetContextInformationBuilder::new()
@@ -295,6 +301,154 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // ============================================================================
+    // 5. Session Report Request - Report MAC Learning Events (UPF → SMF)
+    // ============================================================================
+
+    seq_num += 1;
+    println!("5️⃣  Creating Session Report Request with Ethernet Traffic Information");
+    println!("{}", "-".repeat(60));
+
+    // Simulate UPF reporting MAC learning events back to SMF
+    // Per 3GPP TS 29.244 Table 7.5.8.3-3, Ethernet Traffic Information (IE Type 143)
+    // is used within Usage Reports for UPF→SMF reporting of MAC learning events.
+
+    // Newly detected MACs during the session
+    let newly_detected_mac1 = [0x00, 0x50, 0x56, 0x11, 0x22, 0x33];
+    let newly_detected_mac2 = [0x00, 0x50, 0x56, 0x44, 0x55, 0x66];
+
+    // MACs that were removed (device disconnected)
+    let removed_mac1 = [0x00, 0x50, 0x56, 0xAA, 0xBB, 0xCC]; // Previously provisioned
+
+    println!("   📊 UPF → SMF MAC Learning Report:");
+    println!("      • Newly Detected MACs:");
+    println!(
+        "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        newly_detected_mac1[0],
+        newly_detected_mac1[1],
+        newly_detected_mac1[2],
+        newly_detected_mac1[3],
+        newly_detected_mac1[4],
+        newly_detected_mac1[5]
+    );
+    println!(
+        "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        newly_detected_mac2[0],
+        newly_detected_mac2[1],
+        newly_detected_mac2[2],
+        newly_detected_mac2[3],
+        newly_detected_mac2[4],
+        newly_detected_mac2[5]
+    );
+    println!("      • Removed MACs:");
+    println!(
+        "         - {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        removed_mac1[0],
+        removed_mac1[1],
+        removed_mac1[2],
+        removed_mac1[3],
+        removed_mac1[4],
+        removed_mac1[5]
+    );
+
+    // Create Ethernet Traffic Information with both detected and removed MACs
+    let newly_detected = MacAddressesDetected::new(vec![newly_detected_mac1, newly_detected_mac2])?;
+    let removed_macs = MacAddressesRemoved::new(vec![removed_mac1])?;
+
+    let eth_traffic_info = EthernetTrafficInformationBuilder::new()
+        .add_mac_addresses_detected(newly_detected)
+        .add_mac_addresses_removed(removed_macs)
+        .build()?;
+
+    // Create Usage Report with Ethernet Traffic Information
+    // Using PERIO trigger for periodic MAC learning report
+    let usage_report = UsageReportBuilder::new(UrrId::new(1))
+        .sequence_number(SequenceNumber::new(1))
+        .trigger(UsageReportTrigger::PERIO)
+        .ethernet_traffic_information(eth_traffic_info)
+        .build()?;
+
+    let usage_report_srr = UsageReportSrr::new(usage_report);
+    let usage_report_ie = usage_report_srr.to_ie();
+
+    // Create Report Type IE
+    let report_type = ReportType::usage_report();
+    let report_type_ie = report_type.to_ie();
+
+    // Build Session Report Request
+    let report_req = SessionReportRequest {
+        header: rs_pfcp::message::header::Header::new(
+            rs_pfcp::message::MsgType::SessionReportRequest,
+            true,  // has_seid
+            up_seid,
+            seq_num,
+        ),
+        report_type: Some(report_type_ie),
+        downlink_data_report: None,
+        usage_reports: vec![usage_report_ie],
+        load_control_information: None,
+        overload_control_information: None,
+        additional_usage_reports_information: None,
+        pfcpsrreq_flags: None,
+        ies: vec![],
+    };
+
+    let report_req_bytes = report_req.marshal();
+    println!(
+        "   ✅ Session Report Request created ({} bytes)",
+        report_req_bytes.len()
+    );
+    println!("      • Includes Ethernet Traffic Information in Usage Report");
+    println!("      • Reports 2 newly detected MACs (UPF → SMF)");
+    println!("      • Reports 1 removed MAC (device disconnected)");
+
+    // Write to PCAP
+    write_pfcp_packet(&mut pcap_writer, &report_req_bytes, upf_ip, smf_ip, 8805)?;
+    println!("   💾 Written to PCAP file");
+    println!();
+
+    // ============================================================================
+    // 6. Session Report Response - Acknowledge MAC Learning Report
+    // ============================================================================
+
+    println!("6️⃣  Creating Session Report Response");
+    println!("{}", "-".repeat(60));
+
+    let cause_ie = Ie::new(
+        IeType::Cause,
+        Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
+    );
+
+    let report_resp = SessionReportResponse {
+        header: rs_pfcp::message::header::Header::new(
+            rs_pfcp::message::MsgType::SessionReportResponse,
+            true,  // has_seid
+            up_seid,
+            seq_num,
+        ),
+        cause: Some(cause_ie),
+        offending_ie: None,
+        update_bar_response: None,
+        pfcpsrrsp_flags: None,
+        cp_f_seid: None,
+        n4_u_f_teid: None,
+        alternative_smf_ip_address: None,
+        ies: vec![],
+    };
+
+    let report_resp_bytes = report_resp.marshal();
+    println!(
+        "   ✅ Session Report Response created ({} bytes)",
+        report_resp_bytes.len()
+    );
+    println!("      • Cause: Request accepted");
+    println!("      • Acknowledges MAC learning report");
+
+    // Write to PCAP
+    write_pfcp_packet(&mut pcap_writer, &report_resp_bytes, smf_ip, upf_ip, 8805)?;
+    println!("   💾 Written to PCAP file");
+    println!();
+
+    // ============================================================================
     // Summary
     // ============================================================================
 
@@ -302,9 +456,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", "=".repeat(60));
     println!();
     println!("📊 Summary:");
-    println!("   • Created 4 PFCP messages for Ethernet PDU session");
+    println!("   • Created 6 PFCP messages for Ethernet PDU session");
     println!("   • Session Establishment Request/Response with Ethernet PDU info");
-    println!("   • Session Modification Request/Response with MAC provisioning");
+    println!("   • Session Modification Request/Response with MAC provisioning (SMF → UPF)");
+    println!("   • Session Report Request/Response with MAC learning events (UPF → SMF)");
     println!("   • All messages saved to: ethernet_session.pcap");
     println!();
     println!("🔍 Next Steps:");
@@ -317,8 +472,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   3. Verify the following IEs are present:");
     println!("      • Ethernet PDU Session Information (IE Type 142)");
     println!("      • Ethernet Packet Filter (IE Type 132)");
-    println!("      • Ethernet Context Information (IE Type 254)");
+    println!("      • Ethernet Context Information (IE Type 254) - SMF → UPF");
+    println!("      • Ethernet Traffic Information (IE Type 143) - UPF → SMF");
     println!("      • MAC Addresses Detected (IE Type 144)");
+    println!("      • MAC Addresses Removed (IE Type 145)");
     println!("      • C-TAG (IE Type 134)");
     println!("      • S-TAG (IE Type 135)");
     println!("      • Ethernet Inactivity Timer (IE Type 146)");
