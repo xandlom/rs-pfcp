@@ -66,8 +66,8 @@ use rs_pfcp::message::{
     session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_request::SessionModificationRequestBuilder,
     session_modification_response::SessionModificationResponseBuilder,
-    session_report_request::SessionReportRequest,
-    session_report_response::SessionReportResponse, Message,
+    session_report_request::SessionReportRequest, session_report_response::SessionReportResponse,
+    Message,
 };
 use std::fs::File;
 use std::net::Ipv4Addr;
@@ -378,7 +378,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let report_req = SessionReportRequest {
         header: rs_pfcp::message::header::Header::new(
             rs_pfcp::message::MsgType::SessionReportRequest,
-            true,  // has_seid
+            true, // has_seid
             up_seid,
             seq_num,
         ),
@@ -421,7 +421,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let report_resp = SessionReportResponse {
         header: rs_pfcp::message::header::Header::new(
             rs_pfcp::message::MsgType::SessionReportResponse,
-            true,  // has_seid
+            true, // has_seid
             up_seid,
             seq_num,
         ),
