@@ -2,8 +2,10 @@
 //!
 //! The MAC Addresses Removed IE contains a list of MAC address values that have been removed
 //! on an Ethernet PDU session. Per 3GPP TS 29.244 Section 8.2.104, this IE contains raw
-//! 6-byte MAC address values (not MAC Address IEs).
+//! 6-byte MAC address values with optional C-TAG and S-TAG VLAN identifiers.
 
+use crate::ie::c_tag::CTag;
+use crate::ie::s_tag::STag;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -14,13 +16,13 @@ use std::io;
 /// # 3GPP Reference
 /// 3GPP TS 29.244 Section 8.2.104
 ///
-/// # Structure
+/// # Structure (per 3GPP TS 29.244 § 8.2.104)
 /// - Octet 5: Number of MAC addresses (k)
-/// - Octets 6 to 11: MAC address value 1 (6 bytes)
-/// - Octets (o) to (o+5): MAC address value 2 (6 bytes)
-/// - ... MAC address value k
-///
-/// Note: This IE contains raw 6-byte MAC address values, not MAC Address IEs.
+/// - Octets 6+: MAC address values (6 bytes each)
+/// - Length of C-TAG field (1 byte)
+/// - C-TAG field (3 bytes if length > 0)
+/// - Length of S-TAG field (1 byte)
+/// - S-TAG field (3 bytes if length > 0)
 ///
 /// # Examples
 ///
@@ -46,13 +48,17 @@ use std::io;
 pub struct MacAddressesRemoved {
     /// List of removed MAC address values (6 bytes each)
     addresses: Vec<[u8; 6]>,
+    /// Optional Customer VLAN tag (C-TAG)
+    c_tag: Option<CTag>,
+    /// Optional Service VLAN tag (S-TAG)
+    s_tag: Option<STag>,
 }
 
 impl MacAddressesRemoved {
     /// Maximum number of MAC addresses (per spec)
     pub const MAX_ADDRESSES: usize = 255;
 
-    /// Create new MAC Addresses Removed IE
+    /// Create new MAC Addresses Removed IE without VLAN tags
     ///
     /// # Arguments
     /// * `addresses` - List of MAC addresses (max 255)
@@ -79,7 +85,65 @@ impl MacAddressesRemoved {
                 ),
             ));
         }
-        Ok(MacAddressesRemoved { addresses })
+        Ok(MacAddressesRemoved {
+            addresses,
+            c_tag: None,
+            s_tag: None,
+        })
+    }
+
+    /// Create new MAC Addresses Removed IE with VLAN tags
+    ///
+    /// Per 3GPP TS 29.244 § 8.2.104, C-TAG and S-TAG fields allow multiple instances
+    /// of this IE with different VLAN configurations.
+    ///
+    /// # Arguments
+    /// * `addresses` - List of MAC addresses (max 255)
+    /// * `c_tag` - Optional Customer VLAN tag
+    /// * `s_tag` - Optional Service VLAN tag
+    ///
+    /// # Errors
+    /// Returns error if more than 255 addresses provided
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::mac_addresses_removed::MacAddressesRemoved;
+    /// use rs_pfcp::ie::c_tag::CTag;
+    /// use rs_pfcp::ie::s_tag::STag;
+    ///
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+    /// let c_tag = CTag::new(1, false, 100).unwrap();
+    /// let s_tag = STag::new(2, false, 200).unwrap();
+    ///
+    /// let removed = MacAddressesRemoved::new_with_vlan(
+    ///     vec![mac],
+    ///     Some(c_tag),
+    ///     Some(s_tag)
+    /// ).unwrap();
+    /// assert_eq!(removed.addresses().len(), 1);
+    /// assert!(removed.c_tag().is_some());
+    /// assert!(removed.s_tag().is_some());
+    /// ```
+    pub fn new_with_vlan(
+        addresses: Vec<[u8; 6]>,
+        c_tag: Option<CTag>,
+        s_tag: Option<STag>,
+    ) -> Result<Self, io::Error> {
+        if addresses.len() > Self::MAX_ADDRESSES {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "MAC Addresses Removed cannot contain more than {} addresses, got {}",
+                    Self::MAX_ADDRESSES,
+                    addresses.len()
+                ),
+            ));
+        }
+        Ok(MacAddressesRemoved {
+            addresses,
+            c_tag,
+            s_tag,
+        })
     }
 
     /// Create empty MAC Addresses Removed IE
@@ -94,6 +158,8 @@ impl MacAddressesRemoved {
     pub fn empty() -> Self {
         MacAddressesRemoved {
             addresses: Vec::new(),
+            c_tag: None,
+            s_tag: None,
         }
     }
 
@@ -126,19 +192,73 @@ impl MacAddressesRemoved {
         self.addresses.len()
     }
 
+    /// Get the optional C-TAG (Customer VLAN tag)
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::mac_addresses_removed::MacAddressesRemoved;
+    /// use rs_pfcp::ie::c_tag::CTag;
+    ///
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+    /// let c_tag = CTag::new(1, false, 100).unwrap();
+    /// let removed = MacAddressesRemoved::new_with_vlan(vec![mac], Some(c_tag), None).unwrap();
+    /// assert!(removed.c_tag().is_some());
+    /// ```
+    pub fn c_tag(&self) -> Option<&CTag> {
+        self.c_tag.as_ref()
+    }
+
+    /// Get the optional S-TAG (Service VLAN tag)
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::mac_addresses_removed::MacAddressesRemoved;
+    /// use rs_pfcp::ie::s_tag::STag;
+    ///
+    /// let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+    /// let s_tag = STag::new(2, false, 200).unwrap();
+    /// let removed = MacAddressesRemoved::new_with_vlan(vec![mac], None, Some(s_tag)).unwrap();
+    /// assert!(removed.s_tag().is_some());
+    /// ```
+    pub fn s_tag(&self) -> Option<&STag> {
+        self.s_tag.as_ref()
+    }
+
     /// Marshal MAC Addresses Removed to bytes
     ///
     /// # Returns
-    /// Vector with count byte followed by raw MAC address values (6 bytes each)
+    /// Vector containing:
+    /// - Count (1 byte)
+    /// - MAC addresses (6 bytes each)
+    /// - C-TAG length (1 byte) + C-TAG data (3 bytes if present)
+    /// - S-TAG length (1 byte) + S-TAG data (3 bytes if present)
+    ///
+    /// Per 3GPP TS 29.244 § 8.2.104
     pub fn marshal(&self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(1 + self.addresses.len() * 6);
+        let mut bytes = Vec::new();
 
-        // Byte 0: Number of MAC addresses
+        // Octet 5: Number of MAC addresses
         bytes.push(self.addresses.len() as u8);
 
-        // Bytes 1+: MAC address values (6 bytes each)
+        // Octets 6+: MAC address values (6 bytes each)
         for mac in &self.addresses {
             bytes.extend_from_slice(mac);
+        }
+
+        // C-TAG length (1 byte) + C-TAG data (3 bytes if present)
+        if let Some(ref ctag) = self.c_tag {
+            bytes.push(3); // Length of C-TAG field
+            bytes.extend_from_slice(&ctag.marshal());
+        } else {
+            bytes.push(0); // C-TAG field absent
+        }
+
+        // S-TAG length (1 byte) + S-TAG data (3 bytes if present)
+        if let Some(ref stag) = self.s_tag {
+            bytes.push(3); // Length of S-TAG field
+            bytes.extend_from_slice(&stag.marshal());
+        } else {
+            bytes.push(0); // S-TAG field absent
         }
 
         bytes
@@ -166,29 +286,15 @@ impl MacAddressesRemoved {
         if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "MAC Addresses Removed requires at least 1 byte for count",
+                "MAC Addresses Removed requires at least 1 byte for count (per 3GPP TS 29.244 §8.2.104)",
             ));
         }
 
         let count = data[0] as usize;
-
-        // Verify we have enough data for all MAC addresses
-        let expected_len = 1 + count * 6;
-        if data.len() < expected_len {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "MAC Addresses Removed: expected {} bytes for {} addresses, got {}",
-                    expected_len,
-                    count,
-                    data.len()
-                ),
-            ));
-        }
-
-        let mut addresses = Vec::with_capacity(count);
         let mut offset = 1;
 
+        // Parse MAC addresses
+        let mut addresses = Vec::with_capacity(count);
         for i in 0..count {
             if offset + 6 > data.len() {
                 return Err(io::Error::new(
@@ -206,7 +312,90 @@ impl MacAddressesRemoved {
             offset += 6;
         }
 
-        Ok(MacAddressesRemoved { addresses })
+        // Parse C-TAG length and data (if present)
+        let c_tag = if offset < data.len() {
+            if offset + 1 > data.len() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "MAC Addresses Removed: missing C-TAG length field",
+                ));
+            }
+
+            let c_tag_len = data[offset] as usize;
+            offset += 1;
+
+            if c_tag_len > 0 {
+                if c_tag_len != 3 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "MAC Addresses Removed: C-TAG length must be 0 or 3, got {}",
+                            c_tag_len
+                        ),
+                    ));
+                }
+
+                if offset + c_tag_len > data.len() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "MAC Addresses Removed: incomplete C-TAG data",
+                    ));
+                }
+
+                let ctag = CTag::unmarshal(&data[offset..offset + c_tag_len])?;
+                offset += c_tag_len;
+                Some(ctag)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Parse S-TAG length and data (if present)
+        let s_tag = if offset < data.len() {
+            if offset + 1 > data.len() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "MAC Addresses Removed: missing S-TAG length field",
+                ));
+            }
+
+            let s_tag_len = data[offset] as usize;
+            offset += 1;
+
+            if s_tag_len > 0 {
+                if s_tag_len != 3 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "MAC Addresses Removed: S-TAG length must be 0 or 3, got {}",
+                            s_tag_len
+                        ),
+                    ));
+                }
+
+                if offset + s_tag_len > data.len() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "MAC Addresses Removed: incomplete S-TAG data",
+                    ));
+                }
+
+                let stag = STag::unmarshal(&data[offset..offset + s_tag_len])?;
+                Some(stag)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(MacAddressesRemoved {
+            addresses,
+            c_tag,
+            s_tag,
+        })
     }
 
     /// Convert to generic IE
@@ -274,8 +463,11 @@ mod tests {
     fn test_mac_addresses_removed_marshal_empty() {
         let removed = MacAddressesRemoved::empty();
         let bytes = removed.marshal();
-        assert_eq!(bytes.len(), 1);
-        assert_eq!(bytes[0], 0);
+        // Per §8.2.104: count (1) + C-TAG length (1) + S-TAG length (1) = 3 bytes
+        assert_eq!(bytes.len(), 3);
+        assert_eq!(bytes[0], 0); // Count = 0
+        assert_eq!(bytes[1], 0); // C-TAG length = 0 (absent)
+        assert_eq!(bytes[2], 0); // S-TAG length = 0 (absent)
     }
 
     #[test]
@@ -284,9 +476,12 @@ mod tests {
         let removed = MacAddressesRemoved::new(vec![mac]).unwrap();
         let bytes = removed.marshal();
 
-        assert_eq!(bytes.len(), 7); // 1 byte count + 6 bytes MAC
+        // Per §8.2.104: count (1) + MAC (6) + C-TAG length (1) + S-TAG length (1) = 9 bytes
+        assert_eq!(bytes.len(), 9);
         assert_eq!(bytes[0], 1); // Count
         assert_eq!(&bytes[1..7], &[0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
+        assert_eq!(bytes[7], 0); // C-TAG length = 0 (absent)
+        assert_eq!(bytes[8], 0); // S-TAG length = 0 (absent)
     }
 
     #[test]
@@ -297,10 +492,13 @@ mod tests {
         let removed = MacAddressesRemoved::new(vec![mac1, mac2]).unwrap();
         let bytes = removed.marshal();
 
-        assert_eq!(bytes.len(), 13); // 1 byte count + 12 bytes (2 MACs)
+        // Per §8.2.104: count (1) + 2 MACs (12) + C-TAG length (1) + S-TAG length (1) = 15 bytes
+        assert_eq!(bytes.len(), 15);
         assert_eq!(bytes[0], 2); // Count
         assert_eq!(&bytes[1..7], &[0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
         assert_eq!(&bytes[7..13], &[0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        assert_eq!(bytes[13], 0); // C-TAG length = 0 (absent)
+        assert_eq!(bytes[14], 0); // S-TAG length = 0 (absent)
     }
 
     #[test]
@@ -381,7 +579,7 @@ mod tests {
         let ie = removed.to_ie();
 
         assert_eq!(ie.ie_type, IeType::MacAddressesRemoved);
-        assert_eq!(ie.payload.len(), 7);
+        assert_eq!(ie.payload.len(), 9); // Per §8.2.104: includes VLAN tag length fields
 
         // Verify IE can be unmarshaled
         let parsed = MacAddressesRemoved::unmarshal(&ie.payload).unwrap();
@@ -407,5 +605,104 @@ mod tests {
         // Scenario 3: No devices removed yet
         let removed3 = MacAddressesRemoved::empty();
         assert_eq!(removed3.count(), 0);
+    }
+
+    #[test]
+    fn test_mac_addresses_removed_with_vlan() {
+        use crate::ie::c_tag::CTag;
+        use crate::ie::s_tag::STag;
+
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let c_tag = CTag::new(1, false, 100).unwrap();
+        let s_tag = STag::new(2, false, 200).unwrap();
+
+        let removed =
+            MacAddressesRemoved::new_with_vlan(vec![mac], Some(c_tag), Some(s_tag)).unwrap();
+
+        assert_eq!(removed.count(), 1);
+        assert!(removed.c_tag().is_some());
+        assert!(removed.s_tag().is_some());
+    }
+
+    #[test]
+    fn test_mac_addresses_removed_vlan_round_trip() {
+        use crate::ie::c_tag::CTag;
+        use crate::ie::s_tag::STag;
+
+        let mac1 = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let mac2 = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        let c_tag = CTag::new(1, false, 100).unwrap();
+        let s_tag = STag::new(2, false, 200).unwrap();
+
+        let original =
+            MacAddressesRemoved::new_with_vlan(vec![mac1, mac2], Some(c_tag), Some(s_tag)).unwrap();
+        let marshaled = original.marshal();
+        let unmarshaled = MacAddressesRemoved::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled, original);
+        assert_eq!(unmarshaled.count(), 2);
+        assert!(unmarshaled.c_tag().is_some());
+        assert!(unmarshaled.s_tag().is_some());
+    }
+
+    #[test]
+    fn test_mac_addresses_removed_c_tag_only() {
+        use crate::ie::c_tag::CTag;
+
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let c_tag = CTag::new(1, false, 100).unwrap();
+
+        let removed = MacAddressesRemoved::new_with_vlan(vec![mac], Some(c_tag), None).unwrap();
+
+        assert_eq!(removed.count(), 1);
+        assert!(removed.c_tag().is_some());
+        assert!(removed.s_tag().is_none());
+
+        // Round trip
+        let marshaled = removed.marshal();
+        let unmarshaled = MacAddressesRemoved::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled, removed);
+    }
+
+    #[test]
+    fn test_mac_addresses_removed_s_tag_only() {
+        use crate::ie::s_tag::STag;
+
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let s_tag = STag::new(2, false, 200).unwrap();
+
+        let removed = MacAddressesRemoved::new_with_vlan(vec![mac], None, Some(s_tag)).unwrap();
+
+        assert_eq!(removed.count(), 1);
+        assert!(removed.c_tag().is_none());
+        assert!(removed.s_tag().is_some());
+
+        // Round trip
+        let marshaled = removed.marshal();
+        let unmarshaled = MacAddressesRemoved::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled, removed);
+    }
+
+    #[test]
+    fn test_mac_addresses_removed_vlan_marshal_format() {
+        use crate::ie::c_tag::CTag;
+        use crate::ie::s_tag::STag;
+
+        let mac = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let c_tag = CTag::new(1, false, 100).unwrap();
+        let s_tag = STag::new(2, false, 200).unwrap();
+
+        let removed =
+            MacAddressesRemoved::new_with_vlan(vec![mac], Some(c_tag), Some(s_tag)).unwrap();
+        let bytes = removed.marshal();
+
+        // Per §8.2.104: count (1) + MAC (6) + C-TAG length (1) + C-TAG (3) + S-TAG length (1) + S-TAG (3) = 15 bytes
+        assert_eq!(bytes.len(), 15);
+        assert_eq!(bytes[0], 1); // Count
+        assert_eq!(&bytes[1..7], &mac); // MAC address
+        assert_eq!(bytes[7], 3); // C-TAG length = 3
+                                 // bytes[8..11] = C-TAG data (3 bytes)
+        assert_eq!(bytes[11], 3); // S-TAG length = 3
+                                  // bytes[12..15] = S-TAG data (3 bytes)
     }
 }

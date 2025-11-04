@@ -42,6 +42,7 @@ pub mod ethernet_filter_properties;
 pub mod ethernet_inactivity_timer;
 pub mod ethernet_packet_filter;
 pub mod ethernet_pdu_session_information;
+pub mod ethernet_traffic_information;
 pub mod ethertype;
 pub mod f_teid;
 pub mod failed_rule_id;

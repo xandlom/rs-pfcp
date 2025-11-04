@@ -4,6 +4,7 @@ use crate::ie::additional_usage_reports_information::AdditionalUsageReportsInfor
 use crate::ie::application_detection_information::ApplicationDetectionInformation;
 use crate::ie::duration_measurement::DurationMeasurement;
 use crate::ie::end_time::EndTime;
+use crate::ie::ethernet_traffic_information::EthernetTrafficInformation;
 use crate::ie::query_urr_reference::QueryURRReference;
 use crate::ie::quota_holding_time::QuotaHoldingTime;
 use crate::ie::sequence_number::SequenceNumber;
@@ -45,6 +46,9 @@ pub struct UsageReport {
     pub application_detection_information: Option<ApplicationDetectionInformation>,
     pub ue_ip_address_usage_information: Option<UEIPAddressUsageInformation>,
     pub additional_usage_reports_information: Option<AdditionalUsageReportsInformation>,
+
+    // Ethernet PDU Session IEs
+    pub ethernet_traffic_information: Option<EthernetTrafficInformation>,
 }
 
 impl UsageReport {
@@ -71,6 +75,7 @@ impl UsageReport {
             application_detection_information: None,
             ue_ip_address_usage_information: None,
             additional_usage_reports_information: None,
+            ethernet_traffic_information: None,
         }
     }
 
@@ -161,6 +166,11 @@ impl UsageReport {
             }
         }
 
+        // Marshal Ethernet PDU Session IEs
+        if let Some(ref eti) = self.ethernet_traffic_information {
+            buffer.extend_from_slice(&eti.to_ie().marshal());
+        }
+
         buffer
     }
 
@@ -183,6 +193,7 @@ impl UsageReport {
         let mut application_detection_information = None;
         let mut ue_ip_address_usage_information = None;
         let mut additional_usage_reports_information = None;
+        let mut ethernet_traffic_information = None;
 
         while cursor < data.len() {
             let ie = Ie::unmarshal(&data[cursor..])?;
@@ -229,6 +240,10 @@ impl UsageReport {
                     additional_usage_reports_information =
                         Some(AdditionalUsageReportsInformation::unmarshal(&ie.payload)?)
                 }
+                IeType::EthernetTrafficInformation => {
+                    ethernet_traffic_information =
+                        Some(EthernetTrafficInformation::unmarshal(&ie.payload)?)
+                }
                 _ => (),
             }
             cursor += ie.len() as usize;
@@ -261,6 +276,7 @@ impl UsageReport {
             application_detection_information,
             ue_ip_address_usage_information,
             additional_usage_reports_information,
+            ethernet_traffic_information,
         })
     }
 
@@ -331,6 +347,7 @@ pub struct UsageReportBuilder {
     application_detection_information: Option<ApplicationDetectionInformation>,
     ue_ip_address_usage_information: Option<UEIPAddressUsageInformation>,
     additional_usage_reports_information: Option<AdditionalUsageReportsInformation>,
+    ethernet_traffic_information: Option<EthernetTrafficInformation>,
 }
 
 impl UsageReportBuilder {
@@ -358,6 +375,7 @@ impl UsageReportBuilder {
             application_detection_information: None,
             ue_ip_address_usage_information: None,
             additional_usage_reports_information: None,
+            ethernet_traffic_information: None,
         }
     }
 
@@ -481,6 +499,7 @@ impl UsageReportBuilder {
             application_detection_information: self.application_detection_information,
             ue_ip_address_usage_information: self.ue_ip_address_usage_information,
             additional_usage_reports_information: self.additional_usage_reports_information,
+            ethernet_traffic_information: self.ethernet_traffic_information,
         })
     }
 
@@ -865,6 +884,21 @@ impl UsageReportBuilder {
         additional_usage_reports_information: AdditionalUsageReportsInformation,
     ) -> Self {
         self.additional_usage_reports_information = Some(additional_usage_reports_information);
+        self
+    }
+
+    /// Sets Ethernet Traffic Information for MAC address learning events.
+    ///
+    /// Used in Ethernet PDU sessions to report MAC addresses detected/removed by the UPF.
+    ///
+    /// # Arguments
+    ///
+    /// * `ethernet_traffic_information` - Ethernet traffic information with MAC learning events
+    pub fn ethernet_traffic_information(
+        mut self,
+        ethernet_traffic_information: EthernetTrafficInformation,
+    ) -> Self {
+        self.ethernet_traffic_information = Some(ethernet_traffic_information);
         self
     }
 
