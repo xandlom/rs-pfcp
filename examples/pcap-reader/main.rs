@@ -111,7 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             continue;
                         }
-                        (data, "Raw IP")
+                        (&data[..], "Raw IP")
                     }
                     _ => {
                         if !args.pfcp_only {
