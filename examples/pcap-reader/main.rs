@@ -96,6 +96,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         (&data[20..], "Linux cooked v2")
                     }
+                    DataLink::RAW => {
+                        // Raw IP (DLT_RAW) - no link layer header, starts directly with IP
+                        if data.is_empty() {
+                            continue;
+                        }
+                        // Verify it's IPv4 by checking version in first nibble
+                        let ip_version = data[0] >> 4;
+                        if ip_version != 4 {
+                            if !args.pfcp_only {
+                                println!(
+                                    "Packet {packet_count}: Not IPv4 (version: {ip_version})"
+                                );
+                            }
+                            continue;
+                        }
+                        (data, "Raw IP")
+                    }
                     _ => {
                         if !args.pfcp_only {
                             println!(
