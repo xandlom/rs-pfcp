@@ -198,11 +198,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !args.pfcp_only {
                         println!(
                             "Packet {}: Non-PFCP UDP ({}:{} -> {}:{})",
-                            packet_count,
-                            src_addr,
-                            src_port,
-                            dst_addr,
-                            dst_port
+                            packet_count, src_addr, src_port, dst_addr, dst_port
                         );
                     }
                     continue;
