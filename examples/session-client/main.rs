@@ -352,9 +352,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // 4. Session Deletion
         println!("[{seid}] Sending Session Deletion Request...");
-        let session_del_bytes = SessionDeletionRequestBuilder::new(seid, 4)
-            .smf_fseid(0x0102030405060708u64 + seid, interface_ipv4)
-            .marshal();
+        // Per 3GPP TS 29.244 Section 7.5.6, F-SEID is in the header (seid parameter), not the body
+        let session_del_bytes = SessionDeletionRequestBuilder::new(seid, 4).marshal();
         socket.send(&session_del_bytes)?;
         let (_len, _) = socket.recv_from(&mut buf)?;
         println!("[{seid}] Received Session Deletion Response.");

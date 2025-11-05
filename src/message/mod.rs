@@ -759,11 +759,9 @@ mod tests {
     #[test]
     fn test_parse_session_deletion_request() {
         use crate::message::session_deletion_request::SessionDeletionRequestBuilder;
-        use std::net::Ipv4Addr;
 
-        let msg = SessionDeletionRequestBuilder::new(0x999999, 66666)
-            .smf_fseid(0x999999, Ipv4Addr::new(10, 0, 0, 1))
-            .build();
+        // Minimal deletion request with SEID in header (per 3GPP TS 29.244 Section 7.5.6)
+        let msg = SessionDeletionRequestBuilder::new(0x999999, 66666).build();
 
         let marshaled = msg.marshal();
         let parsed = parse(&marshaled).unwrap();

@@ -282,21 +282,15 @@ fn test_session_establishment_request_marshal_unmarshal() {
 fn test_session_deletion_request_marshal_unmarshal() {
     use rs_pfcp::message::session_deletion_request::SessionDeletionRequest;
 
-    let fseid_ie = Ie::new(
-        IeType::Fseid,
-        vec![0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
-    );
-
+    // Create a minimal deletion request with SEID in header
+    // Per 3GPP TS 29.244 Section 7.5.6, F-SEID is in the header, not the body
     let req = SessionDeletionRequest::new(
         0x1122334455667788,
         0x112233,
-        fseid_ie.clone(),
-        None,
-        None,
-        None,
-        vec![],
-        vec![],
-        vec![],
+        vec![], // tl_container
+        None,   // node_id
+        None,   // cp_fseid
+        vec![], // additional IEs
     );
 
     let serialized = req.marshal();
