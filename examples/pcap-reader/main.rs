@@ -69,10 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             continue;
                         }
                         let eth_type = u16::from_be_bytes([data[12], data[13]]);
-                        if eth_type != 0x0800 {
+                        if eth_type != 0x0800 && eth_type != 0x86DD {
                             if !args.pfcp_only {
                                 println!(
-                                    "Packet {packet_count}: Non-IPv4 (EtherType: 0x{eth_type:04x})"
+                                    "Packet {packet_count}: Non-IP (EtherType: 0x{eth_type:04x})"
                                 );
                             }
                             continue;
@@ -86,10 +86,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         // In Linux cooked v2, protocol type is at offset 0-1
                         let protocol_type = u16::from_be_bytes([data[0], data[1]]);
-                        if protocol_type != 0x0800 {
+                        if protocol_type != 0x0800 && protocol_type != 0x86DD {
                             if !args.pfcp_only {
                                 println!(
-                                    "Packet {packet_count}: Non-IPv4 (Protocol: 0x{protocol_type:04x})"
+                                    "Packet {packet_count}: Non-IP (Protocol: 0x{protocol_type:04x})"
                                 );
                             }
                             continue;
@@ -101,12 +101,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if data.is_empty() {
                             continue;
                         }
-                        // Verify it's IPv4 by checking version in first nibble
+                        // Verify it's IPv4 or IPv6 by checking version in first nibble
                         let ip_version = data[0] >> 4;
-                        if ip_version != 4 {
+                        if ip_version != 4 && ip_version != 6 {
                             if !args.pfcp_only {
                                 println!(
-                                    "Packet {packet_count}: Not IPv4 (version: {ip_version})"
+                                    "Packet {packet_count}: Not IPv4/IPv6 (version: {ip_version})"
                                 );
                             }
                             continue;
@@ -123,25 +123,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 };
 
-                // Parse IPv4 header
-                if ip_data.len() < 20 {
-                    continue;
-                }
-
+                // Parse IP header (IPv4 or IPv6)
                 let ip_version = ip_data[0] >> 4;
-                let ip_ihl = (ip_data[0] & 0x0f) * 4;
-                let ip_protocol = ip_data[9];
 
-                if ip_version != 4 || ip_protocol != 17 {
-                    // Not UDP
+                let (udp_data, src_addr, dst_addr) = if ip_version == 4 {
+                    // IPv4 header
+                    if ip_data.len() < 20 {
+                        continue;
+                    }
+
+                    let ip_ihl = (ip_data[0] & 0x0f) * 4;
+                    let ip_protocol = ip_data[9];
+
+                    if ip_protocol != 17 {
+                        // Not UDP
+                        if !args.pfcp_only {
+                            println!("Packet {packet_count}: Not UDP (protocol: {ip_protocol})");
+                        }
+                        continue;
+                    }
+
+                    let udp_start = ip_ihl as usize;
+                    if ip_data.len() < udp_start + 8 {
+                        continue;
+                    }
+
+                    let src = extract_ipv4_address(&ip_data[12..16]);
+                    let dst = extract_ipv4_address(&ip_data[16..20]);
+
+                    (&ip_data[udp_start..], src, dst)
+                } else if ip_version == 6 {
+                    // IPv6 header (fixed 40 bytes)
+                    if ip_data.len() < 40 {
+                        continue;
+                    }
+
+                    let next_header = ip_data[6];
+
+                    if next_header != 17 {
+                        // Not UDP (no extension header support for now)
+                        if !args.pfcp_only {
+                            println!("Packet {packet_count}: Not UDP (next header: {next_header})");
+                        }
+                        continue;
+                    }
+
+                    if ip_data.len() < 48 {
+                        // Need at least IPv6 header + UDP header
+                        continue;
+                    }
+
+                    let src = extract_ipv6_address(&ip_data[8..24]);
+                    let dst = extract_ipv6_address(&ip_data[24..40]);
+
+                    (&ip_data[40..], src, dst)
+                } else {
                     if !args.pfcp_only {
-                        println!("Packet {packet_count}: Not UDP (protocol: {ip_protocol})");
+                        println!("Packet {packet_count}: Invalid IP version: {ip_version}");
                     }
                     continue;
-                }
+                };
 
                 // Parse UDP header
-                let udp_data = &ip_data[ip_ihl as usize..];
                 if udp_data.len() < 8 {
                     continue;
                 }
@@ -156,9 +199,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!(
                             "Packet {}: Non-PFCP UDP ({}:{} -> {}:{})",
                             packet_count,
-                            extract_ip_address(&ip_data[12..16]),
+                            src_addr,
                             src_port,
-                            extract_ip_address(&ip_data[16..20]),
+                            dst_addr,
                             dst_port
                         );
                     }
@@ -202,9 +245,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 "Packet {}: PFCP {} ({}:{} -> {}:{}) [{}]",
                                 packet_count,
                                 pfcp_msg.msg_name(),
-                                extract_ip_address(&ip_data[12..16]),
+                                src_addr,
                                 src_port,
-                                extract_ip_address(&ip_data[16..20]),
+                                dst_addr,
                                 dst_port,
                                 header_type
                             );
@@ -276,9 +319,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn extract_ip_address(bytes: &[u8]) -> String {
+fn extract_ipv4_address(bytes: &[u8]) -> String {
     if bytes.len() >= 4 {
         format!("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3])
+    } else {
+        "unknown".to_string()
+    }
+}
+
+fn extract_ipv6_address(bytes: &[u8]) -> String {
+    if bytes.len() >= 16 {
+        format!(
+            "{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15]
+        )
     } else {
         "unknown".to_string()
     }
