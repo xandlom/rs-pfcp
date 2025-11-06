@@ -124,12 +124,12 @@ impl Message for SessionDeletionResponse {
                     additional_usage_reports_information = Some(ie)
                 }
                 IeType::PacketRateStatusReport => packet_rate_status_reports.push(ie),
+                IeType::MbsSessionN4Information => mbs_session_n4_information.push(ie),
                 _ => {
                     // Handle IEs not yet fully implemented (checked by IE type number)
                     // TODO: Add proper IeType variants when these IEs are implemented
                     match ie.ie_type as u16 {
-                        195 => tl_container.push(ie), // TL-Container per 3GPP TS 29.244
-                        311 => mbs_session_n4_information.push(ie), // MBS Session N4 Information
+                        195 => tl_container.push(ie),      // TL-Container per 3GPP TS 29.244
                         318 => pfcpsdrsp_flags = Some(ie), // PFCPSDRsp-Flags
                         _ => ies.push(ie),
                     }
@@ -187,12 +187,12 @@ impl Message for SessionDeletionResponse {
                 self.additional_usage_reports_information.as_ref()
             }
             IeType::PacketRateStatusReport => self.packet_rate_status_reports.first(),
+            IeType::MbsSessionN4Information => self.mbs_session_n4_information.first(),
             _ => {
                 // Handle IEs not yet fully implemented (checked by IE type number)
                 match ie_type as u16 {
-                    195 => self.tl_container.first(),               // TL-Container
-                    311 => self.mbs_session_n4_information.first(), // MBS Session N4 Information
-                    318 => self.pfcpsdrsp_flags.as_ref(),           // PFCPSDRsp-Flags
+                    195 => self.tl_container.first(),     // TL-Container
+                    318 => self.pfcpsdrsp_flags.as_ref(), // PFCPSDRsp-Flags
                     _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
                 }
             }
