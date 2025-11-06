@@ -9,11 +9,18 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationSetupResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub node_id: Ie,
-    pub up_function_features: Option<Ie>,
-    pub cp_function_features: Option<Ie>,
-    pub recovery_time_stamp: Option<Ie>,
+    pub node_id: Ie,                      // M - 3GPP TS 29.244 Table 7.4.4.2-1
+    pub cause: Ie,                        // M - 3GPP TS 29.244 Table 7.4.4.2-1
+    pub recovery_time_stamp: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.4.2-1 (TODO: Should be mandatory, not Optional)
+    pub up_function_features: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.2-1
+    pub cp_function_features: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.2-1
+    // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
+    // TODO: [IE Type 180] SMF Set ID - C - When MPAS feature is advertised (N4/N4mb only)
+    // TODO: [IE Type 184] PFCPASRsp-Flags - O - Flags IE with PSREI (session retained) and UUPSI (IPUPS) flags
+    // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances allowed, Grouped IE (N4 only)
+    // TODO: [IE Type 233] UE IP address Pool Information - O - Multiple instances allowed (Sxb/N4 only)
+    // TODO: [IE Type 239] GTP-U Path QoS Control Information - C - Multiple instances allowed, Grouped IE (N4 only)
+    // TODO: [IE Type 253] NF Instance ID (UPF Instance ID) - O - When sent by 5G UP function (N4/N4mb only)
     pub ies: Vec<Ie>,
 }
 
