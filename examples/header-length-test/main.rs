@@ -11,7 +11,21 @@ fn main() {
     // Test Session Deletion Response
     println!("1. Session Deletion Response:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    let response = SessionDeletionResponse::new(1, 4, cause_ie, None, None, None, vec![], vec![]);
+    let response = SessionDeletionResponse::new(
+        1,
+        4,
+        cause_ie,
+        None,   // offending_ie
+        None,   // load_control_information
+        None,   // overload_control_information
+        vec![], // usage_reports
+        None,   // additional_usage_reports_information
+        vec![], // packet_rate_status_reports
+        vec![], // mbs_session_n4_information
+        None,   // pfcpsdrsp_flags
+        vec![], // tl_container
+        vec![], // ies
+    );
     test_message_length(&response, "SessionDeletionResponse");
 
     println!();

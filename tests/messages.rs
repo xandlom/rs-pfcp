@@ -310,11 +310,16 @@ fn test_session_deletion_response_marshal_unmarshal() {
         0x1122334455667788,
         0x112233,
         cause_ie.clone(),
-        None,
-        None,
-        None,
-        vec![],
-        vec![],
+        None,   // offending_ie
+        None,   // load_control_information
+        None,   // overload_control_information
+        vec![], // usage_reports
+        None,   // additional_usage_reports_information
+        vec![], // packet_rate_status_reports
+        vec![], // mbs_session_n4_information
+        None,   // pfcpsdrsp_flags
+        vec![], // tl_container
+        vec![], // ies
     );
 
     let serialized = res.marshal();

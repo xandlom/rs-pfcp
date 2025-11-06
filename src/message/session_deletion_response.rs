@@ -3,15 +3,24 @@
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 
+/// PFCP Session Deletion Response message per 3GPP TS 29.244 Section 7.5.7.
+///
+/// The PFCP Session Deletion Response is sent by the UP function to the CP function
+/// as a reply to the PFCP Session Deletion Request.
 #[derive(Debug, PartialEq)]
 pub struct SessionDeletionResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
-    pub load_control_information: Option<Ie>,
-    pub overload_control_information: Option<Ie>,
-    pub usage_reports: Vec<Ie>,
-    pub ies: Vec<Ie>,
+    pub cause: Ie,                                        // Mandatory
+    pub offending_ie: Option<Ie>,                         // Conditional
+    pub load_control_information: Option<Ie>,             // Optional
+    pub overload_control_information: Option<Ie>,         // Optional
+    pub usage_reports: Vec<Ie>,                           // Conditional (multiple)
+    pub additional_usage_reports_information: Option<Ie>, // Conditional
+    pub packet_rate_status_reports: Vec<Ie>,              // Conditional (multiple, Sxb/N4)
+    pub mbs_session_n4_information: Vec<Ie>,              // Conditional (multiple, N4/N4mb)
+    pub pfcpsdrsp_flags: Option<Ie>,                      // Conditional
+    pub tl_container: Vec<Ie>,                            // Conditional (multiple, N4)
+    pub ies: Vec<Ie>,                                     // Additional/unknown IEs
 }
 
 impl Message for SessionDeletionResponse {
@@ -29,6 +38,21 @@ impl Message for SessionDeletionResponse {
             payload_len += ie.len();
         }
         for ie in &self.usage_reports {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.additional_usage_reports_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.packet_rate_status_reports {
+            payload_len += ie.len();
+        }
+        for ie in &self.mbs_session_n4_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.pfcpsdrsp_flags {
+            payload_len += ie.len();
+        }
+        for ie in &self.tl_container {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -50,6 +74,21 @@ impl Message for SessionDeletionResponse {
         for ie in &self.usage_reports {
             buffer.extend_from_slice(&ie.marshal());
         }
+        if let Some(ie) = &self.additional_usage_reports_information {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        for ie in &self.packet_rate_status_reports {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        for ie in &self.mbs_session_n4_information {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        if let Some(ie) = &self.pfcpsdrsp_flags {
+            buffer.extend_from_slice(&ie.marshal());
+        }
+        for ie in &self.tl_container {
+            buffer.extend_from_slice(&ie.marshal());
+        }
         for ie in &self.ies {
             buffer.extend_from_slice(&ie.marshal());
         }
@@ -64,6 +103,11 @@ impl Message for SessionDeletionResponse {
         let mut load_control_information = None;
         let mut overload_control_information = None;
         let mut usage_reports = Vec::new();
+        let mut additional_usage_reports_information = None;
+        let mut packet_rate_status_reports = Vec::new();
+        let mut mbs_session_n4_information = Vec::new();
+        let mut pfcpsdrsp_flags = None;
+        let mut tl_container = Vec::new();
         let mut ies = Vec::new();
 
         while cursor < data.len() {
@@ -76,7 +120,20 @@ impl Message for SessionDeletionResponse {
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 IeType::UsageReportWithinSessionDeletionResponse => usage_reports.push(ie),
-                _ => ies.push(ie),
+                IeType::AdditionalUsageReportsInformation => {
+                    additional_usage_reports_information = Some(ie)
+                }
+                IeType::PacketRateStatusReport => packet_rate_status_reports.push(ie),
+                _ => {
+                    // Handle IEs not yet fully implemented (checked by IE type number)
+                    // TODO: Add proper IeType variants when these IEs are implemented
+                    match ie.ie_type as u16 {
+                        195 => tl_container.push(ie), // TL-Container per 3GPP TS 29.244
+                        311 => mbs_session_n4_information.push(ie), // MBS Session N4 Information
+                        318 => pfcpsdrsp_flags = Some(ie), // PFCPSDRsp-Flags
+                        _ => ies.push(ie),
+                    }
+                }
             }
             cursor += ie_len;
         }
@@ -90,6 +147,11 @@ impl Message for SessionDeletionResponse {
             load_control_information,
             overload_control_information,
             usage_reports,
+            additional_usage_reports_information,
+            packet_rate_status_reports,
+            mbs_session_n4_information,
+            pfcpsdrsp_flags,
+            tl_container,
             ies,
         })
     }
@@ -121,7 +183,19 @@ impl Message for SessionDeletionResponse {
             IeType::LoadControlInformation => self.load_control_information.as_ref(),
             IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
             IeType::UsageReportWithinSessionDeletionResponse => self.usage_reports.first(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
+            IeType::AdditionalUsageReportsInformation => {
+                self.additional_usage_reports_information.as_ref()
+            }
+            IeType::PacketRateStatusReport => self.packet_rate_status_reports.first(),
+            _ => {
+                // Handle IEs not yet fully implemented (checked by IE type number)
+                match ie_type as u16 {
+                    195 => self.tl_container.first(),               // TL-Container
+                    311 => self.mbs_session_n4_information.first(), // MBS Session N4 Information
+                    318 => self.pfcpsdrsp_flags.as_ref(),           // PFCPSDRsp-Flags
+                    _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
+                }
+            }
         }
     }
 
@@ -137,12 +211,38 @@ impl Message for SessionDeletionResponse {
             result.push(ie);
         }
         result.extend(self.usage_reports.iter());
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            result.push(ie);
+        }
+        result.extend(self.packet_rate_status_reports.iter());
+        result.extend(self.mbs_session_n4_information.iter());
+        if let Some(ref ie) = self.pfcpsdrsp_flags {
+            result.push(ie);
+        }
+        result.extend(self.tl_container.iter());
         result.extend(self.ies.iter());
         result
     }
 }
 
 impl SessionDeletionResponse {
+    /// Creates a new PFCP Session Deletion Response message.
+    ///
+    /// # Arguments
+    ///
+    /// * `seid` - Session endpoint ID
+    /// * `seq` - Sequence number for the message
+    /// * `cause_ie` - Mandatory Cause IE indicating acceptance or rejection
+    /// * `offending_ie` - Optional Offending IE (for rejection cases)
+    /// * `load_control_information` - Optional Load Control Information
+    /// * `overload_control_information` - Optional Overload Control Information
+    /// * `usage_reports` - Optional Usage Reports (multiple allowed)
+    /// * `additional_usage_reports_information` - Optional Additional Usage Reports Information
+    /// * `packet_rate_status_reports` - Optional Packet Rate Status Reports (multiple, CIOT)
+    /// * `mbs_session_n4_information` - Optional MBS Session N4 Information (multiple)
+    /// * `pfcpsdrsp_flags` - Optional PFCPSDRsp-Flags
+    /// * `tl_container` - Optional TL-Container IEs for TSN support (multiple)
+    /// * `ies` - Additional/unknown IEs
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         seid: u64,
@@ -152,6 +252,11 @@ impl SessionDeletionResponse {
         load_control_information: Option<Ie>,
         overload_control_information: Option<Ie>,
         usage_reports: Vec<Ie>,
+        additional_usage_reports_information: Option<Ie>,
+        packet_rate_status_reports: Vec<Ie>,
+        mbs_session_n4_information: Vec<Ie>,
+        pfcpsdrsp_flags: Option<Ie>,
+        tl_container: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut header = Header::new(MsgType::SessionDeletionResponse, true, seid, seq);
@@ -168,6 +273,21 @@ impl SessionDeletionResponse {
         for ie in &usage_reports {
             payload_len += ie.len();
         }
+        if let Some(ie) = &additional_usage_reports_information {
+            payload_len += ie.len();
+        }
+        for ie in &packet_rate_status_reports {
+            payload_len += ie.len();
+        }
+        for ie in &mbs_session_n4_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &pfcpsdrsp_flags {
+            payload_len += ie.len();
+        }
+        for ie in &tl_container {
+            payload_len += ie.len();
+        }
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -179,12 +299,17 @@ impl SessionDeletionResponse {
             load_control_information,
             overload_control_information,
             usage_reports,
+            additional_usage_reports_information,
+            packet_rate_status_reports,
+            mbs_session_n4_information,
+            pfcpsdrsp_flags,
+            tl_container,
             ies,
         }
     }
 }
 
-/// Builder for SessionDeletionResponse message.
+/// Builder for SessionDeletionResponse message per 3GPP TS 29.244 Section 7.5.7.
 #[derive(Debug)]
 pub struct SessionDeletionResponseBuilder {
     seid: u64,
@@ -194,6 +319,11 @@ pub struct SessionDeletionResponseBuilder {
     load_control_information: Option<Ie>,
     overload_control_information: Option<Ie>,
     usage_reports: Vec<Ie>,
+    additional_usage_reports_information: Option<Ie>,
+    packet_rate_status_reports: Vec<Ie>,
+    mbs_session_n4_information: Vec<Ie>,
+    pfcpsdrsp_flags: Option<Ie>,
+    tl_container: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -208,6 +338,11 @@ impl SessionDeletionResponseBuilder {
             load_control_information: None,
             overload_control_information: None,
             usage_reports: Vec::new(),
+            additional_usage_reports_information: None,
+            packet_rate_status_reports: Vec::new(),
+            mbs_session_n4_information: Vec::new(),
+            pfcpsdrsp_flags: None,
+            tl_container: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -282,6 +417,73 @@ impl SessionDeletionResponseBuilder {
         self
     }
 
+    /// Sets the Additional Usage Reports Information IE (conditional).
+    ///
+    /// Per 3GPP TS 29.244 Section 7.5.7, this IE indicates if additional usage reports
+    /// will be sent in PFCP Session Report Request messages.
+    pub fn additional_usage_reports_information(
+        mut self,
+        additional_usage_reports_information: Ie,
+    ) -> Self {
+        self.additional_usage_reports_information = Some(additional_usage_reports_information);
+        self
+    }
+
+    /// Adds a Packet Rate Status Report IE (conditional, CIOT support).
+    ///
+    /// Per 3GPP TS 29.244 Table 7.5.7.1-2, this grouped IE is for Sxb/N4 interfaces only.
+    pub fn packet_rate_status_report(mut self, packet_rate_status_report: Ie) -> Self {
+        self.packet_rate_status_reports
+            .push(packet_rate_status_report);
+        self
+    }
+
+    /// Adds multiple Packet Rate Status Report IEs.
+    pub fn packet_rate_status_reports(mut self, mut packet_rate_status_reports: Vec<Ie>) -> Self {
+        self.packet_rate_status_reports
+            .append(&mut packet_rate_status_reports);
+        self
+    }
+
+    /// Adds an MBS Session N4 Information IE (conditional, MBS support).
+    ///
+    /// Per 3GPP TS 29.244 Section 7.5.7, this IE is for N4/N4mb interfaces only.
+    pub fn mbs_session_n4_information(mut self, mbs_session_n4_information: Ie) -> Self {
+        self.mbs_session_n4_information
+            .push(mbs_session_n4_information);
+        self
+    }
+
+    /// Adds multiple MBS Session N4 Information IEs.
+    pub fn mbs_session_n4_informations(mut self, mut mbs_session_n4_information: Vec<Ie>) -> Self {
+        self.mbs_session_n4_information
+            .append(&mut mbs_session_n4_information);
+        self
+    }
+
+    /// Sets the PFCPSDRsp-Flags IE (conditional).
+    ///
+    /// Per 3GPP TS 29.244 Section 7.5.7, this IE contains flags like PURU
+    /// (Pending Usage Reports Unacknowledged).
+    pub fn pfcpsdrsp_flags(mut self, pfcpsdrsp_flags: Ie) -> Self {
+        self.pfcpsdrsp_flags = Some(pfcpsdrsp_flags);
+        self
+    }
+
+    /// Adds a TL-Container IE for TSN support (conditional, N4 interface).
+    ///
+    /// Multiple TL-Container IEs may be present. Per 3GPP TS 29.244 Section 7.5.7.
+    pub fn tl_container(mut self, tl_container: Ie) -> Self {
+        self.tl_container.push(tl_container);
+        self
+    }
+
+    /// Adds multiple TL-Container IEs for TSN support.
+    pub fn tl_containers(mut self, mut tl_containers: Vec<Ie>) -> Self {
+        self.tl_container.append(&mut tl_containers);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -311,6 +513,11 @@ impl SessionDeletionResponseBuilder {
             self.load_control_information,
             self.overload_control_information,
             self.usage_reports,
+            self.additional_usage_reports_information,
+            self.packet_rate_status_reports,
+            self.mbs_session_n4_information,
+            self.pfcpsdrsp_flags,
+            self.tl_container,
             self.ies,
         )
     }
@@ -332,6 +539,11 @@ impl SessionDeletionResponseBuilder {
             self.load_control_information,
             self.overload_control_information,
             self.usage_reports,
+            self.additional_usage_reports_information,
+            self.packet_rate_status_reports,
+            self.mbs_session_n4_information,
+            self.pfcpsdrsp_flags,
+            self.tl_container,
             self.ies,
         ))
     }
@@ -521,5 +733,176 @@ mod tests {
         let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(response, unmarshaled);
         assert_eq!(unmarshaled.usage_reports.len(), 1);
+    }
+
+    #[test]
+    fn test_session_deletion_response_with_additional_usage_reports_information() {
+        // IE Type 189: Additional Usage Reports Information
+        let auri_ie = Ie::new(
+            IeType::AdditionalUsageReportsInformation,
+            vec![0x01], // AURI flag set
+        );
+
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .additional_usage_reports_information(auri_ie.clone())
+            .build();
+
+        assert_eq!(
+            response.additional_usage_reports_information,
+            Some(auri_ie.clone())
+        );
+        assert_eq!(
+            response.find_ie(IeType::AdditionalUsageReportsInformation),
+            Some(&auri_ie)
+        );
+
+        // Test marshal/unmarshal round trip
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(
+            unmarshaled.additional_usage_reports_information,
+            Some(auri_ie)
+        );
+    }
+
+    #[test]
+    fn test_session_deletion_response_with_packet_rate_status_reports() {
+        // IE Type 210: Packet Rate Status Report (grouped IE for CIOT)
+        let prsr_ie1 = Ie::new(IeType::PacketRateStatusReport, vec![0x01, 0x02, 0x03]);
+        let prsr_ie2 = Ie::new(IeType::PacketRateStatusReport, vec![0x04, 0x05, 0x06]);
+
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .packet_rate_status_report(prsr_ie1.clone())
+            .packet_rate_status_reports(vec![prsr_ie2.clone()])
+            .build();
+
+        assert_eq!(response.packet_rate_status_reports.len(), 2);
+        assert_eq!(response.packet_rate_status_reports[0], prsr_ie1);
+        assert_eq!(response.packet_rate_status_reports[1], prsr_ie2);
+        assert_eq!(
+            response.find_ie(IeType::PacketRateStatusReport),
+            Some(&prsr_ie1)
+        );
+
+        // Test marshal/unmarshal round trip
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.packet_rate_status_reports.len(), 2);
+    }
+
+    #[test]
+    fn test_session_deletion_response_with_mbs_session_n4_information() {
+        // IE Type 311: MBS Session N4 Information (grouped IE for MBS support)
+        // Note: Using IeType::Unknown placeholder since MBS Session N4 Information is not yet fully implemented
+        // Round-trip testing is skipped because Unknown IEs don't preserve original type numbers
+        let mbs_ie1 = Ie::new(IeType::Unknown, vec![0x10, 0x20]);
+        let mbs_ie2 = Ie::new(IeType::Unknown, vec![0x30, 0x40]);
+
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .mbs_session_n4_information(mbs_ie1.clone())
+            .mbs_session_n4_informations(vec![mbs_ie2.clone()])
+            .build();
+
+        assert_eq!(response.mbs_session_n4_information.len(), 2);
+        assert_eq!(response.mbs_session_n4_information[0], mbs_ie1);
+        assert_eq!(response.mbs_session_n4_information[1], mbs_ie2);
+
+        // Note: Round-trip testing skipped - Unknown IEs will be marshaled as type 0
+        // and won't match the unmarshal logic that checks for type 311
+        // Full round-trip support requires implementing MBS Session N4 Information IE
+    }
+
+    #[test]
+    fn test_session_deletion_response_with_pfcpsdrsp_flags() {
+        // IE Type 318: PFCPSDRsp-Flags
+        // Note: Using IeType::Unknown placeholder since PFCPSDRsp-Flags is not yet fully implemented
+        // Round-trip testing is skipped because Unknown IEs don't preserve original type numbers
+        let flags_ie = Ie::new(IeType::Unknown, vec![0x01]); // PURU flag
+
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .pfcpsdrsp_flags(flags_ie.clone())
+            .build();
+
+        assert_eq!(response.pfcpsdrsp_flags, Some(flags_ie.clone()));
+
+        // Note: Round-trip testing skipped - Unknown IEs will be marshaled as type 0
+        // and won't match the unmarshal logic that checks for type 318
+        // Full round-trip support requires implementing PFCPSDRsp-Flags IE
+    }
+
+    #[test]
+    fn test_session_deletion_response_with_tl_container() {
+        // IE Type 195: TL-Container (for TSN support)
+        // Note: Using IeType::Unknown placeholder since TL-Container is not yet fully implemented
+        // Round-trip testing is skipped because Unknown IEs don't preserve original type numbers
+        let tl_ie1 = Ie::new(IeType::Unknown, vec![0x50, 0x60, 0x70]);
+        let tl_ie2 = Ie::new(IeType::Unknown, vec![0x80, 0x90, 0xA0]);
+
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .tl_container(tl_ie1.clone())
+            .tl_containers(vec![tl_ie2.clone()])
+            .build();
+
+        assert_eq!(response.tl_container.len(), 2);
+        assert_eq!(response.tl_container[0], tl_ie1);
+        assert_eq!(response.tl_container[1], tl_ie2);
+
+        // Note: Round-trip testing skipped - Unknown IEs will be marshaled as type 0
+        // and won't match the unmarshal logic that checks for type 195
+        // Full round-trip support requires implementing TL-Container IE
+    }
+
+    #[test]
+    fn test_session_deletion_response_all_new_ies_combined() {
+        // Test all 5 new IEs together
+        let auri_ie = Ie::new(IeType::AdditionalUsageReportsInformation, vec![0x01]);
+        let prsr_ie = Ie::new(IeType::PacketRateStatusReport, vec![0x01, 0x02]);
+
+        // MBS Session N4 Information (IE Type 311) - placeholder using Unknown
+        let mbs_ie = Ie::new(IeType::Unknown, vec![0x10, 0x20]);
+
+        // PFCPSDRsp-Flags (IE Type 318) - placeholder using Unknown
+        let flags_ie = Ie::new(IeType::Unknown, vec![0x01]); // PURU flag
+
+        // TL-Container (IE Type 195) - placeholder using Unknown
+        let tl_ie = Ie::new(IeType::Unknown, vec![0x50, 0x60]);
+
+        let response = SessionDeletionResponseBuilder::new(12345, 67890)
+            .cause_accepted()
+            .additional_usage_reports_information(auri_ie.clone())
+            .packet_rate_status_report(prsr_ie.clone())
+            .mbs_session_n4_information(mbs_ie.clone())
+            .pfcpsdrsp_flags(flags_ie.clone())
+            .tl_container(tl_ie.clone())
+            .build();
+
+        // Verify all IEs are present
+        assert_eq!(
+            response.additional_usage_reports_information,
+            Some(auri_ie.clone())
+        );
+        assert_eq!(response.packet_rate_status_reports.len(), 1);
+        assert_eq!(response.mbs_session_n4_information.len(), 1);
+        assert_eq!(response.pfcpsdrsp_flags, Some(flags_ie.clone()));
+        assert_eq!(response.tl_container.len(), 1);
+
+        // Test all_ies includes all new IEs
+        let all_ies = response.all_ies();
+        assert!(all_ies.contains(&&auri_ie));
+        assert!(all_ies.contains(&&prsr_ie));
+        assert!(all_ies.contains(&&mbs_ie));
+        assert!(all_ies.contains(&&flags_ie));
+        assert!(all_ies.contains(&&tl_ie));
+
+        // Note: Round-trip testing skipped for this combined test because
+        // MBS Session N4 Information, PFCPSDRsp-Flags, and TL-Container use Unknown placeholders
+        // Full round-trip support requires implementing these IEs
     }
 }
