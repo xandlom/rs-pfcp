@@ -125,15 +125,9 @@ impl Message for SessionDeletionResponse {
                 }
                 IeType::PacketRateStatusReport => packet_rate_status_reports.push(ie),
                 IeType::MbsSessionN4Information => mbs_session_n4_information.push(ie),
-                _ => {
-                    // Handle IEs not yet fully implemented (checked by IE type number)
-                    // TODO: Add proper IeType variants when these IEs are implemented
-                    match ie.ie_type as u16 {
-                        195 => tl_container.push(ie),      // TL-Container per 3GPP TS 29.244
-                        318 => pfcpsdrsp_flags = Some(ie), // PFCPSDRsp-Flags
-                        _ => ies.push(ie),
-                    }
-                }
+                IeType::TlContainer => tl_container.push(ie),
+                IeType::PfcpsdrspFlags => pfcpsdrsp_flags = Some(ie),
+                _ => ies.push(ie),
             }
             cursor += ie_len;
         }
@@ -188,14 +182,9 @@ impl Message for SessionDeletionResponse {
             }
             IeType::PacketRateStatusReport => self.packet_rate_status_reports.first(),
             IeType::MbsSessionN4Information => self.mbs_session_n4_information.first(),
-            _ => {
-                // Handle IEs not yet fully implemented (checked by IE type number)
-                match ie_type as u16 {
-                    195 => self.tl_container.first(),     // TL-Container
-                    318 => self.pfcpsdrsp_flags.as_ref(), // PFCPSDRsp-Flags
-                    _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-                }
-            }
+            IeType::TlContainer => self.tl_container.first(),
+            IeType::PfcpsdrspFlags => self.pfcpsdrsp_flags.as_ref(),
+            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
 
@@ -238,10 +227,10 @@ impl SessionDeletionResponse {
     /// * `overload_control_information` - Optional Overload Control Information
     /// * `usage_reports` - Optional Usage Reports (multiple allowed)
     /// * `additional_usage_reports_information` - Optional Additional Usage Reports Information
-    /// * `packet_rate_status_reports` - Optional Packet Rate Status Reports (multiple, CIOT)
-    /// * `mbs_session_n4_information` - Optional MBS Session N4 Information (multiple)
-    /// * `pfcpsdrsp_flags` - Optional PFCPSDRsp-Flags
-    /// * `tl_container` - Optional TL-Container IEs for TSN support (multiple)
+    /// * `packet_rate_status_reports` - Optional Packet Rate Status Reports (multiple, CIOT - IE Type 252)
+    /// * `mbs_session_n4_information` - Optional MBS Session N4 Information (multiple - IE Type 311)
+    /// * `pfcpsdrsp_flags` - Optional PFCPSDRsp-Flags (IE Type 318)
+    /// * `tl_container` - Optional TL-Container IEs for TSN support (multiple - IE Type 336)
     /// * `ies` - Additional/unknown IEs
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -445,9 +434,9 @@ impl SessionDeletionResponseBuilder {
         self
     }
 
-    /// Adds an MBS Session N4 Information IE (conditional, MBS support).
+    /// Adds an MBS Session N4 Information IE (conditional, MBS support - IE Type 311).
     ///
-    /// Per 3GPP TS 29.244 Section 7.5.7, this IE is for N4/N4mb interfaces only.
+    /// Per 3GPP TS 29.244 Section 7.5.7 Table 7.5.7.1-1, this IE is for N4/N4mb interfaces only.
     pub fn mbs_session_n4_information(mut self, mbs_session_n4_information: Ie) -> Self {
         self.mbs_session_n4_information
             .push(mbs_session_n4_information);
@@ -461,18 +450,18 @@ impl SessionDeletionResponseBuilder {
         self
     }
 
-    /// Sets the PFCPSDRsp-Flags IE (conditional).
+    /// Sets the PFCPSDRsp-Flags IE (conditional - IE Type 318).
     ///
-    /// Per 3GPP TS 29.244 Section 7.5.7, this IE contains flags like PURU
+    /// Per 3GPP TS 29.244 Section 7.5.7 and 8.2.215, this IE contains flags like PURU
     /// (Pending Usage Reports Unacknowledged).
     pub fn pfcpsdrsp_flags(mut self, pfcpsdrsp_flags: Ie) -> Self {
         self.pfcpsdrsp_flags = Some(pfcpsdrsp_flags);
         self
     }
 
-    /// Adds a TL-Container IE for TSN support (conditional, N4 interface).
+    /// Adds a TL-Container IE for TSN support (conditional, N4 interface - IE Type 336).
     ///
-    /// Multiple TL-Container IEs may be present. Per 3GPP TS 29.244 Section 7.5.7.
+    /// Multiple TL-Container IEs may be present. Per 3GPP TS 29.244 Section 7.5.7 and 8.2.230.
     pub fn tl_container(mut self, tl_container: Ie) -> Self {
         self.tl_container.push(tl_container);
         self
@@ -797,10 +786,9 @@ mod tests {
     #[test]
     fn test_session_deletion_response_with_mbs_session_n4_information() {
         // IE Type 311: MBS Session N4 Information (grouped IE for MBS support)
-        // Note: Using IeType::Unknown placeholder since MBS Session N4 Information is not yet fully implemented
-        // Round-trip testing is skipped because Unknown IEs don't preserve original type numbers
-        let mbs_ie1 = Ie::new(IeType::Unknown, vec![0x10, 0x20]);
-        let mbs_ie2 = Ie::new(IeType::Unknown, vec![0x30, 0x40]);
+        // Note: Using IeType::MbsSessionN4Information now that enum variant exists
+        let mbs_ie1 = Ie::new(IeType::MbsSessionN4Information, vec![0x10, 0x20]);
+        let mbs_ie2 = Ie::new(IeType::MbsSessionN4Information, vec![0x30, 0x40]);
 
         let response = SessionDeletionResponseBuilder::new(12345, 67890)
             .cause_accepted()
@@ -812,17 +800,18 @@ mod tests {
         assert_eq!(response.mbs_session_n4_information[0], mbs_ie1);
         assert_eq!(response.mbs_session_n4_information[1], mbs_ie2);
 
-        // Note: Round-trip testing skipped - Unknown IEs will be marshaled as type 0
-        // and won't match the unmarshal logic that checks for type 311
-        // Full round-trip support requires implementing MBS Session N4 Information IE
+        // Test marshal/unmarshal round trip now that proper enum variant exists
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.mbs_session_n4_information.len(), 2);
     }
 
     #[test]
     fn test_session_deletion_response_with_pfcpsdrsp_flags() {
         // IE Type 318: PFCPSDRsp-Flags
-        // Note: Using IeType::Unknown placeholder since PFCPSDRsp-Flags is not yet fully implemented
-        // Round-trip testing is skipped because Unknown IEs don't preserve original type numbers
-        let flags_ie = Ie::new(IeType::Unknown, vec![0x01]); // PURU flag
+        // Note: Using IeType::PfcpsdrspFlags now that enum variant exists
+        let flags_ie = Ie::new(IeType::PfcpsdrspFlags, vec![0x01]); // PURU flag
 
         let response = SessionDeletionResponseBuilder::new(12345, 67890)
             .cause_accepted()
@@ -831,18 +820,19 @@ mod tests {
 
         assert_eq!(response.pfcpsdrsp_flags, Some(flags_ie.clone()));
 
-        // Note: Round-trip testing skipped - Unknown IEs will be marshaled as type 0
-        // and won't match the unmarshal logic that checks for type 318
-        // Full round-trip support requires implementing PFCPSDRsp-Flags IE
+        // Test marshal/unmarshal round trip now that proper enum variant exists
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.pfcpsdrsp_flags, Some(flags_ie));
     }
 
     #[test]
     fn test_session_deletion_response_with_tl_container() {
-        // IE Type 195: TL-Container (for TSN support)
-        // Note: Using IeType::Unknown placeholder since TL-Container is not yet fully implemented
-        // Round-trip testing is skipped because Unknown IEs don't preserve original type numbers
-        let tl_ie1 = Ie::new(IeType::Unknown, vec![0x50, 0x60, 0x70]);
-        let tl_ie2 = Ie::new(IeType::Unknown, vec![0x80, 0x90, 0xA0]);
+        // IE Type 336: TL-Container (for TSN support per 3GPP TS 29.244 Section 8.2.230)
+        // Note: Using IeType::TlContainer now that enum variant exists
+        let tl_ie1 = Ie::new(IeType::TlContainer, vec![0x50, 0x60, 0x70]);
+        let tl_ie2 = Ie::new(IeType::TlContainer, vec![0x80, 0x90, 0xA0]);
 
         let response = SessionDeletionResponseBuilder::new(12345, 67890)
             .cause_accepted()
@@ -854,9 +844,11 @@ mod tests {
         assert_eq!(response.tl_container[0], tl_ie1);
         assert_eq!(response.tl_container[1], tl_ie2);
 
-        // Note: Round-trip testing skipped - Unknown IEs will be marshaled as type 0
-        // and won't match the unmarshal logic that checks for type 195
-        // Full round-trip support requires implementing TL-Container IE
+        // Test marshal/unmarshal round trip now that proper enum variant exists
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.tl_container.len(), 2);
     }
 
     #[test]
@@ -865,14 +857,14 @@ mod tests {
         let auri_ie = Ie::new(IeType::AdditionalUsageReportsInformation, vec![0x01]);
         let prsr_ie = Ie::new(IeType::PacketRateStatusReport, vec![0x01, 0x02]);
 
-        // MBS Session N4 Information (IE Type 311) - placeholder using Unknown
-        let mbs_ie = Ie::new(IeType::Unknown, vec![0x10, 0x20]);
+        // MBS Session N4 Information (IE Type 311) - now using proper enum variant
+        let mbs_ie = Ie::new(IeType::MbsSessionN4Information, vec![0x10, 0x20]);
 
-        // PFCPSDRsp-Flags (IE Type 318) - placeholder using Unknown
-        let flags_ie = Ie::new(IeType::Unknown, vec![0x01]); // PURU flag
+        // PFCPSDRsp-Flags (IE Type 318) - now using proper enum variant
+        let flags_ie = Ie::new(IeType::PfcpsdrspFlags, vec![0x01]); // PURU flag
 
-        // TL-Container (IE Type 195) - placeholder using Unknown
-        let tl_ie = Ie::new(IeType::Unknown, vec![0x50, 0x60]);
+        // TL-Container (IE Type 336) - now using proper enum variant
+        let tl_ie = Ie::new(IeType::TlContainer, vec![0x50, 0x60]);
 
         let response = SessionDeletionResponseBuilder::new(12345, 67890)
             .cause_accepted()
@@ -901,8 +893,9 @@ mod tests {
         assert!(all_ies.contains(&&flags_ie));
         assert!(all_ies.contains(&&tl_ie));
 
-        // Note: Round-trip testing skipped for this combined test because
-        // MBS Session N4 Information, PFCPSDRsp-Flags, and TL-Container use Unknown placeholders
-        // Full round-trip support requires implementing these IEs
+        // Test marshal/unmarshal round trip now that proper enum variants exist
+        let marshaled = response.marshal();
+        let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
     }
 }
