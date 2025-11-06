@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2025-11-06
+
 ### Added
 
 #### 🔍 Message Comparison Framework
 - **Complete comparison module** (~3,900 lines) for testing, debugging, validation, and compliance auditing
   - Fluent builder API with method chaining
   - Four preset modes: strict, test, semantic, and audit
-  - 79 comprehensive unit tests, all 1,764 library tests passing
+  - 79 comprehensive unit tests, all 1,942 library tests passing
 - **Semantic Comparison** for F-TEID (IE 21) and UE IP Address (IE 93)
   - Compares by functional meaning, not byte encoding
   - F-TEID: Compares TEID + IPs + CHOOSE flags, ignores v4/v6 flags
@@ -44,12 +46,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Optional hex payload dumps (first 16 bytes, truncated for longer)
   - Configurable detail level
 
+#### 📡 Complete Ethernet Support (3GPP R16)
+- **10 Ethernet IEs**: Full implementation per 3GPP TS 29.244 Section 8.2.132-8.2.146
+  - Ethernet Packet Filter (IE 132): Layer 2 traffic classification with builder pattern
+  - MAC Address (IE 133): Source and destination MAC addressing with proper flag encoding
+  - C-TAG (IE 134) & S-TAG (IE 135): VLAN tagging support (Priority Code Point, VID, DEI)
+  - Ethertype (IE 136): Layer 2 protocol identification
+  - Proxying (IE 137): ARP/IPv6 neighbor discovery proxying flags
+  - Ethernet Filter ID (IE 138): Filter rule identification
+  - Ethernet Filter Properties (IE 139): Bidirectional filtering control
+  - Ethernet PDU Session Information (IE 142): Layer 2 session parameters
+  - Ethernet Context Information (IE 254): Grouped IE with MAC address reporting
+- **Display Support**: Comprehensive YAML/JSON formatting for all Ethernet IEs
+- **Examples**: `ethernet-session-demo` with PCAP generation for traffic analysis
+
+#### 📦 Phase 2 IE Implementation (17 IEs - Advanced Features)
+- **Sprint 1 (7 IEs)**: Application-aware and QoS IEs
+  - RQI (IE 123): Reflective QoS Indication
+  - QFI (IE 124): QoS Flow Identifier (5G QoS)
+  - Application Instance ID (IE 91): Edge computing application identification
+  - Averaging Window (IE 115): QoS monitoring time window
+  - Paging Policy Indicator (IE 116): QoS flow paging control
+  - Multiplier (IE 119): Usage reporting quota factor
+  - Flow Information (IE 92) & Packet Rate (IE 94): Traffic flow management
+- **Sprint 2 (10 IEs)**: Rate control and timing IEs
+  - Activation Time (IE 148) & Deactivation Time (IE 149): Rule lifecycle timing
+  - UR-SEQN (IE 104): Usage report sequence numbers
+  - Additional rate and status IEs for advanced QoS control
+
+#### 🛠️ PCAP Reader Enhancements
+- **IPv6 Support**: Comprehensive parsing for dual-stack environments
+- **RAW Datalink**: Support for DLT_RAW (loopback interfaces without Ethernet headers)
+- **Type Safety**: Fixed type mismatches in datalink handling
+
 #### ⚡ Performance Optimization
 - **Message trait enhancement**: Added `all_ies()` method for efficient IE collection
   - Implemented across all 26 message types (Generic + 25 concrete)
   - Performance improvement: O(300*n) → O(n)
   - Eliminates 300 method calls per message comparison
   - 689 lines of implementation code
+
+### Fixed
+
+#### 🔧 3GPP TS 29.244 v18.10.0 Compliance Corrections
+- **SessionDeletionRequest** (8cdfd99): Corrected to 100% spec compliance
+  - Removed invalid fields: `smf_fseid` (F-SEID belongs in header, not body)
+  - Removed invalid fields: `pfcpsm_req_flags`, `urr_ids`, `usage_reports`
+  - Added missing field: `tl_container` (Conditional, TSN support)
+  - Added missing field: `node_id` (Conditional, SMF Set takeover)
+  - Added missing field: `cp_fseid` (Conditional, CP F-SEID change)
+  - Updated constructor, builder, tests, and examples
+- **SessionDeletionResponse** (2b5ea9d): Completed to 100% spec compliance (10/10 IEs)
+  - Added 5 missing conditional IEs:
+    - Additional Usage Reports Information (IE 126): Pagination support
+    - Packet Rate Status Report (IE 252): CIOT packet rate monitoring
+    - MBS Session N4 Information (IE 311): Multicast broadcast services
+    - PFCPSDRsp-Flags (IE 318): Pending usage reports indication (PURU flag)
+    - TL-Container (IE 195): TSN time-sensitive networking
+  - Updated constructor (13 parameters), builder, marshal/unmarshal methods
+  - Added 7 comprehensive tests for new IEs
+  - Fixed examples and integration tests
+
+#### 🐛 Bug Fixes
+- **Ethernet IEs**: Corrected flag encoding and multiple MAC address handling
+- **PCAP Reader**: Fixed type mismatches in RAW datalink processing
+- **Documentation**: Fixed doctests for Ethernet MAC address IEs
 
 ### Documentation
 - **README.md**: Added comparison module section with examples
@@ -60,12 +121,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 5 common use cases with code examples
   - Advanced features and troubleshooting
   - Best practices
-- **Updated test counts**: 1,764 tests (was 1,712, +52 tests)
+- **docs/analysis/**: Updated Ethernet IE completion status to 100%
+- **Updated test counts**: 1,942 tests (was 1,367, +575 tests)
 - **Updated architecture diagrams**: Added comparison module structure
 
 ### Changed
-- **Test suite expansion**: Added 79 comparison module tests (50 core + 17 semantic + 12 timestamp)
+- **Test suite expansion**:
+  - Added 79 comparison module tests (50 core + 17 semantic + 12 timestamp)
+  - Added comprehensive Ethernet IE tests
+  - Added Phase 2 Sprint 1 & 2 IE tests
+  - All 1,942 tests passing
 - **Message trait**: Added `all_ies()` for efficient IE iteration
+- **Examples**: Updated to demonstrate new Ethernet and comparison features
+
+### Implementation Status
+- **Total Tests**: 1,942 (was 1,367, +575 tests / +42% increase)
+- **IE Coverage**: 139/273 IEs implemented (51%, was 112/273)
+- **Message Types**: 25/25 (100% complete)
+- **Ethernet Support**: 10/10 IEs (100% complete)
+- **Phase 2 IEs**: 17 IEs added (Sprint 1: 7, Sprint 2: 10)
 
 ## [0.1.5] - 2025-10-25
 

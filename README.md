@@ -16,9 +16,9 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - 120+ Information Elements implemented with complete core session management
+- 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - 139+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 1,764 comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 1,942 comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
@@ -46,8 +46,8 @@ let request = AssociationSetupRequestBuilder::new(seq)
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **120+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
-- ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting
+- ✅ **139+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting, Ethernet PDU sessions
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
 
 ## 🏃‍♂️ Quick Start
@@ -58,7 +58,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.1.5"
+rs-pfcp = "0.1.6"
 ```
 
 ### Basic Usage
@@ -171,10 +171,11 @@ cd examples && ./test_session_report.sh lo
 
 ```
 rs-pfcp/
-├── src/ie/              # Information Elements (120+ types)
+├── src/ie/              # Information Elements (139+ types)
 │   ├── f_teid.rs        # F-TEID with 3GPP compliant CHOOSE flags
 │   ├── pdn_type.rs      # PDN connection types (IPv4/IPv6/Non-IP)
 │   ├── snssai.rs        # 5G Network Slicing identifiers
+│   ├── ethernet_*.rs    # Ethernet PDU session support (10 IEs)
 │   └── ...
 ├── src/message/         # PFCP Messages (25 types)
 │   ├── session_*.rs     # Session lifecycle management
@@ -230,7 +231,7 @@ rs-pfcp/
 # Build the library
 cargo build
 
-# Run all tests (1,764 tests)
+# Run all tests (1,942 tests)
 cargo test
 
 # Run specific test category
