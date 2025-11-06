@@ -9,7 +9,7 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationReleaseRequest {
     pub header: Header,
-    pub node_id: Ie,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.5-1 - IE Type 60
 }
 
 impl Message for AssociationReleaseRequest {

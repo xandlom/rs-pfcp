@@ -9,8 +9,8 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationReleaseResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub node_id: Ie,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.6-1 - IE Type 60
+    pub cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.4.6-1 - IE Type 19
 }
 
 impl Message for AssociationReleaseResponse {
