@@ -51,19 +51,10 @@ impl Message for SessionDeletionRequest {
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
-                // TODO: Add IeType::TlContainer when TL-Container IE is implemented
-                // For now, TL-Container IEs will be in the ies Vec
                 IeType::NodeId => node_id = Some(ie),
                 IeType::Fseid => cp_fseid = Some(ie),
-                _ => {
-                    // Check if this might be a TL-Container based on IE type number
-                    // TL-Container is IE Type 195 per 3GPP TS 29.244
-                    if ie.ie_type as u16 == 195 {
-                        tl_container.push(ie);
-                    } else {
-                        ies.push(ie);
-                    }
-                }
+                IeType::TlContainer => tl_container.push(ie),
+                _ => ies.push(ie),
             }
             cursor += ie_len;
         }
