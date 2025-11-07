@@ -8,35 +8,61 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionModificationRequest {
     pub header: Header,
-    pub fseid: Option<Ie>,
-    pub remove_pdrs: Option<Vec<Ie>>,
-    pub remove_fars: Option<Vec<Ie>>,
-    pub remove_urrs: Option<Vec<Ie>>,
-    pub remove_qers: Option<Vec<Ie>>,
-    pub remove_bars: Option<Vec<Ie>>,
-    pub remove_traffic_endpoints: Option<Vec<Ie>>,
-    pub create_pdrs: Option<Vec<Ie>>,
-    pub create_fars: Option<Vec<Ie>>,
-    pub create_urrs: Option<Vec<Ie>>,
-    pub create_qers: Option<Vec<Ie>>,
-    pub create_bars: Option<Vec<Ie>>,
-    pub create_traffic_endpoints: Option<Vec<Ie>>,
-    pub update_pdrs: Option<Vec<Ie>>,
-    pub update_fars: Option<Vec<Ie>>,
-    pub update_urrs: Option<Vec<Ie>>,
-    pub update_qers: Option<Vec<Ie>>,
-    pub update_bars: Option<Vec<Ie>>,
-    pub update_traffic_endpoints: Option<Vec<Ie>>,
-    pub pdn_type: Option<Ie>,
-    pub user_id: Option<Ie>,
-    pub s_nssai: Option<Ie>,
-    pub trace_information: Option<Ie>,
-    pub recovery_time_stamp: Option<Ie>,
-    pub cp_function_features: Option<Ie>,
-    pub apn_dnn: Option<Ie>,
-    pub user_plane_inactivity_timer: Option<Ie>,
-    pub pfcpsm_req_flags: Option<Ie>,
-    pub ethernet_context_information: Option<Ie>,
+    pub fseid: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 57 - CP F-SEID when CP changes its F-SEID
+    pub remove_pdrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 15 - Multiple instances, Grouped IE
+    pub remove_fars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 18 - Multiple instances, Grouped IE
+    pub remove_urrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 20 - Multiple instances, Grouped IE
+    pub remove_qers: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 23 - Multiple instances, Grouped IE (Sxb/Sxc/N4/N4mb only)
+    pub remove_bars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 88 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
+    pub remove_traffic_endpoints: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 133 - Multiple instances, Grouped IE
+    pub create_pdrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 1 - Multiple instances, Grouped IE
+    pub create_fars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 3 - Multiple instances, Grouped IE
+    pub create_urrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 6 - Multiple instances, Grouped IE
+    pub create_qers: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 7 - Multiple instances, Grouped IE (Sxb/Sxc/N4/N4mb only)
+    pub create_bars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 85 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
+    pub create_traffic_endpoints: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 131 - Multiple instances, Grouped IE
+    pub update_pdrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 9 - Multiple instances, Grouped IE
+    pub update_fars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 10 - Multiple instances, Grouped IE
+    pub update_urrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 13 - Multiple instances, Grouped IE
+    pub update_qers: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 14 - Multiple instances, Grouped IE (Sxb/Sxc/N4/N4mb only)
+    pub update_bars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 86 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
+    pub update_traffic_endpoints: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 132 - Multiple instances, Grouped IE
+    pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 139 - Flags: DROBU/QAURR/SUMPC/RUMUC/DETEID/HRSBOM
+    // TODO: [IE Type 109] Query URR - C - Multiple instances, Grouped IE - Request immediate usage reports
+    // TODO: [IE Type 65] PGW-C/SMF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] SGW-C FQ-CSID - C - (Sxa/Sxb only, not Sxc/N4/N4mb) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] MME FQ-CSID - C - (Sxa/Sxb only, not Sxc/N4/N4mb) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] ePDG FQ-CSID - C - (Sxb only) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] TWAN FQ-CSID - C - (Sxb only) - Per clause 23 of 3GPP TS 23.007
+    pub user_plane_inactivity_timer: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 117 - When needs to be changed (Sxb/Sxc/N4/N4mb only)
+    // TODO: [IE Type 177] Query URR Reference - O - Reference identifying query request, returned in usage reports
+    pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 152 - Trace instructions, null length to deactivate (not N4mb)
+    // TODO: [IE Type 168] Remove MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    // TODO: [IE Type 170] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For new MA PDR
+    // TODO: [IE Type 60] Node ID - C - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
+    // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
+    // TODO: [IE Type 211] Remove SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
+    // TODO: [IE Type 208] Create SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
+    // TODO: [IE Type 212] Update SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
+    // TODO: [IE Type 179] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session, replaces previous
+    pub ethernet_context_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 254 - Grouped IE (N4 only) - MAC addresses during anchor relocation
+    // TODO: [IE Type 188] Access Availability Information - O - Multiple instances (N4 only, not Sxa/Sxb/Sxc/N4mb) - Access transiently unavailable/available
+    // TODO: [IE Type 263] Query Packet Rate Status - C - Multiple instances, Grouped IE (Sxb/N4 only) - Request immediate packet rate status
+    pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
+    // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session if not sent during establishment
+    pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
+    // TODO: [IE Type 82] RAT Type - M - (Sxa/Sxb/N4 only, not Sxc/N4mb) - New RAT type when RAT changes (not for MA PDU)
+    // TODO: [IE Type 297] Group Id - C - (Sxb/N4 only, not Sxa/Sxc/N4mb) - New group identifier when changed, replaces previous
+    // TODO: [IE Type 296] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Associate/update MBS
+    // TODO: [IE Type 291] DSCP to PPI Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Replaces previous value
+    // TODO: [IE Type 336] TL-Container - C - Multiple instances (N4 only, not Sxa/Sxb/Sxc/N4mb) - From SMF/CUC to UPF/CN-TL
+    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - Streaming trace reporting, overrides IP in Trace Info
+    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement, null length to stop
+    pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub user_id: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub recovery_time_stamp: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub cp_function_features: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
 

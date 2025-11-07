@@ -8,13 +8,22 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionModificationResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
-    pub created_pdr: Option<Ie>,
-    pub load_control_information: Option<Ie>,
-    pub overload_control_information: Option<Ie>,
-    pub pdn_type: Option<Ie>,
-    pub usage_reports: Vec<Ie>,
+    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 19 - Acceptance/partial acceptance/rejection
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
+    pub created_pdr: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 16 - Multiple instances, Grouped IE (not Sxc)
+    pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
+    pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 54 - Grouped IE (during overload condition)
+    pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 78 - Multiple instances, Grouped IE - When query requested or URR removed
+    // TODO: [IE Type 114] Failed Rule ID - C - When cause indicates rule creation/modification failure
+    // TODO: [IE Type 110] Additional Usage Reports Information - C - When Query URR present/QAURR flag set and more reports follow
+    // TODO: [IE Type 129] Created/Updated Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
+    // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
+    // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
+    // TODO: [IE Type 112] Updated PDR - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
+    // TODO: [IE Type 264] Packet Rate Status Report - C - Multiple instances, Grouped IE (Sxb/N4 only) - Immediate packet rate status if requested
+    // TODO: [IE Type 272] Partial Failure Information - C - Multiple instances, Grouped IE - When cause indicates partial acceptance
+    // TODO: [IE Type 299] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Per clause 5.34.1
+    pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.5.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
 
