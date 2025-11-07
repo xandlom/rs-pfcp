@@ -9,9 +9,18 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationUpdateRequest {
     pub header: Header,
-    pub node_id: Ie,
-    pub up_function_features: Option<Ie>,
-    pub cp_function_features: Option<Ie>,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 60
+    pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 43
+    pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 89
+    // TODO: [IE Type 111] PFCP Association Release Request - C - Conditional, when UP function requests CP to release association
+    // TODO: [IE Type 112] Graceful Release Period - C - Conditional, when UP function requests graceful release
+    // TODO: [IE Type 162] PFCPAUReq-Flags - O - Flags IE with PARPS flag for association release preparation
+    // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
+    // TODO: [IE Type 180] SMF Set ID - O - When MPAS feature supported and FQDN changes (N4/N4mb only)
+    // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances, Grouped IE, null length stops reporting (N4 only)
+    // TODO: [IE Type 233] UE IP address Pool Information - O - Multiple instances allowed (Sxb/N4 only)
+    // TODO: [IE Type 238] GTP-U Path QoS Control Information - C - Multiple instances, Grouped IE, null length stops monitoring (N4 only)
+    // TODO: [IE Type 267] UE IP Address Usage Information - O - Multiple instances, Grouped IE with 7 child IEs, see Table 7.4.4.3.1-1 (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 

@@ -9,10 +9,11 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationUpdateResponse {
     pub header: Header,
-    pub node_id: Ie,
-    pub cause: Ie,
-    pub up_function_features: Option<Ie>,
-    pub cp_function_features: Option<Ie>,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 60
+    pub cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 19
+    pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 43
+    pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 89
+    // TODO: [IE Type 267] UE IP Address Usage Information - O - Multiple instances, Grouped IE with 7 child IEs, see Table 7.4.4.3.1-1 (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 
