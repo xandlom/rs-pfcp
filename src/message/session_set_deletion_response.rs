@@ -11,9 +11,9 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetDeletionResponse {
     pub header: Header,
-    pub node_id: Ie,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 60 - Unique identifier of sending node (Sxa/Sxb/N4 only, not Sxc/N4mb)
+    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 19 - Acceptance or rejection of request (Sxa/Sxb/N4 only, not Sxc/N4mb)
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxa/Sxb/N4 only, not Sxc/N4mb)
     pub ies: Vec<Ie>,
 }
 

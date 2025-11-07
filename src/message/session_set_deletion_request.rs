@@ -11,8 +11,14 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetDeletionRequest {
     pub header: Header,
-    pub node_id: Ie,
-    pub fseid_set: Option<Ie>,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.6.1-1 - IE Type 60 - Node identity of originating node (Sxa/Sxb/N4 only, not Sxc/N4mb)
+    pub fseid_set: Option<Ie>, // Note: Currently accepts F-SEID (Type 57), but spec defines FQ-CSID (Type 65) for session sets
+    // TODO: [IE Type 65] SGW-C FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxa/Sxb only)
+    // TODO: [IE Type 65] PGW-C/SMF FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 and clause 4.6 of 3GPP TS 23.527 (Sxa/Sxb/N4 only)
+    // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 and clause 4.6 of 3GPP TS 23.527 (Sxa/Sxb/N4 only)
+    // TODO: [IE Type 65] TWAN FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxb only)
+    // TODO: [IE Type 65] ePDG FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxb only)
+    // TODO: [IE Type 65] MME FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxa/Sxb only)
     pub ies: Vec<Ie>,
 }
 
