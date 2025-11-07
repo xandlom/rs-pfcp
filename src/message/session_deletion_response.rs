@@ -10,17 +10,17 @@ use crate::message::{header::Header, Message, MsgType};
 #[derive(Debug, PartialEq)]
 pub struct SessionDeletionResponse {
     pub header: Header,
-    pub cause: Ie,                                        // Mandatory
-    pub offending_ie: Option<Ie>,                         // Conditional
-    pub load_control_information: Option<Ie>,             // Optional
-    pub overload_control_information: Option<Ie>,         // Optional
-    pub usage_reports: Vec<Ie>,                           // Conditional (multiple)
-    pub additional_usage_reports_information: Option<Ie>, // Conditional
-    pub packet_rate_status_reports: Vec<Ie>,              // Conditional (multiple, Sxb/N4)
-    pub mbs_session_n4_information: Vec<Ie>,              // Conditional (multiple, N4/N4mb)
-    pub pfcpsdrsp_flags: Option<Ie>,                      // Conditional
-    pub tl_container: Vec<Ie>,                            // Conditional (multiple, N4)
-    pub ies: Vec<Ie>,                                     // Additional/unknown IEs
+    pub cause: Ie,                // M - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 19
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 40
+    pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 51 - Grouped IE
+    pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 54 - Grouped IE
+    pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 79 - Grouped IE, Multiple instances
+    pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 189
+    pub packet_rate_status_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 252 - Grouped IE, Multiple instances (Sxb/N4, CIOT)
+    pub mbs_session_n4_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 311 - Grouped IE, Multiple instances (N4 only)
+    pub pfcpsdrsp_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 318 - PURU flag
+    pub tl_container: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 336 - Multiple instances (N4 only)
+    pub ies: Vec<Ie>,          // Additional/unknown IEs
 }
 
 impl Message for SessionDeletionResponse {
