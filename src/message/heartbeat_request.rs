@@ -192,9 +192,11 @@ impl HeartbeatRequestBuilder {
     ///
     /// ```
     /// use std::net::Ipv4Addr;
+    /// use std::time::SystemTime;
     /// use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
     ///
     /// let request = HeartbeatRequestBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
     ///     .source_ip_address(Ipv4Addr::new(192, 168, 1, 1))
     ///     .build();
     /// ```
