@@ -218,7 +218,10 @@ mod tests {
 
         assert_eq!(response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::HeartbeatResponse);
-        assert_eq!(response.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(response.ies.is_empty());
     }
 
@@ -297,14 +300,18 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 1000);
-        assert_eq!(response.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
 
         // Verify the IE was created correctly
         let ie = &response.recovery_time_stamp;
         assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
 
         // Verify it can be unmarshaled
-        let recovered = RecoveryTimeStamp::unmarshal(&response.recovery_time_stamp.payload).unwrap();
+        let recovered =
+            RecoveryTimeStamp::unmarshal(&response.recovery_time_stamp.payload).unwrap();
         // SystemTime comparison with tolerance (within 1 second)
         let duration = timestamp
             .duration_since(recovered.timestamp)
@@ -389,7 +396,10 @@ mod tests {
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 8000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
     }
 
     #[test]
@@ -419,14 +429,20 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 10000);
-        assert_eq!(response.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(response.ies.len(), 3);
 
         // Round trip
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 10000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(unmarshaled.ies.len(), 3);
     }
 
@@ -440,7 +456,10 @@ mod tests {
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.sequence(), 11000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(unmarshaled.ies.is_empty());
     }
 
@@ -457,7 +476,10 @@ mod tests {
         // With recovery timestamp + additional IE
         let with_ie = HeartbeatResponseBuilder::new(13000)
             .recovery_time_stamp(SystemTime::now())
-            .ie(Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x01, 0x02]))
+            .ie(Ie::new(
+                IeType::UserPlaneIpResourceInformation,
+                vec![0x01, 0x02],
+            ))
             .build();
         let with_ie_bytes = with_ie.marshal();
         assert!(with_ie.header.length > minimal.header.length);
@@ -479,7 +501,10 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 14000);
-        assert_eq!(response.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(response.ies.len(), 3);
     }
 
@@ -540,7 +565,10 @@ mod tests {
 
         assert_eq!(original, unmarshaled);
         assert_eq!(unmarshaled.sequence(), 17000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(unmarshaled.ies.len(), 2);
     }
 

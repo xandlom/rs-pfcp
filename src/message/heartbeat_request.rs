@@ -289,7 +289,10 @@ mod tests {
 
         assert_eq!(request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::HeartbeatRequest);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_none());
         assert!(request.ies.is_empty());
     }
@@ -320,7 +323,10 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(request.source_ip_address, Some(ip_ie));
     }
 
@@ -392,7 +398,10 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
 
         // Verify the IE was created correctly
         let ie = &request.recovery_time_stamp;
@@ -462,7 +471,10 @@ mod tests {
         // Should be able to unmarshal
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_some());
     }
 
@@ -476,7 +488,10 @@ mod tests {
         // Should produce valid bytes
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
     }
 
     #[test]
@@ -567,7 +582,10 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 7000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
     }
 
     #[test]
@@ -631,7 +649,10 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 11000);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_some());
         assert_eq!(request.ies.len(), 2);
 
@@ -639,7 +660,10 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 11000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(unmarshaled.source_ip_address.is_some());
         assert_eq!(unmarshaled.ies.len(), 2);
     }
@@ -654,7 +678,10 @@ mod tests {
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.sequence(), 12000);
-        assert_eq!(unmarshaled.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(unmarshaled.source_ip_address.is_none());
         assert!(unmarshaled.ies.is_empty());
     }
@@ -695,7 +722,10 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 15000);
-        assert_eq!(request.recovery_time_stamp.ie_type, IeType::RecoveryTimeStamp);
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_some());
         assert_eq!(request.ies.len(), 3);
     }
