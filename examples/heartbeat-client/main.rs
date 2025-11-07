@@ -40,9 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             break;
                         }
                         Err(e) => {
-                            println!(
-                                "got Heartbeat Response with invalid TS: {e}, from: {addr}"
-                            );
+                            println!("got Heartbeat Response with invalid TS: {e}, from: {addr}");
                             break;
                         }
                     }
