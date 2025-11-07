@@ -8,13 +8,25 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionEstablishmentResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
-    pub fseid: Ie,
-    pub created_pdrs: Vec<Ie>,
-    pub pdn_type: Option<Ie>,
-    pub load_control_information: Option<Ie>,
-    pub overload_control_information: Option<Ie>,
+    // TODO: [IE Type 60] Node ID - M - Unique identifier of sending node
+    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 19 - Acceptance/rejection/partial acceptance
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
+    pub fseid: Ie, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 57 - UP F-SEID when cause is success
+    pub created_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 16 - Multiple instances, Grouped IE
+    pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
+    pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 54 - Grouped IE (during overload condition)
+    // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 114] Failed Rule ID - C - When cause indicates rule creation/modification failure
+    // TODO: [IE Type 129] Created Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
+    // TODO: [IE Type 205] Created Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
+    // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
+    // TODO: [IE Type 268] RDS configuration information - O - (Sxb/N4 only, not Sxa/Sxc/N4mb) - RDS configuration UP supports
+    // TODO: [IE Type 272] Partial Failure Information - C - Multiple instances, Grouped IE - When cause indicates partial acceptance
+    // TODO: [IE Type 279] Created L2TP Session - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.3.1-3
+    // TODO: [IE Type 317] MBS Session N4mb Information - C - Grouped IE (N4mb only) - When any child IE needed
+    // TODO: [IE Type 299] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Per clause 5.34.1
+    // TODO: [IE Type 336] TL-Container - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - From UPF/CN-TL to SMF/CUC in response
+    pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.3.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
 

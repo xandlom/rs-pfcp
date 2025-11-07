@@ -9,25 +9,46 @@ use std::io;
 pub struct SessionEstablishmentRequest {
     pub header: Header,
     // Mandatory IEs
-    pub node_id: Ie,
-    pub fseid: Ie,
-    pub create_pdrs: Vec<Ie>,
-    pub create_fars: Vec<Ie>,
-    // Optional IEs
-    pub create_urrs: Vec<Ie>,
-    pub create_qers: Vec<Ie>,
-    pub create_bars: Vec<Ie>,
-    pub create_traffic_endpoints: Vec<Ie>,
-    pub pdn_type: Option<Ie>,
-    pub user_id: Option<Ie>,
-    pub s_nssai: Option<Ie>,
-    pub trace_information: Option<Ie>,
-    pub recovery_time_stamp: Option<Ie>,
-    pub cp_function_features: Option<Ie>,
-    pub apn_dnn: Option<Ie>,
-    pub user_plane_inactivity_timer: Option<Ie>,
-    pub pfcpsm_req_flags: Option<Ie>,
-    pub ethernet_pdu_session_information: Option<Ie>,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 60 - Unique identifier of sending node
+    pub fseid: Ie, // M - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 57 - CP F-SEID identifying the session
+    pub create_pdrs: Vec<Ie>, // M - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 1 - At least one PDR, multiple instances, Grouped IE
+    pub create_fars: Vec<Ie>, // M - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 3 - At least one FAR, multiple instances, Grouped IE
+    // Optional/Conditional IEs
+    pub create_urrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 6 - Multiple instances, Grouped IE
+    pub create_qers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 7 - Multiple instances, Grouped IE (not Sxa)
+    pub create_bars: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 85 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
+    pub create_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 131 - Multiple instances, Grouped IE
+    pub pdn_type: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 113 - IP/non-IP/Ethernet PDN connection/PDU session
+    // TODO: [IE Type 65] SGW-C FQ-CSID - C - Multiple instances (Sxa/Sxb only, not Sxc/N4/N4mb) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] MME FQ-CSID - C - Multiple instances (Sxa/Sxb only, not Sxc/N4/N4mb) - When received on S11/S5/S8
+    // TODO: [IE Type 65] PGW-C/SMF FQ-CSID - C - Multiple instances (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] ePDG FQ-CSID - C - Multiple instances (Sxb only) - Per clause 23 of 3GPP TS 23.007
+    // TODO: [IE Type 65] TWAN FQ-CSID - C - Multiple instances (Sxb only) - Per clause 23 of 3GPP TS 23.007
+    pub user_plane_inactivity_timer: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 117 - Duration to send inactivity report (Sxb/Sxc/N4/N4mb only)
+    pub user_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 141 - Only if UP in trusted environment (not N4mb)
+    pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 152 - Trace instructions (not N4mb)
+    pub apn_dnn: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 22 - Access Point Name / Data Network Name
+    // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 138 - PFCPSEReq-Flags (RESTI/SUMPC/HRSBOM)
+    // TODO: [IE Type 204] Create Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
+    // TODO: [IE Type 208] Create SRR - O - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For session-level reporting
+    // TODO: [IE Type 179] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    pub recovery_time_stamp: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 96 - CP function start time (not N4mb)
+    pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
+    // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session, from V-SMF to V-UPF
+    // TODO: [IE Type 181] Provide RDS configuration information - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb)
+    // TODO: [IE Type 82] RAT Type - O - Current RAT type for statistics (not N4mb, not for MA PDU)
+    // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
+    // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
+    // TODO: [IE Type 297] Group Id - O - Group identifier (Sxb/N4 only, not Sxa/Sxc/N4mb) - See clause 5.22
+    // TODO: [IE Type 326] MBS Session N4mb Control Information - M - Grouped IE (N4mb only) - Identifies MBS session/Area Session ID
+    // TODO: [IE Type 296] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Associate PDU with MBS
+    // TODO: [IE Type 291] DSCP to PPI Control Information - O - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For PPI insertion
+    // TODO: [IE Type 336] TL-Container - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - From SMF/CUC to UPF/CN-TL
+    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - For streaming trace reporting
+    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement config
+    pub cp_function_features: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.2.1-1 - May be legacy/vendor-specific
+    pub ethernet_pdu_session_information: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.2.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
 
