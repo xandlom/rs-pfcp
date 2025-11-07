@@ -22,6 +22,14 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetModificationRequest {
     pub header: Header,
+    // TODO: [IE Type 60] Node ID - M - Node identity of originating node (Sxb/N4 only, not Sxa/Sxc/N4mb)
+    // TODO: [IE Type 290] PFCP Session Change Info - M - Grouped IE, Multiple instances
+    //       Note: Current implementation flattens the grouped IE structure
+    //       PFCP Session Change Info contains:
+    //       - PGW-C/SMF FQ-CSID (C, Type 65) - Multiple instances - Currently: fq_csids
+    //       - Group Id (C, Type 297) - Multiple instances - Currently: group_ids
+    //       - CP IP Address (C, Type 116) - Multiple instances - Currently: cp_ip_addresses
+    //       - Alternative SMF/PGW-C IP Address (M, Type 178) - Currently: alternative_smf_ip_address
     pub alternative_smf_ip_address: AlternativeSmfIpAddress,
     pub fq_csids: Option<Vec<FqCsid>>,
     pub group_ids: Option<Vec<GroupId>>,

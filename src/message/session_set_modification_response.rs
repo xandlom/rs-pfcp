@@ -17,8 +17,9 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetModificationResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
+    // TODO: [IE Type 60] Node ID - M - Unique identifier of sending node (Sxb/N4 only, not Sxa/Sxc/N4mb)
+    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.7.2-1 - IE Type 19 - Acceptance or rejection of request (Sxb/N4 only)
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.7.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 
