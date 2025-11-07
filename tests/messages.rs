@@ -237,6 +237,7 @@ fn test_pfd_management_response_marshal_unmarshal() {
         0x112233,
         cause_ie.clone(),
         Some(offending_ie.clone()),
+        None,
         vec![],
     );
 

@@ -10,15 +10,24 @@ pub struct PfdManagementResponse {
     pub header: Header,
     pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 19 - Acceptance or rejection of request (Sxb/Sxc/N4 only)
     pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/Sxc/N4 only)
-    // TODO: [IE Type 60] Node ID - O - Unique identifier of sending node (Sxb/Sxc/N4 only)
+    pub node_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 60 - Unique identifier of sending node (Sxb/Sxc/N4 only)
     pub ies: Vec<Ie>,
 }
 
 impl PfdManagementResponse {
     /// Creates a new PFD Management Response message.
-    pub fn new(seq: u32, cause: Ie, offending_ie: Option<Ie>, ies: Vec<Ie>) -> Self {
+    pub fn new(
+        seq: u32,
+        cause: Ie,
+        offending_ie: Option<Ie>,
+        node_id: Option<Ie>,
+        ies: Vec<Ie>,
+    ) -> Self {
         let mut payload_len = cause.len();
         if let Some(ref ie) = offending_ie {
+            payload_len += ie.len();
+        }
+        if let Some(ref ie) = node_id {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -32,6 +41,7 @@ impl PfdManagementResponse {
             header,
             cause,
             offending_ie,
+            node_id,
             ies,
         }
     }
@@ -44,6 +54,9 @@ impl Message for PfdManagementResponse {
         if let Some(ref ie) = self.offending_ie {
             data.extend_from_slice(&ie.marshal());
         }
+        if let Some(ref ie) = self.node_id {
+            data.extend_from_slice(&ie.marshal());
+        }
         for ie in &self.ies {
             data.extend_from_slice(&ie.marshal());
         }
@@ -54,6 +67,7 @@ impl Message for PfdManagementResponse {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
+        let mut node_id = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -63,6 +77,7 @@ impl Message for PfdManagementResponse {
             match ie.ie_type {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
+                IeType::NodeId => node_id = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -73,6 +88,7 @@ impl Message for PfdManagementResponse {
             cause: cause
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
             offending_ie,
+            node_id,
             ies,
         })
     }
@@ -101,6 +117,7 @@ impl Message for PfdManagementResponse {
         match ie_type {
             IeType::Cause => Some(&self.cause),
             IeType::OffendingIe => self.offending_ie.as_ref(),
+            IeType::NodeId => self.node_id.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
     }
@@ -108,6 +125,9 @@ impl Message for PfdManagementResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.node_id {
             result.push(ie);
         }
         result.extend(self.ies.iter());
@@ -121,6 +141,7 @@ pub struct PfdManagementResponseBuilder {
     sequence: u32,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
+    node_id: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -131,6 +152,7 @@ impl PfdManagementResponseBuilder {
             sequence,
             cause: None,
             offending_ie: None,
+            node_id: None,
             ies: Vec::new(),
         }
     }
@@ -194,6 +216,71 @@ impl PfdManagementResponseBuilder {
         self
     }
 
+    /// Sets the Node ID IE directly (optional).
+    ///
+    /// This method provides full control over the IE construction. For common cases,
+    /// use [`node_id`] or [`node_id_fqdn`].
+    ///
+    /// [`node_id`]: #method.node_id
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    pub fn node_id_ie(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
+        self
+    }
+
+    /// Sets the Node ID from an IP address (optional).
+    ///
+    /// Accepts any type convertible to `IpAddr` (e.g., `Ipv4Addr`, `Ipv6Addr`).
+    /// For FQDN-based Node IDs, use [`node_id_fqdn`].
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::message::pfd_management_response::PfdManagementResponseBuilder;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let response = PfdManagementResponseBuilder::new(1)
+    ///     .cause_accepted()
+    ///     .node_id(Ipv4Addr::new(192, 168, 1, 1))
+    ///     .build();
+    /// ```
+    ///
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    pub fn node_id<T>(mut self, node_id: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::node_id::NodeId;
+        let ip_addr = node_id.into();
+        let node = match ip_addr {
+            std::net::IpAddr::V4(addr) => NodeId::new_ipv4(addr),
+            std::net::IpAddr::V6(addr) => NodeId::new_ipv6(addr),
+        };
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the Node ID from an FQDN (optional).
+    ///
+    /// For IP address-based Node IDs, use [`node_id`].
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::message::pfd_management_response::PfdManagementResponseBuilder;
+    ///
+    /// let response = PfdManagementResponseBuilder::new(1)
+    ///     .cause_accepted()
+    ///     .node_id_fqdn("upf.example.com")
+    ///     .build();
+    /// ```
+    ///
+    /// [`node_id`]: #method.node_id
+    pub fn node_id_fqdn(mut self, fqdn: &str) -> Self {
+        use crate::ie::node_id::NodeId;
+        let node = NodeId::new_fqdn(fqdn);
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -215,7 +302,13 @@ impl PfdManagementResponseBuilder {
             .cause
             .expect("Cause IE is required for PfdManagementResponse");
 
-        PfdManagementResponse::new(self.sequence, cause, self.offending_ie, self.ies)
+        PfdManagementResponse::new(
+            self.sequence,
+            cause,
+            self.offending_ie,
+            self.node_id,
+            self.ies,
+        )
     }
 
     /// Tries to build the PfdManagementResponse message.
@@ -231,6 +324,7 @@ impl PfdManagementResponseBuilder {
             self.sequence,
             cause,
             self.offending_ie,
+            self.node_id,
             self.ies,
         ))
     }
@@ -384,5 +478,141 @@ mod tests {
         let unmarshaled = PfdManagementResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_pfd_management_response_builder_with_node_id() {
+        use crate::ie::node_id::NodeId;
+        use std::net::Ipv4Addr;
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let node = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
+        let node_id_ie = node.to_ie();
+
+        let response = PfdManagementResponseBuilder::new(12345)
+            .cause_ie(cause_ie.clone())
+            .node_id_ie(node_id_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 12345);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.node_id, Some(node_id_ie));
+        assert!(response.offending_ie.is_none());
+        assert!(response.ies.is_empty());
+    }
+
+    #[test]
+    fn test_pfd_management_response_builder_with_node_id_convenience() {
+        use std::net::Ipv4Addr;
+
+        let response = PfdManagementResponseBuilder::new(12345)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .build();
+
+        assert_eq!(response.sequence(), 12345);
+        assert!(response.node_id.is_some());
+
+        // Verify the node_id can be retrieved via find_ie
+        let found_node_id = response.find_ie(IeType::NodeId);
+        assert!(found_node_id.is_some());
+    }
+
+    #[test]
+    fn test_pfd_management_response_builder_with_node_id_fqdn() {
+        let response = PfdManagementResponseBuilder::new(54321)
+            .cause_accepted()
+            .node_id_fqdn("upf.example.com")
+            .build();
+
+        assert_eq!(response.sequence(), 54321);
+        assert!(response.node_id.is_some());
+
+        // Verify the node_id can be retrieved via find_ie
+        let found_node_id = response.find_ie(IeType::NodeId);
+        assert!(found_node_id.is_some());
+    }
+
+    #[test]
+    fn test_pfd_management_response_with_node_id_roundtrip() {
+        use std::net::Ipv4Addr;
+
+        let original = PfdManagementResponseBuilder::new(99999)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(172, 16, 0, 1))
+            .build();
+
+        let marshaled = original.marshal();
+        let unmarshaled = PfdManagementResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(original, unmarshaled);
+        assert!(unmarshaled.node_id.is_some());
+    }
+
+    #[test]
+    fn test_pfd_management_response_all_ies_with_node_id() {
+        use std::net::Ipv4Addr;
+
+        let response = PfdManagementResponseBuilder::new(11111)
+            .cause_accepted()
+            .node_id(Ipv4Addr::new(192, 0, 2, 1))
+            .build();
+
+        let all_ies = response.all_ies();
+
+        // Should contain: cause + node_id
+        assert_eq!(all_ies.len(), 2);
+
+        // Verify cause is first
+        assert_eq!(all_ies[0].ie_type, IeType::Cause);
+
+        // Verify node_id is present
+        let has_node_id = all_ies.iter().any(|ie| ie.ie_type == IeType::NodeId);
+        assert!(has_node_id);
+    }
+
+    #[test]
+    fn test_pfd_management_response_minimal_without_node_id() {
+        let response = PfdManagementResponseBuilder::new(22222)
+            .cause_accepted()
+            .build();
+
+        assert_eq!(response.sequence(), 22222);
+        assert!(response.node_id.is_none());
+        assert!(response.offending_ie.is_none());
+
+        // find_ie should return None for NodeId
+        assert!(response.find_ie(IeType::NodeId).is_none());
+    }
+
+    #[test]
+    fn test_pfd_management_response_full_with_all_fields() {
+        use std::net::Ipv4Addr;
+
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+        let offending_ie = Ie::new(IeType::OffendingIe, vec![0xAB, 0xCD]);
+        let additional_ie = Ie::new(IeType::Unknown, vec![0x11, 0x22]);
+
+        let response = PfdManagementResponseBuilder::new(33333)
+            .cause_ie(cause_ie.clone())
+            .offending_ie(offending_ie.clone())
+            .node_id(Ipv4Addr::new(203, 0, 113, 1))
+            .ie(additional_ie.clone())
+            .build();
+
+        assert_eq!(response.sequence(), 33333);
+        assert_eq!(response.cause, cause_ie);
+        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert!(response.node_id.is_some());
+        assert_eq!(response.ies.len(), 1);
+        assert_eq!(response.ies[0], additional_ie);
+
+        // Verify round-trip
+        let marshaled = response.marshal();
+        let unmarshaled = PfdManagementResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
     }
 }
