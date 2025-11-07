@@ -53,27 +53,6 @@ impl NodeReportRequest {
             ies,
         }
     }
-
-    /// Creates a new Node Report Request with additional IEs.
-    ///
-    /// # Deprecated
-    /// Use `new()` instead which now includes the ies parameter.
-    #[deprecated(since = "0.1.0", note = "Use new() instead")]
-    pub fn new_with_ies(
-        seq: u32,
-        node_id: Ie,
-        node_report_type: Option<Ie>,
-        user_plane_path_failure_report: Option<Ie>,
-        ies: Vec<Ie>,
-    ) -> Self {
-        Self::new(
-            seq,
-            node_id,
-            node_report_type,
-            user_plane_path_failure_report,
-            ies,
-        )
-    }
 }
 
 impl Message for NodeReportRequest {
