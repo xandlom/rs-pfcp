@@ -8,8 +8,9 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PfdManagementResponse {
     pub header: Header,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
+    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 19 - Acceptance or rejection of request (Sxb/Sxc/N4 only)
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/Sxc/N4 only)
+    // TODO: [IE Type 60] Node ID - O - Unique identifier of sending node (Sxb/Sxc/N4 only)
     pub ies: Vec<Ie>,
 }
 

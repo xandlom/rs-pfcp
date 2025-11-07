@@ -14,8 +14,8 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PfdManagementRequest {
     pub header: Header,
-    pub node_id: Option<NodeId>,
-    pub application_ids_pfds: Option<Vec<ApplicationIdsPfds>>,
+    pub node_id: Option<NodeId>, // O - 3GPP TS 29.244 Table 7.4.3.1-1 - IE Type 60 - Unique identifier of sending node (Sxb/Sxc/N4 only)
+    pub application_ids_pfds: Option<Vec<ApplicationIdsPfds>>, // C - 3GPP TS 29.244 Table 7.4.3.1-1 - IE Type 58 - Grouped IE, Multiple instances, if absent UP deletes all stored PFDs (Sxb/Sxc/N4 only)
     pub ies: Vec<Ie>,
 }
 
