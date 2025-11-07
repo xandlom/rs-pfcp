@@ -8,7 +8,7 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeartbeatResponse {
     pub header: Header,
-    pub recovery_time_stamp: Option<Ie>,
+    pub recovery_time_stamp: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.2.2-1 - IE Type 96 (TODO: Should be mandatory, not Optional)
     pub ies: Vec<Ie>,
 }
 

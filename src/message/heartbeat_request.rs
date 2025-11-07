@@ -8,8 +8,8 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeartbeatRequest {
     pub header: Header,
-    pub recovery_time_stamp: Option<Ie>,
-    pub source_ip_address: Option<Ie>,
+    pub recovery_time_stamp: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 96 (TODO: Should be mandatory, not Optional)
+    pub source_ip_address: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 192 - When NAT is deployed
     pub ies: Vec<Ie>,
 }
 
