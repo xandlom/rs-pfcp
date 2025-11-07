@@ -532,11 +532,16 @@ impl<'a> MessageComparator<'a> {
 mod tests {
     use super::*;
     use crate::message::heartbeat_request::HeartbeatRequestBuilder;
+    use std::time::SystemTime;
 
     #[test]
     fn test_new_same_type() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let _comparator = MessageComparator::new(&msg1, &msg2);
         // Should not panic
@@ -547,8 +552,12 @@ mod tests {
 
     #[test]
     fn test_builder_chaining() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let comparator = MessageComparator::new(&msg1, &msg2)
             .ignore_sequence()
@@ -564,8 +573,12 @@ mod tests {
 
     #[test]
     fn test_preset_test_mode() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let comparator = MessageComparator::new(&msg1, &msg2).test_mode();
 
@@ -577,8 +590,12 @@ mod tests {
 
     #[test]
     fn test_preset_strict_mode() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let comparator = MessageComparator::new(&msg1, &msg2).strict_mode();
 

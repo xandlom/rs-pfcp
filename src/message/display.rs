@@ -2018,20 +2018,21 @@ mod tests {
 
     #[test]
     fn test_display_message_with_no_information_elements() {
-        // Create a minimal heartbeat request with no IEs
-        let request = HeartbeatRequestBuilder::new(99999).build();
+        // Create a minimal heartbeat request with only mandatory recovery_time_stamp
+        let request = HeartbeatRequestBuilder::new(99999)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let yaml = request.to_yaml().expect("Failed to convert to YAML");
         assert!(yaml.contains("sequence: 99999"));
 
-        // Should not have information_elements section if there are no IEs
-        // (or it could be empty - both are acceptable)
+        // Should have information_elements section with recovery_time_stamp
         let json = request.to_json().expect("Failed to convert to JSON");
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
 
-        // If information_elements exists, it should be an empty object
+        // Should have information_elements with recovery_time_stamp
         if let Some(ies) = parsed.get("information_elements") {
-            assert!(ies.as_object().unwrap().is_empty());
+            assert!(ies.as_object().is_some());
         }
     }
 

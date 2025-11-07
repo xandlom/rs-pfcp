@@ -6,6 +6,9 @@ use std::time::SystemTime;
 
 /// Create a minimal heartbeat request for baseline performance
 fn create_heartbeat() -> heartbeat_request::HeartbeatRequest {
+    let recovery_ts = recovery_time_stamp::RecoveryTimeStamp::new(SystemTime::now());
+    let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+
     let header = header::Header::new(
         MsgType::HeartbeatRequest,
         false, // has_seid
@@ -14,7 +17,7 @@ fn create_heartbeat() -> heartbeat_request::HeartbeatRequest {
     );
     heartbeat_request::HeartbeatRequest {
         header,
-        recovery_time_stamp: None,
+        recovery_time_stamp: ts_ie,
         source_ip_address: None,
         ies: vec![],
     }
@@ -28,7 +31,7 @@ fn create_heartbeat_with_timestamp() -> heartbeat_request::HeartbeatRequest {
     let header = header::Header::new(MsgType::HeartbeatRequest, false, 0, 1);
     heartbeat_request::HeartbeatRequest {
         header,
-        recovery_time_stamp: Some(ts_ie),
+        recovery_time_stamp: ts_ie,
         source_ip_address: None,
         ies: vec![],
     }

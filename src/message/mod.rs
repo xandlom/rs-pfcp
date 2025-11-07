@@ -156,8 +156,12 @@ pub trait Message {
     ///
     /// ```
     /// use rs_pfcp::message::{Message, heartbeat_request::HeartbeatRequest};
+    /// use rs_pfcp::ie::{Ie, IeType, recovery_time_stamp::RecoveryTimeStamp};
+    /// use std::time::SystemTime;
     ///
-    /// let request = HeartbeatRequest::new(123, None, None, vec![]);
+    /// let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
+    /// let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+    /// let request = HeartbeatRequest::new(123, ts_ie, None, vec![]);
     /// let all_ies = request.all_ies();
     /// println!("Message contains {} IEs", all_ies.len());
     /// ```

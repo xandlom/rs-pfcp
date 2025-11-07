@@ -8,18 +8,15 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeartbeatRequest {
     pub header: Header,
-    pub recovery_time_stamp: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 96 (TODO: Should be mandatory, not Optional)
+    pub recovery_time_stamp: Ie, // M - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 96
     pub source_ip_address: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 192 - When NAT is deployed
     pub ies: Vec<Ie>,
 }
 
 impl HeartbeatRequest {
     /// Creates a new Heartbeat Request message.
-    pub fn new(seq: u32, ts: Option<Ie>, ip: Option<Ie>, ies: Vec<Ie>) -> Self {
-        let mut payload_len = 0;
-        if let Some(ref ie) = ts {
-            payload_len += ie.len();
-        }
+    pub fn new(seq: u32, ts: Ie, ip: Option<Ie>, ies: Vec<Ie>) -> Self {
+        let mut payload_len = ts.len();
         if let Some(ref ie) = ip {
             payload_len += ie.len();
         }
@@ -42,9 +39,7 @@ impl HeartbeatRequest {
 impl Message for HeartbeatRequest {
     fn marshal(&self) -> Vec<u8> {
         let mut data = self.header.marshal();
-        if let Some(ref ie) = self.recovery_time_stamp {
-            data.extend_from_slice(&ie.marshal());
-        }
+        data.extend_from_slice(&self.recovery_time_stamp.marshal());
         if let Some(ref ie) = self.source_ip_address {
             data.extend_from_slice(&ie.marshal());
         }
@@ -71,6 +66,14 @@ impl Message for HeartbeatRequest {
             }
             offset += ie_len;
         }
+
+        // Validate mandatory IE is present per 3GPP TS 29.244 Table 7.4.2.1-1
+        let recovery_time_stamp = recovery_time_stamp.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "HeartbeatRequest: Missing mandatory Recovery Time Stamp IE (3GPP TS 29.244 Table 7.4.2.1-1)",
+            )
+        })?;
 
         Ok(HeartbeatRequest {
             header,
@@ -101,12 +104,8 @@ impl Message for HeartbeatRequest {
     }
 
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        if self
-            .recovery_time_stamp
-            .as_ref()
-            .is_some_and(|ie| ie.ie_type == ie_type)
-        {
-            return self.recovery_time_stamp.as_ref();
+        if self.recovery_time_stamp.ie_type == ie_type {
+            return Some(&self.recovery_time_stamp);
         }
         if self
             .source_ip_address
@@ -120,9 +119,7 @@ impl Message for HeartbeatRequest {
 
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
-        if let Some(ref ie) = self.recovery_time_stamp {
-            result.push(ie);
-        }
+        result.push(&self.recovery_time_stamp);
         if let Some(ref ie) = self.source_ip_address {
             result.push(ie);
         }
@@ -195,9 +192,11 @@ impl HeartbeatRequestBuilder {
     ///
     /// ```
     /// use std::net::Ipv4Addr;
+    /// use std::time::SystemTime;
     /// use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
     ///
     /// let request = HeartbeatRequestBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
     ///     .source_ip_address(Ipv4Addr::new(192, 168, 1, 1))
     ///     .build();
     /// ```
@@ -241,10 +240,18 @@ impl HeartbeatRequestBuilder {
     }
 
     /// Builds the HeartbeatRequest message.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mandatory recovery_time_stamp is not set.
+    /// Per 3GPP TS 29.244 Table 7.4.2.1-1, Recovery Time Stamp is mandatory.
     pub fn build(self) -> HeartbeatRequest {
+        let recovery_time_stamp = self.recovery_time_stamp.expect(
+            "HeartbeatRequest requires recovery_time_stamp (mandatory per 3GPP TS 29.244 Table 7.4.2.1-1)"
+        );
         HeartbeatRequest::new(
             self.sequence,
-            self.recovery_time_stamp,
+            recovery_time_stamp,
             self.source_ip_address,
             self.ies,
         )
@@ -278,11 +285,16 @@ mod tests {
 
     #[test]
     fn test_heartbeat_request_builder_minimal() {
-        let request = HeartbeatRequestBuilder::new(12345).build();
+        let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         assert_eq!(request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::HeartbeatRequest);
-        assert!(request.recovery_time_stamp.is_none());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_none());
         assert!(request.ies.is_empty());
     }
@@ -298,7 +310,7 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp, Some(recovery_ie));
+        assert_eq!(request.recovery_time_stamp, recovery_ie);
         assert!(request.source_ip_address.is_none());
     }
 
@@ -308,11 +320,15 @@ mod tests {
         let ip_ie = Ie::new(IeType::SourceIpAddress, ip.marshal());
 
         let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
             .source_ip_address_ie(ip_ie.clone())
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert!(request.recovery_time_stamp.is_none());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(request.source_ip_address, Some(ip_ie));
     }
 
@@ -334,7 +350,7 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp, Some(recovery_ie));
+        assert_eq!(request.recovery_time_stamp, recovery_ie);
         assert_eq!(request.source_ip_address, Some(ip_ie));
         assert_eq!(request.ies.len(), 1);
         assert_eq!(request.ies[0], additional_ie);
@@ -347,6 +363,7 @@ mod tests {
         let ie3 = Ie::new(IeType::Unknown, vec![0x03]);
 
         let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
             .ie(ie1.clone())
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
@@ -383,14 +400,17 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert!(request.recovery_time_stamp.is_some());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
 
         // Verify the IE was created correctly
-        let ie = request.recovery_time_stamp.unwrap();
+        let ie = &request.recovery_time_stamp;
         assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
 
         // Verify it can be unmarshaled
-        let recovered = RecoveryTimeStamp::unmarshal(&ie.payload).unwrap();
+        let recovered = RecoveryTimeStamp::unmarshal(&request.recovery_time_stamp.payload).unwrap();
         // SystemTime comparison with tolerance (within 1 second)
         let duration = timestamp
             .duration_since(recovered.timestamp)
@@ -403,6 +423,7 @@ mod tests {
         let ipv4 = Ipv4Addr::new(192, 168, 1, 1);
 
         let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
             .source_ip_address(ipv4)
             .build();
 
@@ -421,6 +442,7 @@ mod tests {
         let ipv6 = Ipv6Addr::new(0x2001, 0, 0, 0, 0, 0, 0, 1);
 
         let request = HeartbeatRequestBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
             .source_ip_address(ipv6)
             .build();
 
@@ -451,7 +473,10 @@ mod tests {
         // Should be able to unmarshal
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
         assert_eq!(request.sequence(), 12345);
-        assert!(request.recovery_time_stamp.is_some());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_some());
     }
 
@@ -465,7 +490,10 @@ mod tests {
         // Should produce valid bytes
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
         assert_eq!(request.sequence(), 12345);
-        assert!(request.recovery_time_stamp.is_some());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
     }
 
     #[test]
@@ -493,6 +521,7 @@ mod tests {
     #[test]
     fn test_find_ie_source_ip_address() {
         let request = HeartbeatRequestBuilder::new(2000)
+            .recovery_time_stamp(SystemTime::now())
             .source_ip_address(Ipv4Addr::new(10, 0, 0, 1))
             .build();
 
@@ -505,6 +534,7 @@ mod tests {
     fn test_find_ie_in_additional_ies() {
         let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
         let request = HeartbeatRequestBuilder::new(3000)
+            .recovery_time_stamp(SystemTime::now())
             .ie(custom_ie.clone())
             .build();
 
@@ -515,15 +545,20 @@ mod tests {
 
     #[test]
     fn test_find_ie_not_found() {
-        let request = HeartbeatRequestBuilder::new(4000).build();
+        let request = HeartbeatRequestBuilder::new(4000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
-        let found = request.find_ie(IeType::RecoveryTimeStamp);
+        // Recovery timestamp will be found, so test for a different IE
+        let found = request.find_ie(IeType::SourceIpAddress);
         assert!(found.is_none());
     }
 
     #[test]
     fn test_set_sequence() {
-        let mut request = HeartbeatRequestBuilder::new(5000).build();
+        let mut request = HeartbeatRequestBuilder::new(5000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         assert_eq!(request.sequence(), 5000);
         request.set_sequence(9999);
@@ -533,7 +568,9 @@ mod tests {
     #[test]
     fn test_seid_should_be_none() {
         // Heartbeat messages never have SEID
-        let request = HeartbeatRequestBuilder::new(6000).build();
+        let request = HeartbeatRequestBuilder::new(6000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
         assert!(request.seid().is_none());
     }
 
@@ -547,7 +584,10 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 7000);
-        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
     }
 
     #[test]
@@ -567,6 +607,7 @@ mod tests {
     fn test_source_ip_ipv4_roundtrip() {
         let ipv4 = Ipv4Addr::new(192, 168, 50, 50);
         let request = HeartbeatRequestBuilder::new(9000)
+            .recovery_time_stamp(SystemTime::now())
             .source_ip_address(ipv4)
             .build();
 
@@ -585,6 +626,7 @@ mod tests {
     fn test_source_ip_ipv6_roundtrip() {
         let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
         let request = HeartbeatRequestBuilder::new(10000)
+            .recovery_time_stamp(SystemTime::now())
             .source_ip_address(ipv6)
             .build();
 
@@ -609,7 +651,10 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 11000);
-        assert!(request.recovery_time_stamp.is_some());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_some());
         assert_eq!(request.ies.len(), 2);
 
@@ -617,34 +662,46 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 11000);
-        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(unmarshaled.source_ip_address.is_some());
         assert_eq!(unmarshaled.ies.len(), 2);
     }
 
     #[test]
-    fn test_unmarshal_empty_message() {
-        // Valid header with no IEs (all optional for heartbeat)
-        let request = HeartbeatRequestBuilder::new(12000).build();
+    fn test_unmarshal_minimal_message() {
+        // Minimal message with only mandatory recovery_time_stamp
+        let request = HeartbeatRequestBuilder::new(12000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.sequence(), 12000);
-        assert!(unmarshaled.recovery_time_stamp.is_none());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(unmarshaled.source_ip_address.is_none());
         assert!(unmarshaled.ies.is_empty());
     }
 
     #[test]
     fn test_header_length_calculation() {
-        // Minimal message
-        let minimal = HeartbeatRequestBuilder::new(13000).build();
+        // Minimal message (with mandatory recovery_time_stamp)
+        let minimal = HeartbeatRequestBuilder::new(13000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
         let minimal_bytes = minimal.marshal();
-        assert_eq!(minimal.header.length, 4); // Just header overhead
+        // Header overhead + recovery timestamp IE
+        assert!(minimal.header.length > 4);
 
-        // With recovery timestamp
+        // With recovery timestamp + source IP
         let with_ts = HeartbeatRequestBuilder::new(14000)
             .recovery_time_stamp(SystemTime::now())
+            .source_ip_address(Ipv4Addr::new(192, 168, 1, 1))
             .build();
         let with_ts_bytes = with_ts.marshal();
         assert!(with_ts.header.length > minimal.header.length);
@@ -667,7 +724,10 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 15000);
-        assert!(request.recovery_time_stamp.is_some());
+        assert_eq!(
+            request.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(request.source_ip_address.is_some());
         assert_eq!(request.ies.len(), 3);
     }
@@ -692,5 +752,26 @@ mod tests {
         // All should be identical
         assert_eq!(unmarshaled1, unmarshaled2);
         assert_eq!(unmarshaled2, unmarshaled3);
+    }
+
+    #[test]
+    fn test_unmarshal_missing_mandatory_recovery_timestamp() {
+        // Create a message without recovery timestamp - should fail
+        use crate::message::header::Header;
+
+        let header = Header::new(MsgType::HeartbeatRequest, false, 0, 17000);
+        let marshaled = header.marshal();
+
+        // Unmarshaling should fail because recovery_time_stamp is mandatory
+        let result = HeartbeatRequest::unmarshal(&marshaled);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    #[should_panic(expected = "HeartbeatRequest requires recovery_time_stamp")]
+    fn test_builder_without_mandatory_field_panics() {
+        // Builder should panic if recovery_time_stamp is not set
+        HeartbeatRequestBuilder::new(18000).build();
     }
 }

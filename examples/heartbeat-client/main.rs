@@ -31,25 +31,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match socket.recv_from(&mut buf) {
             Ok((n, addr)) => match HeartbeatResponse::unmarshal(&buf[..n]) {
                 Ok(hbres) => {
-                    if let Some(ts_ie) = &hbres.recovery_time_stamp {
-                        match RecoveryTimeStamp::unmarshal(&ts_ie.payload) {
-                            Ok(recovery_ts) => {
-                                println!(
-                                    "got Heartbeat Response with TS: {:?}, from: {}",
-                                    recovery_ts.timestamp, addr
-                                );
-                                break;
-                            }
-                            Err(e) => {
-                                println!(
-                                    "got Heartbeat Response with invalid TS: {e}, from: {addr}"
-                                );
-                                break;
-                            }
+                    match RecoveryTimeStamp::unmarshal(&hbres.recovery_time_stamp.payload) {
+                        Ok(recovery_ts) => {
+                            println!(
+                                "got Heartbeat Response with TS: {:?}, from: {}",
+                                recovery_ts.timestamp, addr
+                            );
+                            break;
                         }
-                    } else {
-                        println!("got Heartbeat Response without TS, from: {addr}");
-                        break;
+                        Err(e) => {
+                            println!("got Heartbeat Response with invalid TS: {e}, from: {addr}");
+                            break;
+                        }
                     }
                 }
                 Err(e) => {

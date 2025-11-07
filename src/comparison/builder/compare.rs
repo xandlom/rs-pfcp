@@ -471,11 +471,16 @@ mod tests {
     use super::*;
     use crate::message::heartbeat_request::HeartbeatRequestBuilder;
     use crate::message::MsgType;
+    use std::time::SystemTime;
 
     #[test]
     fn test_compare_headers_same() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(100).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let options = ComparisonOptions::default();
         let header_match = compare_headers(&msg1, &msg2, &options);
@@ -486,8 +491,12 @@ mod tests {
 
     #[test]
     fn test_compare_headers_different_sequence() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let options = ComparisonOptions::default();
         let header_match = compare_headers(&msg1, &msg2, &options);
@@ -498,8 +507,12 @@ mod tests {
 
     #[test]
     fn test_compare_headers_ignore_sequence() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let options = ComparisonOptions {
             ignore_sequence: true,
@@ -515,8 +528,12 @@ mod tests {
 
     #[test]
     fn test_execute_comparison_identical() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(100).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let options = ComparisonOptions::default();
         let result = execute_comparison(&msg1, &msg2, &options).unwrap();
@@ -528,8 +545,12 @@ mod tests {
 
     #[test]
     fn test_execute_comparison_different_sequence() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let options = ComparisonOptions::default();
         let result = execute_comparison(&msg1, &msg2, &options).unwrap();
@@ -540,8 +561,12 @@ mod tests {
 
     #[test]
     fn test_execute_comparison_ignore_sequence() {
-        let msg1 = HeartbeatRequestBuilder::new(100).build();
-        let msg2 = HeartbeatRequestBuilder::new(200).build();
+        let msg1 = HeartbeatRequestBuilder::new(100)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(200)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         let options = ComparisonOptions {
             ignore_sequence: true,

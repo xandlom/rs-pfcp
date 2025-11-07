@@ -8,17 +8,14 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeartbeatResponse {
     pub header: Header,
-    pub recovery_time_stamp: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.2.2-1 - IE Type 96 (TODO: Should be mandatory, not Optional)
+    pub recovery_time_stamp: Ie, // M - 3GPP TS 29.244 Table 7.4.2.2-1 - IE Type 96
     pub ies: Vec<Ie>,
 }
 
 impl HeartbeatResponse {
     /// Creates a new Heartbeat Response message.
-    pub fn new(seq: u32, ts: Option<Ie>, ies: Vec<Ie>) -> Self {
-        let mut payload_len = 0;
-        if let Some(ref ie) = ts {
-            payload_len += ie.len();
-        }
+    pub fn new(seq: u32, ts: Ie, ies: Vec<Ie>) -> Self {
+        let mut payload_len = ts.len();
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -37,9 +34,7 @@ impl HeartbeatResponse {
 impl Message for HeartbeatResponse {
     fn marshal(&self) -> Vec<u8> {
         let mut data = self.header.marshal();
-        if let Some(ref ie) = self.recovery_time_stamp {
-            data.extend_from_slice(&ie.marshal());
-        }
+        data.extend_from_slice(&self.recovery_time_stamp.marshal());
         for ie in &self.ies {
             data.extend_from_slice(&ie.marshal());
         }
@@ -61,6 +56,14 @@ impl Message for HeartbeatResponse {
             }
             offset += ie_len;
         }
+
+        // Validate mandatory IE is present per 3GPP TS 29.244 Table 7.4.2.2-1
+        let recovery_time_stamp = recovery_time_stamp.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "HeartbeatResponse: Missing mandatory Recovery Time Stamp IE (3GPP TS 29.244 Table 7.4.2.2-1)",
+            )
+        })?;
 
         Ok(HeartbeatResponse {
             header,
@@ -90,21 +93,15 @@ impl Message for HeartbeatResponse {
     }
 
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        if self
-            .recovery_time_stamp
-            .as_ref()
-            .is_some_and(|ie| ie.ie_type == ie_type)
-        {
-            return self.recovery_time_stamp.as_ref();
+        if self.recovery_time_stamp.ie_type == ie_type {
+            return Some(&self.recovery_time_stamp);
         }
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
 
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
-        if let Some(ref ie) = self.recovery_time_stamp {
-            result.push(ie);
-        }
+        result.push(&self.recovery_time_stamp);
         result.extend(self.ies.iter());
         result
     }
@@ -176,8 +173,16 @@ impl HeartbeatResponseBuilder {
     }
 
     /// Builds the HeartbeatResponse message.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mandatory recovery_time_stamp is not set.
+    /// Per 3GPP TS 29.244 Table 7.4.2.2-1, Recovery Time Stamp is mandatory.
     pub fn build(self) -> HeartbeatResponse {
-        HeartbeatResponse::new(self.sequence, self.recovery_time_stamp, self.ies)
+        let recovery_time_stamp = self.recovery_time_stamp.expect(
+            "HeartbeatResponse requires recovery_time_stamp (mandatory per 3GPP TS 29.244 Table 7.4.2.2-1)"
+        );
+        HeartbeatResponse::new(self.sequence, recovery_time_stamp, self.ies)
     }
 
     /// Builds the HeartbeatResponse message and marshals it to bytes in one step.
@@ -207,11 +212,16 @@ mod tests {
 
     #[test]
     fn test_heartbeat_response_builder_minimal() {
-        let response = HeartbeatResponseBuilder::new(12345).build();
+        let response = HeartbeatResponseBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         assert_eq!(response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::HeartbeatResponse);
-        assert!(response.recovery_time_stamp.is_none());
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(response.ies.is_empty());
     }
 
@@ -226,7 +236,7 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 12345);
-        assert_eq!(response.recovery_time_stamp, Some(recovery_ie));
+        assert_eq!(response.recovery_time_stamp, recovery_ie);
     }
 
     #[test]
@@ -236,6 +246,7 @@ mod tests {
         let ie3 = Ie::new(IeType::Unknown, vec![0x03]);
 
         let response = HeartbeatResponseBuilder::new(12345)
+            .recovery_time_stamp(SystemTime::now())
             .ie(ie1.clone())
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
@@ -260,7 +271,7 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 12345);
-        assert_eq!(response.recovery_time_stamp, Some(recovery_ie));
+        assert_eq!(response.recovery_time_stamp, recovery_ie);
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }
@@ -289,14 +300,18 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 1000);
-        assert!(response.recovery_time_stamp.is_some());
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
 
         // Verify the IE was created correctly
-        let ie = response.recovery_time_stamp.unwrap();
+        let ie = &response.recovery_time_stamp;
         assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
 
         // Verify it can be unmarshaled
-        let recovered = RecoveryTimeStamp::unmarshal(&ie.payload).unwrap();
+        let recovered =
+            RecoveryTimeStamp::unmarshal(&response.recovery_time_stamp.payload).unwrap();
         // SystemTime comparison with tolerance (within 1 second)
         let duration = timestamp
             .duration_since(recovered.timestamp)
@@ -331,6 +346,7 @@ mod tests {
     fn test_find_ie_in_additional_ies() {
         let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
         let response = HeartbeatResponseBuilder::new(4000)
+            .recovery_time_stamp(SystemTime::now())
             .ie(custom_ie.clone())
             .build();
 
@@ -341,15 +357,20 @@ mod tests {
 
     #[test]
     fn test_find_ie_not_found() {
-        let response = HeartbeatResponseBuilder::new(5000).build();
+        let response = HeartbeatResponseBuilder::new(5000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
-        let found = response.find_ie(IeType::RecoveryTimeStamp);
+        // Recovery timestamp will be found, so test for a different IE
+        let found = response.find_ie(IeType::SourceIpAddress);
         assert!(found.is_none());
     }
 
     #[test]
     fn test_set_sequence() {
-        let mut response = HeartbeatResponseBuilder::new(6000).build();
+        let mut response = HeartbeatResponseBuilder::new(6000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
 
         assert_eq!(response.sequence(), 6000);
         response.set_sequence(9999);
@@ -359,7 +380,9 @@ mod tests {
     #[test]
     fn test_seid_should_be_none() {
         // Heartbeat messages never have SEID
-        let response = HeartbeatResponseBuilder::new(7000).build();
+        let response = HeartbeatResponseBuilder::new(7000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
         assert!(response.seid().is_none());
     }
 
@@ -373,7 +396,10 @@ mod tests {
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 8000);
-        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
     }
 
     #[test]
@@ -403,46 +429,64 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 10000);
-        assert!(response.recovery_time_stamp.is_some());
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(response.ies.len(), 3);
 
         // Round trip
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 10000);
-        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(unmarshaled.ies.len(), 3);
     }
 
     #[test]
-    fn test_unmarshal_empty_message() {
-        // Valid header with no IEs (all optional for heartbeat)
-        let response = HeartbeatResponseBuilder::new(11000).build();
+    fn test_unmarshal_minimal_message() {
+        // Minimal message with only mandatory recovery_time_stamp
+        let response = HeartbeatResponseBuilder::new(11000)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.sequence(), 11000);
-        assert!(unmarshaled.recovery_time_stamp.is_none());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert!(unmarshaled.ies.is_empty());
     }
 
     #[test]
     fn test_header_length_calculation() {
-        // Minimal message
-        let minimal = HeartbeatResponseBuilder::new(12000).build();
-        let minimal_bytes = minimal.marshal();
-        assert_eq!(minimal.header.length, 4); // Just header overhead
-
-        // With recovery timestamp
-        let with_ts = HeartbeatResponseBuilder::new(13000)
+        // Minimal message (with mandatory recovery_time_stamp)
+        let minimal = HeartbeatResponseBuilder::new(12000)
             .recovery_time_stamp(SystemTime::now())
             .build();
-        let with_ts_bytes = with_ts.marshal();
-        assert!(with_ts.header.length > minimal.header.length);
+        let minimal_bytes = minimal.marshal();
+        // Header overhead + recovery timestamp IE
+        assert!(minimal.header.length > 4);
+
+        // With recovery timestamp + additional IE
+        let with_ie = HeartbeatResponseBuilder::new(13000)
+            .recovery_time_stamp(SystemTime::now())
+            .ie(Ie::new(
+                IeType::UserPlaneIpResourceInformation,
+                vec![0x01, 0x02],
+            ))
+            .build();
+        let with_ie_bytes = with_ie.marshal();
+        assert!(with_ie.header.length > minimal.header.length);
 
         // Verify unmarshal works
         HeartbeatResponse::unmarshal(&minimal_bytes).unwrap();
-        HeartbeatResponse::unmarshal(&with_ts_bytes).unwrap();
+        HeartbeatResponse::unmarshal(&with_ie_bytes).unwrap();
     }
 
     #[test]
@@ -457,7 +501,10 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 14000);
-        assert!(response.recovery_time_stamp.is_some());
+        assert_eq!(
+            response.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(response.ies.len(), 3);
     }
 
@@ -518,7 +565,31 @@ mod tests {
 
         assert_eq!(original, unmarshaled);
         assert_eq!(unmarshaled.sequence(), 17000);
-        assert!(unmarshaled.recovery_time_stamp.is_some());
+        assert_eq!(
+            unmarshaled.recovery_time_stamp.ie_type,
+            IeType::RecoveryTimeStamp
+        );
         assert_eq!(unmarshaled.ies.len(), 2);
+    }
+
+    #[test]
+    fn test_unmarshal_missing_mandatory_recovery_timestamp() {
+        // Create a message without recovery timestamp - should fail
+        use crate::message::header::Header;
+
+        let header = Header::new(MsgType::HeartbeatResponse, false, 0, 18000);
+        let marshaled = header.marshal();
+
+        // Unmarshaling should fail because recovery_time_stamp is mandatory
+        let result = HeartbeatResponse::unmarshal(&marshaled);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    #[should_panic(expected = "HeartbeatResponse requires recovery_time_stamp")]
+    fn test_builder_without_mandatory_field_panics() {
+        // Builder should panic if recovery_time_stamp is not set
+        HeartbeatResponseBuilder::new(19000).build();
     }
 }
