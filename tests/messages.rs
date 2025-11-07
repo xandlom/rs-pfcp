@@ -21,7 +21,7 @@ fn test_heartbeat_request_marshal_unmarshal() {
 
     let req = rs_pfcp::message::heartbeat_request::HeartbeatRequest::new(
         0x112233,
-        Some(ts_ie.clone()),
+        ts_ie.clone(),
         Some(ip_ie.clone()),
         vec![],
     );
@@ -42,7 +42,7 @@ fn test_heartbeat_response_marshal_unmarshal() {
 
     let res = rs_pfcp::message::heartbeat_response::HeartbeatResponse::new(
         0x112233,
-        Some(ts_ie.clone()),
+        ts_ie.clone(),
         vec![],
     );
 
