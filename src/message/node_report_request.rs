@@ -11,9 +11,14 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReportRequest {
     pub header: Header,
-    pub node_id: Ie,
-    pub node_report_type: Option<Ie>,
-    pub user_plane_path_failure_report: Option<Ie>,
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 60
+    pub node_report_type: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 101 (TODO: Should be mandatory, not Optional - bitmask determines report type)
+    pub user_plane_path_failure_report: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 102 - Grouped IE, Multiple instances, when UPFR bit=1 in Node Report Type
+    // TODO: [IE Type 187] User Plane Path Recovery Report - C - Multiple instances allowed, Grouped IE, when UPRR bit=1 in Node Report Type, see Table 7.4.5.1.2-1
+    // TODO: [IE Type 205] Clock Drift Report - C - Multiple instances allowed, Grouped IE, when CDR bit=1 (N4 only, not Sxc), see Table 7.4.5.1.3-1
+    // TODO: [IE Type 239] GTP-U Path QoS Report - C - Multiple instances allowed, Grouped IE, when GPQR bit=1 (N4 only), contains nested QoS Information (Type 240)
+    // TODO: [IE Type 315] Peer UP Restart Report - C - Grouped IE, when PURR bit=1 in Node Report Type, see Table 7.4.5.1.4-1
+    // TODO: [IE Type 320] Vendor-Specific Node Report Type - O - Multiple instances allowed, Grouped IE with Vendor ID + proprietary info
     pub ies: Vec<Ie>,
 }
 

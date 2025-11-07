@@ -11,9 +11,9 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReportResponse {
     pub header: Header,
-    pub node_id: Ie,
-    pub cause: Ie,
-    pub offending_ie: Option<Ie>,
+    pub node_id: Ie,              // M - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 60
+    pub cause: Ie,                // M - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 19
+    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 40 - When Cause indicates error with specific IE
     pub ies: Vec<Ie>,
 }
 
