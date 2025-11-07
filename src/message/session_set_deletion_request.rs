@@ -24,25 +24,6 @@ pub struct SessionSetDeletionRequest {
 
 impl SessionSetDeletionRequest {
     /// Creates a new Session Set Deletion Request message.
-    #[deprecated(since = "0.1.0", note = "Use new() with additional IEs instead")]
-    pub fn new_deprecated(seq: u32, node_id: Ie, fseid_set: Option<Ie>) -> Self {
-        let mut payload_len = node_id.len();
-        if let Some(ref ie) = fseid_set {
-            payload_len += ie.len();
-        }
-
-        let mut header = Header::new(MsgType::SessionSetDeletionRequest, false, 0, seq);
-        header.length = 4 + payload_len;
-
-        SessionSetDeletionRequest {
-            header,
-            node_id,
-            fseid_set,
-            ies: Vec::new(),
-        }
-    }
-
-    /// Creates a new Session Set Deletion Request message.
     pub fn new(seq: u32, node_id: Ie, fseid_set: Option<Ie>, ies: Vec<Ie>) -> Self {
         let mut payload_len = node_id.len();
         if let Some(ref ie) = fseid_set {
@@ -61,12 +42,6 @@ impl SessionSetDeletionRequest {
             fseid_set,
             ies,
         }
-    }
-
-    /// Creates a new Session Set Deletion Request with additional IEs.
-    #[deprecated(since = "0.1.0", note = "Use new() instead")]
-    pub fn new_with_ies(seq: u32, node_id: Ie, fseid_set: Option<Ie>, ies: Vec<Ie>) -> Self {
-        Self::new(seq, node_id, fseid_set, ies)
     }
 }
 

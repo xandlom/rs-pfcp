@@ -39,18 +39,6 @@ impl SessionSetDeletionResponse {
             ies,
         }
     }
-
-    /// Creates a new Session Set Deletion Response with additional IEs.
-    #[deprecated(since = "0.1.0", note = "Use new() instead")]
-    pub fn new_with_ies(
-        seq: u32,
-        node_id: Ie,
-        cause: Ie,
-        offending_ie: Option<Ie>,
-        ies: Vec<Ie>,
-    ) -> Self {
-        Self::new(seq, node_id, cause, offending_ie, ies)
-    }
 }
 
 /// Builder for Session Set Deletion Response messages.

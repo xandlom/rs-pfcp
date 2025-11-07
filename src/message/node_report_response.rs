@@ -39,21 +39,6 @@ impl NodeReportResponse {
             ies,
         }
     }
-
-    /// Creates a new Node Report Response with additional IEs.
-    ///
-    /// # Deprecated
-    /// Use `new()` instead which now includes the ies parameter.
-    #[deprecated(since = "0.1.0", note = "Use new() instead")]
-    pub fn new_with_ies(
-        seq: u32,
-        node_id: Ie,
-        cause: Ie,
-        offending_ie: Option<Ie>,
-        ies: Vec<Ie>,
-    ) -> Self {
-        Self::new(seq, node_id, cause, offending_ie, ies)
-    }
 }
 
 impl Message for NodeReportResponse {
