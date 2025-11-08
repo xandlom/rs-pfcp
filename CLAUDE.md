@@ -101,6 +101,9 @@ cargo run --example usage_report_phase2_demo
 cargo run --example pdn-type-demo
 cargo run --example pdn-type-simple
 
+# Demo PFCP proxy/load balancer
+cargo run --example pfcp-proxy-demo -- --backends 10.0.1.10:8805,10.0.1.11:8805
+
 # Test with real messages
 cargo run --example test_real_messages
 

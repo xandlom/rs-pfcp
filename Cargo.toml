@@ -34,6 +34,7 @@ pcap-file = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
+tokio = { version = "1", features = ["full"] }
 
 [[example]]
 name = "heartbeat-client"
@@ -62,6 +63,10 @@ path = "examples/header-length-test/main.rs"
 [[example]]
 name = "ethernet-session-demo"
 path = "examples/ethernet-session-demo.rs"
+
+[[example]]
+name = "pfcp-proxy-demo"
+path = "examples/pfcp-proxy-demo.rs"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
