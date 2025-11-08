@@ -76,6 +76,9 @@ cargo run --example session-client -- --address 127.0.0.1 --sessions 5
 
 # Analyze PCAP files
 cargo run --example pcap-reader -- --pcap traffic.pcap --format yaml --pfcp-only
+
+# Demo PFCP proxy/load balancer
+cargo run --example pfcp-proxy-demo -- --backends 10.0.1.10:8805,10.0.1.11:8805
 ```
 
 Additional demo examples (error handling, Ethernet sessions, usage reporting, etc.) are in `examples/`.
