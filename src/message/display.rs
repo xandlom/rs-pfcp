@@ -54,7 +54,10 @@ trait IeVisitor {
     fn visit_report_type(&mut self, payload: &[u8]) -> io::Result<Self::Output>;
 
     /// Visit an Ethernet PDU Session Information IE
-    fn visit_ethernet_pdu_session_information(&mut self, payload: &[u8]) -> io::Result<Self::Output>;
+    fn visit_ethernet_pdu_session_information(
+        &mut self,
+        payload: &[u8],
+    ) -> io::Result<Self::Output>;
 
     /// Visit an Ethernet Context Information IE
     fn visit_ethernet_context_information(&mut self, payload: &[u8]) -> io::Result<Self::Output>;
@@ -86,11 +89,19 @@ impl IeAccept for Ie {
             IeType::CreatePdr => visitor.visit_create_pdr(&self.payload),
             IeType::CreatedPdr => visitor.visit_created_pdr(&self.payload),
             IeType::CreateFar => visitor.visit_create_far(&self.payload),
-            IeType::UsageReportWithinSessionReportRequest => visitor.visit_usage_report(&self.payload),
+            IeType::UsageReportWithinSessionReportRequest => {
+                visitor.visit_usage_report(&self.payload)
+            }
             IeType::ReportType => visitor.visit_report_type(&self.payload),
-            IeType::EthernetPduSessionInformation => visitor.visit_ethernet_pdu_session_information(&self.payload),
-            IeType::EthernetContextInformation => visitor.visit_ethernet_context_information(&self.payload),
-            IeType::EthernetInactivityTimer => visitor.visit_ethernet_inactivity_timer(&self.payload),
+            IeType::EthernetPduSessionInformation => {
+                visitor.visit_ethernet_pdu_session_information(&self.payload)
+            }
+            IeType::EthernetContextInformation => {
+                visitor.visit_ethernet_context_information(&self.payload)
+            }
+            IeType::EthernetInactivityTimer => {
+                visitor.visit_ethernet_inactivity_timer(&self.payload)
+            }
             _ => return visitor.visit_unknown(self.ie_type, &self.payload),
         };
 
@@ -187,8 +198,10 @@ impl<T: Message> MessageDisplay for T {
                             ies_map.insert(ie_name, all_ies[0].accept(&mut yaml_visitor));
                         } else {
                             // Multiple IEs - create array using visitor
-                            let ie_array: Vec<YamlValue> =
-                                all_ies.iter().map(|ie| ie.accept(&mut yaml_visitor)).collect();
+                            let ie_array: Vec<YamlValue> = all_ies
+                                .iter()
+                                .map(|ie| ie.accept(&mut yaml_visitor))
+                                .collect();
                             ies_map.insert(ie_name, YamlValue::Sequence(ie_array));
                         }
                     }
@@ -268,8 +281,10 @@ impl<T: Message> MessageDisplay for T {
                             ies_map.insert(ie_name, all_ies[0].accept(&mut json_visitor));
                         } else {
                             // Multiple IEs - create array using visitor
-                            let ie_array: Vec<JsonValue> =
-                                all_ies.iter().map(|ie| ie.accept(&mut json_visitor)).collect();
+                            let ie_array: Vec<JsonValue> = all_ies
+                                .iter()
+                                .map(|ie| ie.accept(&mut json_visitor))
+                                .collect();
                             ies_map.insert(ie_name, JsonValue::Array(ie_array));
                         }
                     }
@@ -331,7 +346,10 @@ impl IeVisitor for YamlFormatter {
 
         Ok(self.make_mapping(vec![
             ("type".to_string(), YamlValue::String("NodeId".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
             ("node_type".to_string(), YamlValue::String(node_type)),
             ("address".to_string(), YamlValue::String(address)),
         ]))
@@ -341,9 +359,18 @@ impl IeVisitor for YamlFormatter {
         let cause = crate::ie::cause::Cause::unmarshal(payload)?;
         Ok(self.make_mapping(vec![
             ("type".to_string(), YamlValue::String("Cause".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("cause_value".to_string(), YamlValue::Number((cause.value as u8).into())),
-            ("cause_name".to_string(), YamlValue::String(format!("{:?}", cause.value))),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "cause_value".to_string(),
+                YamlValue::Number((cause.value as u8).into()),
+            ),
+            (
+                "cause_name".to_string(),
+                YamlValue::String(format!("{:?}", cause.value)),
+            ),
         ]))
     }
 
@@ -351,19 +378,34 @@ impl IeVisitor for YamlFormatter {
         let fseid = crate::ie::fseid::Fseid::unmarshal(payload)?;
         let mut pairs = vec![
             ("type".to_string(), YamlValue::String("Fseid".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("seid".to_string(), YamlValue::String(format!("0x{:016x}", fseid.seid))),
-            ("seid_decimal".to_string(), YamlValue::Number(fseid.seid.into())),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "seid".to_string(),
+                YamlValue::String(format!("0x{:016x}", fseid.seid)),
+            ),
+            (
+                "seid_decimal".to_string(),
+                YamlValue::Number(fseid.seid.into()),
+            ),
         ];
 
         let mut addr_info = Vec::new();
         if let Some(ipv4) = fseid.ipv4_address {
             addr_info.push(format!("IPv4: {ipv4}"));
-            pairs.push(("ipv4_address".to_string(), YamlValue::String(ipv4.to_string())));
+            pairs.push((
+                "ipv4_address".to_string(),
+                YamlValue::String(ipv4.to_string()),
+            ));
         }
         if let Some(ipv6) = fseid.ipv6_address {
             addr_info.push(format!("IPv6: {ipv6}"));
-            pairs.push(("ipv6_address".to_string(), YamlValue::String(ipv6.to_string())));
+            pairs.push((
+                "ipv6_address".to_string(),
+                YamlValue::String(ipv6.to_string()),
+            ));
         }
 
         if !addr_info.is_empty() {
@@ -382,7 +424,12 @@ impl IeVisitor for YamlFormatter {
         }
         pairs.push((
             "address_flags".to_string(),
-            YamlValue::Sequence(flags.into_iter().map(|s| YamlValue::String(s.to_string())).collect()),
+            YamlValue::Sequence(
+                flags
+                    .into_iter()
+                    .map(|s| YamlValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         Ok(self.make_mapping(pairs))
@@ -391,15 +438,25 @@ impl IeVisitor for YamlFormatter {
     fn visit_recovery_time_stamp(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
         use std::time::UNIX_EPOCH;
 
-        let recovery_timestamp = crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(payload)?;
+        let recovery_timestamp =
+            crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String("RecoveryTimeStamp".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
+            (
+                "type".to_string(),
+                YamlValue::String("RecoveryTimeStamp".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
         ];
 
         if let Ok(duration) = recovery_timestamp.timestamp.duration_since(UNIX_EPOCH) {
             let timestamp_secs = duration.as_secs();
-            pairs.push(("timestamp_seconds".to_string(), YamlValue::Number(timestamp_secs.into())));
+            pairs.push((
+                "timestamp_seconds".to_string(),
+                YamlValue::Number(timestamp_secs.into()),
+            ));
 
             // Date calculation (same logic as before, can be improved later)
             let days_since_epoch = timestamp_secs / 86400;
@@ -431,7 +488,12 @@ impl IeVisitor for YamlFormatter {
                 "timestamp_readable".to_string(),
                 YamlValue::String(format!(
                     "{:04}-{:02}-{:02} {:02}:{:02}:{:02} UTC",
-                    year, month.min(12), day.min(31), hours, minutes, seconds
+                    year,
+                    month.min(12),
+                    day.min(31),
+                    hours,
+                    minutes,
+                    seconds
                 )),
             ));
             pairs.push((
@@ -446,10 +508,22 @@ impl IeVisitor for YamlFormatter {
     fn visit_create_pdr(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
         let create_pdr = crate::ie::create_pdr::CreatePdr::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String("CreatePdr".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("pdr_id".to_string(), YamlValue::Number(create_pdr.pdr_id.value.into())),
-            ("precedence".to_string(), YamlValue::Number(create_pdr.precedence.value.into())),
+            (
+                "type".to_string(),
+                YamlValue::String("CreatePdr".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "pdr_id".to_string(),
+                YamlValue::Number(create_pdr.pdr_id.value.into()),
+            ),
+            (
+                "precedence".to_string(),
+                YamlValue::Number(create_pdr.precedence.value.into()),
+            ),
         ];
 
         // Add PDI details
@@ -487,17 +561,26 @@ impl IeVisitor for YamlFormatter {
 
         // Add Network Instance if present
         if let Some(ref ni) = create_pdr.pdi.network_instance {
-            pdi_pairs.push(("network_instance".to_string(), YamlValue::String(ni.instance.clone())));
+            pdi_pairs.push((
+                "network_instance".to_string(),
+                YamlValue::String(ni.instance.clone()),
+            ));
         }
 
         // Add SDF Filter if present
         if let Some(ref sdf) = create_pdr.pdi.sdf_filter {
-            pdi_pairs.push(("sdf_filter".to_string(), YamlValue::String(format!("{:?}", sdf))));
+            pdi_pairs.push((
+                "sdf_filter".to_string(),
+                YamlValue::String(format!("{:?}", sdf)),
+            ));
         }
 
         // Add Application ID if present
         if let Some(ref app_id) = create_pdr.pdi.application_id {
-            pdi_pairs.push(("application_id".to_string(), YamlValue::String(app_id.clone())));
+            pdi_pairs.push((
+                "application_id".to_string(),
+                YamlValue::String(app_id.clone()),
+            ));
         }
 
         // Add Ethernet Packet Filter if present
@@ -532,7 +615,10 @@ impl IeVisitor for YamlFormatter {
 
             if let Some(ref c_tag) = eth_filter.c_tag {
                 let ctag_pairs = vec![
-                    ("pcp".to_string(), YamlValue::Number(c_tag.priority().into())),
+                    (
+                        "pcp".to_string(),
+                        YamlValue::Number(c_tag.priority().into()),
+                    ),
                     ("dei".to_string(), YamlValue::Bool(c_tag.dei())),
                     ("vid".to_string(), YamlValue::Number(c_tag.vid().into())),
                 ];
@@ -541,14 +627,20 @@ impl IeVisitor for YamlFormatter {
 
             if let Some(ref s_tag) = eth_filter.s_tag {
                 let stag_pairs = vec![
-                    ("pcp".to_string(), YamlValue::Number(s_tag.priority().into())),
+                    (
+                        "pcp".to_string(),
+                        YamlValue::Number(s_tag.priority().into()),
+                    ),
                     ("dei".to_string(), YamlValue::Bool(s_tag.dei())),
                     ("vid".to_string(), YamlValue::Number(s_tag.vid().into())),
                 ];
                 eth_filter_pairs.push(("s_tag".to_string(), self.make_mapping(stag_pairs)));
             }
 
-            pdi_pairs.push(("ethernet_packet_filter".to_string(), self.make_mapping(eth_filter_pairs)));
+            pdi_pairs.push((
+                "ethernet_packet_filter".to_string(),
+                self.make_mapping(eth_filter_pairs),
+            ));
         }
 
         pairs.push(("pdi".to_string(), self.make_mapping(pdi_pairs)));
@@ -564,22 +656,43 @@ impl IeVisitor for YamlFormatter {
     fn visit_created_pdr(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
         let created_pdr = crate::ie::created_pdr::CreatedPdr::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String("CreatedPdr".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("pdr_id".to_string(), YamlValue::Number(created_pdr.pdr_id.value.into())),
+            (
+                "type".to_string(),
+                YamlValue::String("CreatedPdr".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "pdr_id".to_string(),
+                YamlValue::Number(created_pdr.pdr_id.value.into()),
+            ),
         ];
 
         // Add F-TEID details
         let mut fteid_pairs = vec![
-            ("teid".to_string(), YamlValue::String(format!("0x{:08x}", created_pdr.f_teid.teid))),
-            ("teid_decimal".to_string(), YamlValue::Number(created_pdr.f_teid.teid.into())),
+            (
+                "teid".to_string(),
+                YamlValue::String(format!("0x{:08x}", created_pdr.f_teid.teid)),
+            ),
+            (
+                "teid_decimal".to_string(),
+                YamlValue::Number(created_pdr.f_teid.teid.into()),
+            ),
         ];
 
         if let Some(ipv4) = created_pdr.f_teid.ipv4_address {
-            fteid_pairs.push(("ipv4_address".to_string(), YamlValue::String(ipv4.to_string())));
+            fteid_pairs.push((
+                "ipv4_address".to_string(),
+                YamlValue::String(ipv4.to_string()),
+            ));
         }
         if let Some(ipv6) = created_pdr.f_teid.ipv6_address {
-            fteid_pairs.push(("ipv6_address".to_string(), YamlValue::String(ipv6.to_string())));
+            fteid_pairs.push((
+                "ipv6_address".to_string(),
+                YamlValue::String(ipv6.to_string()),
+            ));
         }
 
         let mut flags = Vec::new();
@@ -597,7 +710,12 @@ impl IeVisitor for YamlFormatter {
         }
         fteid_pairs.push((
             "flags".to_string(),
-            YamlValue::Sequence(flags.into_iter().map(|s| YamlValue::String(s.to_string())).collect()),
+            YamlValue::Sequence(
+                flags
+                    .into_iter()
+                    .map(|s| YamlValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         pairs.push(("f_teid".to_string(), self.make_mapping(fteid_pairs)));
@@ -608,9 +726,18 @@ impl IeVisitor for YamlFormatter {
     fn visit_create_far(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
         let create_far = crate::ie::create_far::CreateFar::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String("CreateFar".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("far_id".to_string(), YamlValue::Number(create_far.far_id.value.into())),
+            (
+                "type".to_string(),
+                YamlValue::String("CreateFar".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "far_id".to_string(),
+                YamlValue::Number(create_far.far_id.value.into()),
+            ),
         ];
 
         // Apply Action
@@ -634,7 +761,12 @@ impl IeVisitor for YamlFormatter {
 
         pairs.push((
             "apply_action".to_string(),
-            YamlValue::Sequence(action_names.into_iter().map(|s| YamlValue::String(s.to_string())).collect()),
+            YamlValue::Sequence(
+                action_names
+                    .into_iter()
+                    .map(|s| YamlValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         // Optional parameters
@@ -645,10 +777,16 @@ impl IeVisitor for YamlFormatter {
             )];
 
             if let Some(ref ni) = fp.network_instance {
-                fp_pairs.push(("network_instance".to_string(), YamlValue::String(ni.instance.clone())));
+                fp_pairs.push((
+                    "network_instance".to_string(),
+                    YamlValue::String(ni.instance.clone()),
+                ));
             }
 
-            pairs.push(("forwarding_parameters".to_string(), self.make_mapping(fp_pairs)));
+            pairs.push((
+                "forwarding_parameters".to_string(),
+                self.make_mapping(fp_pairs),
+            ));
         }
 
         if let Some(ref bar_id) = create_far.bar_id {
@@ -661,10 +799,22 @@ impl IeVisitor for YamlFormatter {
     fn visit_usage_report(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
         let usage_report = crate::ie::usage_report::UsageReport::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String("UsageReportWithinSessionReportRequest".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("urr_id".to_string(), YamlValue::Number(usage_report.urr_id.id.into())),
-            ("ur_seqn".to_string(), YamlValue::Number(usage_report.ur_seqn.value.into())),
+            (
+                "type".to_string(),
+                YamlValue::String("UsageReportWithinSessionReportRequest".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "urr_id".to_string(),
+                YamlValue::Number(usage_report.urr_id.id.into()),
+            ),
+            (
+                "ur_seqn".to_string(),
+                YamlValue::Number(usage_report.ur_seqn.value.into()),
+            ),
         ];
 
         // Usage Report Trigger
@@ -697,7 +847,12 @@ impl IeVisitor for YamlFormatter {
 
         pairs.push((
             "usage_report_trigger".to_string(),
-            YamlValue::Sequence(trigger_names.into_iter().map(|s| YamlValue::String(s.to_string())).collect()),
+            YamlValue::Sequence(
+                trigger_names
+                    .into_iter()
+                    .map(|s| YamlValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         Ok(self.make_mapping(pairs))
@@ -718,25 +873,55 @@ impl IeVisitor for YamlFormatter {
         };
 
         Ok(self.make_mapping(vec![
-            ("type".to_string(), YamlValue::String("ReportType".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("report_type_value".to_string(), YamlValue::Number(report_type.into())),
-            ("report_type_name".to_string(), YamlValue::String(report_name.to_string())),
+            (
+                "type".to_string(),
+                YamlValue::String("ReportType".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "report_type_value".to_string(),
+                YamlValue::Number(report_type.into()),
+            ),
+            (
+                "report_type_name".to_string(),
+                YamlValue::String(report_name.to_string()),
+            ),
         ]))
     }
 
     fn visit_ethernet_pdu_session_information(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
-        let eth_pdu_info = crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation::unmarshal(payload)?;
+        let eth_pdu_info =
+            crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation::unmarshal(
+                payload,
+            )?;
         Ok(self.make_mapping(vec![
-            ("type".to_string(), YamlValue::String("EthernetPduSessionInformation".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("untagged".to_string(), YamlValue::Bool(eth_pdu_info.is_untagged())),
-            ("has_ethernet_header".to_string(), YamlValue::Bool(eth_pdu_info.has_ethernet_header())),
+            (
+                "type".to_string(),
+                YamlValue::String("EthernetPduSessionInformation".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "untagged".to_string(),
+                YamlValue::Bool(eth_pdu_info.is_untagged()),
+            ),
+            (
+                "has_ethernet_header".to_string(),
+                YamlValue::Bool(eth_pdu_info.has_ethernet_header()),
+            ),
         ]))
     }
 
     fn visit_ethernet_context_information(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
-        let eth_ctx = crate::ie::ethernet_context_information::EthernetContextInformation::unmarshal(payload)?;
+        let eth_ctx =
+            crate::ie::ethernet_context_information::EthernetContextInformation::unmarshal(
+                payload,
+            )?;
         let detected_lists: Vec<YamlValue> = eth_ctx
             .mac_addresses_detected
             .iter()
@@ -751,29 +936,54 @@ impl IeVisitor for YamlFormatter {
             .collect();
 
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String("EthernetContextInformation".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
+            (
+                "type".to_string(),
+                YamlValue::String("EthernetContextInformation".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
         ];
         if !detected_lists.is_empty() {
-            pairs.push(("mac_addresses_detected".to_string(), YamlValue::Sequence(detected_lists)));
+            pairs.push((
+                "mac_addresses_detected".to_string(),
+                YamlValue::Sequence(detected_lists),
+            ));
         }
 
         Ok(self.make_mapping(pairs))
     }
 
     fn visit_ethernet_inactivity_timer(&mut self, payload: &[u8]) -> io::Result<YamlValue> {
-        let timer = crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer::unmarshal(payload)?;
+        let timer =
+            crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer::unmarshal(payload)?;
         Ok(self.make_mapping(vec![
-            ("type".to_string(), YamlValue::String("EthernetInactivityTimer".to_string())),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
-            ("timer_seconds".to_string(), YamlValue::Number(timer.seconds().into())),
+            (
+                "type".to_string(),
+                YamlValue::String("EthernetInactivityTimer".to_string()),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
+            (
+                "timer_seconds".to_string(),
+                YamlValue::Number(timer.seconds().into()),
+            ),
         ]))
     }
 
     fn visit_unknown(&mut self, ie_type: IeType, payload: &[u8]) -> YamlValue {
         let mut pairs = vec![
-            ("type".to_string(), YamlValue::String(format!("{:?}", ie_type))),
-            ("length".to_string(), YamlValue::Number(payload.len().into())),
+            (
+                "type".to_string(),
+                YamlValue::String(format!("{:?}", ie_type)),
+            ),
+            (
+                "length".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ),
         ];
 
         if payload.len() <= 32 {
@@ -784,7 +994,10 @@ impl IeVisitor for YamlFormatter {
                 .join(" ");
             pairs.push(("payload_hex".to_string(), YamlValue::String(hex_payload)));
         } else {
-            pairs.push(("payload_size".to_string(), YamlValue::Number(payload.len().into())));
+            pairs.push((
+                "payload_size".to_string(),
+                YamlValue::Number(payload.len().into()),
+            ));
         }
 
         self.make_mapping(pairs)
@@ -822,7 +1035,10 @@ impl IeVisitor for JsonFormatter {
 
         Ok(self.make_object(vec![
             ("type".to_string(), JsonValue::String("NodeId".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
             ("node_type".to_string(), JsonValue::String(node_type)),
             ("address".to_string(), JsonValue::String(address)),
         ]))
@@ -832,9 +1048,18 @@ impl IeVisitor for JsonFormatter {
         let cause = crate::ie::cause::Cause::unmarshal(payload)?;
         Ok(self.make_object(vec![
             ("type".to_string(), JsonValue::String("Cause".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("cause_value".to_string(), JsonValue::Number((cause.value as u8).into())),
-            ("cause_name".to_string(), JsonValue::String(format!("{:?}", cause.value))),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "cause_value".to_string(),
+                JsonValue::Number((cause.value as u8).into()),
+            ),
+            (
+                "cause_name".to_string(),
+                JsonValue::String(format!("{:?}", cause.value)),
+            ),
         ]))
     }
 
@@ -842,19 +1067,34 @@ impl IeVisitor for JsonFormatter {
         let fseid = crate::ie::fseid::Fseid::unmarshal(payload)?;
         let mut pairs = vec![
             ("type".to_string(), JsonValue::String("Fseid".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("seid".to_string(), JsonValue::String(format!("0x{:016x}", fseid.seid))),
-            ("seid_decimal".to_string(), JsonValue::Number(fseid.seid.into())),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "seid".to_string(),
+                JsonValue::String(format!("0x{:016x}", fseid.seid)),
+            ),
+            (
+                "seid_decimal".to_string(),
+                JsonValue::Number(fseid.seid.into()),
+            ),
         ];
 
         let mut addr_info = Vec::new();
         if let Some(ipv4) = fseid.ipv4_address {
             addr_info.push(format!("IPv4: {ipv4}"));
-            pairs.push(("ipv4_address".to_string(), JsonValue::String(ipv4.to_string())));
+            pairs.push((
+                "ipv4_address".to_string(),
+                JsonValue::String(ipv4.to_string()),
+            ));
         }
         if let Some(ipv6) = fseid.ipv6_address {
             addr_info.push(format!("IPv6: {ipv6}"));
-            pairs.push(("ipv6_address".to_string(), JsonValue::String(ipv6.to_string())));
+            pairs.push((
+                "ipv6_address".to_string(),
+                JsonValue::String(ipv6.to_string()),
+            ));
         }
 
         if !addr_info.is_empty() {
@@ -873,7 +1113,12 @@ impl IeVisitor for JsonFormatter {
         }
         pairs.push((
             "address_flags".to_string(),
-            JsonValue::Array(flags.into_iter().map(|s| JsonValue::String(s.to_string())).collect()),
+            JsonValue::Array(
+                flags
+                    .into_iter()
+                    .map(|s| JsonValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         Ok(self.make_object(pairs))
@@ -882,15 +1127,25 @@ impl IeVisitor for JsonFormatter {
     fn visit_recovery_time_stamp(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
         use std::time::UNIX_EPOCH;
 
-        let recovery_timestamp = crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(payload)?;
+        let recovery_timestamp =
+            crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String("RecoveryTimeStamp".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
+            (
+                "type".to_string(),
+                JsonValue::String("RecoveryTimeStamp".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
         ];
 
         if let Ok(duration) = recovery_timestamp.timestamp.duration_since(UNIX_EPOCH) {
             let timestamp_secs = duration.as_secs();
-            pairs.push(("timestamp_seconds".to_string(), JsonValue::Number(timestamp_secs.into())));
+            pairs.push((
+                "timestamp_seconds".to_string(),
+                JsonValue::Number(timestamp_secs.into()),
+            ));
 
             // Date calculation (same as YAML)
             let days_since_epoch = timestamp_secs / 86400;
@@ -922,7 +1177,12 @@ impl IeVisitor for JsonFormatter {
                 "timestamp_readable".to_string(),
                 JsonValue::String(format!(
                     "{:04}-{:02}-{:02} {:02}:{:02}:{:02} UTC",
-                    year, month.min(12), day.min(31), hours, minutes, seconds
+                    year,
+                    month.min(12),
+                    day.min(31),
+                    hours,
+                    minutes,
+                    seconds
                 )),
             ));
             pairs.push((
@@ -937,10 +1197,22 @@ impl IeVisitor for JsonFormatter {
     fn visit_create_pdr(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
         let create_pdr = crate::ie::create_pdr::CreatePdr::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String("CreatePdr".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("pdr_id".to_string(), JsonValue::Number(create_pdr.pdr_id.value.into())),
-            ("precedence".to_string(), JsonValue::Number(create_pdr.precedence.value.into())),
+            (
+                "type".to_string(),
+                JsonValue::String("CreatePdr".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "pdr_id".to_string(),
+                JsonValue::Number(create_pdr.pdr_id.value.into()),
+            ),
+            (
+                "precedence".to_string(),
+                JsonValue::Number(create_pdr.precedence.value.into()),
+            ),
         ];
 
         // Add PDI details (complete implementation matching YAML)
@@ -978,17 +1250,26 @@ impl IeVisitor for JsonFormatter {
 
         // Add Network Instance if present
         if let Some(ref ni) = create_pdr.pdi.network_instance {
-            pdi_pairs.push(("network_instance".to_string(), JsonValue::String(ni.instance.clone())));
+            pdi_pairs.push((
+                "network_instance".to_string(),
+                JsonValue::String(ni.instance.clone()),
+            ));
         }
 
         // Add SDF Filter if present
         if let Some(ref sdf) = create_pdr.pdi.sdf_filter {
-            pdi_pairs.push(("sdf_filter".to_string(), JsonValue::String(format!("{:?}", sdf))));
+            pdi_pairs.push((
+                "sdf_filter".to_string(),
+                JsonValue::String(format!("{:?}", sdf)),
+            ));
         }
 
         // Add Application ID if present
         if let Some(ref app_id) = create_pdr.pdi.application_id {
-            pdi_pairs.push(("application_id".to_string(), JsonValue::String(app_id.clone())));
+            pdi_pairs.push((
+                "application_id".to_string(),
+                JsonValue::String(app_id.clone()),
+            ));
         }
 
         // Add Ethernet Packet Filter if present
@@ -1023,7 +1304,10 @@ impl IeVisitor for JsonFormatter {
 
             if let Some(ref c_tag) = eth_filter.c_tag {
                 let ctag_pairs = vec![
-                    ("pcp".to_string(), JsonValue::Number(c_tag.priority().into())),
+                    (
+                        "pcp".to_string(),
+                        JsonValue::Number(c_tag.priority().into()),
+                    ),
                     ("dei".to_string(), JsonValue::Bool(c_tag.dei())),
                     ("vid".to_string(), JsonValue::Number(c_tag.vid().into())),
                 ];
@@ -1032,14 +1316,20 @@ impl IeVisitor for JsonFormatter {
 
             if let Some(ref s_tag) = eth_filter.s_tag {
                 let stag_pairs = vec![
-                    ("pcp".to_string(), JsonValue::Number(s_tag.priority().into())),
+                    (
+                        "pcp".to_string(),
+                        JsonValue::Number(s_tag.priority().into()),
+                    ),
                     ("dei".to_string(), JsonValue::Bool(s_tag.dei())),
                     ("vid".to_string(), JsonValue::Number(s_tag.vid().into())),
                 ];
                 eth_filter_pairs.push(("s_tag".to_string(), self.make_object(stag_pairs)));
             }
 
-            pdi_pairs.push(("ethernet_packet_filter".to_string(), self.make_object(eth_filter_pairs)));
+            pdi_pairs.push((
+                "ethernet_packet_filter".to_string(),
+                self.make_object(eth_filter_pairs),
+            ));
         }
 
         pairs.push(("pdi".to_string(), self.make_object(pdi_pairs)));
@@ -1055,22 +1345,43 @@ impl IeVisitor for JsonFormatter {
     fn visit_created_pdr(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
         let created_pdr = crate::ie::created_pdr::CreatedPdr::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String("CreatedPdr".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("pdr_id".to_string(), JsonValue::Number(created_pdr.pdr_id.value.into())),
+            (
+                "type".to_string(),
+                JsonValue::String("CreatedPdr".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "pdr_id".to_string(),
+                JsonValue::Number(created_pdr.pdr_id.value.into()),
+            ),
         ];
 
         // Add F-TEID details
         let mut fteid_pairs = vec![
-            ("teid".to_string(), JsonValue::String(format!("0x{:08x}", created_pdr.f_teid.teid))),
-            ("teid_decimal".to_string(), JsonValue::Number(created_pdr.f_teid.teid.into())),
+            (
+                "teid".to_string(),
+                JsonValue::String(format!("0x{:08x}", created_pdr.f_teid.teid)),
+            ),
+            (
+                "teid_decimal".to_string(),
+                JsonValue::Number(created_pdr.f_teid.teid.into()),
+            ),
         ];
 
         if let Some(ipv4) = created_pdr.f_teid.ipv4_address {
-            fteid_pairs.push(("ipv4_address".to_string(), JsonValue::String(ipv4.to_string())));
+            fteid_pairs.push((
+                "ipv4_address".to_string(),
+                JsonValue::String(ipv4.to_string()),
+            ));
         }
         if let Some(ipv6) = created_pdr.f_teid.ipv6_address {
-            fteid_pairs.push(("ipv6_address".to_string(), JsonValue::String(ipv6.to_string())));
+            fteid_pairs.push((
+                "ipv6_address".to_string(),
+                JsonValue::String(ipv6.to_string()),
+            ));
         }
 
         let mut flags = Vec::new();
@@ -1088,7 +1399,12 @@ impl IeVisitor for JsonFormatter {
         }
         fteid_pairs.push((
             "flags".to_string(),
-            JsonValue::Array(flags.into_iter().map(|s| JsonValue::String(s.to_string())).collect()),
+            JsonValue::Array(
+                flags
+                    .into_iter()
+                    .map(|s| JsonValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         pairs.push(("f_teid".to_string(), self.make_object(fteid_pairs)));
@@ -1099,9 +1415,18 @@ impl IeVisitor for JsonFormatter {
     fn visit_create_far(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
         let create_far = crate::ie::create_far::CreateFar::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String("CreateFar".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("far_id".to_string(), JsonValue::Number(create_far.far_id.value.into())),
+            (
+                "type".to_string(),
+                JsonValue::String("CreateFar".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "far_id".to_string(),
+                JsonValue::Number(create_far.far_id.value.into()),
+            ),
         ];
 
         // Apply Action
@@ -1125,7 +1450,12 @@ impl IeVisitor for JsonFormatter {
 
         pairs.push((
             "apply_action".to_string(),
-            JsonValue::Array(action_names.into_iter().map(|s| JsonValue::String(s.to_string())).collect()),
+            JsonValue::Array(
+                action_names
+                    .into_iter()
+                    .map(|s| JsonValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         // Optional parameters
@@ -1136,10 +1466,16 @@ impl IeVisitor for JsonFormatter {
             )];
 
             if let Some(ref ni) = fp.network_instance {
-                fp_pairs.push(("network_instance".to_string(), JsonValue::String(ni.instance.clone())));
+                fp_pairs.push((
+                    "network_instance".to_string(),
+                    JsonValue::String(ni.instance.clone()),
+                ));
             }
 
-            pairs.push(("forwarding_parameters".to_string(), self.make_object(fp_pairs)));
+            pairs.push((
+                "forwarding_parameters".to_string(),
+                self.make_object(fp_pairs),
+            ));
         }
 
         if let Some(ref bar_id) = create_far.bar_id {
@@ -1152,10 +1488,22 @@ impl IeVisitor for JsonFormatter {
     fn visit_usage_report(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
         let usage_report = crate::ie::usage_report::UsageReport::unmarshal(payload)?;
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String("UsageReportWithinSessionReportRequest".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("urr_id".to_string(), JsonValue::Number(usage_report.urr_id.id.into())),
-            ("ur_seqn".to_string(), JsonValue::Number(usage_report.ur_seqn.value.into())),
+            (
+                "type".to_string(),
+                JsonValue::String("UsageReportWithinSessionReportRequest".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "urr_id".to_string(),
+                JsonValue::Number(usage_report.urr_id.id.into()),
+            ),
+            (
+                "ur_seqn".to_string(),
+                JsonValue::Number(usage_report.ur_seqn.value.into()),
+            ),
         ];
 
         // Usage Report Trigger
@@ -1188,7 +1536,12 @@ impl IeVisitor for JsonFormatter {
 
         pairs.push((
             "usage_report_trigger".to_string(),
-            JsonValue::Array(trigger_names.into_iter().map(|s| JsonValue::String(s.to_string())).collect()),
+            JsonValue::Array(
+                trigger_names
+                    .into_iter()
+                    .map(|s| JsonValue::String(s.to_string()))
+                    .collect(),
+            ),
         ));
 
         Ok(self.make_object(pairs))
@@ -1209,25 +1562,55 @@ impl IeVisitor for JsonFormatter {
         };
 
         Ok(self.make_object(vec![
-            ("type".to_string(), JsonValue::String("ReportType".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("report_type_value".to_string(), JsonValue::Number(report_type.into())),
-            ("report_type_name".to_string(), JsonValue::String(report_name.to_string())),
+            (
+                "type".to_string(),
+                JsonValue::String("ReportType".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "report_type_value".to_string(),
+                JsonValue::Number(report_type.into()),
+            ),
+            (
+                "report_type_name".to_string(),
+                JsonValue::String(report_name.to_string()),
+            ),
         ]))
     }
 
     fn visit_ethernet_pdu_session_information(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
-        let eth_pdu_info = crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation::unmarshal(payload)?;
+        let eth_pdu_info =
+            crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation::unmarshal(
+                payload,
+            )?;
         Ok(self.make_object(vec![
-            ("type".to_string(), JsonValue::String("EthernetPduSessionInformation".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("untagged".to_string(), JsonValue::Bool(eth_pdu_info.is_untagged())),
-            ("has_ethernet_header".to_string(), JsonValue::Bool(eth_pdu_info.has_ethernet_header())),
+            (
+                "type".to_string(),
+                JsonValue::String("EthernetPduSessionInformation".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "untagged".to_string(),
+                JsonValue::Bool(eth_pdu_info.is_untagged()),
+            ),
+            (
+                "has_ethernet_header".to_string(),
+                JsonValue::Bool(eth_pdu_info.has_ethernet_header()),
+            ),
         ]))
     }
 
     fn visit_ethernet_context_information(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
-        let eth_ctx = crate::ie::ethernet_context_information::EthernetContextInformation::unmarshal(payload)?;
+        let eth_ctx =
+            crate::ie::ethernet_context_information::EthernetContextInformation::unmarshal(
+                payload,
+            )?;
         let detected_lists: Vec<JsonValue> = eth_ctx
             .mac_addresses_detected
             .iter()
@@ -1242,29 +1625,54 @@ impl IeVisitor for JsonFormatter {
             .collect();
 
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String("EthernetContextInformation".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
+            (
+                "type".to_string(),
+                JsonValue::String("EthernetContextInformation".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
         ];
         if !detected_lists.is_empty() {
-            pairs.push(("mac_addresses_detected".to_string(), JsonValue::Array(detected_lists)));
+            pairs.push((
+                "mac_addresses_detected".to_string(),
+                JsonValue::Array(detected_lists),
+            ));
         }
 
         Ok(self.make_object(pairs))
     }
 
     fn visit_ethernet_inactivity_timer(&mut self, payload: &[u8]) -> io::Result<JsonValue> {
-        let timer = crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer::unmarshal(payload)?;
+        let timer =
+            crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer::unmarshal(payload)?;
         Ok(self.make_object(vec![
-            ("type".to_string(), JsonValue::String("EthernetInactivityTimer".to_string())),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
-            ("timer_seconds".to_string(), JsonValue::Number(timer.seconds().into())),
+            (
+                "type".to_string(),
+                JsonValue::String("EthernetInactivityTimer".to_string()),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
+            (
+                "timer_seconds".to_string(),
+                JsonValue::Number(timer.seconds().into()),
+            ),
         ]))
     }
 
     fn visit_unknown(&mut self, ie_type: IeType, payload: &[u8]) -> JsonValue {
         let mut pairs = vec![
-            ("type".to_string(), JsonValue::String(format!("{:?}", ie_type))),
-            ("length".to_string(), JsonValue::Number(payload.len().into())),
+            (
+                "type".to_string(),
+                JsonValue::String(format!("{:?}", ie_type)),
+            ),
+            (
+                "length".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ),
         ];
 
         if payload.len() <= 32 {
@@ -1275,7 +1683,10 @@ impl IeVisitor for JsonFormatter {
                 .join(" ");
             pairs.push(("payload_hex".to_string(), JsonValue::String(hex_payload)));
         } else {
-            pairs.push(("payload_size".to_string(), JsonValue::Number(payload.len().into())));
+            pairs.push((
+                "payload_size".to_string(),
+                JsonValue::Number(payload.len().into()),
+            ));
         }
 
         self.make_object(pairs)
@@ -1380,8 +1791,10 @@ impl MessageDisplay for Box<dyn Message> {
                             ies_map.insert(ie_name, all_ies[0].accept(&mut yaml_visitor));
                         } else {
                             // Multiple IEs - create array using visitor
-                            let ie_array: Vec<YamlValue> =
-                                all_ies.iter().map(|ie| ie.accept(&mut yaml_visitor)).collect();
+                            let ie_array: Vec<YamlValue> = all_ies
+                                .iter()
+                                .map(|ie| ie.accept(&mut yaml_visitor))
+                                .collect();
                             ies_map.insert(ie_name, YamlValue::Sequence(ie_array));
                         }
                     }
@@ -1461,8 +1874,10 @@ impl MessageDisplay for Box<dyn Message> {
                             ies_map.insert(ie_name, all_ies[0].accept(&mut json_visitor));
                         } else {
                             // Multiple IEs - create array using visitor
-                            let ie_array: Vec<JsonValue> =
-                                all_ies.iter().map(|ie| ie.accept(&mut json_visitor)).collect();
+                            let ie_array: Vec<JsonValue> = all_ies
+                                .iter()
+                                .map(|ie| ie.accept(&mut json_visitor))
+                                .collect();
                             ies_map.insert(ie_name, JsonValue::Array(ie_array));
                         }
                     }
