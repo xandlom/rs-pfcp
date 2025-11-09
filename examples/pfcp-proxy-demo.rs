@@ -75,11 +75,11 @@ struct PendingRequests {
 
 #[derive(Clone, Debug)]
 struct RequestInfo {
-    origin_addr: SocketAddr,  // Address that sent the request (SMF or UPF)
+    origin_addr: SocketAddr, // Address that sent the request (SMF or UPF)
     timestamp: Instant,
     is_broadcast: bool,
     responses_received: usize,
-    from_upf: bool,  // True if request came from UPF (reversed flow)
+    from_upf: bool, // True if request came from UPF (reversed flow)
 }
 
 impl PendingRequests {
@@ -104,7 +104,12 @@ impl PendingRequests {
         let mut requests = self.requests.write().await;
         if let Some(info) = requests.get_mut(&seq) {
             info.responses_received += 1;
-            Some((info.origin_addr, info.is_broadcast, info.responses_received, info.from_upf))
+            Some((
+                info.origin_addr,
+                info.is_broadcast,
+                info.responses_received,
+                info.from_upf,
+            ))
         } else {
             None
         }
@@ -116,11 +121,13 @@ impl PendingRequests {
 
     async fn cleanup_stale(&self, max_age: Duration) {
         let now = Instant::now();
-        self.requests.write().await.retain(|_, info| {
-            now.duration_since(info.timestamp) < max_age
-        });
+        self.requests
+            .write()
+            .await
+            .retain(|_, info| now.duration_since(info.timestamp) < max_age);
     }
 
+    #[allow(dead_code)] // Reserved for monitoring/debugging
     async fn count(&self) -> usize {
         self.requests.read().await.len()
     }
@@ -135,8 +142,10 @@ struct SessionTable {
 #[derive(Clone, Debug)]
 struct SessionInfo {
     upf_addr: SocketAddr,
-    smf_addr: SocketAddr,  // SMF that owns this session
+    smf_addr: SocketAddr, // SMF that owns this session
+    #[allow(dead_code)] // Reserved for session duration tracking
     created_at: Instant,
+    #[allow(dead_code)] // Reserved for idle timeout tracking
     last_activity: Instant,
 }
 
@@ -159,15 +168,28 @@ impl SessionTable {
     }
 
     async fn lookup(&self, seid: u64) -> Option<SocketAddr> {
-        self.sessions.read().await.get(&seid).map(|info| info.upf_addr)
+        self.sessions
+            .read()
+            .await
+            .get(&seid)
+            .map(|info| info.upf_addr)
     }
 
+    #[allow(dead_code)] // Reserved for future use
     async fn lookup_smf(&self, seid: u64) -> Option<SocketAddr> {
-        self.sessions.read().await.get(&seid).map(|info| info.smf_addr)
+        self.sessions
+            .read()
+            .await
+            .get(&seid)
+            .map(|info| info.smf_addr)
     }
 
     async fn lookup_full(&self, seid: u64) -> Option<(SocketAddr, SocketAddr)> {
-        self.sessions.read().await.get(&seid).map(|info| (info.upf_addr, info.smf_addr))
+        self.sessions
+            .read()
+            .await
+            .get(&seid)
+            .map(|info| (info.upf_addr, info.smf_addr))
     }
 
     async fn remove(&self, seid: u64) {
@@ -280,7 +302,8 @@ impl Statistics {
     }
 
     fn record_response_forwarded(&self) {
-        self.total_responses_forwarded.fetch_add(1, Ordering::Relaxed);
+        self.total_responses_forwarded
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     fn record_response_dropped(&self) {
@@ -316,7 +339,10 @@ impl Statistics {
 
         let dropped = self.responses_dropped.load(Ordering::Relaxed);
         if dropped > 0 {
-            println!("  ⚠️  Responses Dropped:      {} (no matching request)", dropped);
+            println!(
+                "  ⚠️  Responses Dropped:      {} (no matching request)",
+                dropped
+            );
         }
 
         // Routing decisions
@@ -403,7 +429,7 @@ fn is_upf_request(msg_type: MsgType) -> bool {
 async fn route_message(
     msg_type: MsgType,
     seid: Option<u64>,
-    smf_addr: SocketAddr,  // SMF that sent the request
+    smf_addr: SocketAddr, // SMF that sent the request
     session_table: &SessionTable,
     upf_pool: &UpfPool,
     stats: &Statistics,
@@ -441,8 +467,7 @@ async fn route_message(
         }
 
         // Session-level messages: route by SEID affinity
-        MsgType::SessionModificationRequest
-        | MsgType::SessionDeletionRequest => {
+        MsgType::SessionModificationRequest | MsgType::SessionDeletionRequest => {
             if let Some(s) = seid {
                 if let Some(upf_addr) = session_table.lookup(s).await {
                     stats.record_routing_decision(true, false);
@@ -462,10 +487,7 @@ async fn route_message(
                     RoutingDecision::SessionNotFound
                 }
             } else {
-                eprintln!(
-                    "⚠️  Expected SEID for {:?} but none found",
-                    msg_type
-                );
+                eprintln!("⚠️  Expected SEID for {:?} but none found", msg_type);
                 RoutingDecision::NoSeid
             }
         }
@@ -586,7 +608,10 @@ async fn handle_message(
                         // Note: We don't record this in upf_message_counts since it's going to SMF
                     }
                 } else {
-                    eprintln!("  ⚠️  SessionReportRequest from wrong UPF (expected {}, got {})", upf_addr, src);
+                    eprintln!(
+                        "  ⚠️  SessionReportRequest from wrong UPF (expected {}, got {})",
+                        upf_addr, src
+                    );
                 }
             } else {
                 eprintln!("  ⚠️  Session not found for SEID {:#x}", s);
@@ -603,9 +628,9 @@ async fn handle_message(
         match pending_requests.lookup_and_increment(sequence).await {
             Some((origin_addr, is_broadcast, response_count, from_upf)) => {
                 let (from_label, to_label) = if from_upf {
-                    ("SMF", "UPF")  // Response from SMF to UPF (SessionReportResponse)
+                    ("SMF", "UPF") // Response from SMF to UPF (SessionReportResponse)
                 } else {
-                    ("UPF", "SMF")  // Normal response from UPF to SMF
+                    ("UPF", "SMF") // Normal response from UPF to SMF
                 };
 
                 println!(
@@ -614,7 +639,10 @@ async fn handle_message(
                 );
 
                 if let Err(e) = socket.send_to(&data, origin_addr).await {
-                    eprintln!("❌ Failed to forward response to {} {}: {}", to_label, origin_addr, e);
+                    eprintln!(
+                        "❌ Failed to forward response to {} {}: {}",
+                        to_label, origin_addr, e
+                    );
                 } else {
                     println!(
                         "  ⬅️  Forwarded to {} {} (response {}/{})",
@@ -630,10 +658,8 @@ async fn handle_message(
                     stats.record_response_forwarded();
 
                     // For non-broadcast, remove the pending request after first response
-                    // For broadcast, remove after receiving all responses or timeout
-                    if !is_broadcast {
-                        pending_requests.remove(sequence).await;
-                    } else if response_count >= upf_pool.all_backends().len() {
+                    // For broadcast, remove after receiving all responses
+                    if !is_broadcast || response_count >= upf_pool.all_backends().len() {
                         pending_requests.remove(sequence).await;
                     }
                 }
@@ -716,8 +742,7 @@ async fn handle_message(
 
 async fn run_proxy(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     // Parse backend addresses
-    let backends: Result<Vec<SocketAddr>, _> =
-        args.backends.iter().map(|s| s.parse()).collect();
+    let backends: Result<Vec<SocketAddr>, _> = args.backends.iter().map(|s| s.parse()).collect();
     let backends = backends?;
 
     if backends.is_empty() {
@@ -762,7 +787,9 @@ async fn run_proxy(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         loop {
             interval.tick().await;
             // Remove requests older than 60 seconds
-            pending_requests_clone.cleanup_stale(Duration::from_secs(60)).await;
+            pending_requests_clone
+                .cleanup_stale(Duration::from_secs(60))
+                .await;
         }
     });
 
