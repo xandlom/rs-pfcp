@@ -67,7 +67,7 @@ struct Args {
 // Core Data Structures
 // =============================================================================
 
-/// Pending request tracker: maps sequence number to SMF address for response forwarding
+/// Pending request tracker: maps sequence number to origin address for response forwarding
 #[derive(Clone)]
 struct PendingRequests {
     requests: Arc<RwLock<HashMap<u32, RequestInfo>>>,
@@ -75,10 +75,11 @@ struct PendingRequests {
 
 #[derive(Clone, Debug)]
 struct RequestInfo {
-    smf_addr: SocketAddr,
+    origin_addr: SocketAddr,  // Address that sent the request (SMF or UPF)
     timestamp: Instant,
     is_broadcast: bool,
     responses_received: usize,
+    from_upf: bool,  // True if request came from UPF (reversed flow)
 }
 
 impl PendingRequests {
@@ -88,21 +89,22 @@ impl PendingRequests {
         }
     }
 
-    async fn insert(&self, seq: u32, smf_addr: SocketAddr, is_broadcast: bool) {
+    async fn insert(&self, seq: u32, origin_addr: SocketAddr, is_broadcast: bool, from_upf: bool) {
         let info = RequestInfo {
-            smf_addr,
+            origin_addr,
             timestamp: Instant::now(),
             is_broadcast,
             responses_received: 0,
+            from_upf,
         };
         self.requests.write().await.insert(seq, info);
     }
 
-    async fn lookup_and_increment(&self, seq: u32) -> Option<(SocketAddr, bool, usize)> {
+    async fn lookup_and_increment(&self, seq: u32) -> Option<(SocketAddr, bool, usize, bool)> {
         let mut requests = self.requests.write().await;
         if let Some(info) = requests.get_mut(&seq) {
             info.responses_received += 1;
-            Some((info.smf_addr, info.is_broadcast, info.responses_received))
+            Some((info.origin_addr, info.is_broadcast, info.responses_received, info.from_upf))
         } else {
             None
         }
@@ -363,8 +365,8 @@ impl Statistics {
 // Message Routing Logic
 // =============================================================================
 
-/// Determine if a message type is a request (vs response)
-fn is_request(msg_type: MsgType) -> bool {
+/// Determine if a message type is a request from SMF (vs response from UPF)
+fn is_smf_request(msg_type: MsgType) -> bool {
     matches!(
         msg_type,
         MsgType::HeartbeatRequest
@@ -376,9 +378,16 @@ fn is_request(msg_type: MsgType) -> bool {
             | MsgType::SessionEstablishmentRequest
             | MsgType::SessionModificationRequest
             | MsgType::SessionDeletionRequest
-            | MsgType::SessionReportResponse // Note: Response from UPF side, but request from SMF perspective
             | MsgType::SessionSetDeletionRequest
             | MsgType::SessionSetModificationRequest
+    )
+}
+
+/// Determine if a message type is a request from UPF (special case - reversed flow)
+fn is_upf_request(msg_type: MsgType) -> bool {
+    matches!(
+        msg_type,
+        MsgType::SessionReportRequest // UPF-initiated: UPF reports usage/events to SMF
     )
 }
 
@@ -424,8 +433,7 @@ async fn route_message(
 
         // Session-level messages: route by SEID affinity
         MsgType::SessionModificationRequest
-        | MsgType::SessionDeletionRequest
-        | MsgType::SessionReportResponse => {
+        | MsgType::SessionDeletionRequest => {
             if let Some(s) = seid {
                 if let Some(upf_addr) = session_table.lookup(s).await {
                     stats.record_routing_decision(true, false);
@@ -454,11 +462,12 @@ async fn route_message(
         }
 
         // Responses from UPF - these should be forwarded back to SMF
+        // Note: SessionReportResponse is SMF's response to UPF's SessionReportRequest (reversed flow)
         MsgType::HeartbeatResponse
         | MsgType::SessionEstablishmentResponse
         | MsgType::SessionModificationResponse
         | MsgType::SessionDeletionResponse
-        | MsgType::SessionReportRequest
+        | MsgType::SessionReportResponse
         | MsgType::AssociationSetupResponse
         | MsgType::AssociationUpdateResponse
         | MsgType::AssociationReleaseResponse
@@ -467,7 +476,7 @@ async fn route_message(
         | MsgType::SessionSetDeletionResponse
         | MsgType::SessionSetModificationResponse
         | MsgType::VersionNotSupportedResponse => {
-            // These are responses from UPF, need to forward back to SMF
+            // These are responses - forward back to the origin of the request
             // This is handled in handle_message by looking up pending request
             RoutingDecision::ResponseToClient
         }
@@ -542,22 +551,63 @@ async fn handle_message(
     // Record statistics
     stats.record_message_received(msg_type).await;
 
-    // Check if this is a response from a UPF
-    if !is_request(msg_type) {
-        // This is a response from UPF, forward back to original SMF
+    // Check if this is a UPF-initiated request (reversed flow)
+    if is_upf_request(msg_type) {
+        // This is a request FROM UPF, forward TO SMF (reversed flow)
+        // Examples: SessionReportRequest (UPF reports usage to SMF)
         println!(
-            "📨 Received {:?} from UPF {} (seq: {})",
-            msg_type, src, sequence
+            "📨 Received {:?} from UPF {} (SEID: {:?}, seq: {})",
+            msg_type, src, seid, sequence
         );
 
+        // For now, route to first available SMF (in production, would track SMF addresses)
+        // Since we track pending requests from SMF, we can infer SMF addresses
+        // For this demo, we need to determine the SMF address somehow
+
+        // SEID-based routing: find which SMF owns this session
+        if let Some(s) = seid {
+            if let Some(upf_addr) = session_table.lookup(s).await {
+                // Verify this request is from the correct UPF
+                if upf_addr == src {
+                    println!("  ➜ Routing to SMF (need SMF address from session context)");
+                    println!("  ⚠️  SMF routing not yet implemented - need to track SMF addresses");
+                    // TODO: Track SMF addresses in session table
+                    // For now, we can't forward this without knowing SMF address
+                } else {
+                    eprintln!("  ⚠️  SessionReportRequest from wrong UPF (expected {}, got {})", upf_addr, src);
+                }
+            } else {
+                eprintln!("  ⚠️  Session not found for SEID {:#x}", s);
+            }
+        } else {
+            eprintln!("  ⚠️  SessionReportRequest without SEID");
+        }
+        return;
+    }
+
+    // Check if this is a response (either UPF→SMF response, or SMF→UPF response for reports)
+    if !is_smf_request(msg_type) {
+        // This is a response, forward back to the origin of the request
         match pending_requests.lookup_and_increment(sequence).await {
-            Some((smf_addr, is_broadcast, response_count)) => {
-                if let Err(e) = socket.send_to(&data, smf_addr).await {
-                    eprintln!("❌ Failed to forward response to SMF {}: {}", smf_addr, e);
+            Some((origin_addr, is_broadcast, response_count, from_upf)) => {
+                let (from_label, to_label) = if from_upf {
+                    ("SMF", "UPF")  // Response from SMF to UPF (SessionReportResponse)
+                } else {
+                    ("UPF", "SMF")  // Normal response from UPF to SMF
+                };
+
+                println!(
+                    "📨 Received {:?} from {} {} (seq: {})",
+                    msg_type, from_label, src, sequence
+                );
+
+                if let Err(e) = socket.send_to(&data, origin_addr).await {
+                    eprintln!("❌ Failed to forward response to {} {}: {}", to_label, origin_addr, e);
                 } else {
                     println!(
-                        "  ⬅️  Forwarded to SMF {} (response {}/{})",
-                        smf_addr,
+                        "  ⬅️  Forwarded to {} {} (response {}/{})",
+                        to_label,
+                        origin_addr,
                         response_count,
                         if is_broadcast {
                             upf_pool.all_backends().len().to_string()
@@ -578,8 +628,8 @@ async fn handle_message(
             }
             None => {
                 println!(
-                    "  ⚠️  No pending request found for sequence {} (may have timed out)",
-                    sequence
+                    "  ⚠️  Received {:?} from {} (seq: {}) - no pending request found (may have timed out)",
+                    msg_type, src, sequence
                 );
                 stats.record_response_dropped();
             }
@@ -598,8 +648,8 @@ async fn handle_message(
 
     match decision {
         RoutingDecision::Single(upf_addr) => {
-            // Record pending request for response forwarding
-            pending_requests.insert(sequence, src, false).await;
+            // Record pending request for response forwarding (from_upf = false for SMF requests)
+            pending_requests.insert(sequence, src, false, false).await;
 
             // Send to single backend
             if let Err(e) = socket.send_to(&data, upf_addr).await {
@@ -612,8 +662,8 @@ async fn handle_message(
         }
 
         RoutingDecision::Broadcast(backends) => {
-            // Record pending request for response forwarding (broadcast mode)
-            pending_requests.insert(sequence, src, true).await;
+            // Record pending request for response forwarding (broadcast mode, from_upf = false)
+            pending_requests.insert(sequence, src, true, false).await;
 
             // Broadcast to all backends
             println!("  ➜ Broadcasting to {} backends", backends.len());
