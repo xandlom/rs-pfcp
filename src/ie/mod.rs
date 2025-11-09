@@ -149,6 +149,10 @@ pub mod volume_measurement;
 pub mod volume_quota;
 pub mod volume_threshold;
 
+// Re-export commonly used IE types for convenience
+pub use node_id::NodeId;
+pub use recovery_time_stamp::RecoveryTimeStamp;
+
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u16)]
