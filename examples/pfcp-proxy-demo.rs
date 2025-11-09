@@ -67,6 +67,63 @@ struct Args {
 // Core Data Structures
 // =============================================================================
 
+/// Pending request tracker: maps sequence number to SMF address for response forwarding
+#[derive(Clone)]
+struct PendingRequests {
+    requests: Arc<RwLock<HashMap<u32, RequestInfo>>>,
+}
+
+#[derive(Clone, Debug)]
+struct RequestInfo {
+    smf_addr: SocketAddr,
+    timestamp: Instant,
+    is_broadcast: bool,
+    responses_received: usize,
+}
+
+impl PendingRequests {
+    fn new() -> Self {
+        Self {
+            requests: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    async fn insert(&self, seq: u32, smf_addr: SocketAddr, is_broadcast: bool) {
+        let info = RequestInfo {
+            smf_addr,
+            timestamp: Instant::now(),
+            is_broadcast,
+            responses_received: 0,
+        };
+        self.requests.write().await.insert(seq, info);
+    }
+
+    async fn lookup_and_increment(&self, seq: u32) -> Option<(SocketAddr, bool, usize)> {
+        let mut requests = self.requests.write().await;
+        if let Some(info) = requests.get_mut(&seq) {
+            info.responses_received += 1;
+            Some((info.smf_addr, info.is_broadcast, info.responses_received))
+        } else {
+            None
+        }
+    }
+
+    async fn remove(&self, seq: u32) {
+        self.requests.write().await.remove(&seq);
+    }
+
+    async fn cleanup_stale(&self, max_age: Duration) {
+        let now = Instant::now();
+        self.requests.write().await.retain(|_, info| {
+            now.duration_since(info.timestamp) < max_age
+        });
+    }
+
+    async fn count(&self) -> usize {
+        self.requests.read().await.len()
+    }
+}
+
 /// Session affinity table: maps SEID to backend UPF
 #[derive(Clone)]
 struct SessionTable {
@@ -156,6 +213,7 @@ struct Statistics {
     // Global counters
     total_messages_received: AtomicU64,
     total_messages_sent: AtomicU64,
+    total_responses_forwarded: AtomicU64,
 
     // Per-message-type counters
     msg_type_counts: Arc<RwLock<HashMap<MsgType, u64>>>,
@@ -171,6 +229,9 @@ struct Statistics {
     routed_by_seid: AtomicU64,
     routed_by_load_balance: AtomicU64,
     broadcasts: AtomicU64,
+
+    // Response tracking
+    responses_dropped: AtomicU64,
 }
 
 impl Statistics {
@@ -208,6 +269,14 @@ impl Statistics {
         }
     }
 
+    fn record_response_forwarded(&self) {
+        self.total_responses_forwarded.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn record_response_dropped(&self) {
+        self.responses_dropped.fetch_add(1, Ordering::Relaxed);
+    }
+
     async fn print_report(&self, session_table: &SessionTable, upf_pool: &UpfPool) {
         println!("\n{}", "=".repeat(80));
         println!("PFCP Proxy Statistics Report");
@@ -221,6 +290,10 @@ impl Statistics {
         println!("\nGLOBAL METRICS:");
         println!("  Total Messages Received:  {}", total_rx);
         println!("  Total Messages Sent:      {}", total_tx);
+        println!(
+            "  Total Responses Forwarded: {}",
+            self.total_responses_forwarded.load(Ordering::Relaxed)
+        );
         println!("  Active Sessions:          {}", active_sessions);
         println!(
             "  Sessions Established:     {}",
@@ -230,6 +303,11 @@ impl Statistics {
             "  Sessions Deleted:         {}",
             self.sessions_deleted.load(Ordering::Relaxed)
         );
+
+        let dropped = self.responses_dropped.load(Ordering::Relaxed);
+        if dropped > 0 {
+            println!("  ⚠️  Responses Dropped:      {} (no matching request)", dropped);
+        }
 
         // Routing decisions
         println!("\nROUTING DECISIONS:");
@@ -284,6 +362,25 @@ impl Statistics {
 // =============================================================================
 // Message Routing Logic
 // =============================================================================
+
+/// Determine if a message type is a request (vs response)
+fn is_request(msg_type: MsgType) -> bool {
+    matches!(
+        msg_type,
+        MsgType::HeartbeatRequest
+            | MsgType::AssociationSetupRequest
+            | MsgType::AssociationUpdateRequest
+            | MsgType::AssociationReleaseRequest
+            | MsgType::PfdManagementRequest
+            | MsgType::NodeReportRequest
+            | MsgType::SessionEstablishmentRequest
+            | MsgType::SessionModificationRequest
+            | MsgType::SessionDeletionRequest
+            | MsgType::SessionReportResponse // Note: Response from UPF side, but request from SMF perspective
+            | MsgType::SessionSetDeletionRequest
+            | MsgType::SessionSetModificationRequest
+    )
+}
 
 /// Route a PFCP message to appropriate backend(s)
 async fn route_message(
@@ -356,7 +453,7 @@ async fn route_message(
             }
         }
 
-        // Responses from UPF (shouldn't normally receive these, but handle gracefully)
+        // Responses from UPF - these should be forwarded back to SMF
         MsgType::HeartbeatResponse
         | MsgType::SessionEstablishmentResponse
         | MsgType::SessionModificationResponse
@@ -370,8 +467,9 @@ async fn route_message(
         | MsgType::SessionSetDeletionResponse
         | MsgType::SessionSetModificationResponse
         | MsgType::VersionNotSupportedResponse => {
-            // These are responses, route back to SMF (not to backends)
-            RoutingDecision::ToClient
+            // These are responses from UPF, need to forward back to SMF
+            // This is handled in handle_message by looking up pending request
+            RoutingDecision::ResponseToClient
         }
 
         // Other messages: try SEID routing or load balance
@@ -407,7 +505,7 @@ async fn route_message(
 enum RoutingDecision {
     Single(SocketAddr),
     Broadcast(Vec<SocketAddr>),
-    ToClient,
+    ResponseToClient,
     SessionNotFound,
     NoSeid,
     NoBackend,
@@ -423,15 +521,17 @@ async fn handle_message(
     socket: Arc<UdpSocket>,
     session_table: SessionTable,
     upf_pool: Arc<UpfPool>,
+    pending_requests: PendingRequests,
     stats: Arc<Statistics>,
 ) {
-    // Parse message header to get type and SEID
+    // Parse message header to get type, SEID, and sequence number
     // Extract these before any await to avoid Send issues with Box<dyn Message>
-    let (msg_type, seid) = match message::parse(&data) {
+    let (msg_type, seid, sequence) = match message::parse(&data) {
         Ok(msg) => {
             let msg_type = msg.msg_type();
             let seid = msg.seid();
-            (msg_type, seid)
+            let sequence = msg.sequence();
+            (msg_type, seid, sequence)
         }
         Err(e) => {
             eprintln!("❌ Failed to parse PFCP message from {}: {}", src, e);
@@ -442,9 +542,55 @@ async fn handle_message(
     // Record statistics
     stats.record_message_received(msg_type).await;
 
+    // Check if this is a response from a UPF
+    if !is_request(msg_type) {
+        // This is a response from UPF, forward back to original SMF
+        println!(
+            "📨 Received {:?} from UPF {} (seq: {})",
+            msg_type, src, sequence
+        );
+
+        match pending_requests.lookup_and_increment(sequence).await {
+            Some((smf_addr, is_broadcast, response_count)) => {
+                if let Err(e) = socket.send_to(&data, smf_addr).await {
+                    eprintln!("❌ Failed to forward response to SMF {}: {}", smf_addr, e);
+                } else {
+                    println!(
+                        "  ⬅️  Forwarded to SMF {} (response {}/{})",
+                        smf_addr,
+                        response_count,
+                        if is_broadcast {
+                            upf_pool.all_backends().len().to_string()
+                        } else {
+                            "1".to_string()
+                        }
+                    );
+                    stats.record_response_forwarded();
+
+                    // For non-broadcast, remove the pending request after first response
+                    // For broadcast, remove after receiving all responses or timeout
+                    if !is_broadcast {
+                        pending_requests.remove(sequence).await;
+                    } else if response_count >= upf_pool.all_backends().len() {
+                        pending_requests.remove(sequence).await;
+                    }
+                }
+            }
+            None => {
+                println!(
+                    "  ⚠️  No pending request found for sequence {} (may have timed out)",
+                    sequence
+                );
+                stats.record_response_dropped();
+            }
+        }
+        return;
+    }
+
+    // This is a request from SMF, route to UPF(s)
     println!(
-        "📩 Received {:?} from {} (SEID: {:?})",
-        msg_type, src, seid
+        "📩 Received {:?} from SMF {} (SEID: {:?}, seq: {})",
+        msg_type, src, seid, sequence
     );
 
     // Route message
@@ -452,9 +598,13 @@ async fn handle_message(
 
     match decision {
         RoutingDecision::Single(upf_addr) => {
+            // Record pending request for response forwarding
+            pending_requests.insert(sequence, src, false).await;
+
             // Send to single backend
             if let Err(e) = socket.send_to(&data, upf_addr).await {
                 eprintln!("❌ Failed to forward to {}: {}", upf_addr, e);
+                pending_requests.remove(sequence).await;
             } else {
                 println!("  ➜ Forwarded to {}", upf_addr);
                 stats.record_message_sent(upf_addr).await;
@@ -462,20 +612,30 @@ async fn handle_message(
         }
 
         RoutingDecision::Broadcast(backends) => {
+            // Record pending request for response forwarding (broadcast mode)
+            pending_requests.insert(sequence, src, true).await;
+
             // Broadcast to all backends
             println!("  ➜ Broadcasting to {} backends", backends.len());
+            let mut sent_count = 0;
             for upf_addr in backends {
                 if let Err(e) = socket.send_to(&data, upf_addr).await {
                     eprintln!("❌ Failed to broadcast to {}: {}", upf_addr, e);
                 } else {
                     stats.record_message_sent(upf_addr).await;
+                    sent_count += 1;
                 }
+            }
+
+            // If broadcast failed completely, remove pending request
+            if sent_count == 0 {
+                pending_requests.remove(sequence).await;
             }
         }
 
-        RoutingDecision::ToClient => {
-            // This shouldn't happen normally, but log for debugging
-            println!("  ⚠️  Received response message (expected request)");
+        RoutingDecision::ResponseToClient => {
+            // This shouldn't happen for requests, but handled above
+            println!("  ⚠️  Unexpected response classification for request");
         }
 
         RoutingDecision::SessionNotFound => {
@@ -514,6 +674,7 @@ async fn run_proxy(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let socket = Arc::new(UdpSocket::bind(&args.listen).await?);
     let session_table = SessionTable::new();
     let upf_pool = Arc::new(UpfPool::new(backends));
+    let pending_requests = PendingRequests::new();
     let stats = Arc::new(Statistics::new());
 
     // Spawn statistics reporting task
@@ -532,6 +693,17 @@ async fn run_proxy(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    // Spawn cleanup task for stale pending requests
+    let pending_requests_clone = pending_requests.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(30));
+        loop {
+            interval.tick().await;
+            // Remove requests older than 60 seconds
+            pending_requests_clone.cleanup_stale(Duration::from_secs(60)).await;
+        }
+    });
+
     println!("✅ Proxy listening on {}", args.listen);
     println!("   (Press Ctrl+C to stop)\n");
 
@@ -545,6 +717,7 @@ async fn run_proxy(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         let socket_clone = socket.clone();
         let session_table_clone = session_table.clone();
         let upf_pool_clone = upf_pool.clone();
+        let pending_requests_clone = pending_requests.clone();
         let stats_clone = stats.clone();
 
         tokio::spawn(async move {
@@ -554,6 +727,7 @@ async fn run_proxy(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                 socket_clone,
                 session_table_clone,
                 upf_pool_clone,
+                pending_requests_clone,
                 stats_clone,
             )
             .await;
