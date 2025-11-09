@@ -29,32 +29,34 @@ pub mod session_set_modification_response;
 pub mod version_not_supported_response;
 
 use crate::ie::Ie;
-use crate::message::association_release_request::AssociationReleaseRequest;
-use crate::message::association_release_response::AssociationReleaseResponse;
-use crate::message::association_setup_request::AssociationSetupRequest;
-use crate::message::association_setup_response::AssociationSetupResponse;
-use crate::message::association_update_request::AssociationUpdateRequest;
-use crate::message::association_update_response::AssociationUpdateResponse;
-use crate::message::heartbeat_request::HeartbeatRequest;
-use crate::message::heartbeat_response::HeartbeatResponse;
-use crate::message::node_report_request::NodeReportRequest;
-use crate::message::node_report_response::NodeReportResponse;
-use crate::message::pfd_management_request::PfdManagementRequest;
-use crate::message::pfd_management_response::PfdManagementResponse;
-use crate::message::session_deletion_request::SessionDeletionRequest;
-use crate::message::session_deletion_response::SessionDeletionResponse;
-use crate::message::session_establishment_request::SessionEstablishmentRequest;
-use crate::message::session_establishment_response::SessionEstablishmentResponse;
-use crate::message::session_modification_request::SessionModificationRequest;
-use crate::message::session_modification_response::SessionModificationResponse;
-use crate::message::session_report_request::SessionReportRequest;
-use crate::message::session_report_response::SessionReportResponse;
-use crate::message::session_set_deletion_request::SessionSetDeletionRequest;
-use crate::message::session_set_deletion_response::SessionSetDeletionResponse;
-use crate::message::session_set_modification_request::SessionSetModificationRequest;
-use crate::message::session_set_modification_response::SessionSetModificationResponse;
-use crate::message::version_not_supported_response::VersionNotSupportedResponse;
 use std::io;
+
+// Re-export message types for public API
+pub use crate::message::association_release_request::AssociationReleaseRequest;
+pub use crate::message::association_release_response::AssociationReleaseResponse;
+pub use crate::message::association_setup_request::AssociationSetupRequest;
+pub use crate::message::association_setup_response::AssociationSetupResponse;
+pub use crate::message::association_update_request::AssociationUpdateRequest;
+pub use crate::message::association_update_response::AssociationUpdateResponse;
+pub use crate::message::heartbeat_request::HeartbeatRequest;
+pub use crate::message::heartbeat_response::HeartbeatResponse;
+pub use crate::message::node_report_request::NodeReportRequest;
+pub use crate::message::node_report_response::NodeReportResponse;
+pub use crate::message::pfd_management_request::PfdManagementRequest;
+pub use crate::message::pfd_management_response::PfdManagementResponse;
+pub use crate::message::session_deletion_request::SessionDeletionRequest;
+pub use crate::message::session_deletion_response::SessionDeletionResponse;
+pub use crate::message::session_establishment_request::SessionEstablishmentRequest;
+pub use crate::message::session_establishment_response::SessionEstablishmentResponse;
+pub use crate::message::session_modification_request::SessionModificationRequest;
+pub use crate::message::session_modification_response::SessionModificationResponse;
+pub use crate::message::session_report_request::SessionReportRequest;
+pub use crate::message::session_report_response::SessionReportResponse;
+pub use crate::message::session_set_deletion_request::SessionSetDeletionRequest;
+pub use crate::message::session_set_deletion_response::SessionSetDeletionResponse;
+pub use crate::message::session_set_modification_request::SessionSetModificationRequest;
+pub use crate::message::session_set_modification_response::SessionSetModificationResponse;
+pub use crate::message::version_not_supported_response::VersionNotSupportedResponse;
 
 // Message Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
