@@ -135,9 +135,8 @@ struct SessionTable {
 #[derive(Clone, Debug)]
 struct SessionInfo {
     upf_addr: SocketAddr,
-    #[allow(dead_code)] // Reserved for future session duration tracking
+    smf_addr: SocketAddr,  // SMF that owns this session
     created_at: Instant,
-    #[allow(dead_code)] // Reserved for future idle timeout tracking
     last_activity: Instant,
 }
 
@@ -148,10 +147,11 @@ impl SessionTable {
         }
     }
 
-    async fn insert(&self, seid: u64, upf_addr: SocketAddr) {
+    async fn insert(&self, seid: u64, upf_addr: SocketAddr, smf_addr: SocketAddr) {
         let now = Instant::now();
         let info = SessionInfo {
             upf_addr,
+            smf_addr,
             created_at: now,
             last_activity: now,
         };
@@ -160,6 +160,14 @@ impl SessionTable {
 
     async fn lookup(&self, seid: u64) -> Option<SocketAddr> {
         self.sessions.read().await.get(&seid).map(|info| info.upf_addr)
+    }
+
+    async fn lookup_smf(&self, seid: u64) -> Option<SocketAddr> {
+        self.sessions.read().await.get(&seid).map(|info| info.smf_addr)
+    }
+
+    async fn lookup_full(&self, seid: u64) -> Option<(SocketAddr, SocketAddr)> {
+        self.sessions.read().await.get(&seid).map(|info| (info.upf_addr, info.smf_addr))
     }
 
     async fn remove(&self, seid: u64) {
@@ -395,6 +403,7 @@ fn is_upf_request(msg_type: MsgType) -> bool {
 async fn route_message(
     msg_type: MsgType,
     seid: Option<u64>,
+    smf_addr: SocketAddr,  // SMF that sent the request
     session_table: &SessionTable,
     upf_pool: &UpfPool,
     stats: &Statistics,
@@ -420,9 +429,9 @@ async fn route_message(
                 stats.record_routing_decision(false, false);
                 stats.record_session_established();
 
-                // Record SEID mapping (will be updated when we see response with actual SEID)
+                // Record SEID → (UPF, SMF) mapping
                 if let Some(s) = seid {
-                    session_table.insert(s, upf_addr).await;
+                    session_table.insert(s, upf_addr, smf_addr).await;
                 }
 
                 RoutingDecision::Single(upf_addr)
@@ -488,10 +497,10 @@ async fn route_message(
                     stats.record_routing_decision(true, false);
                     RoutingDecision::Single(upf_addr)
                 } else {
-                    // SEID not found, load balance
+                    // SEID not found, load balance and record
                     if let Some(upf_addr) = upf_pool.select_upf() {
                         stats.record_routing_decision(false, false);
-                        session_table.insert(s, upf_addr).await;
+                        session_table.insert(s, upf_addr, smf_addr).await;
                         RoutingDecision::Single(upf_addr)
                     } else {
                         RoutingDecision::NoBackend
@@ -560,19 +569,22 @@ async fn handle_message(
             msg_type, src, seid, sequence
         );
 
-        // For now, route to first available SMF (in production, would track SMF addresses)
-        // Since we track pending requests from SMF, we can infer SMF addresses
-        // For this demo, we need to determine the SMF address somehow
-
         // SEID-based routing: find which SMF owns this session
         if let Some(s) = seid {
-            if let Some(upf_addr) = session_table.lookup(s).await {
+            if let Some((upf_addr, smf_addr)) = session_table.lookup_full(s).await {
                 // Verify this request is from the correct UPF
                 if upf_addr == src {
-                    println!("  ➜ Routing to SMF (need SMF address from session context)");
-                    println!("  ⚠️  SMF routing not yet implemented - need to track SMF addresses");
-                    // TODO: Track SMF addresses in session table
-                    // For now, we can't forward this without knowing SMF address
+                    // Record pending request for response forwarding (from_upf = true)
+                    pending_requests.insert(sequence, src, false, true).await;
+
+                    // Forward to SMF
+                    if let Err(e) = socket.send_to(&data, smf_addr).await {
+                        eprintln!("❌ Failed to forward to SMF {}: {}", smf_addr, e);
+                        pending_requests.remove(sequence).await;
+                    } else {
+                        println!("  ➜ Forwarded to SMF {}", smf_addr);
+                        // Note: We don't record this in upf_message_counts since it's going to SMF
+                    }
                 } else {
                     eprintln!("  ⚠️  SessionReportRequest from wrong UPF (expected {}, got {})", upf_addr, src);
                 }
@@ -643,8 +655,8 @@ async fn handle_message(
         msg_type, src, seid, sequence
     );
 
-    // Route message
-    let decision = route_message(msg_type, seid, &session_table, &upf_pool, &stats).await;
+    // Route message (pass SMF address for session tracking)
+    let decision = route_message(msg_type, seid, src, &session_table, &upf_pool, &stats).await;
 
     match decision {
         RoutingDecision::Single(upf_addr) => {
