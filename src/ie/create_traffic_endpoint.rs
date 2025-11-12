@@ -1,35 +1,10 @@
 //! Create Traffic Endpoint IE.
 
 use crate::ie::f_teid::Fteid;
+use crate::ie::traffic_endpoint_id::TrafficEndpointId;
 use crate::ie::ue_ip_address::UeIpAddress;
 use crate::ie::{Ie, IeType};
 use std::io;
-
-/// Traffic Endpoint ID - 1 byte identifier
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrafficEndpointId {
-    pub id: u8,
-}
-
-impl TrafficEndpointId {
-    pub fn new(id: u8) -> Self {
-        TrafficEndpointId { id }
-    }
-
-    pub fn marshal(&self) -> Vec<u8> {
-        vec![self.id]
-    }
-
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Traffic Endpoint ID payload too short",
-            ));
-        }
-        Ok(TrafficEndpointId { id: payload[0] })
-    }
-}
 
 /// Represents the Create Traffic Endpoint.
 /// Used for multi-access scenarios and traffic steering.
