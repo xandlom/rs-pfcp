@@ -64,7 +64,7 @@ name = "ethernet-session-demo"
 path = "examples/ethernet-session-demo.rs"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 
 [[bench]]
 name = "message_operations"
