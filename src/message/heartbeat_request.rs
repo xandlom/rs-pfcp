@@ -51,8 +51,12 @@ impl HeartbeatRequest {
     ///
     /// let ts = request.recovery_time_stamp().unwrap();
     /// ```
-    pub fn recovery_time_stamp(&self) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
-        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(&self.recovery_time_stamp.payload)
+    pub fn recovery_time_stamp(
+        &self,
+    ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
+        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
+            &self.recovery_time_stamp.payload,
+        )
     }
 
     /// Returns the source IP address if present.
@@ -71,8 +75,11 @@ impl HeartbeatRequest {
     ///
     /// let source_ip = request.source_ip_address().unwrap().unwrap();
     /// ```
-    pub fn source_ip_address(&self) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, io::Error>> {
-        self.source_ip_address.as_ref()
+    pub fn source_ip_address(
+        &self,
+    ) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, io::Error>> {
+        self.source_ip_address
+            .as_ref()
             .map(|ie| crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload))
     }
 
@@ -468,7 +475,8 @@ mod tests {
         assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
 
         // Verify it can be unmarshaled
-        let recovered = RecoveryTimeStamp::unmarshal(&request.recovery_time_stamp_ie().payload).unwrap();
+        let recovered =
+            RecoveryTimeStamp::unmarshal(&request.recovery_time_stamp_ie().payload).unwrap();
         // SystemTime comparison with tolerance (within 1 second)
         let duration = timestamp
             .duration_since(recovered.timestamp)

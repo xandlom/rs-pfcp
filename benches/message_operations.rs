@@ -10,7 +10,7 @@ fn create_heartbeat() -> heartbeat_request::HeartbeatRequest {
     let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
     heartbeat_request::HeartbeatRequest::new(
-        1,    // sequence
+        1, // sequence
         ts_ie,
         None, // source_ip_address
         vec![],
@@ -23,7 +23,7 @@ fn create_heartbeat_with_timestamp() -> heartbeat_request::HeartbeatRequest {
     let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
     heartbeat_request::HeartbeatRequest::new(
-        1,    // sequence
+        1, // sequence
         ts_ie,
         None, // source_ip_address
         vec![],

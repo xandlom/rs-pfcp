@@ -46,8 +46,12 @@ impl HeartbeatResponse {
     ///
     /// let ts = response.recovery_time_stamp().unwrap();
     /// ```
-    pub fn recovery_time_stamp(&self) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
-        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(&self.recovery_time_stamp.payload)
+    pub fn recovery_time_stamp(
+        &self,
+    ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
+        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
+            &self.recovery_time_stamp.payload,
+        )
     }
 
     /// Returns a slice of additional IEs.
