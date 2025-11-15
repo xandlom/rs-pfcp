@@ -4,47 +4,54 @@
 
 use std::io;
 
+/// Cause values per 3GPP TS 29.244 Table 8.2.1-1
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum CauseValue {
+    Reserved = 0,
     RequestAccepted = 1,
-    RequestRejected = 2,
-    SessionContextNotFound = 3,
-    MandatoryIeMissing = 4,
-    ConditionalIeMissing = 5,
-    InvalidLength = 6,
-    MandatoryIeIncorrect = 7,
-    InvalidForwardingPolicy = 8,
-    InvalidFteid = 9,
-    NoEstablishedPfcpassociation = 10,
-    RuleCreationModificationFailure = 11,
-    PfcpeEntityInCongestion = 12,
-    NoResourcesAvailable = 13,
-    ServiceNotSupported = 14,
-    SystemFailure = 15,
-    RedirectionRequested = 16,
+    MoreUsageReportToSend = 2,
+    RequestRejected = 64,
+    SessionContextNotFound = 65,
+    MandatoryIeMissing = 66,
+    ConditionalIeMissing = 67,
+    InvalidLength = 68,
+    MandatoryIeIncorrect = 69,
+    InvalidForwardingPolicy = 70,
+    InvalidFteid = 71,
+    NoEstablishedPfcpAssociation = 72,
+    RuleCreationModificationFailure = 73,
+    PfcpEntityInCongestion = 74,
+    NoResourcesAvailable = 75,
+    ServiceNotSupported = 76,
+    SystemFailure = 77,
+    RedirectionRequested = 78,
+    AllDynamicAddressesAreOccupied = 79,
     Unknown,
 }
 
 impl From<u8> for CauseValue {
     fn from(v: u8) -> Self {
         match v {
+            0 => CauseValue::Reserved,
             1 => CauseValue::RequestAccepted,
-            2 => CauseValue::RequestRejected,
-            3 => CauseValue::SessionContextNotFound,
-            4 => CauseValue::MandatoryIeMissing,
-            5 => CauseValue::ConditionalIeMissing,
-            6 => CauseValue::InvalidLength,
-            7 => CauseValue::MandatoryIeIncorrect,
-            8 => CauseValue::InvalidForwardingPolicy,
-            9 => CauseValue::InvalidFteid,
-            10 => CauseValue::NoEstablishedPfcpassociation,
-            11 => CauseValue::RuleCreationModificationFailure,
-            12 => CauseValue::PfcpeEntityInCongestion,
-            13 => CauseValue::NoResourcesAvailable,
-            14 => CauseValue::ServiceNotSupported,
-            15 => CauseValue::SystemFailure,
-            16 => CauseValue::RedirectionRequested,
+            2 => CauseValue::MoreUsageReportToSend,
+            64 => CauseValue::RequestRejected,
+            65 => CauseValue::SessionContextNotFound,
+            66 => CauseValue::MandatoryIeMissing,
+            67 => CauseValue::ConditionalIeMissing,
+            68 => CauseValue::InvalidLength,
+            69 => CauseValue::MandatoryIeIncorrect,
+            70 => CauseValue::InvalidForwardingPolicy,
+            71 => CauseValue::InvalidFteid,
+            72 => CauseValue::NoEstablishedPfcpAssociation,
+            73 => CauseValue::RuleCreationModificationFailure,
+            74 => CauseValue::PfcpEntityInCongestion,
+            75 => CauseValue::NoResourcesAvailable,
+            76 => CauseValue::ServiceNotSupported,
+            77 => CauseValue::SystemFailure,
+            78 => CauseValue::RedirectionRequested,
+            79 => CauseValue::AllDynamicAddressesAreOccupied,
             _ => CauseValue::Unknown,
         }
     }
@@ -100,7 +107,8 @@ mod tests {
     #[test]
     fn test_cause_value_from_u8() {
         assert_eq!(CauseValue::from(1), CauseValue::RequestAccepted);
-        assert_eq!(CauseValue::from(16), CauseValue::RedirectionRequested);
+        assert_eq!(CauseValue::from(66), CauseValue::MandatoryIeMissing);
+        assert_eq!(CauseValue::from(78), CauseValue::RedirectionRequested);
         assert_eq!(CauseValue::from(99), CauseValue::Unknown);
     }
 }

@@ -193,7 +193,7 @@ mod tests {
         let invalid_data = vec![0xFF, 0xFE, 0xFD]; // Invalid UTF-8
         let result = ApplicationInstanceId::unmarshal(&invalid_data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

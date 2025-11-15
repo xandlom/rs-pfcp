@@ -4,6 +4,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Set Deletion Request message.
@@ -97,10 +98,13 @@ impl SessionSetDeletionRequestBuilder {
 
     /// Tries to build the Session Set Deletion Request message.
     /// Returns an error if required fields are missing.
-    pub fn try_build(self) -> Result<SessionSetDeletionRequest, io::Error> {
+    pub fn try_build(self) -> Result<SessionSetDeletionRequest, PfcpError> {
         let node_id = self
             .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID is required"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::SessionSetDeletionRequest),
+            })?;
         Ok(SessionSetDeletionRequest::new(
             self.sequence,
             node_id,
@@ -145,7 +149,7 @@ impl Message for SessionSetDeletionRequest {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -167,7 +171,10 @@ impl Message for SessionSetDeletionRequest {
         }
 
         let node_id = node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::SessionSetDeletionRequest),
+            })?;
 
         Ok(SessionSetDeletionRequest {
             header,
@@ -490,7 +497,7 @@ mod tests {
     fn test_session_set_deletion_request_builder_try_build_missing_node_id() {
         let result = SessionSetDeletionRequestBuilder::new(123).try_build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

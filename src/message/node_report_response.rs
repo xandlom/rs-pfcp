@@ -4,6 +4,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Node Report Response message.
@@ -78,7 +79,7 @@ impl Message for NodeReportResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -102,9 +103,15 @@ impl Message for NodeReportResponse {
         }
 
         let node_id = node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::NodeReportResponse),
+            })?;
         let cause =
-            cause.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE"))?;
+            cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::NodeReportResponse),
+            })?;
 
         Ok(NodeReportResponse {
             header,

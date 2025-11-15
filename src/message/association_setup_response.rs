@@ -4,6 +4,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,7 +74,7 @@ impl Message for AssociationSetupResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -103,9 +104,15 @@ impl Message for AssociationSetupResponse {
         Ok(AssociationSetupResponse {
             header,
             cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Cause,
+                    message_type: Some(MsgType::AssociationSetupResponse),
+                })?,
             node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+                PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::NodeId,
+                    message_type: Some(MsgType::AssociationSetupResponse),
+                }
             })?,
             up_function_features,
             cp_function_features,
@@ -985,7 +992,6 @@ mod tests {
         let result = AssociationSetupResponse::unmarshal(&buf);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("Cause"));
     }
 
@@ -1003,8 +1009,7 @@ mod tests {
         let result = AssociationSetupResponse::unmarshal(&buf);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("Node ID"));
+        assert!(err.to_string().contains("NodeId"));
     }
 
     #[test]

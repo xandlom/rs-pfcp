@@ -1,6 +1,7 @@
 //! PFCP message header.
 
 use crate::message::MsgType;
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a PFCP message header.
@@ -101,12 +102,12 @@ impl Header {
     }
 
     /// Deserializes a byte slice into a Header.
-    pub fn unmarshal(b: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(b: &[u8]) -> Result<Self, PfcpError> {
         if b.len() < 8 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Header too short",
-            ));
+            return Err(PfcpError::InvalidHeader {
+                reason: "Header too short".into(),
+                position: Some(0),
+            });
         }
 
         let flags = b[0];
@@ -121,10 +122,10 @@ impl Header {
         let mut offset = 4;
         let seid = if has_seid {
             if b.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Header with SEID too short",
-                ));
+                return Err(PfcpError::InvalidHeader {
+                    reason: "Header with SEID too short".into(),
+                    position: Some(offset),
+                });
             }
             offset += 8;
             u64::from_be_bytes([
@@ -142,10 +143,10 @@ impl Header {
         };
 
         if b.len() < offset + 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Header sequence number part too short",
-            ));
+            return Err(PfcpError::InvalidHeader {
+                reason: "Header sequence number part too short".into(),
+                position: Some(offset),
+            });
         }
         let sequence_number = u32::from_be_bytes([0, b[offset], b[offset + 1], b[offset + 2]]);
         let message_priority = b[offset + 3];

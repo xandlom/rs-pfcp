@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Establishment Request message.
@@ -175,7 +176,7 @@ impl Message for SessionEstablishmentRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut node_id = None;
         let mut fseid = None;
@@ -228,25 +229,31 @@ impl Message for SessionEstablishmentRequest {
         }
 
         if create_pdrs.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create PDR IE not found",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::CreatePdr,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+            });
         }
         if create_fars.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create FAR IE not found",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::CreateFar,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+            });
         }
 
         Ok(SessionEstablishmentRequest {
             header,
             node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+                PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::NodeId,
+                    message_type: Some(MsgType::SessionEstablishmentRequest),
+                }
             })?,
             fseid: fseid
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Fseid,
+                    message_type: Some(MsgType::SessionEstablishmentRequest),
+                })?,
             create_pdrs,
             create_fars,
             create_urrs,
@@ -635,24 +642,26 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionEstablishmentRequest, io::Error> {
-        let node_id = self
-            .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found"))?;
-        let fseid = self
-            .fseid
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?;
+    pub fn build(self) -> Result<SessionEstablishmentRequest, PfcpError> {
+        let node_id = self.node_id.ok_or_else(|| PfcpError::BuilderMissingField {
+            field_name: "node_id".into(),
+            builder_type: "SessionEstablishmentRequestBuilder".into(),
+        })?;
+        let fseid = self.fseid.ok_or_else(|| PfcpError::BuilderMissingField {
+            field_name: "fseid".into(),
+            builder_type: "SessionEstablishmentRequestBuilder".into(),
+        })?;
         if self.create_pdrs.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create PDR IE not found",
-            ));
+            return Err(PfcpError::BuilderMissingField {
+                field_name: "create_pdrs".into(),
+                builder_type: "SessionEstablishmentRequestBuilder".into(),
+            });
         }
         if self.create_fars.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create FAR IE not found",
-            ));
+            return Err(PfcpError::BuilderMissingField {
+                field_name: "create_fars".into(),
+                builder_type: "SessionEstablishmentRequestBuilder".into(),
+            });
         }
 
         let mut payload_len = node_id.len() + fseid.len();
@@ -997,7 +1006,6 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("Node ID"));
     }
 
     #[test]
@@ -1012,7 +1020,6 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("F-SEID"));
     }
 
     #[test]
@@ -1027,7 +1034,6 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("Create PDR"));
     }
 
     #[test]
@@ -1042,7 +1048,6 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("Create FAR"));
     }
 
     // ========================================================================

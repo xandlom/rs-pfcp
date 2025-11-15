@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Report Response message.
@@ -95,7 +96,7 @@ impl Message for SessionReportResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -129,7 +130,10 @@ impl Message for SessionReportResponse {
         Ok(SessionReportResponse {
             header,
             cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Cause,
+                    message_type: Some(MsgType::SessionReportResponse),
+                })?,
             offending_ie,
             update_bar_within_session_report_response,
             pfcpsrrsp_flags,
@@ -385,10 +389,11 @@ impl SessionReportResponseBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionReportResponse, io::Error> {
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE is required"))?;
+    pub fn build(self) -> Result<SessionReportResponse, PfcpError> {
+        let cause = self.cause.ok_or_else(|| PfcpError::BuilderMissingField {
+            field_name: "cause".into(),
+            builder_type: "SessionReportResponseBuilder".into(),
+        })?;
 
         let mut payload_len = cause.len();
         if let Some(ie) = &self.offending_ie {

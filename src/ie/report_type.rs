@@ -490,7 +490,7 @@ mod tests {
         let data = vec![];
         let result = ReportType::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

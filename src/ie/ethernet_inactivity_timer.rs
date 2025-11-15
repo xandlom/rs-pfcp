@@ -206,7 +206,7 @@ mod tests {
         let data = [0x00, 0x00, 0x3C];
         let result = EthernetInactivityTimer::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

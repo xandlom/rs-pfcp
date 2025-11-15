@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a PFD Management Response message.
@@ -84,7 +85,7 @@ impl Message for PfdManagementResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -107,7 +108,10 @@ impl Message for PfdManagementResponse {
         Ok(PfdManagementResponse {
             header,
             cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Cause,
+                    message_type: Some(MsgType::PfdManagementResponse),
+                })?,
             offending_ie,
             node_id,
             ies,

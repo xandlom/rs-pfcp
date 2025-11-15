@@ -120,7 +120,12 @@
 //! - [`ie`] - Information Elements (IEs) as defined in 3GPP TS 29.244
 //! - [`message`] - PFCP message types for session and association management
 //! - [`comparison`] - Message comparison tools for testing, debugging, and validation
+//! - [`error`] - Structured PFCP error types with 3GPP compliance
 
 pub mod comparison;
+pub mod error;
 pub mod ie;
 pub mod message;
+
+// Re-export commonly used error types
+pub use error::{PfcpError, ResultExt};

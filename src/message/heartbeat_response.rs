@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Heartbeat Response message.
@@ -92,7 +93,7 @@ impl Message for HeartbeatResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut recovery_time_stamp = None;
         let mut ies = Vec::new();
@@ -110,10 +111,10 @@ impl Message for HeartbeatResponse {
 
         // Validate mandatory IE is present per 3GPP TS 29.244 Table 7.4.2.2-1
         let recovery_time_stamp = recovery_time_stamp.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "HeartbeatResponse: Missing mandatory Recovery Time Stamp IE (3GPP TS 29.244 Table 7.4.2.2-1)",
-            )
+            PfcpError::MissingMandatoryIe {
+                ie_type: IeType::RecoveryTimeStamp,
+                message_type: Some(MsgType::HeartbeatResponse),
+            }
         })?;
 
         Ok(HeartbeatResponse {
@@ -634,7 +635,7 @@ mod tests {
         // Unmarshaling should fail because recovery_time_stamp is mandatory
         let result = HeartbeatResponse::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

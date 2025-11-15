@@ -4,6 +4,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,7 +75,7 @@ impl Message for AssociationReleaseResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -97,9 +98,15 @@ impl Message for AssociationReleaseResponse {
         Ok(AssociationReleaseResponse {
             header,
             cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Cause,
+                    message_type: Some(MsgType::AssociationReleaseResponse),
+                })?,
             node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+                PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::NodeId,
+                    message_type: Some(MsgType::AssociationReleaseResponse),
+                }
             })?,
         })
     }
