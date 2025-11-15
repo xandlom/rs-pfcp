@@ -184,14 +184,7 @@ fn test_association_release_request_marshal_unmarshal() {
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
     let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
-    let mut header = Header::new(MsgType::AssociationReleaseRequest, false, 0, 0x112233);
-    let payload_len = node_id_ie.len();
-    header.length = payload_len + header.len() - 4;
-
-    let req = AssociationReleaseRequest {
-        header,
-        node_id: node_id_ie.clone(),
-    };
+    let req = AssociationReleaseRequest::new(0x112233, node_id_ie.clone());
 
     let serialized = req.marshal();
     let unmarshaled = AssociationReleaseRequest::unmarshal(&serialized).unwrap();
@@ -209,15 +202,7 @@ fn test_association_release_response_marshal_unmarshal() {
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
     let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
-    let mut header = Header::new(MsgType::AssociationReleaseResponse, false, 0, 0x112233);
-    let payload_len = cause_ie.len() + node_id_ie.len();
-    header.length = payload_len + header.len() - 4;
-
-    let res = AssociationReleaseResponse {
-        header,
-        cause: cause_ie.clone(),
-        node_id: node_id_ie.clone(),
-    };
+    let res = AssociationReleaseResponse::new(0x112233, cause_ie.clone(), node_id_ie.clone());
 
     let serialized = res.marshal();
     let unmarshaled = AssociationReleaseResponse::unmarshal(&serialized).unwrap();
