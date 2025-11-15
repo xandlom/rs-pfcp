@@ -76,19 +76,22 @@ impl SessionEstablishmentResponse {
         &self,
     ) -> Option<Result<crate::ie::load_control_information::LoadControlInformation, io::Error>>
     {
-        self.load_control_information
-            .as_ref()
-            .map(|ie| crate::ie::load_control_information::LoadControlInformation::unmarshal(&ie.payload))
+        self.load_control_information.as_ref().map(|ie| {
+            crate::ie::load_control_information::LoadControlInformation::unmarshal(&ie.payload)
+        })
     }
 
     /// Returns the overload control information if present.
     pub fn overload_control_information(
         &self,
-    ) -> Option<Result<crate::ie::overload_control_information::OverloadControlInformation, io::Error>>
-    {
-        self.overload_control_information
-            .as_ref()
-            .map(|ie| crate::ie::overload_control_information::OverloadControlInformation::unmarshal(&ie.payload))
+    ) -> Option<
+        Result<crate::ie::overload_control_information::OverloadControlInformation, io::Error>,
+    > {
+        self.overload_control_information.as_ref().map(|ie| {
+            crate::ie::overload_control_information::OverloadControlInformation::unmarshal(
+                &ie.payload,
+            )
+        })
     }
 
     /// Returns a slice of additional IEs.

@@ -708,7 +708,7 @@ fn test_session_establishment_response_multiple_created_pdrs() {
         .unwrap();
 
     // Verify the response contains both Created PDR IEs
-    assert_eq!(response.created_pdrs.len(), 2);
+    assert_eq!(response.created_pdrs().len(), 2);
     assert_eq!(response.seid(), Some(seid));
     assert_eq!(response.sequence(), sequence);
 
@@ -721,15 +721,15 @@ fn test_session_establishment_response_multiple_created_pdrs() {
         .unwrap();
 
     // Verify unmarshaled response has both Created PDR IEs
-    assert_eq!(unmarshaled.created_pdrs.len(), 2);
+    assert_eq!(unmarshaled.created_pdrs().len(), 2);
     assert_eq!(unmarshaled.seid(), Some(seid));
     assert_eq!(unmarshaled.sequence(), sequence);
 
     // Verify the Created PDR contents
     let created_pdr1_unmarshaled =
-        CreatedPdr::unmarshal(&unmarshaled.created_pdrs[0].payload).unwrap();
+        CreatedPdr::unmarshal(&unmarshaled.created_pdrs()[0].payload).unwrap();
     let created_pdr2_unmarshaled =
-        CreatedPdr::unmarshal(&unmarshaled.created_pdrs[1].payload).unwrap();
+        CreatedPdr::unmarshal(&unmarshaled.created_pdrs()[1].payload).unwrap();
 
     assert_eq!(created_pdr1_unmarshaled.pdr_id.value, 1);
     assert_eq!(created_pdr1_unmarshaled.f_teid.teid, 0x12345679);
