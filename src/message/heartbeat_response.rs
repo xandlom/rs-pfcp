@@ -7,9 +7,9 @@ use std::io;
 /// Represents a Heartbeat Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeartbeatResponse {
-    pub header: Header,
-    pub recovery_time_stamp: Ie, // M - 3GPP TS 29.244 Table 7.4.2.2-1 - IE Type 96
-    pub ies: Vec<Ie>,
+    header: Header,
+    recovery_time_stamp: Ie, // M - 3GPP TS 29.244 Table 7.4.2.2-1 - IE Type 96
+    ies: Vec<Ie>,
 }
 
 impl HeartbeatResponse {
@@ -28,6 +28,38 @@ impl HeartbeatResponse {
             recovery_time_stamp: ts,
             ies,
         }
+    }
+
+    // Typed accessors (recommended API)
+
+    /// Returns the recovery time stamp.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::heartbeat_response::HeartbeatResponseBuilder;
+    ///
+    /// let response = HeartbeatResponseBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
+    ///     .build();
+    ///
+    /// let ts = response.recovery_time_stamp().unwrap();
+    /// ```
+    pub fn recovery_time_stamp(&self) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
+        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(&self.recovery_time_stamp.payload)
+    }
+
+    /// Returns a slice of additional IEs.
+    pub fn additional_ies(&self) -> &[Ie] {
+        &self.ies
+    }
+
+    // Raw IE accessors (compatibility layer)
+
+    /// Returns the raw recovery time stamp IE.
+    pub fn recovery_time_stamp_ie(&self) -> &Ie {
+        &self.recovery_time_stamp
     }
 }
 
@@ -219,10 +251,10 @@ mod tests {
         assert_eq!(response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::HeartbeatResponse);
         assert_eq!(
-            response.recovery_time_stamp.ie_type,
+            response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(response.ies.is_empty());
+        assert!(response.additional_ies().is_empty());
     }
 
     #[test]
@@ -236,7 +268,7 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 12345);
-        assert_eq!(response.recovery_time_stamp, recovery_ie);
+        assert_eq!(response.recovery_time_stamp_ie(), &recovery_ie);
     }
 
     #[test]
@@ -251,7 +283,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.additional_ies().len(), 3);
         assert_eq!(response.ies[0], ie1);
         assert_eq!(response.ies[1], ie2);
         assert_eq!(response.ies[2], ie3);
@@ -271,8 +303,8 @@ mod tests {
             .build();
 
         assert_eq!(response.sequence(), 12345);
-        assert_eq!(response.recovery_time_stamp, recovery_ie);
-        assert_eq!(response.ies.len(), 1);
+        assert_eq!(response.recovery_time_stamp_ie(), &recovery_ie);
+        assert_eq!(response.additional_ies().len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }
 
@@ -301,17 +333,17 @@ mod tests {
 
         assert_eq!(response.sequence(), 1000);
         assert_eq!(
-            response.recovery_time_stamp.ie_type,
+            response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
 
         // Verify the IE was created correctly
-        let ie = &response.recovery_time_stamp;
+        let ie = response.recovery_time_stamp_ie();
         assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
 
         // Verify it can be unmarshaled
         let recovered =
-            RecoveryTimeStamp::unmarshal(&response.recovery_time_stamp.payload).unwrap();
+            RecoveryTimeStamp::unmarshal(&response.recovery_time_stamp_ie().payload).unwrap();
         // SystemTime comparison with tolerance (within 1 second)
         let duration = timestamp
             .duration_since(recovered.timestamp)
@@ -397,7 +429,7 @@ mod tests {
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 8000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
     }
@@ -430,20 +462,20 @@ mod tests {
 
         assert_eq!(response.sequence(), 10000);
         assert_eq!(
-            response.recovery_time_stamp.ie_type,
+            response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.additional_ies().len(), 3);
 
         // Round trip
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 10000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert_eq!(unmarshaled.ies.len(), 3);
+        assert_eq!(unmarshaled.additional_ies().len(), 3);
     }
 
     #[test]
@@ -457,10 +489,10 @@ mod tests {
 
         assert_eq!(unmarshaled.sequence(), 11000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(unmarshaled.ies.is_empty());
+        assert!(unmarshaled.additional_ies().is_empty());
     }
 
     #[test]
@@ -502,10 +534,10 @@ mod tests {
 
         assert_eq!(response.sequence(), 14000);
         assert_eq!(
-            response.recovery_time_stamp.ie_type,
+            response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert_eq!(response.ies.len(), 3);
+        assert_eq!(response.additional_ies().len(), 3);
     }
 
     #[test]
@@ -566,10 +598,10 @@ mod tests {
         assert_eq!(original, unmarshaled);
         assert_eq!(unmarshaled.sequence(), 17000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert_eq!(unmarshaled.ies.len(), 2);
+        assert_eq!(unmarshaled.additional_ies().len(), 2);
     }
 
     #[test]

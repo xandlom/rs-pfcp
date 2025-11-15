@@ -7,10 +7,10 @@ use std::io;
 /// Represents a Heartbeat Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeartbeatRequest {
-    pub header: Header,
-    pub recovery_time_stamp: Ie, // M - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 96
-    pub source_ip_address: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 192 - When NAT is deployed
-    pub ies: Vec<Ie>,
+    header: Header,
+    recovery_time_stamp: Ie, // M - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 96
+    source_ip_address: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.2.1-1 - IE Type 192 - When NAT is deployed
+    ies: Vec<Ie>,
 }
 
 impl HeartbeatRequest {
@@ -33,6 +33,64 @@ impl HeartbeatRequest {
             source_ip_address: ip,
             ies,
         }
+    }
+
+    // Typed accessors (recommended API)
+
+    /// Returns the recovery time stamp.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
+    ///
+    /// let request = HeartbeatRequestBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
+    ///     .build();
+    ///
+    /// let ts = request.recovery_time_stamp().unwrap();
+    /// ```
+    pub fn recovery_time_stamp(&self) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
+        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(&self.recovery_time_stamp.payload)
+    }
+
+    /// Returns the source IP address if present.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use std::time::SystemTime;
+    /// use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
+    ///
+    /// let request = HeartbeatRequestBuilder::new(1)
+    ///     .recovery_time_stamp(SystemTime::now())
+    ///     .source_ip_address(Ipv4Addr::new(192, 168, 1, 1))
+    ///     .build();
+    ///
+    /// let source_ip = request.source_ip_address().unwrap().unwrap();
+    /// ```
+    pub fn source_ip_address(&self) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, io::Error>> {
+        self.source_ip_address.as_ref()
+            .map(|ie| crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload))
+    }
+
+    /// Returns a slice of additional IEs.
+    pub fn additional_ies(&self) -> &[Ie] {
+        &self.ies
+    }
+
+    // Raw IE accessors (compatibility layer)
+
+    /// Returns the raw recovery time stamp IE.
+    pub fn recovery_time_stamp_ie(&self) -> &Ie {
+        &self.recovery_time_stamp
+    }
+
+    /// Returns the raw source IP address IE if present.
+    pub fn source_ip_address_ie(&self) -> Option<&Ie> {
+        self.source_ip_address.as_ref()
     }
 }
 
@@ -292,11 +350,11 @@ mod tests {
         assert_eq!(request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::HeartbeatRequest);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(request.source_ip_address.is_none());
-        assert!(request.ies.is_empty());
+        assert!(request.source_ip_address_ie().is_none());
+        assert!(request.additional_ies().is_empty());
     }
 
     #[test]
@@ -310,8 +368,8 @@ mod tests {
             .build();
 
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.recovery_time_stamp, recovery_ie);
-        assert!(request.source_ip_address.is_none());
+        assert_eq!(request.recovery_time_stamp_ie(), &recovery_ie);
+        assert!(request.source_ip_address_ie().is_none());
     }
 
     #[test]
@@ -326,10 +384,10 @@ mod tests {
 
         assert_eq!(request.sequence(), 12345);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert_eq!(request.source_ip_address, Some(ip_ie));
+        assert_eq!(request.source_ip_address_ie(), Some(&ip_ie));
     }
 
     #[test]
@@ -351,9 +409,9 @@ mod tests {
 
         assert_eq!(request.sequence(), 12345);
         assert_eq!(request.recovery_time_stamp, recovery_ie);
-        assert_eq!(request.source_ip_address, Some(ip_ie));
-        assert_eq!(request.ies.len(), 1);
-        assert_eq!(request.ies[0], additional_ie);
+        assert_eq!(request.source_ip_address_ie(), Some(&ip_ie));
+        assert_eq!(request.additional_ies().len(), 1);
+        assert_eq!(request.additional_ies()[0], additional_ie);
     }
 
     #[test]
@@ -368,10 +426,10 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(request.ies.len(), 3);
-        assert_eq!(request.ies[0], ie1);
-        assert_eq!(request.ies[1], ie2);
-        assert_eq!(request.ies[2], ie3);
+        assert_eq!(request.additional_ies().len(), 3);
+        assert_eq!(request.additional_ies()[0], ie1);
+        assert_eq!(request.additional_ies()[1], ie2);
+        assert_eq!(request.additional_ies()[2], ie3);
     }
 
     #[test]
@@ -401,16 +459,16 @@ mod tests {
 
         assert_eq!(request.sequence(), 12345);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
 
         // Verify the IE was created correctly
-        let ie = &request.recovery_time_stamp;
+        let ie = request.recovery_time_stamp_ie();
         assert_eq!(ie.ie_type, IeType::RecoveryTimeStamp);
 
         // Verify it can be unmarshaled
-        let recovered = RecoveryTimeStamp::unmarshal(&request.recovery_time_stamp.payload).unwrap();
+        let recovered = RecoveryTimeStamp::unmarshal(&request.recovery_time_stamp_ie().payload).unwrap();
         // SystemTime comparison with tolerance (within 1 second)
         let duration = timestamp
             .duration_since(recovered.timestamp)
@@ -427,8 +485,8 @@ mod tests {
             .source_ip_address(ipv4)
             .build();
 
-        assert!(request.source_ip_address.is_some());
-        let ie = request.source_ip_address.unwrap();
+        assert!(request.source_ip_address_ie().is_some());
+        let ie = request.source_ip_address_ie().unwrap();
         assert_eq!(ie.ie_type, IeType::SourceIpAddress);
 
         // Verify it unmarshals correctly
@@ -446,8 +504,8 @@ mod tests {
             .source_ip_address(ipv6)
             .build();
 
-        assert!(request.source_ip_address.is_some());
-        let ie = request.source_ip_address.unwrap();
+        assert!(request.source_ip_address_ie().is_some());
+        let ie = request.source_ip_address_ie().unwrap();
         assert_eq!(ie.ie_type, IeType::SourceIpAddress);
 
         // Verify the IE contains flags + IPv6 address bytes
@@ -474,10 +532,10 @@ mod tests {
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
         assert_eq!(request.sequence(), 12345);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(request.source_ip_address.is_some());
+        assert!(request.source_ip_address_ie().is_some());
     }
 
     #[test]
@@ -491,7 +549,7 @@ mod tests {
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
         assert_eq!(request.sequence(), 12345);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
     }
@@ -585,7 +643,7 @@ mod tests {
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 7000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
     }
@@ -615,9 +673,9 @@ mod tests {
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.sequence(), 9000);
-        assert!(unmarshaled.source_ip_address.is_some());
+        assert!(unmarshaled.source_ip_address_ie().is_some());
 
-        let ie = unmarshaled.source_ip_address.unwrap();
+        let ie = unmarshaled.source_ip_address_ie().unwrap();
         let source_ip = SourceIpAddress::unmarshal(&ie.payload).unwrap();
         assert_eq!(source_ip.ipv4, Some(ipv4));
     }
@@ -634,9 +692,9 @@ mod tests {
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.sequence(), 10000);
-        assert!(unmarshaled.source_ip_address.is_some());
+        assert!(unmarshaled.source_ip_address_ie().is_some());
 
-        let ie = unmarshaled.source_ip_address.unwrap();
+        let ie = unmarshaled.source_ip_address_ie().unwrap();
         let source_ip = SourceIpAddress::unmarshal(&ie.payload).unwrap();
         assert_eq!(source_ip.ipv6, Some(ipv6));
     }
@@ -652,22 +710,22 @@ mod tests {
 
         assert_eq!(request.sequence(), 11000);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(request.source_ip_address.is_some());
-        assert_eq!(request.ies.len(), 2);
+        assert!(request.source_ip_address_ie().is_some());
+        assert_eq!(request.additional_ies().len(), 2);
 
         // Round trip
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled.sequence(), 11000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(unmarshaled.source_ip_address.is_some());
-        assert_eq!(unmarshaled.ies.len(), 2);
+        assert!(unmarshaled.source_ip_address_ie().is_some());
+        assert_eq!(unmarshaled.additional_ies().len(), 2);
     }
 
     #[test]
@@ -681,11 +739,11 @@ mod tests {
 
         assert_eq!(unmarshaled.sequence(), 12000);
         assert_eq!(
-            unmarshaled.recovery_time_stamp.ie_type,
+            unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(unmarshaled.source_ip_address.is_none());
-        assert!(unmarshaled.ies.is_empty());
+        assert!(unmarshaled.source_ip_address_ie().is_none());
+        assert!(unmarshaled.additional_ies().is_empty());
     }
 
     #[test]
@@ -725,11 +783,11 @@ mod tests {
 
         assert_eq!(request.sequence(), 15000);
         assert_eq!(
-            request.recovery_time_stamp.ie_type,
+            request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
         );
-        assert!(request.source_ip_address.is_some());
-        assert_eq!(request.ies.len(), 3);
+        assert!(request.source_ip_address_ie().is_some());
+        assert_eq!(request.additional_ies().len(), 3);
     }
 
     #[test]
