@@ -278,9 +278,8 @@ fn bench_marshal_into_vs_marshal(c: &mut Criterion) {
 fn bench_batch_marshaling(c: &mut Criterion) {
     let messages: Vec<_> = (0..100)
         .map(|i| {
-            let msg = create_heartbeat();
-            let mut msg = msg;
-            msg.header.sequence_number = i;
+            let mut msg = create_heartbeat();
+            msg.set_sequence(i);
             msg
         })
         .collect();
