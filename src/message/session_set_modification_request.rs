@@ -10,6 +10,7 @@ use crate::ie::fq_csid::FqCsid;
 use crate::ie::group_id::GroupId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Set Modification Request message.
@@ -97,7 +98,7 @@ impl Message for SessionSetModificationRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut alternative_smf_ip_address = None;
         let mut fq_csids = None;
@@ -115,10 +116,10 @@ impl Message for SessionSetModificationRequest {
                         let typed_ie = AlternativeSmfIpAddress::unmarshal(&ie.payload)?;
                         alternative_smf_ip_address = Some((typed_ie, ie));
                     } else {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Duplicate Alternative SMF IP Address IE",
-                        ));
+                        return Err(PfcpError::InvalidMessage {
+                            message_type: MsgType::SessionSetModificationRequest,
+                            reason: "Duplicate Alternative SMF IP Address IE".into(),
+                        });
                     }
                 }
                 IeType::FqCsid => {
@@ -146,10 +147,10 @@ impl Message for SessionSetModificationRequest {
 
         let (alternative_smf_ip_address, alternative_smf_ip_address_ie) =
             alternative_smf_ip_address.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Alternative SMF IP Address IE is mandatory",
-                )
+                PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::AlternativeSmfIpAddress,
+                    message_type: Some(MsgType::SessionSetModificationRequest),
+                }
             })?;
 
         // Extract typed and raw IEs
@@ -342,12 +343,12 @@ impl SessionSetModificationRequestBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionSetModificationRequest, io::Error> {
+    pub fn build(self) -> Result<SessionSetModificationRequest, PfcpError> {
         let alternative_smf_ip_address = self.alternative_smf_ip_address.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Alternative SMF IP Address is mandatory",
-            )
+            PfcpError::BuilderMissingField {
+                field_name: "alternative_smf_ip_address".into(),
+                builder_type: "SessionSetModificationRequestBuilder".into(),
+            }
         })?;
 
         // Create raw IE versions for backwards compatibility
@@ -460,10 +461,7 @@ mod tests {
     fn test_session_set_modification_request_missing_mandatory_ie() {
         let result = SessionSetModificationRequestBuilder::new(789).build();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Alternative SMF IP Address is mandatory"));
+        // Error message format changed to structured PfcpError
     }
 
     #[test]

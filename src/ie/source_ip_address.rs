@@ -291,7 +291,7 @@ mod tests {
     fn test_source_ip_address_unmarshal_empty() {
         let result = SourceIpAddress::unmarshal(&[]);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

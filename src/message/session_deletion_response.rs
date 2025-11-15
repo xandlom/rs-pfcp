@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 
 /// PFCP Session Deletion Response message per 3GPP TS 29.244 Section 7.5.7.
 ///
@@ -102,7 +103,7 @@ impl Message for SessionDeletionResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cursor = header.len() as usize;
         let mut cause = None;
@@ -118,8 +119,7 @@ impl Message for SessionDeletionResponse {
         let mut ies = Vec::new();
 
         while cursor < data.len() {
-            let ie = Ie::unmarshal(&data[cursor..])
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            let ie = Ie::unmarshal(&data[cursor..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
                 IeType::Cause => cause = Some(ie),
@@ -142,7 +142,10 @@ impl Message for SessionDeletionResponse {
         Ok(SessionDeletionResponse {
             header,
             cause: cause.ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "Cause IE not found")
+                PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Cause,
+                    message_type: Some(MsgType::SessionDeletionResponse),
+                }
             })?,
             offending_ie,
             load_control_information,

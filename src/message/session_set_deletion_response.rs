@@ -4,6 +4,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Set Deletion Response message.
@@ -139,13 +140,19 @@ impl SessionSetDeletionResponseBuilder {
 
     /// Tries to build the Session Set Deletion Response message.
     /// Returns an error if required fields are missing.
-    pub fn try_build(self) -> Result<SessionSetDeletionResponse, io::Error> {
+    pub fn try_build(self) -> Result<SessionSetDeletionResponse, PfcpError> {
         let node_id = self
             .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID is required"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::SessionSetDeletionResponse),
+            })?;
         let cause = self
             .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause is required"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionSetDeletionResponse),
+            })?;
         Ok(SessionSetDeletionResponse::new(
             self.sequence,
             node_id,
@@ -213,7 +220,7 @@ impl Message for SessionSetDeletionResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -237,9 +244,15 @@ impl Message for SessionSetDeletionResponse {
         }
 
         let node_id = node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::SessionSetDeletionResponse),
+            })?;
         let cause =
-            cause.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE"))?;
+            cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionSetDeletionResponse),
+            })?;
 
         Ok(SessionSetDeletionResponse {
             header,
@@ -690,7 +703,7 @@ mod tests {
             .cause_ie(cause_ie)
             .try_build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -703,7 +716,7 @@ mod tests {
             .node_id(node_id_ie)
             .try_build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

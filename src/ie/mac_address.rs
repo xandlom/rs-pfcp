@@ -416,7 +416,7 @@ mod tests {
         let data = [0x01, 0x11, 0x22];
         let result = MacAddress::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

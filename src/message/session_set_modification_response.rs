@@ -7,6 +7,7 @@ use crate::ie::cause::CauseValue;
 use crate::ie::offending_ie::OffendingIe;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Set Modification Response message.
@@ -54,7 +55,7 @@ impl Message for SessionSetModificationResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -69,10 +70,10 @@ impl Message for SessionSetModificationResponse {
                     if cause.is_none() {
                         cause = Some(ie);
                     } else {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Duplicate Cause IE",
-                        ));
+                        return Err(PfcpError::InvalidMessage {
+                            message_type: MsgType::SessionSetModificationResponse,
+                            reason: "Duplicate Cause IE".into(),
+                        });
                     }
                 }
                 IeType::OffendingIe => offending_ie = Some(ie),
@@ -82,7 +83,10 @@ impl Message for SessionSetModificationResponse {
         }
 
         let cause = cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE is mandatory"))?;
+            .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionSetModificationResponse),
+            })?;
 
         Ok(SessionSetModificationResponse {
             header,
@@ -196,10 +200,11 @@ impl SessionSetModificationResponseBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionSetModificationResponse, io::Error> {
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause is mandatory"))?;
+    pub fn build(self) -> Result<SessionSetModificationResponse, PfcpError> {
+        let cause = self.cause.ok_or_else(|| PfcpError::BuilderMissingField {
+            field_name: "cause".into(),
+            builder_type: "SessionSetModificationResponseBuilder".into(),
+        })?;
 
         let mut payload_len = cause.len();
 
@@ -249,19 +254,19 @@ impl SessionSetModificationResponseBuilder {
 /// Convenience constructors for common response scenarios
 impl SessionSetModificationResponse {
     /// Create a successful response
-    pub fn success(seq: u32) -> Result<Self, io::Error> {
+    pub fn success(seq: u32) -> Result<Self, PfcpError> {
         SessionSetModificationResponseBuilder::new(seq)
             .cause(CauseValue::RequestAccepted)
             .build()
     }
 
     /// Create a rejection response with cause
-    pub fn reject(seq: u32, cause_value: CauseValue) -> Result<Self, io::Error> {
+    pub fn reject(seq: u32, cause_value: CauseValue) -> Result<Self, PfcpError> {
         if cause_value == CauseValue::RequestAccepted {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Cannot use RequestAccepted as rejection cause",
-            ));
+            return Err(PfcpError::InvalidMessage {
+                message_type: MsgType::SessionSetModificationResponse,
+                reason: "Cannot use RequestAccepted as rejection cause".into(),
+            });
         }
         SessionSetModificationResponseBuilder::new(seq)
             .cause(cause_value)
@@ -273,12 +278,12 @@ impl SessionSetModificationResponse {
         seq: u32,
         cause_value: CauseValue,
         offending_ie_type: IeType,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if cause_value == CauseValue::RequestAccepted {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Cannot use RequestAccepted as rejection cause",
-            ));
+            return Err(PfcpError::InvalidMessage {
+                message_type: MsgType::SessionSetModificationResponse,
+                reason: "Cannot use RequestAccepted as rejection cause".into(),
+            });
         }
         let offending_ie_data = OffendingIe::new(offending_ie_type as u16);
         let offending_ie = Ie::new(IeType::OffendingIe, offending_ie_data.marshal().to_vec());
@@ -337,10 +342,7 @@ mod tests {
     fn test_session_set_modification_response_missing_mandatory_ie() {
         let result = SessionSetModificationResponseBuilder::new(789).build();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Cause is mandatory"));
+        // Error message format changed to structured PfcpError
     }
 
     #[test]

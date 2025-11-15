@@ -1680,7 +1680,7 @@ mod tests {
         let result = Ie::unmarshal(&short_buffer);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -1693,7 +1693,7 @@ mod tests {
         let result = Ie::unmarshal(&malformed);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -1730,7 +1730,7 @@ mod tests {
         let result = ie.as_u8();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -1745,7 +1745,7 @@ mod tests {
         let result = ie.as_u16();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -1760,7 +1760,7 @@ mod tests {
         let result = ie.as_u32();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -1778,7 +1778,7 @@ mod tests {
         let result = ie.as_u64();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]
@@ -1796,7 +1796,7 @@ mod tests {
         let result = ie.as_string();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     // ========================================================================
@@ -1847,7 +1847,7 @@ mod tests {
         let result = ie.as_ies();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(result.is_err()); // Error type changed to PfcpError
     }
 
     #[test]

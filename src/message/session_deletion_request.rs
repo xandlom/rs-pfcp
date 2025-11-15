@@ -4,6 +4,7 @@ use crate::ie::fseid::Fseid;
 use crate::ie::node_id::NodeId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 
 /// PFCP Session Deletion Request message per 3GPP TS 29.244 Section 7.5.6.
 ///
@@ -61,7 +62,7 @@ impl Message for SessionDeletionRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cursor = header.len() as usize;
 
@@ -71,8 +72,7 @@ impl Message for SessionDeletionRequest {
         let mut ies: Vec<Ie> = Vec::new();
 
         while cursor < data.len() {
-            let ie = Ie::unmarshal(&data[cursor..])
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            let ie = Ie::unmarshal(&data[cursor..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
                 IeType::NodeId => node_id = Some(ie),

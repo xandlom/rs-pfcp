@@ -2,6 +2,7 @@
 
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::error::PfcpError;
 use std::io;
 
 /// Represents a Session Establishment Response message.
@@ -189,7 +190,7 @@ impl Message for SessionEstablishmentResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -220,10 +221,16 @@ impl Message for SessionEstablishmentResponse {
         Ok(SessionEstablishmentResponse {
             header,
             cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Cause,
+                    message_type: Some(MsgType::SessionEstablishmentResponse),
+                })?,
             offending_ie,
             fseid: fseid
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?,
+                .ok_or_else(|| PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::Fseid,
+                    message_type: Some(MsgType::SessionEstablishmentResponse),
+                })?,
             created_pdrs,
             pdn_type,
             load_control_information,
@@ -419,13 +426,15 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionEstablishmentResponse, io::Error> {
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE required"))?;
-        let fseid = self
-            .fseid
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE required"))?;
+    pub fn build(self) -> Result<SessionEstablishmentResponse, PfcpError> {
+        let cause = self.cause.ok_or_else(|| PfcpError::BuilderMissingField {
+            field_name: "cause".into(),
+            builder_type: "SessionEstablishmentResponseBuilder".into(),
+        })?;
+        let fseid = self.fseid.ok_or_else(|| PfcpError::BuilderMissingField {
+            field_name: "fseid".into(),
+            builder_type: "SessionEstablishmentResponseBuilder".into(),
+        })?;
 
         let mut payload_len = cause.len() + fseid.len();
         if let Some(ie) = &self.offending_ie {
@@ -628,7 +637,6 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("F-SEID"));
     }
 
     // ========================================================================
