@@ -9,18 +9,12 @@ fn create_heartbeat() -> heartbeat_request::HeartbeatRequest {
     let recovery_ts = recovery_time_stamp::RecoveryTimeStamp::new(SystemTime::now());
     let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
-    let header = header::Header::new(
-        MsgType::HeartbeatRequest,
-        false, // has_seid
-        0,     // seid
-        1,     // sequence
-    );
-    heartbeat_request::HeartbeatRequest {
-        header,
-        recovery_time_stamp: ts_ie,
-        source_ip_address: None,
-        ies: vec![],
-    }
+    heartbeat_request::HeartbeatRequest::new(
+        1,    // sequence
+        ts_ie,
+        None, // source_ip_address
+        vec![],
+    )
 }
 
 /// Create a heartbeat with recovery timestamp
@@ -28,13 +22,12 @@ fn create_heartbeat_with_timestamp() -> heartbeat_request::HeartbeatRequest {
     let recovery_ts = recovery_time_stamp::RecoveryTimeStamp::new(SystemTime::now());
     let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
 
-    let header = header::Header::new(MsgType::HeartbeatRequest, false, 0, 1);
-    heartbeat_request::HeartbeatRequest {
-        header,
-        recovery_time_stamp: ts_ie,
-        source_ip_address: None,
-        ies: vec![],
-    }
+    heartbeat_request::HeartbeatRequest::new(
+        1,    // sequence
+        ts_ie,
+        None, // source_ip_address
+        vec![],
+    )
 }
 
 /// Create a session establishment request with varying complexity
