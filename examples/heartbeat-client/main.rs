@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match socket.recv_from(&mut buf) {
             Ok((n, addr)) => match HeartbeatResponse::unmarshal(&buf[..n]) {
                 Ok(hbres) => {
-                    match RecoveryTimeStamp::unmarshal(&hbres.recovery_time_stamp.payload) {
+                    match RecoveryTimeStamp::unmarshal(&hbres.recovery_time_stamp_ie().payload) {
                         Ok(recovery_ts) => {
                             println!(
                                 "got Heartbeat Response with TS: {:?}, from: {}",

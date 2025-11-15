@@ -8,9 +8,45 @@ use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationReleaseResponse {
-    pub header: Header,
-    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.6-1 - IE Type 60
-    pub cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.4.6-1 - IE Type 19
+    header: Header,
+    node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.6-1 - IE Type 60
+    cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.4.6-1 - IE Type 19
+}
+
+impl AssociationReleaseResponse {
+    pub fn new(seq: u32, cause: Ie, node_id: Ie) -> Self {
+        let mut header = Header::new(MsgType::AssociationReleaseResponse, false, 0, seq);
+        header.length = cause.len() + node_id.len() + (header.len() - 4);
+        AssociationReleaseResponse {
+            header,
+            cause,
+            node_id,
+        }
+    }
+
+    // Typed accessors (recommended API)
+
+    /// Returns the node ID.
+    pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, io::Error> {
+        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload)
+    }
+
+    /// Returns the cause.
+    pub fn cause(&self) -> Result<crate::ie::cause::Cause, io::Error> {
+        crate::ie::cause::Cause::unmarshal(&self.cause.payload)
+    }
+
+    // Raw IE accessors (compatibility layer)
+
+    /// Returns the raw node ID IE.
+    pub fn node_id_ie(&self) -> &Ie {
+        &self.node_id
+    }
+
+    /// Returns the raw cause IE.
+    pub fn cause_ie(&self) -> &Ie {
+        &self.cause
+    }
 }
 
 impl Message for AssociationReleaseResponse {
@@ -84,18 +120,6 @@ impl Message for AssociationReleaseResponse {
 
     fn all_ies(&self) -> Vec<&Ie> {
         vec![&self.cause, &self.node_id]
-    }
-}
-
-impl AssociationReleaseResponse {
-    pub fn new(seq: u32, cause: Ie, node_id: Ie) -> Self {
-        let mut header = Header::new(MsgType::AssociationReleaseResponse, false, 0, seq);
-        header.length = cause.len() + node_id.len() + (header.len() - 4);
-        AssociationReleaseResponse {
-            header,
-            cause,
-            node_id,
-        }
     }
 }
 
@@ -242,8 +266,8 @@ mod tests {
 
         assert_eq!(response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::AssociationReleaseResponse);
-        assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.node_id, node_ie);
+        assert_eq!(response.cause_ie(), &cause_ie);
+        assert_eq!(response.node_id_ie(), &node_ie);
     }
 
     #[test]
@@ -262,8 +286,8 @@ mod tests {
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.sequence(), 12345);
-        assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.node_id, node_ie);
+        assert_eq!(response.cause_ie(), &cause_ie);
+        assert_eq!(response.node_id_ie(), &node_ie);
     }
 
     #[test]

@@ -8,8 +8,30 @@ use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationReleaseRequest {
-    pub header: Header,
-    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.5-1 - IE Type 60
+    header: Header,
+    node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.5-1 - IE Type 60
+}
+
+impl AssociationReleaseRequest {
+    pub fn new(seq: u32, node_id: Ie) -> Self {
+        let mut header = Header::new(MsgType::AssociationReleaseRequest, false, 0, seq);
+        header.length = node_id.len() + (header.len() - 4);
+        AssociationReleaseRequest { header, node_id }
+    }
+
+    // Typed accessor (recommended API)
+
+    /// Returns the node ID.
+    pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, io::Error> {
+        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload)
+    }
+
+    // Raw IE accessor (compatibility layer)
+
+    /// Returns the raw node ID IE.
+    pub fn node_id_ie(&self) -> &Ie {
+        &self.node_id
+    }
 }
 
 impl Message for AssociationReleaseRequest {
@@ -73,14 +95,6 @@ impl Message for AssociationReleaseRequest {
 
     fn all_ies(&self) -> Vec<&Ie> {
         vec![&self.node_id]
-    }
-}
-
-impl AssociationReleaseRequest {
-    pub fn new(seq: u32, node_id: Ie) -> Self {
-        let mut header = Header::new(MsgType::AssociationReleaseRequest, false, 0, seq);
-        header.length = node_id.len() + (header.len() - 4);
-        AssociationReleaseRequest { header, node_id }
     }
 }
 
@@ -148,7 +162,7 @@ mod tests {
 
         assert_eq!(request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::AssociationReleaseRequest);
-        assert_eq!(request.node_id, node_ie);
+        assert_eq!(request.node_id_ie(), &node_ie);
     }
 
     #[test]
@@ -163,7 +177,7 @@ mod tests {
         assert!(result.is_ok());
         let request = result.unwrap();
         assert_eq!(request.sequence(), 12345);
-        assert_eq!(request.node_id, node_ie);
+        assert_eq!(request.node_id_ie(), &node_ie);
     }
 
     #[test]
