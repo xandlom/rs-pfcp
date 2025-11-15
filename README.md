@@ -223,6 +223,33 @@ rs-pfcp/
 - **[IE Compliance](docs/reference/ie-compliance.md)** - Information Element compliance details
 - **[API Documentation](https://docs.rs/rs-pfcp)** - Full API reference on docs.rs
 
+## 🔒 API Stability
+
+rs-pfcp is currently **pre-1.0** (version 0.1.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
+
+**Current Status:**
+- **Version**: 0.1.7
+- **MSRV**: Rust 1.90.0
+- **Spec Compliance**: 3GPP TS 29.244 Release 18
+- **Stability**: Pre-1.0 (API evolving)
+
+### Upgrade Guide
+
+When upgrading between versions:
+1. Check [CHANGELOG.md](CHANGELOG.md) for breaking changes
+2. Run `cargo update -p rs-pfcp`
+3. Fix compiler errors (we prefer compile-time breaks over runtime breaks)
+4. Test your integration
+
+**For detailed API stability guarantees and version roadmap, see [docs/API-STABILITY.md](docs/API-STABILITY.md).**
+
+### Writing Future-Proof Code
+
+✅ **DO**: Use builder patterns, trait methods, and public constructors
+❌ **DON'T**: Access struct fields directly or depend on internal modules
+
+We provide migration guides for all breaking changes and deprecate features before removing them.
+
 ## 🔧 Development
 
 ### Build and Test
