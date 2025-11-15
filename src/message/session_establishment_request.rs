@@ -54,61 +54,125 @@ pub struct SessionEstablishmentRequest {
 
 impl Message for SessionEstablishmentRequest {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        data.extend_from_slice(&self.node_id.marshal());
-        data.extend_from_slice(&self.fseid.marshal());
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.node_id.marshal_into(buf);
+        self.fseid.marshal_into(buf);
         for ie in &self.create_pdrs {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.create_fars {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.create_urrs {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.create_qers {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.create_bars {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.create_traffic_endpoints {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.pdn_type {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pdn_type {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.user_id {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.user_id {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.s_nssai {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.s_nssai {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.trace_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.trace_information {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.recovery_time_stamp {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.recovery_time_stamp {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.cp_function_features {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.cp_function_features {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.apn_dnn {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.apn_dnn {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.user_plane_inactivity_timer {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.user_plane_inactivity_timer {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.pfcpsm_req_flags {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pfcpsm_req_flags {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.ethernet_pdu_session_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.ethernet_pdu_session_information {
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.node_id.len() as usize;
+        size += self.fseid.len() as usize;
+        for ie in &self.create_pdrs {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_fars {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_urrs {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_qers {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_bars {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_traffic_endpoints {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pdn_type {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.user_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.s_nssai {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.trace_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.recovery_time_stamp {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.apn_dnn {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.user_plane_inactivity_timer {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcpsm_req_flags {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.ethernet_pdu_session_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

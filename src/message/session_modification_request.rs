@@ -68,134 +68,271 @@ pub struct SessionModificationRequest {
 
 impl Message for SessionModificationRequest {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        if let Some(ie) = &self.fseid {
-            data.extend_from_slice(&ie.marshal());
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        if let Some(ref ie) = self.fseid {
+            ie.marshal_into(buf);
         }
-        if let Some(ies) = &self.remove_pdrs {
+        if let Some(ref ies) = self.remove_pdrs {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.remove_fars {
+        if let Some(ref ies) = self.remove_fars {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.remove_urrs {
+        if let Some(ref ies) = self.remove_urrs {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.remove_qers {
+        if let Some(ref ies) = self.remove_qers {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.remove_bars {
+        if let Some(ref ies) = self.remove_bars {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.remove_traffic_endpoints {
+        if let Some(ref ies) = self.remove_traffic_endpoints {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.create_pdrs {
+        if let Some(ref ies) = self.create_pdrs {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.create_fars {
+        if let Some(ref ies) = self.create_fars {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.create_urrs {
+        if let Some(ref ies) = self.create_urrs {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.create_qers {
+        if let Some(ref ies) = self.create_qers {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.create_bars {
+        if let Some(ref ies) = self.create_bars {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.create_traffic_endpoints {
+        if let Some(ref ies) = self.create_traffic_endpoints {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.update_pdrs {
+        if let Some(ref ies) = self.update_pdrs {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.update_fars {
+        if let Some(ref ies) = self.update_fars {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.update_urrs {
+        if let Some(ref ies) = self.update_urrs {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.update_qers {
+        if let Some(ref ies) = self.update_qers {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.update_bars {
+        if let Some(ref ies) = self.update_bars {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ies) = &self.update_traffic_endpoints {
+        if let Some(ref ies) = self.update_traffic_endpoints {
             for ie in ies {
-                data.extend_from_slice(&ie.marshal());
+                ie.marshal_into(buf);
             }
         }
-        if let Some(ie) = &self.pdn_type {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pdn_type {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.user_id {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.user_id {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.s_nssai {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.s_nssai {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.trace_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.trace_information {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.recovery_time_stamp {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.recovery_time_stamp {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.cp_function_features {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.cp_function_features {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.apn_dnn {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.apn_dnn {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.user_plane_inactivity_timer {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.user_plane_inactivity_timer {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.pfcpsm_req_flags {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pfcpsm_req_flags {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.ethernet_context_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.ethernet_context_information {
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        if let Some(ref ie) = self.fseid {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ies) = self.remove_pdrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.remove_fars {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.remove_urrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.remove_qers {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.remove_bars {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.remove_traffic_endpoints {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.create_pdrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.create_fars {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.create_urrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.create_qers {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.create_bars {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.create_traffic_endpoints {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.update_pdrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.update_fars {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.update_urrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.update_qers {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.update_bars {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.update_traffic_endpoints {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ie) = self.pdn_type {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.user_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.s_nssai {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.trace_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.recovery_time_stamp {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.apn_dnn {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.user_plane_inactivity_timer {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcpsm_req_flags {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.ethernet_context_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

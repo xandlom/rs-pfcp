@@ -29,56 +29,63 @@ pub struct SessionModificationResponse {
 
 impl Message for SessionModificationResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut header = self.header.clone();
-        // Recalculate length to include all IEs
-        let mut payload_len = self.cause.len();
-        if let Some(ie) = &self.offending_ie {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.created_pdr {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.load_control_information {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.overload_control_information {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.pdn_type {
-            payload_len += ie.len();
-        }
-        for ie in &self.usage_reports {
-            payload_len += ie.len();
-        }
-        for ie in &self.ies {
-            payload_len += ie.len();
-        }
-        header.length = payload_len + header.len() - 4;
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
 
-        let mut data = header.marshal();
-        data.extend_from_slice(&self.cause.marshal());
-        if let Some(ie) = &self.offending_ie {
-            data.extend_from_slice(&ie.marshal());
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.cause.marshal_into(buf);
+        if let Some(ref ie) = self.offending_ie {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.created_pdr {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.created_pdr {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.load_control_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.load_control_information {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.overload_control_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.overload_control_information {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.pdn_type {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pdn_type {
+            ie.marshal_into(buf);
         }
         for ie in &self.usage_reports {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.cause.len() as usize;
+        if let Some(ref ie) = self.offending_ie {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.created_pdr {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.load_control_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.overload_control_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pdn_type {
+            size += ie.len() as usize;
+        }
+        for ie in &self.usage_reports {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

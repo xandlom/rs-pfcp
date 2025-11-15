@@ -30,19 +30,41 @@ impl Message for AssociationSetupRequest {
     }
 
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        data.extend_from_slice(&self.node_id.marshal());
-        data.extend_from_slice(&self.recovery_time_stamp.marshal());
-        if let Some(ie) = &self.up_function_features {
-            data.extend_from_slice(&ie.marshal());
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.node_id.marshal_into(buf);
+        self.recovery_time_stamp.marshal_into(buf);
+        if let Some(ref ie) = self.up_function_features {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.cp_function_features {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.cp_function_features {
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.node_id.len() as usize;
+        size += self.recovery_time_stamp.len() as usize;
+        if let Some(ref ie) = self.up_function_features {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>

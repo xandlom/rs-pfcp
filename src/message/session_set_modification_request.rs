@@ -44,31 +44,57 @@ pub struct SessionSetModificationRequest {
 
 impl Message for SessionSetModificationRequest {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        data.extend_from_slice(&self.alternative_smf_ip_address.to_ie().marshal());
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
 
-        if let Some(ies) = &self.fq_csids {
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.alternative_smf_ip_address_ie.marshal_into(buf);
+        if let Some(ref ies) = self.fq_csids_ies {
             for ie in ies {
-                data.extend_from_slice(&ie.to_ie().marshal());
+                ie.marshal_into(buf);
             }
         }
-
-        if let Some(ies) = &self.group_ids {
+        if let Some(ref ies) = self.group_ids_ies {
             for ie in ies {
-                data.extend_from_slice(&ie.to_ie().marshal());
+                ie.marshal_into(buf);
             }
         }
-
-        if let Some(ies) = &self.cp_ip_addresses {
+        if let Some(ref ies) = self.cp_ip_addresses_ies {
             for ie in ies {
-                data.extend_from_slice(&ie.to_ie().marshal());
+                ie.marshal_into(buf);
             }
         }
-
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.alternative_smf_ip_address_ie.len() as usize;
+        if let Some(ref ies) = self.fq_csids_ies {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.group_ids_ies {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        if let Some(ref ies) = self.cp_ip_addresses_ies {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

@@ -25,74 +25,81 @@ pub struct SessionDeletionResponse {
 
 impl Message for SessionDeletionResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut header = self.header.clone();
-        // Recalculate length to include all IEs
-        let mut payload_len = self.cause.len();
-        if let Some(ie) = &self.offending_ie {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.load_control_information {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.overload_control_information {
-            payload_len += ie.len();
-        }
-        for ie in &self.usage_reports {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.additional_usage_reports_information {
-            payload_len += ie.len();
-        }
-        for ie in &self.packet_rate_status_reports {
-            payload_len += ie.len();
-        }
-        for ie in &self.mbs_session_n4_information {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.pfcpsdrsp_flags {
-            payload_len += ie.len();
-        }
-        for ie in &self.tl_container {
-            payload_len += ie.len();
-        }
-        for ie in &self.ies {
-            payload_len += ie.len();
-        }
-        header.length = payload_len + header.len() - 4;
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
 
-        let mut buffer = header.marshal();
-        buffer.extend_from_slice(&self.cause.marshal());
-        if let Some(ie) = &self.offending_ie {
-            buffer.extend_from_slice(&ie.marshal());
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.cause.marshal_into(buf);
+        if let Some(ref ie) = self.offending_ie {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.load_control_information {
-            buffer.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.load_control_information {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.overload_control_information {
-            buffer.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.overload_control_information {
+            ie.marshal_into(buf);
         }
         for ie in &self.usage_reports {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.additional_usage_reports_information {
-            buffer.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            ie.marshal_into(buf);
         }
         for ie in &self.packet_rate_status_reports {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.mbs_session_n4_information {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.pfcpsdrsp_flags {
-            buffer.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pfcpsdrsp_flags {
+            ie.marshal_into(buf);
         }
         for ie in &self.tl_container {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        buffer
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.cause.len() as usize;
+        if let Some(ref ie) = self.offending_ie {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.load_control_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.overload_control_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.usage_reports {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.packet_rate_status_reports {
+            size += ie.len() as usize;
+        }
+        for ie in &self.mbs_session_n4_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcpsdrsp_flags {
+            size += ie.len() as usize;
+        }
+        for ie in &self.tl_container {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {

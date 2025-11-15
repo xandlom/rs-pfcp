@@ -24,37 +24,75 @@ pub struct SessionReportResponse {
 
 impl Message for SessionReportResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
 
-        data.extend_from_slice(&self.cause.marshal());
-        if let Some(ie) = &self.offending_ie {
-            data.extend_from_slice(&ie.marshal());
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.cause.marshal_into(buf);
+        if let Some(ref ie) = self.offending_ie {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.update_bar_within_session_report_response {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.update_bar_within_session_report_response {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.pfcpsrrsp_flags {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.pfcpsrrsp_flags {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.cp_function_features {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.cp_function_features {
+            ie.marshal_into(buf);
         }
         for ie in &self.usage_reports {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.failed_rules_id {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.failed_rules_id {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.additional_usage_reports_information {
-            data.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            ie.marshal_into(buf);
         }
         for ie in &self.created_updated_usage_reports {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.cause.len() as usize;
+        if let Some(ref ie) = self.offending_ie {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.update_bar_within_session_report_response {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcpsrrsp_flags {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        for ie in &self.usage_reports {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.failed_rules_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.created_updated_usage_reports {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

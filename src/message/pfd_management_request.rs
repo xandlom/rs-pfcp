@@ -57,22 +57,41 @@ impl PfdManagementRequest {
 
 impl Message for PfdManagementRequest {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
 
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
         if let Some(ref node_id) = self.node_id {
-            data.extend_from_slice(&node_id.to_ie().marshal());
+            node_id.to_ie().marshal_into(buf);
         }
-
         if let Some(ref app_pfds) = self.application_ids_pfds {
             for app_pfd in app_pfds {
-                data.extend_from_slice(&app_pfd.to_ie().marshal());
+                app_pfd.to_ie().marshal_into(buf);
             }
         }
-
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        if let Some(ref node_id) = self.node_id {
+            size += node_id.to_ie().len() as usize;
+        }
+        if let Some(ref app_pfds) = self.application_ids_pfds {
+            for app_pfd in app_pfds {
+                size += app_pfd.to_ie().len() as usize;
+            }
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

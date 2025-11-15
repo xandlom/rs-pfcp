@@ -40,9 +40,21 @@ impl Message for AssociationReleaseRequest {
     }
 
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        data.extend_from_slice(&self.node_id.marshal());
-        data
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.node_id.marshal_into(buf);
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.node_id.len() as usize;
+        size
     }
 
     fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>

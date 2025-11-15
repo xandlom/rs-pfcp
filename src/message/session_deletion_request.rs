@@ -22,20 +22,43 @@ pub struct SessionDeletionRequest {
 
 impl Message for SessionDeletionRequest {
     fn marshal(&self) -> Vec<u8> {
-        let mut buffer = self.header.marshal();
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
         for ie in &self.tl_container {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.node_id {
-            buffer.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.node_id {
+            ie.marshal_into(buf);
         }
-        if let Some(ie) = &self.cp_fseid {
-            buffer.extend_from_slice(&ie.marshal());
+        if let Some(ref ie) = self.cp_fseid {
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            buffer.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        buffer
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        for ie in &self.tl_container {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.node_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.cp_fseid {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {

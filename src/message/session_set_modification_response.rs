@@ -25,17 +25,33 @@ pub struct SessionSetModificationResponse {
 
 impl Message for SessionSetModificationResponse {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        data.extend_from_slice(&self.cause.marshal());
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
 
-        if let Some(ie) = &self.offending_ie {
-            data.extend_from_slice(&ie.marshal());
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.cause.marshal_into(buf);
+        if let Some(ref ie) = self.offending_ie {
+            ie.marshal_into(buf);
         }
-
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.cause.len() as usize;
+        if let Some(ref ie) = self.offending_ie {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {

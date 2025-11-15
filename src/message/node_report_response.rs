@@ -47,19 +47,35 @@ impl Message for NodeReportResponse {
     }
 
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
-        data.extend_from_slice(&self.node_id.marshal());
-        data.extend_from_slice(&self.cause.marshal());
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
+        self.node_id.marshal_into(buf);
+        self.cause.marshal_into(buf);
         if let Some(ref ie) = self.offending_ie {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        // Update length
-        let len = (data.len() - 4) as u16;
-        data[2..4].copy_from_slice(&len.to_be_bytes());
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        size += self.node_id.len() as usize;
+        size += self.cause.len() as usize;
+        if let Some(ref ie) = self.offending_ie {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
