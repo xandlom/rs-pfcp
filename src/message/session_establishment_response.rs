@@ -7,14 +7,14 @@ use std::io;
 /// Represents a Session Establishment Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionEstablishmentResponse {
-    pub header: Header,
+    header: Header,
     // TODO: [IE Type 60] Node ID - M - Unique identifier of sending node
-    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 19 - Acceptance/rejection/partial acceptance
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
-    pub fseid: Ie, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 57 - UP F-SEID when cause is success
-    pub created_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 16 - Multiple instances, Grouped IE
-    pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
-    pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 54 - Grouped IE (during overload condition)
+    cause: Ie, // M - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 19 - Acceptance/rejection/partial acceptance
+    offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
+    fseid: Ie, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 57 - UP F-SEID when cause is success
+    created_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 16 - Multiple instances, Grouped IE
+    load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
+    overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 54 - Grouped IE (during overload condition)
     // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
     // TODO: [IE Type 114] Failed Rule ID - C - When cause indicates rule creation/modification failure
     // TODO: [IE Type 129] Created Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
@@ -26,8 +26,107 @@ pub struct SessionEstablishmentResponse {
     // TODO: [IE Type 317] MBS Session N4mb Information - C - Grouped IE (N4mb only) - When any child IE needed
     // TODO: [IE Type 299] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Per clause 5.34.1
     // TODO: [IE Type 336] TL-Container - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - From UPF/CN-TL to SMF/CUC in response
-    pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.3.1-1 - May be legacy/vendor-specific
-    pub ies: Vec<Ie>,
+    pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.3.1-1 - May be legacy/vendor-specific
+    ies: Vec<Ie>,
+}
+
+impl SessionEstablishmentResponse {
+    // Typed accessors (recommended API)
+
+    /// Returns the cause value.
+    pub fn cause(&self) -> Result<crate::ie::cause::Cause, io::Error> {
+        crate::ie::cause::Cause::unmarshal(&self.cause.payload)
+    }
+
+    /// Returns the offending IE if present.
+    pub fn offending_ie(&self) -> Option<Result<crate::ie::offending_ie::OffendingIe, io::Error>> {
+        self.offending_ie
+            .as_ref()
+            .map(|ie| crate::ie::offending_ie::OffendingIe::unmarshal(&ie.payload))
+    }
+
+    /// Returns the F-SEID.
+    pub fn fseid(&self) -> Result<crate::ie::fseid::Fseid, io::Error> {
+        crate::ie::fseid::Fseid::unmarshal(&self.fseid.payload)
+    }
+
+    /// Returns a slice of created PDR IEs.
+    pub fn created_pdrs(&self) -> &[Ie] {
+        &self.created_pdrs
+    }
+
+    /// Returns an iterator over created PDRs with typed access.
+    pub fn created_pdrs_typed(
+        &self,
+    ) -> impl Iterator<Item = Result<crate::ie::created_pdr::CreatedPdr, io::Error>> + '_ {
+        self.created_pdrs
+            .iter()
+            .map(|ie| crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload))
+    }
+
+    /// Returns the PDN type if present.
+    pub fn pdn_type(&self) -> Option<Result<crate::ie::pdn_type::PdnType, io::Error>> {
+        self.pdn_type
+            .as_ref()
+            .map(|ie| crate::ie::pdn_type::PdnType::unmarshal(&ie.payload))
+    }
+
+    /// Returns the load control information if present.
+    pub fn load_control_information(
+        &self,
+    ) -> Option<Result<crate::ie::load_control_information::LoadControlInformation, io::Error>>
+    {
+        self.load_control_information
+            .as_ref()
+            .map(|ie| crate::ie::load_control_information::LoadControlInformation::unmarshal(&ie.payload))
+    }
+
+    /// Returns the overload control information if present.
+    pub fn overload_control_information(
+        &self,
+    ) -> Option<Result<crate::ie::overload_control_information::OverloadControlInformation, io::Error>>
+    {
+        self.overload_control_information
+            .as_ref()
+            .map(|ie| crate::ie::overload_control_information::OverloadControlInformation::unmarshal(&ie.payload))
+    }
+
+    /// Returns a slice of additional IEs.
+    pub fn additional_ies(&self) -> &[Ie] {
+        &self.ies
+    }
+
+    // Raw IE accessors (compatibility layer)
+
+    /// Returns the raw cause IE.
+    pub fn cause_ie(&self) -> &Ie {
+        &self.cause
+    }
+
+    /// Returns the raw offending IE if present.
+    pub fn offending_ie_ie(&self) -> Option<&Ie> {
+        self.offending_ie.as_ref()
+    }
+
+    /// Returns the raw F-SEID IE.
+    pub fn fseid_ie(&self) -> &Ie {
+        &self.fseid
+    }
+
+    /// Returns the raw PDN type IE if present.
+    pub fn pdn_type_ie(&self) -> Option<&Ie> {
+        self.pdn_type.as_ref()
+    }
+
+    /// Returns the raw load control information IE if present.
+    pub fn load_control_information_ie(&self) -> Option<&Ie> {
+        self.load_control_information.as_ref()
+    }
+
+    /// Returns the raw overload control information IE if present.
+    pub fn overload_control_information_ie(&self) -> Option<&Ie> {
+        self.overload_control_information.as_ref()
+    }
 }
 
 impl Message for SessionEstablishmentResponse {
@@ -381,9 +480,9 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.header.seid, 0x1234);
-        assert_eq!(msg.header.sequence_number, 100);
-        assert_eq!(msg.cause.ie_type, IeType::Cause);
+        assert_eq!(msg.seid(), Some(0x1234));
+        assert_eq!(msg.sequence(), 100);
+        assert_eq!(msg.cause_ie().ie_type, IeType::Cause);
     }
 
     #[test]
@@ -393,8 +492,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.header.seid, 0xABCD);
-        assert_eq!(msg.header.sequence_number, 200);
+        assert_eq!(msg.seid(), Some(0xABCD));
+        assert_eq!(msg.sequence(), 200);
     }
 
     #[test]
@@ -405,7 +504,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(!msg.fseid.is_empty());
+        assert!(!msg.fseid_ie().is_empty());
     }
 
     #[test]
@@ -416,7 +515,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.fseid.ie_type, IeType::Fseid);
+        assert_eq!(msg.fseid_ie().ie_type, IeType::Fseid);
     }
 
     // ========================================================================
@@ -433,7 +532,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.created_pdrs.len(), 1);
+        assert_eq!(msg.created_pdrs().len(), 1);
     }
 
     #[test]
@@ -450,7 +549,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.created_pdrs.len(), 3);
+        assert_eq!(msg.created_pdrs().len(), 3);
     }
 
     // ========================================================================
@@ -467,7 +566,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.pdn_type.is_some());
+        assert!(msg.pdn_type_ie().is_some());
     }
 
     #[test]
@@ -493,7 +592,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.load_control_information.is_some());
+        assert!(msg.load_control_information_ie().is_some());
     }
 
     #[test]
@@ -506,7 +605,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.overload_control_information.is_some());
+        assert!(msg.overload_control_information_ie().is_some());
     }
 
     // ========================================================================
@@ -665,8 +764,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.created_pdrs.len(), 1);
-        assert!(msg.pdn_type.is_some());
+        assert_eq!(msg.created_pdrs().len(), 1);
+        assert!(msg.pdn_type_ie().is_some());
     }
 
     // ========================================================================
@@ -686,8 +785,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.created_pdrs.len(), 2);
-        assert!(msg.pdn_type.is_some());
+        assert_eq!(msg.created_pdrs().len(), 2);
+        assert!(msg.pdn_type_ie().is_some());
     }
 
     #[test]
@@ -698,7 +797,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.pdn_type.is_some());
+        assert!(msg.pdn_type_ie().is_some());
     }
 
     #[test]
@@ -709,7 +808,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.pdn_type.is_some());
+        assert!(msg.pdn_type_ie().is_some());
     }
 
     #[test]
@@ -735,7 +834,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.load_control_information.is_some());
+        assert!(msg.load_control_information_ie().is_some());
     }
 
     #[test]
@@ -748,7 +847,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(msg.overload_control_information.is_some());
+        assert!(msg.overload_control_information_ie().is_some());
     }
 
     #[test]
@@ -759,6 +858,6 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.created_pdrs.len(), 0);
+        assert_eq!(msg.created_pdrs().len(), 0);
     }
 }
