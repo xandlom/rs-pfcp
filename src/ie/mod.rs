@@ -903,21 +903,44 @@ impl Ie {
     /// Serializes the IE into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
         let mut data = Vec::new();
-        data.extend_from_slice(&(self.ie_type as u16).to_be_bytes());
+        self.marshal_into(&mut data);
+        data
+    }
+
+    /// Serializes the IE into an existing buffer.
+    ///
+    /// This method appends the marshaled IE to the provided buffer,
+    /// allowing for buffer reuse and avoiding allocations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::ie::{Ie, IeType};
+    ///
+    /// let ie = Ie::new(IeType::Cause, vec![1]);
+    ///
+    /// // Reuse buffer for multiple IEs
+    /// let mut buf = Vec::new();
+    /// ie.marshal_into(&mut buf);
+    /// // Process buf...
+    /// buf.clear();
+    /// ie.marshal_into(&mut buf);
+    /// ```
+    pub fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(&(self.ie_type as u16).to_be_bytes());
 
         let length = if self.is_vendor_specific() {
             self.payload.len() as u16 + 2
         } else {
             self.payload.len() as u16
         };
-        data.extend_from_slice(&length.to_be_bytes());
+        buf.extend_from_slice(&length.to_be_bytes());
 
         if let Some(eid) = self.enterprise_id {
-            data.extend_from_slice(&eid.to_be_bytes());
+            buf.extend_from_slice(&eid.to_be_bytes());
         }
 
-        data.extend_from_slice(&self.payload);
-        data
+        buf.extend_from_slice(&self.payload);
     }
 
     /// Returns true if the IE type legitimately supports zero-length encoding.

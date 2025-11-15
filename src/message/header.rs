@@ -54,6 +54,30 @@ impl Header {
         data
     }
 
+    /// Serializes the Header into an existing buffer.
+    ///
+    /// This method appends the marshaled header to the provided buffer,
+    /// allowing for buffer reuse and avoiding allocations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::header::Header;
+    /// use rs_pfcp::message::MsgType;
+    ///
+    /// let header = Header::new(MsgType::HeartbeatRequest, false, 0, 123);
+    ///
+    /// // Reuse buffer
+    /// let mut buf = Vec::new();
+    /// header.marshal_into(&mut buf);
+    /// assert_eq!(buf.len(), header.len() as usize);
+    /// ```
+    pub fn marshal_into(&self, buf: &mut Vec<u8>) {
+        let start = buf.len();
+        buf.resize(start + self.len() as usize, 0);
+        self.marshal_to(&mut buf[start..]);
+    }
+
     /// Serializes the Header into a byte slice.
     pub fn marshal_to(&self, b: &mut [u8]) {
         let flags = (self.version << 5)

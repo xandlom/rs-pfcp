@@ -236,11 +236,90 @@ fn bench_parse_generic(c: &mut Criterion) {
     });
 }
 
+/// Benchmark comparing marshal() vs marshal_into() for buffer reuse
+fn bench_marshal_into_vs_marshal(c: &mut Criterion) {
+    let msg = create_heartbeat();
+
+    let mut group = c.benchmark_group("marshal_comparison");
+
+    // Benchmark standard marshal() - allocates every time
+    group.bench_function("marshal_allocating", |b| {
+        b.iter(|| {
+            let bytes = black_box(&msg).marshal();
+            black_box(bytes)
+        })
+    });
+
+    // Benchmark marshal_into() - reuses buffer
+    group.bench_function("marshal_into_reuse", |b| {
+        let mut buf = Vec::new();
+        b.iter(|| {
+            buf.clear();
+            black_box(&msg).marshal_into(&mut buf);
+            black_box(buf.len())
+        })
+    });
+
+    // Benchmark marshal_into() with pre-allocated buffer
+    group.bench_function("marshal_into_presized", |b| {
+        let size = msg.marshaled_size();
+        let mut buf = Vec::with_capacity(size);
+        b.iter(|| {
+            buf.clear();
+            black_box(&msg).marshal_into(&mut buf);
+            black_box(buf.len())
+        })
+    });
+
+    group.finish();
+}
+
+/// Benchmark batch marshaling scenario
+fn bench_batch_marshaling(c: &mut Criterion) {
+    let messages: Vec<_> = (0..100)
+        .map(|i| {
+            let msg = create_heartbeat();
+            let mut msg = msg;
+            msg.header.sequence_number = i;
+            msg
+        })
+        .collect();
+
+    let mut group = c.benchmark_group("batch_marshal");
+    group.throughput(Throughput::Elements(100));
+
+    // Batch with allocations
+    group.bench_function("with_allocations", |b| {
+        b.iter(|| {
+            for msg in black_box(&messages) {
+                let bytes = msg.marshal();
+                black_box(bytes);
+            }
+        })
+    });
+
+    // Batch with buffer reuse
+    group.bench_function("with_reuse", |b| {
+        b.iter(|| {
+            let mut buf = Vec::new();
+            for msg in black_box(&messages) {
+                buf.clear();
+                msg.marshal_into(&mut buf);
+                black_box(buf.len());
+            }
+        })
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     message_marshal,
     bench_marshal_heartbeat,
     bench_marshal_heartbeat_with_timestamp,
     bench_marshal_session_varying_complexity,
+    bench_marshal_into_vs_marshal,
+    bench_batch_marshaling,
 );
 
 criterion_group!(

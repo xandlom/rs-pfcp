@@ -125,7 +125,90 @@ impl From<u8> for MsgType {
 
 /// A trait representing a PFCP message.
 pub trait Message {
+    /// Marshals the message into a new `Vec<u8>`.
+    ///
+    /// This is the standard marshaling method that allocates a new vector.
+    /// For better performance in hot paths, consider using `marshal_into`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::{Message, heartbeat_request::HeartbeatRequest};
+    /// use rs_pfcp::ie::{Ie, IeType, recovery_time_stamp::RecoveryTimeStamp};
+    /// use std::time::SystemTime;
+    ///
+    /// let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
+    /// let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+    /// let request = HeartbeatRequest::new(123, ts_ie, None, vec![]);
+    /// let bytes = request.marshal();
+    /// ```
     fn marshal(&self) -> Vec<u8>;
+
+    /// Marshals the message into an existing buffer.
+    ///
+    /// This method appends the marshaled message to the provided buffer,
+    /// allowing for buffer reuse and avoiding allocations in hot paths.
+    ///
+    /// # Performance Note
+    ///
+    /// The default implementation calls `marshal()` and extends the buffer.
+    /// Message types should override this for optimal performance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::{Message, heartbeat_request::HeartbeatRequest};
+    /// use rs_pfcp::ie::{Ie, IeType, recovery_time_stamp::RecoveryTimeStamp};
+    /// use std::time::SystemTime;
+    ///
+    /// let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
+    /// let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+    /// let request = HeartbeatRequest::new(123, ts_ie, None, vec![]);
+    ///
+    /// // Reuse buffer for multiple messages
+    /// let mut buf = Vec::new();
+    /// request.marshal_into(&mut buf);
+    /// // Process buf...
+    /// buf.clear();
+    /// request.marshal_into(&mut buf);
+    /// ```
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        // Default implementation: use existing marshal() method
+        buf.extend_from_slice(&self.marshal());
+    }
+
+    /// Returns the size of the marshaled message in bytes.
+    ///
+    /// This can be used to pre-allocate buffers of the correct size,
+    /// avoiding reallocations during marshaling.
+    ///
+    /// # Performance Note
+    ///
+    /// The default implementation calls `marshal()` which allocates.
+    /// Message types should override this for optimal performance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::message::{Message, heartbeat_request::HeartbeatRequest};
+    /// use rs_pfcp::ie::{Ie, IeType, recovery_time_stamp::RecoveryTimeStamp};
+    /// use std::time::SystemTime;
+    ///
+    /// let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
+    /// let ts_ie = Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec());
+    /// let request = HeartbeatRequest::new(123, ts_ie, None, vec![]);
+    ///
+    /// // Pre-allocate exact size needed
+    /// let size = request.marshaled_size();
+    /// let mut buf = Vec::with_capacity(size);
+    /// request.marshal_into(&mut buf);
+    /// assert_eq!(buf.len(), size);
+    /// ```
+    fn marshaled_size(&self) -> usize {
+        // Default implementation: marshal to get size (inefficient but works)
+        self.marshal().len()
+    }
+
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error>
     where
         Self: Sized;
@@ -178,11 +261,25 @@ pub struct Generic {
 
 impl Message for Generic {
     fn marshal(&self) -> Vec<u8> {
-        let mut data = self.header.marshal();
+        let mut buf = Vec::with_capacity(self.marshaled_size());
+        self.marshal_into(&mut buf);
+        buf
+    }
+
+    fn marshal_into(&self, buf: &mut Vec<u8>) {
+        buf.reserve(self.marshaled_size());
+        self.header.marshal_into(buf);
         for ie in &self.ies {
-            data.extend_from_slice(&ie.marshal());
+            ie.marshal_into(buf);
         }
-        data
+    }
+
+    fn marshaled_size(&self) -> usize {
+        let mut size = self.header.len() as usize;
+        for ie in &self.ies {
+            size += ie.len() as usize;
+        }
+        size
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
