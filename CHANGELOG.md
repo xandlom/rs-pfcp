@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2025-11-15
+
+### Added
+
+#### 📋 IE Type Definitions - Complete 3GPP TS 29.244 v18.10.0 Coverage
+- **80 new IE type definitions** (21e9334, 131882a): Comprehensive type system expansion
+  - IEs 304-353: Advanced 5G features including TSCAI, QoS Monitoring, SDF Filter
+  - IE 389: SR-RAN Node ID
+  - Total IE type definitions now cover full 3GPP TS 29.244 v18.10.0 specification
+  - Enables future implementation of advanced 5G features
+
+#### 🔧 Message Enhancements
+- **PfdManagementResponse** (280485e): Added Node ID field support
+  - Optional Node ID field per 3GPP TS 29.244 Section 7.4.3.2
+  - Enables better network element identification in PFD management workflows
+
+### Changed
+
+#### 🔨 API Breaking Changes
+- **Heartbeat Messages** (8c3fae8): Recovery Time Stamp is now mandatory
+  - Updated HeartbeatRequest and HeartbeatResponse per 3GPP TS 29.244 Section 7.4.4.1
+  - Aligned with specification requirement (Mandatory, not Conditional)
+  - Updated all examples, benchmarks, and tests for compliance
+  - **Breaking Change**: Applications must provide recovery_time_stamp
+
+#### 🧹 Code Cleanup
+- **Message Layer** (ab42b06): Removed deprecated functions
+  - Cleaned up legacy APIs that were deprecated in previous releases
+  - Improved code maintainability and reduced technical debt
+
+#### 📚 Documentation
+- **Message Validation** (39d3b1c, 8450833, d7a1026, 278409b, 6869760, df22626, a5f312d, 6e60fe3, 8827885, afecf10, a5f7f93, 5bd7319):
+  - Comprehensive validation of all 25 message types against 3GPP TS 29.244 v18.10.0
+  - Documented mandatory vs conditional IEs for each message type
+  - Enhanced inline documentation with spec section references
+
+#### 📦 Dependencies
+- **clap**: Updated from 4.5.49 to 4.5.51 (72f21d6)
+- **actions/upload-artifact**: Bumped from v4 to v5 in CI pipeline (d40a777)
+
+### Fixed
+
+#### 🐛 Bug Fixes
+- **SessionDeletionRequest** (80fb12d): Corrected TL-Container IE type
+  - Fixed IE type from 195 to 336 per 3GPP TS 29.244 v18.10.0
+  - Ensures proper message parsing and protocol compliance
+
+#### 📦 Module Exports
+- **Public Re-exports** (20ae451): Added missing public re-exports for IE and message types
+  - Improved library ergonomics and discoverability
+  - Fixed import issues when using the library as a dependency
+
+### Implementation Status
+- **IE Type Definitions**: 353+ types defined (up from ~273, +80 types)
+- **Message Types**: 25/25 (100% complete)
+- **All Tests Passing**: 1,942 comprehensive tests
+
 ## [0.1.6] - 2025-11-06
 
 ### Added
@@ -392,6 +449,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - YAML/JSON message display capabilities
 - Example applications (heartbeat, session management, PCAP reader)
 
+[0.1.7]: https://github.com/xandlom/rs-pfcp/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/xandlom/rs-pfcp/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/xandlom/rs-pfcp/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/xandlom/rs-pfcp/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/xandlom/rs-pfcp/compare/v0.1.2...v0.1.3

@@ -1,6 +1,6 @@
 [package]
 name = "rs-pfcp"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 license = "Apache-2.0"
 description = "High-performance Rust implementation of PFCP (Packet Forwarding Control Protocol) for 5G networks with 100% 3GPP TS 29.244 Release 18 compliance"
