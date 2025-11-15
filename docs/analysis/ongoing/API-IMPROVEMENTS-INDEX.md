@@ -39,7 +39,7 @@ These items significantly improve API stability and developer experience:
    - **Impact:** User uncertainty about API changes
    - **Effort:** Low (1-2 days)
    - **Breaking:** No
-   - **Status:** 📋 Planned
+   - **Status:** ✅ Completed
 
 ### 🟡 Medium Priority (Should Have for v0.2.0)
 
@@ -107,8 +107,8 @@ Add new features without breaking existing code:
 
 ### Phase 3: Documentation & Polish (Week 3-4)
 Document everything and add performance optimizations:
-- ✅ Action #3: API Stability Guarantees
-- ✅ Action #8: Marshal Into Variants
+- ✅ Action #3: API Stability Guarantees (Completed)
+- ✅ Action #8: Marshal Into Variants (Completed)
 - ✅ Action #9: Builder Documentation
 
 ### Phase 4: Testing & Release (Week 4)
