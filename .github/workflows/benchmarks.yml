@@ -30,7 +30,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ubuntu-bench-${{ hashFiles('**/Cargo.lock') }}
+        key: ubuntu-bench-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ubuntu-bench-
 
@@ -69,7 +69,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ubuntu-bench-pr-${{ hashFiles('**/Cargo.lock') }}
+        key: ubuntu-bench-pr-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ubuntu-bench-
 
@@ -131,7 +131,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-bench-check-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-bench-check-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-bench-check-
 
@@ -159,7 +159,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ubuntu-regression-${{ hashFiles('**/Cargo.lock') }}
+        key: ubuntu-regression-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ubuntu-regression-
 
