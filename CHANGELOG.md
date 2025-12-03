@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-12-03
+
+### Added
+
+#### ⚡ Performance
+- **Buffer Reuse API** (b3db158, fb6b0d4): New `marshal_into()` method for all 26 message types
+  - Zero-allocation message marshaling by reusing pre-allocated buffers
+  - Significant performance improvement for high-throughput scenarios
+  - Useful for hot paths where allocations are a bottleneck
+  - All message types now support both `marshal()` and `marshal_into()` APIs
+
+#### 🛠️ Developer Experience
+- **Pre-commit Hook** (15cad30): Tracked Git hook with automated installation
+  - Added `scripts/pre-commit` with comprehensive quality checks
+  - Added `scripts/install-hooks.sh` for easy setup
+  - Runs cargo fmt, clippy, tests, and security scans automatically
+  - Updated documentation with installation instructions
+
+#### 📦 Examples
+- **Ethernet Session Demo** (d2f064d): Enhanced demo with Ethernet Traffic Information
+  - Session Report Request/Response demonstrating UPF → SMF MAC learning
+  - Complete bidirectional MAC address communication lifecycle
+  - Updated to showcase 6 PFCP messages (was 4)
+  - Added Usage Report with periodic trigger containing Ethernet Traffic Info
+
+### Changed
+
+#### 🚨 Breaking Changes
+- **Message Field Encapsulation** (6763624, db80046, 4601f0f): Private fields with typed accessors
+  - **HeartbeatRequest and HeartbeatResponse**: Fields now private, use accessor methods
+    - `recovery_time_stamp()` returns `Result<RecoveryTimeStamp, io::Error>`
+  - **SessionEstablishmentResponse**: All fields private with typed accessors
+    - `cause()`, `fseid()`, `created_pdrs_typed()`, `pdn_type()`, etc.
+  - **AssociationReleaseRequest and AssociationReleaseResponse**: Fields private
+    - `node_id()`, `cause()` return typed results
+  - **Migration**: Replace direct field access (`.field`) with accessor methods (`.field()`)
+  - All examples, benchmarks, and tests updated for new API
+
+#### 📚 Documentation
+- **API Stability Guarantees** (6b6e8e6): Comprehensive versioning and compatibility policy
+  - Documented pre-1.0 stability expectations
+  - Breaking change policy for 0.x releases
+  - Deprecation and migration guidelines
+
+#### 📦 Dependencies
+- **clap**: 4.5.51 → 4.5.53 (ff16a06)
+
+### Fixed
+
+#### 🐛 Bug Fixes
+- **Cause IE** (9d8efc8): Corrected Cause values per 3GPP TS 29.244 Table 8.2.1-1
+  - Fixed incorrect cause value definitions
+  - Ensures proper protocol compliance
+- **Benchmarks** (56e8266): Use `set_sequence()` instead of accessing private header field
+  - Fixed benchmark compilation after field encapsulation
+- **CI** (7fb68c0): Fixed hashFiles pattern for macOS compatibility in GitHub Actions
+  - Changed `**/Cargo.lock` to `Cargo.lock` for reliable caching
+  - Resolves macOS runner failures
+
+### Migration Guide
+
+**From 0.1.7 to 0.2.0:**
+
+```rust
+// Before (0.1.7) - direct field access
+let seq = heartbeat_req.header.sequence;
+let cause = session_resp.cause;
+
+// After (0.2.0) - accessor methods
+let seq = heartbeat_req.header().sequence();
+let cause = session_resp.cause()?;  // Returns Result<Cause, io::Error>
+```
+
+All message accessor methods return `Result` for proper error handling when parsing IE values.
+
 ## [0.1.7] - 2025-11-15
 
 ### Added
