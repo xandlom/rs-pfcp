@@ -51,7 +51,6 @@ use rs_pfcp::ie::{
     ethernet_traffic_information::EthernetTrafficInformationBuilder,
     ethertype::Ethertype,
     far_id::FarId,
-    fseid::Fseid,
     mac_address::MacAddress,
     mac_addresses_detected::MacAddressesDetected,
     mac_addresses_removed::MacAddressesRemoved,
@@ -63,7 +62,9 @@ use rs_pfcp::ie::{
     source_interface::{SourceInterface, SourceInterfaceValue},
     urr_id::UrrId,
     usage_report::UsageReportBuilder,
-    Ie, IeType,
+    Ie,
+    IeType,
+    IntoIe, // Added IntoIe for ergonomic tuple conversions
 };
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
@@ -195,8 +196,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         IeType::Cause,
         Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
     );
-    let fseid = Fseid::new(up_seid, Some(upf_ip), None);
-    let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+    // Use ergonomic tuple conversion for F-SEID IE
+    let fseid_ie = (up_seid, upf_ip).into_ie();
 
     let establishment_resp =
         SessionEstablishmentResponseBuilder::new_with_ie(cp_seid, seq_num - 1, cause_ie)
