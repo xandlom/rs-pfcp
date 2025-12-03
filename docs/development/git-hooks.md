@@ -2,9 +2,17 @@
 
 This document explains the Git hooks configuration for the rs-pfcp project.
 
+## Quick Start
+
+After cloning the repository, install the Git hooks:
+
+```bash
+./scripts/install-hooks.sh
+```
+
 ## Pre-commit Hook
 
-The pre-commit hook (`.git/hooks/pre-commit`) automatically runs quality checks before each commit to ensure code quality and consistency.
+The pre-commit hook automatically runs quality checks before each commit to ensure code quality and consistency. The hook source is maintained in `scripts/pre-commit` and installed to `.git/hooks/pre-commit`.
 
 ### What it does:
 
@@ -66,19 +74,26 @@ git commit --no-verify -m "emergency fix"
 
 **Note:** This should only be used for emergency situations. The hook helps maintain code quality.
 
-### Manual Installation
+### Installation
 
-If you need to reinstall the hook:
+The pre-commit hook is stored in `scripts/pre-commit` and needs to be installed after cloning the repository:
 
 ```bash
-# Make sure you're in the project root
+# Automatic installation (recommended)
+./scripts/install-hooks.sh
+
+# Or manual installation
+cp scripts/pre-commit .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
+
+**Note:** Git hooks in `.git/hooks/` are not tracked by Git, so each developer needs to run the installation script after cloning the repository.
 
 ### Troubleshooting
 
 **Hook not running?**
-- Check if `.git/hooks/pre-commit` exists and is executable
+- Run `./scripts/install-hooks.sh` to install the hook
+- Check if `.git/hooks/pre-commit` exists and is executable: `ls -la .git/hooks/pre-commit`
 - Verify you're committing from the project root directory
 
 **Clippy errors?**

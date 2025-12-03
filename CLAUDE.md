@@ -287,13 +287,26 @@ mod tests {
 
 ## Pre-commit Hook
 
-The repository includes a comprehensive pre-commit hook at `.git/hooks/pre-commit` that runs:
+The repository includes a comprehensive pre-commit hook that runs:
 1. `cargo fmt` (auto-formats code)
 2. `cargo clippy --all-targets --all-features -- -D warnings` (blocks on warnings)
 3. `cargo check --all-targets` (ensures compilation)
 4. Quick tests (30s timeout)
 5. Benchmark project check (`benchmarks/rust/`)
 6. Security scans (detects potential secrets)
+
+### Installing the Hook
+
+After cloning the repository, install the pre-commit hook:
+
+```bash
+# Install the hook (one-time setup)
+./scripts/install-hooks.sh
+
+# Or manually
+cp scripts/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
 
 The hook auto-fixes formatting issues. To bypass (not recommended): `git commit --no-verify`
 
