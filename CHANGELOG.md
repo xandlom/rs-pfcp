@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-12-04
+
+### Added
+
+#### 🎯 API Ergonomics
+- **IntoIe Tuple Conversions** (d03cb20): Ergonomic FSEID construction from tuples
+  - `(u64, Ipv4Addr).into_ie()` - Create F-SEID IE from SEID + IPv4
+  - `(u64, Ipv6Addr).into_ie()` - Create F-SEID IE from SEID + IPv6
+  - `(u64, IpAddr).into_ie()` - Create F-SEID IE from SEID + IP (auto-detects v4/v6)
+  - Reduces boilerplate when constructing session establishment messages
+  - 5 new tests ensuring round-trip correctness
+
+- **Default Trait for Builders** (0c18ec9): More idiomatic Rust builder initialization
+  - `CreatePdrBuilder` now implements `Default` trait
+  - Enables `CreatePdrBuilder::default()` pattern
+  - Simplifies `new()` method using `..Default::default()`
+  - Other builders (CreateFarBuilder, CreateQerBuilder, CreateUrrBuilder, PdiBuilder) already had Default
+
+#### 📚 Documentation
+- **Comprehensive Builder Guide** (617e19e): Complete builder pattern documentation
+  - Quick start examples for all builder types
+  - Message builders (HeartbeatRequest, SessionEstablishment, etc.)
+  - Grouped IE builders (CreatePdr, CreateFar, CreateQer, CreateUrr)
+  - Nested IE builders (Pdi, EthernetPacketFilter)
+  - Common patterns: incremental construction, fluent chaining, helper functions
+  - Advanced features: tuple conversions, validation, convenience constructors
+  - Best practices with ✅ DO / ❌ DON'T examples
+  - Troubleshooting section for common issues
+  - Complete working examples (session establishment, heartbeat, ethernet PDU)
+  - Added to `docs/guides/builder-guide.md` (658 lines)
+
+- **Implementation Planning** (d03cb20, 0c18ec9): Detailed analysis documents
+  - `v0.2.x-stabilization-roadmap.md` - Release strategy and priorities
+  - `v0.2.1-into-ie-implementation.md` - IntoIe design decisions
+  - `v0.2.1-default-trait-implementation.md` - Default trait strategy
+
+### Changed
+
+#### 📦 Examples
+- **Updated Examples** (b68e348): Demonstrate new IntoIe tuple API
+  - `ethernet-session-demo.rs` - Use tuple conversions for FSEID
+  - `pdn-type-demo.rs` - Use tuple conversions for FSEID
+  - Replaced verbose `Fseid::new(...).marshal()` with concise `(seid, ip).into_ie()`
+  - All examples compile and run correctly with new API
+
+### Notes
+- **Non-breaking Release**: All changes are additive only
+- **Test Coverage**: All 1,960 tests passing
+- **Backward Compatible**: Existing code continues to work unchanged
+- **Focus**: This release prioritizes API ergonomics and documentation improvements
+
 ## [0.2.0] - 2025-12-03
 
 ### Added
