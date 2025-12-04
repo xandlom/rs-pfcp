@@ -3,8 +3,7 @@
 //! This example demonstrates how the PDN Type Information Element (Type 99)
 //! is properly integrated into PFCP messages for 5G network identification.
 
-use rs_pfcp::ie::{cause::Cause, fseid::Fseid};
-use rs_pfcp::ie::{pdn_type::PdnType, Ie, IeType};
+use rs_pfcp::ie::{cause::Cause, pdn_type::PdnType, Ie, IeType, IntoIe};
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_establishment_response::SessionEstablishmentResponseBuilder,
@@ -50,10 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Demonstrate Session Establishment Response with PDN Type
     println!("\n3. 📨 Session Establishment Response with PDN Type:");
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
-    let fseid_ie = Ie::new(
-        IeType::Fseid,
-        Fseid::new(0x123456789ABCDEF0, Some(Ipv4Addr::new(10, 0, 0, 1)), None).marshal(),
-    );
+    // Use ergonomic tuple conversion for F-SEID IE
+    let fseid_ie = (0x123456789ABCDEF0u64, Ipv4Addr::new(10, 0, 0, 1)).into_ie();
 
     let session_resp =
         SessionEstablishmentResponseBuilder::new_with_ie(0x987654321, 1001, cause_ie)

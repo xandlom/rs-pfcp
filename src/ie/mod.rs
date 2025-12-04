@@ -1228,6 +1228,76 @@ pub mod builder_support {
             self.as_str().into_ie()
         }
     }
+
+    /// (u64, Ipv4Addr) → F-SEID IE (IPv4 only)
+    ///
+    /// Convenient tuple conversion for F-SEID construction.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let seid = 0x123456789ABCDEFu64;
+    /// let ip = Ipv4Addr::new(10, 0, 0, 1);
+    /// let ie = (seid, ip).into_ie();
+    /// ```
+    impl IntoIe for (u64, Ipv4Addr) {
+        fn into_ie(self) -> Ie {
+            use crate::ie::fseid::Fseid;
+            let (seid, ip) = self;
+            let fseid = Fseid::new(seid, Some(ip), None);
+            Ie::new(IeType::Fseid, fseid.marshal())
+        }
+    }
+
+    /// (u64, Ipv6Addr) → F-SEID IE (IPv6 only)
+    ///
+    /// Convenient tuple conversion for F-SEID construction.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let seid = 0x123456789ABCDEFu64;
+    /// let ip = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+    /// let ie = (seid, ip).into_ie();
+    /// ```
+    impl IntoIe for (u64, Ipv6Addr) {
+        fn into_ie(self) -> Ie {
+            use crate::ie::fseid::Fseid;
+            let (seid, ip) = self;
+            let fseid = Fseid::new(seid, None, Some(ip));
+            Ie::new(IeType::Fseid, fseid.marshal())
+        }
+    }
+
+    /// (u64, IpAddr) → F-SEID IE (dispatches based on IP version)
+    ///
+    /// Convenient tuple conversion for F-SEID construction that handles both IPv4 and IPv6.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let seid = 0x123456789ABCDEFu64;
+    /// let ip: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+    /// let ie = (seid, ip).into_ie();
+    /// ```
+    impl IntoIe for (u64, IpAddr) {
+        fn into_ie(self) -> Ie {
+            let (seid, ip) = self;
+            match ip {
+                IpAddr::V4(v4) => (seid, v4).into_ie(),
+                IpAddr::V6(v6) => (seid, v6).into_ie(),
+            }
+        }
+    }
 }
 
 // Re-export IntoIe for convenience
@@ -1914,6 +1984,87 @@ mod tests {
                 "Failed for {:?}",
                 ie_type
             );
+        }
+    }
+
+    // IntoIe trait tests for tuple conversions
+    mod into_ie_tests {
+        use super::*;
+        use crate::ie::fseid::Fseid;
+        use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+        #[test]
+        fn test_into_ie_tuple_fseid_ipv4() {
+            let seid = 0x123456789ABCDEFu64;
+            let ipv4 = Ipv4Addr::new(10, 0, 0, 1);
+            let ie = (seid, ipv4).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fseid);
+
+            let fseid = Fseid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.ipv4_address, Some(ipv4));
+            assert_eq!(fseid.ipv6_address, None);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fseid_ipv6() {
+            let seid = 0x123456789ABCDEFu64;
+            let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+            let ie = (seid, ipv6).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fseid);
+
+            let fseid = Fseid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.ipv4_address, None);
+            assert_eq!(fseid.ipv6_address, Some(ipv6));
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fseid_ipaddr_v4() {
+            let seid = 0x123456789ABCDEFu64;
+            let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1));
+            let ie = (seid, ip).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fseid);
+
+            let fseid = Fseid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fseid.seid, seid);
+            assert!(fseid.ipv4_address.is_some());
+            assert!(fseid.ipv6_address.is_none());
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fseid_ipaddr_v6() {
+            let seid = 0x123456789ABCDEFu64;
+            let ip = IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1));
+            let ie = (seid, ip).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fseid);
+
+            let fseid = Fseid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fseid.seid, seid);
+            assert!(fseid.ipv4_address.is_none());
+            assert!(fseid.ipv6_address.is_some());
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fseid_round_trip() {
+            let seid = 0xFEDCBA9876543210u64;
+            let ipv4 = Ipv4Addr::new(192, 168, 1, 1);
+
+            // Create IE from tuple
+            let ie = (seid, ipv4).into_ie();
+
+            // Unmarshal and verify
+            let fseid = Fseid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.ipv4_address, Some(ipv4));
+
+            // Verify it matches explicit construction
+            let explicit_fseid = Fseid::new(seid, Some(ipv4), None);
+            assert_eq!(fseid, explicit_fseid);
         }
     }
 }
