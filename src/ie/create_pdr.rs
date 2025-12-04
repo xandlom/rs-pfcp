@@ -130,6 +130,7 @@ impl CreatePdr {
     }
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct CreatePdrBuilder {
     pdr_id: Option<PdrId>,
     precedence: Option<Precedence>,
@@ -145,13 +146,7 @@ impl CreatePdrBuilder {
     pub fn new(pdr_id: PdrId) -> Self {
         CreatePdrBuilder {
             pdr_id: Some(pdr_id),
-            precedence: None,
-            pdi: None,
-            outer_header_removal: None,
-            far_id: None,
-            urr_id: None,
-            qer_id: None,
-            activate_predefined_rules: None,
+            ..Default::default()
         }
     }
 
