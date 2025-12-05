@@ -277,6 +277,7 @@ impl SessionReportResponse {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct SessionReportResponseBuilder {
     seid: u64,
     seq: u32,

@@ -137,6 +137,7 @@ impl Message for SessionSetModificationResponse {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct SessionSetModificationResponseBuilder {
     seq: u32,
     cause: Option<Ie>,

@@ -305,6 +305,7 @@ impl Message for SessionEstablishmentResponse {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct SessionEstablishmentResponseBuilder {
     seid: u64,
     seq: u32,

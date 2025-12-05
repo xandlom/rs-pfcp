@@ -261,7 +261,7 @@ impl SessionModificationResponse {
 }
 
 /// Builder for SessionModificationResponse message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SessionModificationResponseBuilder {
     seid: u64,
     sequence: u32,

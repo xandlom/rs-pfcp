@@ -187,7 +187,7 @@ impl AssociationUpdateRequest {
 }
 
 /// Builder for AssociationUpdateRequest message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssociationUpdateRequestBuilder {
     sequence: u32,
     node_id: Option<Ie>,

@@ -213,7 +213,7 @@ impl AssociationSetupResponse {
 }
 
 /// Builder for AssociationSetupResponse message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssociationSetupResponseBuilder {
     sequence: u32,
     cause: Option<Ie>,

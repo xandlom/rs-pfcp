@@ -216,7 +216,7 @@ impl SessionDeletionRequest {
 ///
 /// The F-SEID identifying the PFCP session is carried in the PFCP header (seid parameter),
 /// not as an IE in the message body.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SessionDeletionRequestBuilder {
     seid: u64,
     sequence: u32,

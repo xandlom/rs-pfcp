@@ -184,7 +184,7 @@ impl Message for NodeReportRequest {
 }
 
 /// Builder for NodeReportRequest message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct NodeReportRequestBuilder {
     sequence: u32,
     node_id: Option<Ie>,

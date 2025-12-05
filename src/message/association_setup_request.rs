@@ -198,7 +198,7 @@ impl AssociationSetupRequest {
 }
 
 /// Builder for AssociationSetupRequest message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssociationSetupRequestBuilder {
     sequence: u32,
     node_id: Option<Ie>,

@@ -407,6 +407,7 @@ impl Message for SessionEstablishmentRequest {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct SessionEstablishmentRequestBuilder {
     seid: u64,
     seq: u32,

@@ -46,6 +46,7 @@ impl SessionSetDeletionRequest {
 }
 
 /// Builder for Session Set Deletion Request messages.
+#[derive(Debug, Default)]
 pub struct SessionSetDeletionRequestBuilder {
     sequence: u32,
     node_id: Option<Ie>,

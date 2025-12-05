@@ -298,6 +298,7 @@ impl Message for SessionSetModificationRequest {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct SessionSetModificationRequestBuilder {
     seq: u32,
     alternative_smf_ip_address: Option<AlternativeSmfIpAddress>,

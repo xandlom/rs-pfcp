@@ -301,7 +301,7 @@ mod tests {
 }
 
 /// Builder for AssociationUpdateResponse message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssociationUpdateResponseBuilder {
     sequence: u32,
     node_id: Option<Ie>,

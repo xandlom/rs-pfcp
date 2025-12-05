@@ -336,7 +336,7 @@ impl SessionDeletionResponse {
 }
 
 /// Builder for SessionDeletionResponse message per 3GPP TS 29.244 Section 7.5.7.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SessionDeletionResponseBuilder {
     seid: u64,
     sequence: u32,

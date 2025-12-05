@@ -662,6 +662,7 @@ impl Message for SessionModificationRequest {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct SessionModificationRequestBuilder {
     seid: u64,
     seq: u32,

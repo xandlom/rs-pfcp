@@ -121,7 +121,7 @@ impl Message for AssociationReleaseRequest {
 }
 
 /// Builder for AssociationReleaseRequest message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssociationReleaseRequestBuilder {
     sequence: u32,
     node_id: Option<Ie>,

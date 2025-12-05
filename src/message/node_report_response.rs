@@ -329,7 +329,7 @@ mod tests {
 }
 
 /// Builder for NodeReportResponse message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct NodeReportResponseBuilder {
     sequence: u32,
     node_id: Option<Ie>,

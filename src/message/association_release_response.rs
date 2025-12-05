@@ -145,7 +145,7 @@ impl Message for AssociationReleaseResponse {
 }
 
 /// Builder for AssociationReleaseResponse message.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssociationReleaseResponseBuilder {
     sequence: u32,
     cause: Option<Ie>,
