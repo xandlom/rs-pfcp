@@ -1298,6 +1298,99 @@ pub mod builder_support {
             }
         }
     }
+
+    /// (u32, Ipv4Addr) → F-TEID IE (IPv4 only)
+    ///
+    /// Convenient tuple conversion for F-TEID construction with TEID and IPv4 address.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let teid = 0x12345678u32;
+    /// let ip = Ipv4Addr::new(192, 168, 1, 1);
+    /// let ie = (teid, ip).into_ie();
+    /// ```
+    impl IntoIe for (u32, Ipv4Addr) {
+        fn into_ie(self) -> Ie {
+            use crate::ie::f_teid::Fteid;
+            let (teid, ip) = self;
+            let fteid = Fteid::new(true, false, teid, Some(ip), None, 0);
+            Ie::new(IeType::Fteid, fteid.marshal())
+        }
+    }
+
+    /// (u32, Ipv6Addr) → F-TEID IE (IPv6 only)
+    ///
+    /// Convenient tuple conversion for F-TEID construction with TEID and IPv6 address.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let teid = 0x12345678u32;
+    /// let ip = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+    /// let ie = (teid, ip).into_ie();
+    /// ```
+    impl IntoIe for (u32, Ipv6Addr) {
+        fn into_ie(self) -> Ie {
+            use crate::ie::f_teid::Fteid;
+            let (teid, ip) = self;
+            let fteid = Fteid::new(false, true, teid, None, Some(ip), 0);
+            Ie::new(IeType::Fteid, fteid.marshal())
+        }
+    }
+
+    /// (u32, IpAddr) → F-TEID IE (dispatches based on IP version)
+    ///
+    /// Convenient tuple conversion for F-TEID construction that handles both IPv4 and IPv6.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::{IpAddr, Ipv4Addr};
+    ///
+    /// let teid = 0x12345678u32;
+    /// let ip: IpAddr = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+    /// let ie = (teid, ip).into_ie();
+    /// ```
+    impl IntoIe for (u32, IpAddr) {
+        fn into_ie(self) -> Ie {
+            let (teid, ip) = self;
+            match ip {
+                IpAddr::V4(v4) => (teid, v4).into_ie(),
+                IpAddr::V6(v6) => (teid, v6).into_ie(),
+            }
+        }
+    }
+
+    /// (Ipv4Addr, Ipv6Addr) → UE IP Address IE (dual-stack)
+    ///
+    /// Convenient tuple conversion for UE IP Address with both IPv4 and IPv6.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IntoIe;
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// let ipv4 = Ipv4Addr::new(10, 0, 0, 1);
+    /// let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+    /// let ie = (ipv4, ipv6).into_ie();
+    /// ```
+    impl IntoIe for (Ipv4Addr, Ipv6Addr) {
+        fn into_ie(self) -> Ie {
+            use crate::ie::ue_ip_address::UeIpAddress;
+            let (ipv4, ipv6) = self;
+            let ue_ip = UeIpAddress::new(Some(ipv4), Some(ipv6));
+            Ie::new(IeType::UeIpAddress, ue_ip.marshal())
+        }
+    }
 }
 
 // Re-export IntoIe for convenience
@@ -2065,6 +2158,133 @@ mod tests {
             // Verify it matches explicit construction
             let explicit_fseid = Fseid::new(seid, Some(ipv4), None);
             assert_eq!(fseid, explicit_fseid);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fteid_ipv4() {
+            use crate::ie::f_teid::Fteid;
+
+            let teid = 0x12345678u32;
+            let ip = Ipv4Addr::new(192, 168, 1, 1);
+
+            let ie = (teid, ip).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fteid);
+            let fteid = Fteid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.ipv4_address, Some(ip));
+            assert_eq!(fteid.ipv6_address, None);
+            assert!(fteid.v4);
+            assert!(!fteid.v6);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fteid_ipv6() {
+            use crate::ie::f_teid::Fteid;
+
+            let teid = 0x87654321u32;
+            let ip = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+
+            let ie = (teid, ip).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fteid);
+            let fteid = Fteid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.ipv4_address, None);
+            assert_eq!(fteid.ipv6_address, Some(ip));
+            assert!(!fteid.v4);
+            assert!(fteid.v6);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fteid_ipaddr_v4() {
+            use crate::ie::f_teid::Fteid;
+
+            let teid = 0xABCD1234u32;
+            let ipv4 = Ipv4Addr::new(10, 0, 0, 1);
+            let ip: IpAddr = IpAddr::V4(ipv4);
+
+            let ie = (teid, ip).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fteid);
+            let fteid = Fteid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.ipv4_address, Some(ipv4));
+            assert_eq!(fteid.ipv6_address, None);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fteid_ipaddr_v6() {
+            use crate::ie::f_teid::Fteid;
+
+            let teid = 0xDEADBEEFu32;
+            let ipv6 = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 1);
+            let ip: IpAddr = IpAddr::V6(ipv6);
+
+            let ie = (teid, ip).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::Fteid);
+            let fteid = Fteid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.ipv4_address, None);
+            assert_eq!(fteid.ipv6_address, Some(ipv6));
+        }
+
+        #[test]
+        fn test_into_ie_tuple_fteid_round_trip() {
+            use crate::ie::f_teid::Fteid;
+
+            let teid = 0xCAFEBABEu32;
+            let ipv4 = Ipv4Addr::new(172, 16, 0, 1);
+
+            // Create IE from tuple
+            let ie = (teid, ipv4).into_ie();
+
+            // Unmarshal and verify
+            let fteid = Fteid::unmarshal(&ie.payload).unwrap();
+            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.ipv4_address, Some(ipv4));
+
+            // Verify it matches explicit construction
+            let explicit_fteid = Fteid::new(true, false, teid, Some(ipv4), None, 0);
+            assert_eq!(fteid, explicit_fteid);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_ue_ip_dual_stack() {
+            use crate::ie::ue_ip_address::UeIpAddress;
+
+            let ipv4 = Ipv4Addr::new(10, 1, 2, 3);
+            let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0xabc, 0xdef, 0, 0, 0, 1);
+
+            let ie = (ipv4, ipv6).into_ie();
+
+            assert_eq!(ie.ie_type, IeType::UeIpAddress);
+            let ue_ip = UeIpAddress::unmarshal(&ie.payload).unwrap();
+            assert_eq!(ue_ip.ipv4_address, Some(ipv4));
+            assert_eq!(ue_ip.ipv6_address, Some(ipv6));
+            assert!(ue_ip.v4);
+            assert!(ue_ip.v6);
+        }
+
+        #[test]
+        fn test_into_ie_tuple_ue_ip_round_trip() {
+            use crate::ie::ue_ip_address::UeIpAddress;
+
+            let ipv4 = Ipv4Addr::new(192, 0, 2, 1);
+            let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 42);
+
+            // Create IE from tuple
+            let ie = (ipv4, ipv6).into_ie();
+
+            // Unmarshal and verify
+            let ue_ip = UeIpAddress::unmarshal(&ie.payload).unwrap();
+            assert_eq!(ue_ip.ipv4_address, Some(ipv4));
+            assert_eq!(ue_ip.ipv6_address, Some(ipv6));
+
+            // Verify it matches explicit construction
+            let explicit_ue_ip = UeIpAddress::new(Some(ipv4), Some(ipv6));
+            assert_eq!(ue_ip, explicit_ue_ip);
         }
     }
 }
