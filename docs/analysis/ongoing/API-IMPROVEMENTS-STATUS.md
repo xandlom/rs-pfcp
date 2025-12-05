@@ -38,13 +38,18 @@ This document tracks the actual implementation status of items from API-IMPROVEM
 - **Published:** v0.2.0
 
 #### #6: Expand IntoIe Trait
-- **Status:** Partially implemented in v0.2.1
-- **Implemented:**
+- **Status:** Expanded in v0.2.1 and v0.2.3
+- **v0.2.1 Implemented:**
   - `(u64, Ipv4Addr).into_ie()` → FSEID
   - `(u64, Ipv6Addr).into_ie()` → FSEID
   - `(u64, IpAddr).into_ie()` → FSEID
-- **Tests:** 5 new tests in `src/ie/mod.rs`
-- **Could expand:** More tuple conversions for other IEs
+- **v0.2.3 Implemented:**
+  - `(u32, Ipv4Addr).into_ie()` → F-TEID
+  - `(u32, Ipv6Addr).into_ie()` → F-TEID
+  - `(u32, IpAddr).into_ie()` → F-TEID
+  - `(Ipv4Addr, Ipv6Addr).into_ie()` → UE IP Address (dual-stack)
+- **Tests:** 12 total tests in `src/ie/mod.rs` (5 FSEID + 7 F-TEID/UE IP)
+- **Could expand:** More tuple conversions for other IEs based on usage patterns
 
 #### #7: Default Trait Implementations
 - **Status:** Partially implemented in v0.2.1
@@ -145,10 +150,17 @@ SessionEstablishmentRequest::new(SequenceNumber(seq), Seid(seid));  // ✅ Type-
   5. ✅ Added deprecation warnings to old methods
   6. ✅ Added 11 comprehensive tests
 
-## Next Steps for v0.2.3
+## v0.2.3 Work in Progress
 
-### 1. Update All Examples
-- **Why:** Showcase new API patterns from v0.2.1
+### ✅ Completed
+- **IntoIe Expansion:** Added F-TEID and UE IP Address tuple conversions
+  - Commit: `358e4c3` - feat(ie): expand IntoIe with F-TEID and UE IP Address tuple conversions
+  - 4 new conversions, 7 new tests, all 1,979 tests passing
+
+### Next Steps for v0.2.3
+
+### 1. Update Remaining Examples (Optional)
+- **Why:** Showcase new API patterns from v0.2.2 (iterator-based IE access)
 - **Examples updated in v0.2.2:**
   - ✅ `ethernet-session-demo.rs` (updated in v0.2.1)
   - ✅ `pdn-type-demo.rs` (updated in v0.2.2)
@@ -156,19 +168,19 @@ SessionEstablishmentRequest::new(SequenceNumber(seq), Seid(seid));  // ✅ Type-
   - ✅ `session-client/main.rs` (updated in v0.2.2)
   - ✅ `session-server/main.rs` (updated in v0.2.2)
   - ✅ `display.rs` (updated in v0.2.2)
-- **Examples still to update:**
-  - ❌ `usage_report_phase1_demo.rs` (needs update)
-  - ❌ `usage_report_phase2_demo.rs` (needs update)
-  - ❌ `message-comparison.rs` (needs update)
-  - ❌ `heartbeat-client` (needs update)
-  - ❌ `heartbeat-server` (needs update)
-  - ❌ `pcap-reader` (needs update)
+- **Examples that could be updated:**
+  - ❌ `usage_report_phase1_demo.rs`
+  - ❌ `usage_report_phase2_demo.rs`
+  - ❌ `message-comparison.rs`
+  - ❌ `heartbeat-client`
+  - ❌ `heartbeat-server`
+  - ❌ `pcap-reader`
 
-### 2. Expand API Coverage (Optional)
-- More IntoIe tuple conversions (e.g., for UE IP Address, F-TEID)
+### 2. Additional API Improvements (Optional)
 - Default trait for more builders (Update* builders, Message builders)
+- Additional IntoIe conversions based on usage patterns
 
-### 3. Test Coverage Improvements
+### 3. Test Coverage Improvements (Optional)
 - Target 95%+ coverage
 - Add property-based tests for critical IEs
 - More integration tests
