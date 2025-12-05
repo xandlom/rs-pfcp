@@ -19,6 +19,8 @@
 // ✅ QoS enforcement with bandwidth management
 // ✅ Advanced scenarios (buffering, network instances)
 // ✅ Session modification with Update builders
+// ✅ v0.2.3 IntoIe tuple conversions: (teid, ip).into_ie()
+// ✅ v0.2.3 Default trait for builders: Builder::default()
 
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
@@ -38,7 +40,7 @@ use rs_pfcp::ie::{
     update_far::UpdateFarBuilder,
     update_forwarding_parameters::UpdateForwardingParameters,
     update_qer::UpdateQerBuilder,
-    IeType,
+    IeType, IntoIe,
 };
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequestBuilder,
@@ -429,6 +431,41 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .unwrap();
             println!("✅ UpdateQer convenience methods: open/close/directional gates");
 
+            // Example 8: IntoIe F-TEID tuple conversions (v0.2.3)
+            // Ergonomic shorthand for simple F-TEID → IE conversion
+            use std::net::{Ipv4Addr, Ipv6Addr};
+            let teid = 0xABCD1234u32;
+            let ipv4 = Ipv4Addr::new(10, 20, 30, 40);
+            let ipv6 = "2001:db8::100".parse::<Ipv6Addr>().unwrap();
+
+            // Before v0.2.3: Manual F-TEID construction
+            // let fteid = Fteid::new(true, false, teid, Some(ipv4), None, 0);
+            // let fteid_ie = Ie::new(IeType::Fteid, fteid.marshal());
+
+            // After v0.2.3: Direct tuple → IE conversion
+            let _fteid_ipv4_ie = (teid, ipv4).into_ie();
+            let _fteid_ipv6_ie = (teid, ipv6).into_ie();
+            let _fteid_auto_ie = (teid, std::net::IpAddr::V4(ipv4)).into_ie();
+            println!("✅ F-TEID tuple conversions: (teid, ip).into_ie() - v0.2.3");
+
+            // Example 9: IntoIe UE IP dual-stack tuple conversion (v0.2.3)
+            let ue_ipv4 = Ipv4Addr::new(192, 168, 100, 50);
+            let ue_ipv6 = "2001:db8:cafe::50".parse::<Ipv6Addr>().unwrap();
+
+            // Before v0.2.3: Manual UE IP Address construction
+            // let ue_ip = UeIpAddress::new(Some(ue_ipv4), Some(ue_ipv6));
+            // let ue_ip_ie = Ie::new(IeType::UeIpAddress, ue_ip.marshal());
+
+            // After v0.2.3: Direct dual-stack tuple → IE conversion
+            let _ue_ip_dual_ie = (ue_ipv4, ue_ipv6).into_ie();
+            println!("✅ UE IP dual-stack tuple: (ipv4, ipv6).into_ie() - v0.2.3");
+
+            // Example 10: Default trait for message builders (v0.2.3)
+            // Useful for test fixtures and when using struct update syntax
+            let _default_builder = SessionEstablishmentRequestBuilder::default();
+            // Can use with struct update syntax for partial initialization
+            println!("✅ Default trait for builders: Builder::default() - v0.2.3");
+
             println!("=== All builder patterns demonstrated successfully! ===\n");
         }
     }
@@ -441,6 +478,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("   • CreateQer Builder: QoS enforcement with rate limiting");
     println!("   • CreateFar Builder: Traffic forwarding with validation");
     println!("   • Advanced scenarios: Buffering, network instances, dual-stack");
+    println!("   • v0.2.3 IntoIe tuples: (teid, ip).into_ie() for ergonomic IE creation");
+    println!("   • v0.2.3 Default trait: Builder::default() for test fixtures");
 
     Ok(())
 }
