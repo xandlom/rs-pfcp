@@ -52,11 +52,17 @@ This document tracks the actual implementation status of items from API-IMPROVEM
 - **Could expand:** More tuple conversions for other IEs based on usage patterns
 
 #### #7: Default Trait Implementations
-- **Status:** Partially implemented in v0.2.1
-- **Completed:**
-  - `CreatePdrBuilder::default()`
-  - CreateFarBuilder, CreateQerBuilder, CreateUrrBuilder, PdiBuilder already had Default
-- **Could expand:** Add Default to Update* builders and Message builders
+- **Status:** Fully implemented in v0.2.1 (IE builders) and v0.2.3 (message builders)
+- **v0.2.1 Completed (IE builders):**
+  - CreatePdrBuilder, CreateFarBuilder, CreateQerBuilder, CreateUrrBuilder - all have Default
+  - UpdatePdrBuilder, UpdateFarBuilder, UpdateQerBuilder, UpdateUrrBuilder - all have Default
+  - PdiBuilder - has Default
+- **v0.2.3 Completed (message builders):**
+  - All 20 message builders now have Default trait
+  - Association builders (6): Setup/Release/Update Request/Response
+  - Node Report builders (2): Request/Response
+  - Session builders (12): Establishment/Modification/Deletion/Report/SessionSet
+- **Pattern:** Default provides zero/empty initialization, .new() for proper setup, .build() validates
 
 #### #8: Marshal Into Buffer Variants
 - **Status:** Fully implemented in v0.2.0
@@ -156,6 +162,11 @@ SessionEstablishmentRequest::new(SequenceNumber(seq), Seid(seid));  // ✅ Type-
 - **IntoIe Expansion:** Added F-TEID and UE IP Address tuple conversions
   - Commit: `358e4c3` - feat(ie): expand IntoIe with F-TEID and UE IP Address tuple conversions
   - 4 new conversions, 7 new tests, all 1,979 tests passing
+- **Default Trait for Message Builders:** Added Default to all 20 message builders
+  - Commit: `24f6063` - feat(message): add Default trait to all 20 message builders
+  - Enables struct update syntax and test fixtures
+  - Association (6), Node Report (2), Session (12) builders
+  - All 1,979 tests passing
 
 ### Next Steps for v0.2.3
 
