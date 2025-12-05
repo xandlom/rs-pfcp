@@ -98,6 +98,16 @@ impl Message for AssociationReleaseRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
+            _ => IeIter::single(None, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::NodeId => Some(&self.node_id),
@@ -158,6 +168,7 @@ impl AssociationReleaseRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::node_id::NodeId;

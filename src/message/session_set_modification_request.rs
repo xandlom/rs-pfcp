@@ -204,6 +204,27 @@ impl Message for SessionSetModificationRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::AlternativeSmfIpAddress => {
+                IeIter::single(Some(&self.alternative_smf_ip_address_ie), ie_type)
+            }
+            IeType::FqCsid => {
+                IeIter::multiple(self.fq_csids_ies.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::GroupId => {
+                IeIter::multiple(self.group_ids_ies.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::CpIpAddress => {
+                IeIter::multiple(self.cp_ip_addresses_ies.as_deref().unwrap_or(&[]), ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::AlternativeSmfIpAddress => Some(&self.alternative_smf_ip_address_ie),
@@ -232,6 +253,7 @@ impl Message for SessionSetModificationRequest {
         }
     }
 
+    #[allow(deprecated)]
     fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie> {
         match ie_type {
             IeType::AlternativeSmfIpAddress => vec![&self.alternative_smf_ip_address_ie],
@@ -414,6 +436,7 @@ impl SessionSetModificationRequestBuilder {
 impl SessionSetModificationRequest {}
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::IeType;

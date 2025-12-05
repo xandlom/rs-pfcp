@@ -81,7 +81,7 @@ impl<T: Message> MessageDisplay for T {
                 | IeType::RemoveFar
                 | IeType::RemoveUrr
                 | IeType::RemoveQer => {
-                    let all_ies = self.find_all_ies(ie_type);
+                    let all_ies = self.ies(ie_type).collect::<Vec<_>>();
                     if !all_ies.is_empty() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
@@ -97,7 +97,7 @@ impl<T: Message> MessageDisplay for T {
                 }
                 _ => {
                     // Single IE types - use existing logic
-                    if let Some(ie) = self.find_ie(ie_type) {
+                    if let Some(ie) = self.ies(ie_type).next() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         ies_map.insert(ie_name, ie_to_structured_data(ie));
                     }
@@ -161,7 +161,7 @@ impl<T: Message> MessageDisplay for T {
                 | IeType::RemoveFar
                 | IeType::RemoveUrr
                 | IeType::RemoveQer => {
-                    let all_ies = self.find_all_ies(ie_type);
+                    let all_ies = self.ies(ie_type).collect::<Vec<_>>();
                     if !all_ies.is_empty() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
@@ -177,7 +177,7 @@ impl<T: Message> MessageDisplay for T {
                 }
                 _ => {
                     // Single IE types - use existing logic
-                    if let Some(ie) = self.find_ie(ie_type) {
+                    if let Some(ie) = self.ies(ie_type).next() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         ies_map.insert(ie_name, ie_to_json_data(ie));
                     }
@@ -1477,7 +1477,7 @@ impl MessageDisplay for Box<dyn Message> {
                 | IeType::RemoveFar
                 | IeType::RemoveUrr
                 | IeType::RemoveQer => {
-                    let all_ies = self.find_all_ies(ie_type);
+                    let all_ies = self.ies(ie_type).collect::<Vec<_>>();
                     if !all_ies.is_empty() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
@@ -1493,7 +1493,7 @@ impl MessageDisplay for Box<dyn Message> {
                 }
                 _ => {
                     // Single IE types - use existing logic
-                    if let Some(ie) = self.find_ie(ie_type) {
+                    if let Some(ie) = self.ies(ie_type).next() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         ies_map.insert(ie_name, ie_to_structured_data(ie));
                     }
@@ -1557,7 +1557,7 @@ impl MessageDisplay for Box<dyn Message> {
                 | IeType::RemoveFar
                 | IeType::RemoveUrr
                 | IeType::RemoveQer => {
-                    let all_ies = self.find_all_ies(ie_type);
+                    let all_ies = self.ies(ie_type).collect::<Vec<_>>();
                     if !all_ies.is_empty() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         if all_ies.len() == 1 {
@@ -1573,7 +1573,7 @@ impl MessageDisplay for Box<dyn Message> {
                 }
                 _ => {
                     // Single IE types - use existing logic
-                    if let Some(ie) = self.find_ie(ie_type) {
+                    if let Some(ie) = self.ies(ie_type).next() {
                         let ie_name = format!("{ie_type:?}").to_lowercase();
                         ies_map.insert(ie_name, ie_to_json_data(ie));
                     }
@@ -1593,6 +1593,7 @@ impl MessageDisplay for Box<dyn Message> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::{Cause, CauseValue};

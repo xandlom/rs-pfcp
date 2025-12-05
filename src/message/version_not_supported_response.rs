@@ -104,6 +104,13 @@ impl Message for VersionNotSupportedResponse {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+        // VersionNotSupportedResponse may have vendor-specific IEs
+        IeIter::generic(&self.ies, ie_type)
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
@@ -152,6 +159,7 @@ impl VersionNotSupportedResponseBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

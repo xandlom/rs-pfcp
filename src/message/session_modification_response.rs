@@ -150,6 +150,28 @@ impl Message for SessionModificationResponse {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::CreatedPdr => IeIter::single(self.created_pdr.as_ref(), ie_type),
+            IeType::LoadControlInformation => {
+                IeIter::single(self.load_control_information.as_ref(), ie_type)
+            }
+            IeType::OverloadControlInformation => {
+                IeIter::single(self.overload_control_information.as_ref(), ie_type)
+            }
+            IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
+            IeType::UsageReportWithinSessionModificationResponse => {
+                IeIter::multiple(&self.usage_reports, ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::Cause => Some(&self.cause),
@@ -417,6 +439,7 @@ impl SessionModificationResponseBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;

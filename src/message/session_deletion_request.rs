@@ -112,6 +112,17 @@ impl Message for SessionDeletionRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
+            IeType::Fseid => IeIter::single(self.cp_fseid.as_ref(), ie_type),
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         if let Some(ie) = self.tl_container.iter().find(|ie| ie.ie_type == ie_type) {
             return Some(ie);
@@ -380,6 +391,7 @@ impl SessionDeletionRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::fseid::Fseid;

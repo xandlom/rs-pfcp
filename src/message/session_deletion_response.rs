@@ -177,6 +177,36 @@ impl Message for SessionDeletionResponse {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::LoadControlInformation => {
+                IeIter::single(self.load_control_information.as_ref(), ie_type)
+            }
+            IeType::OverloadControlInformation => {
+                IeIter::single(self.overload_control_information.as_ref(), ie_type)
+            }
+            IeType::UsageReportWithinSessionDeletionResponse => {
+                IeIter::multiple(&self.usage_reports, ie_type)
+            }
+            IeType::AdditionalUsageReportsInformation => {
+                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
+            }
+            IeType::PacketRateStatusReport => {
+                IeIter::multiple(&self.packet_rate_status_reports, ie_type)
+            }
+            IeType::MbsSessionN4Information => {
+                IeIter::multiple(&self.mbs_session_n4_information, ie_type)
+            }
+            IeType::PfcpsdrspFlags => IeIter::single(self.pfcpsdrsp_flags.as_ref(), ie_type),
+            IeType::TlContainer => IeIter::multiple(&self.tl_container, ie_type),
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::Cause => Some(&self.cause),
@@ -551,6 +581,7 @@ impl SessionDeletionResponseBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;

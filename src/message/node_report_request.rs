@@ -147,6 +147,20 @@ impl Message for NodeReportRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
+            IeType::ReportType => IeIter::single(self.node_report_type.as_ref(), ie_type),
+            IeType::UserPlanePathFailureReport => {
+                IeIter::single(self.user_plane_path_failure_report.as_ref(), ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::NodeId => Some(&self.node_id),
@@ -259,6 +273,7 @@ impl NodeReportRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::node_id::NodeId;

@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📤 SessionModificationResponse created successfully");
     println!(
         "   🔍 PDN Type IE present: {}",
-        response.find_ie(IeType::PdnType).is_some()
+        response.ies(IeType::PdnType).next().is_some()
     );
 
     // Show round-trip serialization preserves PDN Type IE
@@ -60,13 +60,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let serialized = response.marshal();
     let deserialized = SessionModificationResponse::unmarshal(&serialized)?;
 
-    let pdn_preserved = response.find_ie(IeType::PdnType).is_some()
-        && deserialized.find_ie(IeType::PdnType).is_some();
+    let pdn_preserved = response.ies(IeType::PdnType).next().is_some()
+        && deserialized.ies(IeType::PdnType).next().is_some();
 
     println!("   ✅ Serialization successful");
     println!("   ✅ PDN Type IE preserved: {}", pdn_preserved);
 
-    if let Some(pdn_ie) = deserialized.find_ie(IeType::PdnType) {
+    if let Some(pdn_ie) = deserialized.ies(IeType::PdnType).next() {
         let pdn_type = PdnType::unmarshal(&pdn_ie.payload)?;
         println!(
             "   📋 Preserved PDN Type: {:?} (supports IPv4: {}, supports IPv6: {})",

@@ -134,6 +134,18 @@ impl Message for PfdManagementResponse {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
+            IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::Cause => Some(&self.cause),
@@ -369,6 +381,7 @@ impl PfdManagementResponseBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;

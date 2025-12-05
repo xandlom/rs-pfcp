@@ -153,6 +153,17 @@ impl Message for PfdManagementRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::NodeId => IeIter::single(None, ie_type), // Type-safe access via .node_id field
+            IeType::ApplicationIdsPfds => IeIter::single(None, ie_type), // Type-safe access via .application_ids_pfds field
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::NodeId => {
@@ -179,13 +190,7 @@ impl Message for PfdManagementRequest {
                 // Type-safe access via .application_ids_pfds field
                 vec![]
             }
-            _ => {
-                if let Some(ie) = self.find_ie(ie_type) {
-                    vec![ie]
-                } else {
-                    vec![]
-                }
-            }
+            _ => self.ies(ie_type).collect(),
         }
     }
 
@@ -267,6 +272,7 @@ impl PfdManagementRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::application_id::ApplicationId;

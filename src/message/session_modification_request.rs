@@ -468,6 +468,89 @@ impl Message for SessionModificationRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::Fseid => IeIter::single(self.fseid.as_ref(), ie_type),
+            IeType::RemovePdr => {
+                IeIter::multiple(self.remove_pdrs.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::RemoveFar => {
+                IeIter::multiple(self.remove_fars.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::RemoveUrr => {
+                IeIter::multiple(self.remove_urrs.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::RemoveQer => {
+                IeIter::multiple(self.remove_qers.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::RemoveBar => {
+                IeIter::multiple(self.remove_bars.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::RemoveTrafficEndpoint => IeIter::multiple(
+                self.remove_traffic_endpoints.as_deref().unwrap_or(&[]),
+                ie_type,
+            ),
+            IeType::CreatePdr => {
+                IeIter::multiple(self.create_pdrs.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::CreateFar => {
+                IeIter::multiple(self.create_fars.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::CreateUrr => {
+                IeIter::multiple(self.create_urrs.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::CreateQer => {
+                IeIter::multiple(self.create_qers.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::CreateBar => {
+                IeIter::multiple(self.create_bars.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::CreateTrafficEndpoint => IeIter::multiple(
+                self.create_traffic_endpoints.as_deref().unwrap_or(&[]),
+                ie_type,
+            ),
+            IeType::UpdatePdr => {
+                IeIter::multiple(self.update_pdrs.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::UpdateFar => {
+                IeIter::multiple(self.update_fars.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::UpdateUrr => {
+                IeIter::multiple(self.update_urrs.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::UpdateQer => {
+                IeIter::multiple(self.update_qers.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::UpdateBar => {
+                IeIter::multiple(self.update_bars.as_deref().unwrap_or(&[]), ie_type)
+            }
+            IeType::UpdateTrafficEndpoint => IeIter::multiple(
+                self.update_traffic_endpoints.as_deref().unwrap_or(&[]),
+                ie_type,
+            ),
+            IeType::PfcpsmReqFlags => IeIter::single(self.pfcpsm_req_flags.as_ref(), ie_type),
+            IeType::UserPlaneInactivityTimer => {
+                IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
+            }
+            IeType::TraceInformation => IeIter::single(self.trace_information.as_ref(), ie_type),
+            IeType::EthernetContextInformation => {
+                IeIter::single(self.ethernet_context_information.as_ref(), ie_type)
+            }
+            IeType::Snssai => IeIter::single(self.s_nssai.as_ref(), ie_type),
+            IeType::ApnDnn => IeIter::single(self.apn_dnn.as_ref(), ie_type),
+            IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
+            IeType::UserId => IeIter::single(self.user_id.as_ref(), ie_type),
+            IeType::RecoveryTimeStamp => IeIter::single(self.recovery_time_stamp.as_ref(), ie_type),
+            IeType::CpFunctionFeatures => {
+                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::Fseid => self.fseid.as_ref(),
@@ -1049,6 +1132,7 @@ impl SessionModificationRequestBuilder {
 impl SessionModificationRequest {}
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};

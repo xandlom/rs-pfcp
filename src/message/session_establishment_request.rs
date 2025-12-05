@@ -287,6 +287,41 @@ impl Message for SessionEstablishmentRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
+            IeType::Fseid => IeIter::single(Some(&self.fseid), ie_type),
+            IeType::CreatePdr => IeIter::multiple(&self.create_pdrs, ie_type),
+            IeType::CreateFar => IeIter::multiple(&self.create_fars, ie_type),
+            IeType::CreateUrr => IeIter::multiple(&self.create_urrs, ie_type),
+            IeType::CreateQer => IeIter::multiple(&self.create_qers, ie_type),
+            IeType::CreateBar => IeIter::multiple(&self.create_bars, ie_type),
+            IeType::CreateTrafficEndpoint => {
+                IeIter::multiple(&self.create_traffic_endpoints, ie_type)
+            }
+            IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
+            IeType::UserPlaneInactivityTimer => {
+                IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
+            }
+            IeType::UserId => IeIter::single(self.user_id.as_ref(), ie_type),
+            IeType::TraceInformation => IeIter::single(self.trace_information.as_ref(), ie_type),
+            IeType::ApnDnn => IeIter::single(self.apn_dnn.as_ref(), ie_type),
+            IeType::PfcpsmReqFlags => IeIter::single(self.pfcpsm_req_flags.as_ref(), ie_type),
+            IeType::RecoveryTimeStamp => IeIter::single(self.recovery_time_stamp.as_ref(), ie_type),
+            IeType::Snssai => IeIter::single(self.s_nssai.as_ref(), ie_type),
+            IeType::CpFunctionFeatures => {
+                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+            }
+            IeType::EthernetPduSessionInformation => {
+                IeIter::single(self.ethernet_pdu_session_information.as_ref(), ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::NodeId => Some(&self.node_id),
@@ -309,6 +344,7 @@ impl Message for SessionEstablishmentRequest {
         }
     }
 
+    #[allow(deprecated)]
     fn find_all_ies(&self, ie_type: crate::ie::IeType) -> Vec<&Ie> {
         match ie_type {
             IeType::CreatePdr => self.create_pdrs.iter().collect(),
@@ -764,6 +800,7 @@ impl SessionEstablishmentRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{

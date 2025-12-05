@@ -143,6 +143,31 @@ impl Message for SessionReportRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::ReportType => IeIter::single(self.report_type.as_ref(), ie_type),
+            IeType::DownlinkDataServiceInformation => {
+                IeIter::single(self.downlink_data_report.as_ref(), ie_type)
+            }
+            IeType::UsageReportWithinSessionReportRequest => {
+                IeIter::multiple(&self.usage_reports, ie_type)
+            }
+            IeType::LoadControlInformation => {
+                IeIter::single(self.load_control_information.as_ref(), ie_type)
+            }
+            IeType::OverloadControlInformation => {
+                IeIter::single(self.overload_control_information.as_ref(), ie_type)
+            }
+            IeType::AdditionalUsageReportsInformation => {
+                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::ReportType => self.report_type.as_ref(),
@@ -356,6 +381,7 @@ impl SessionReportRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::sequence_number::SequenceNumber;

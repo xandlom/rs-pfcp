@@ -162,6 +162,32 @@ impl Message for SessionReportResponse {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::UpdateBarWithinSessionReportResponse => IeIter::single(
+                self.update_bar_within_session_report_response.as_ref(),
+                ie_type,
+            ),
+            IeType::PfcpsrrspFlags => IeIter::single(self.pfcpsrrsp_flags.as_ref(), ie_type),
+            IeType::CpFunctionFeatures => {
+                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+            }
+            IeType::UsageReportWithinSessionReportRequest => {
+                IeIter::multiple(&self.usage_reports, ie_type)
+            }
+            IeType::FailedRuleId => IeIter::single(self.failed_rules_id.as_ref(), ie_type),
+            IeType::AdditionalUsageReportsInformation => {
+                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
+            }
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
             IeType::Cause => Some(&self.cause),

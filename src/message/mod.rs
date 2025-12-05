@@ -10,6 +10,7 @@ pub mod display;
 pub mod header;
 pub mod heartbeat_request;
 pub mod heartbeat_response;
+pub mod ie_iter;
 pub mod node_report_request;
 pub mod node_report_response;
 pub mod pfd_management_request;
@@ -30,6 +31,9 @@ pub mod version_not_supported_response;
 
 use crate::ie::Ie;
 use std::io;
+
+// Re-export IE iterator types for public API
+pub use ie_iter::IeIter;
 
 // Re-export message types for public API
 pub use crate::message::association_release_request::AssociationReleaseRequest;
@@ -222,14 +226,113 @@ pub trait Message {
     fn seid(&self) -> Option<u64>;
     fn sequence(&self) -> u32;
     fn set_sequence(&mut self, seq: u32);
-    fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie>;
+
+    /// Get all IEs of a specific type as an iterator.
+    ///
+    /// This is the recommended way to access IEs in a message. It provides a unified
+    /// interface that works consistently whether the IE appears 0, 1, or many times.
+    ///
+    /// # Benefits
+    ///
+    /// - **Consistent API**: Same method works for all IE patterns (single, optional, multiple)
+    /// - **Prevents bugs**: Iterator makes it clear you're getting all IEs, not just the first
+    /// - **Ergonomic**: Use standard iterator methods (`.count()`, `.collect()`, `.map()`, etc.)
+    /// - **Zero-cost**: Optimizes to direct access with no runtime overhead
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rs_pfcp::message::{Message, SessionEstablishmentRequest};
+    /// use rs_pfcp::ie::{Ie, IeType, node_id::NodeId};
+    /// use std::net::Ipv4Addr;
+    ///
+    /// # fn example(msg: &SessionEstablishmentRequest) {
+    /// // Single mandatory IE
+    /// if let Some(node_id_ie) = msg.ies(IeType::NodeId).next() {
+    ///     println!("Found Node ID");
+    /// }
+    ///
+    /// // Optional IE
+    /// match msg.ies(IeType::PdnType).next() {
+    ///     Some(pdn) => println!("PDN Type present"),
+    ///     None => println!("No PDN Type"),
+    /// }
+    ///
+    /// // Multiple IEs - iterate all
+    /// for pdr in msg.ies(IeType::CreatePdr) {
+    ///     println!("Processing PDR: {} bytes", pdr.len());
+    /// }
+    ///
+    /// // Count IEs
+    /// let pdr_count = msg.ies(IeType::CreatePdr).count();
+    /// println!("Found {} PDRs", pdr_count);
+    ///
+    /// // Collect into vector
+    /// let all_fars: Vec<_> = msg.ies(IeType::CreateFar).collect();
+    /// # }
+    /// ```
+    fn ies(&self, ie_type: crate::ie::IeType) -> IeIter<'_>;
+
+    /// Get the first IE of a specific type.
+    ///
+    /// **Deprecated:** This method only returns the first IE, which can lead to bugs
+    /// when an IE appears multiple times. Use `ies(ie_type).next()` instead.
+    ///
+    /// # Migration
+    ///
+    /// ```rust
+    /// # use rs_pfcp::message::{Message, SessionEstablishmentRequest};
+    /// # use rs_pfcp::ie::IeType;
+    /// # fn example(msg: &SessionEstablishmentRequest) {
+    /// // Old way (deprecated)
+    /// # #[allow(deprecated)]
+    /// let node_id = msg.find_ie(IeType::NodeId);
+    ///
+    /// // New way (recommended)
+    /// let node_id = msg.ies(IeType::NodeId).next();
+    /// # }
+    /// ```
+    #[deprecated(
+        since = "0.2.2",
+        note = "Use `ies(ie_type).next()` instead. This method only returns the first IE, which can cause bugs with multiple IEs."
+    )]
+    fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie> {
+        self.ies(ie_type).next()
+    }
+
+    /// Get all IEs of a specific type as a vector.
+    ///
+    /// **Deprecated:** This method allocates a Vec. Use `ies(ie_type)` which returns
+    /// an iterator for better ergonomics and performance.
+    ///
+    /// # Migration
+    ///
+    /// ```rust
+    /// # use rs_pfcp::message::{Message, SessionEstablishmentRequest};
+    /// # use rs_pfcp::ie::IeType;
+    /// # fn example(msg: &SessionEstablishmentRequest) {
+    /// // Old way (deprecated)
+    /// # #[allow(deprecated)]
+    /// let pdrs = msg.find_all_ies(IeType::CreatePdr);
+    /// for pdr in pdrs {
+    ///     // Process
+    /// }
+    ///
+    /// // New way (recommended)
+    /// for pdr in msg.ies(IeType::CreatePdr) {
+    ///     // Process - no allocation!
+    /// }
+    ///
+    /// // If you really need a Vec
+    /// let pdrs: Vec<_> = msg.ies(IeType::CreatePdr).collect();
+    /// # }
+    /// ```
+    #[deprecated(
+        since = "0.2.2",
+        note = "Use `ies(ie_type)` instead, which returns an iterator. Call `.collect()` if you need a Vec."
+    )]
     fn find_all_ies(&self, ie_type: crate::ie::IeType) -> Vec<&Ie> {
-        // Default implementation: return single IE as vector or empty vector
-        if let Some(ie) = self.find_ie(ie_type) {
-            vec![ie]
-        } else {
-            vec![]
-        }
+        self.ies(ie_type).collect()
     }
 
     /// Get all IEs from the message.
@@ -316,6 +419,11 @@ impl Message for Generic {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: crate::ie::IeType) -> IeIter<'_> {
+        IeIter::generic(&self.ies, ie_type)
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie> {
         self.ies.iter().find(|ie| ie.ie_type == ie_type)
     }
@@ -387,6 +495,7 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{Ie, IeType};

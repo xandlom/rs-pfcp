@@ -80,7 +80,7 @@ fn handle_session_report_request(
     println!("  Received Session Report Request");
 
     // Check what type of report
-    if let Some(report_type_ie) = msg.find_ie(IeType::ReportType) {
+    if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
         let report_type = report_type_ie.payload[0];
         match report_type {
             0x02 => println!("    Report Type: Usage Report (USAR)"),
@@ -89,7 +89,10 @@ fn handle_session_report_request(
     }
 
     // Check for usage reports
-    if let Some(_usage_report_ie) = msg.find_ie(IeType::UsageReportWithinSessionReportRequest) {
+    if let Some(_usage_report_ie) = msg
+        .ies(IeType::UsageReportWithinSessionReportRequest)
+        .next()
+    {
         println!("    Contains Usage Report - quota exhausted!");
     }
 

@@ -186,6 +186,17 @@ impl Message for HeartbeatRequest {
         self.header.sequence_number = seq;
     }
 
+    fn ies(&self, ie_type: IeType) -> crate::message::IeIter<'_> {
+        use crate::message::IeIter;
+
+        match ie_type {
+            IeType::RecoveryTimeStamp => IeIter::single(Some(&self.recovery_time_stamp), ie_type),
+            IeType::SourceIpAddress => IeIter::single(self.source_ip_address.as_ref(), ie_type),
+            _ => IeIter::generic(&self.ies, ie_type),
+        }
+    }
+
+    #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         if self.recovery_time_stamp.ie_type == ie_type {
             return Some(&self.recovery_time_stamp);
@@ -360,6 +371,7 @@ impl HeartbeatRequestBuilder {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{recovery_time_stamp::RecoveryTimeStamp, source_ip_address::SourceIpAddress};

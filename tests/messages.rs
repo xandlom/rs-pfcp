@@ -1,5 +1,5 @@
+#![allow(deprecated)]
 // tests/messages.rs
-
 use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
 use rs_pfcp::message::session_report_response::SessionReportResponse;

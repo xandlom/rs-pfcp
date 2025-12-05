@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📤 Session Establishment Request created with PDN Type: IPv4v6");
     println!(
         "   🔍 PDN Type IE found: {:?}",
-        session_req.find_ie(IeType::PdnType).is_some()
+        session_req.ies(IeType::PdnType).next().is_some()
     );
 
     // Demonstrate Session Establishment Response with PDN Type
@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📥 Session Establishment Response created with PDN Type: IPv4v6");
     println!(
         "   🔍 PDN Type IE found: {:?}",
-        session_resp.find_ie(IeType::PdnType).is_some()
+        session_resp.ies(IeType::PdnType).next().is_some()
     );
 
     // Demonstrate Session Modification Request with PDN Type change
@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📤 Session Modification Request created with PDN Type change: IPv4v6 → IPv4");
     println!(
         "   🔍 PDN Type IE found: {:?}",
-        mod_req.find_ie(IeType::PdnType).is_some()
+        mod_req.ies(IeType::PdnType).next().is_some()
     );
 
     // Demonstrate Session Modification Response with PDN Type confirmation
@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   📥 Session Modification Response created with PDN Type confirmation: IPv4");
     println!(
         "   🔍 PDN Type IE found: {:?}",
-        mod_resp.find_ie(IeType::PdnType).is_some()
+        mod_resp.ies(IeType::PdnType).next().is_some()
     );
 
     // Demonstrate round-trip serialization
@@ -142,8 +142,8 @@ where
     let deserialized = T::unmarshal(&serialized)?;
 
     let success = message == &deserialized;
-    let pdn_type_preserved = message.find_ie(IeType::PdnType).is_some()
-        == deserialized.find_ie(IeType::PdnType).is_some();
+    let pdn_type_preserved = message.ies(IeType::PdnType).next().is_some()
+        == deserialized.ies(IeType::PdnType).next().is_some();
 
     println!("   🔄 {}: Serialization ✅, PDN Type preserved: ✅", name);
 

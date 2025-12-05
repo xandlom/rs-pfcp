@@ -306,7 +306,7 @@ fn handle_session_establishment_request(
         },
     );
 
-    let fseid_ie = msg.find_ie(IeType::Fseid).unwrap().clone();
+    let fseid_ie = msg.ies(IeType::Fseid).next().unwrap().clone();
 
     // Build response with all created PDRs
     let mut response_builder =
@@ -441,7 +441,7 @@ fn handle_session_report_response(
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
     println!("  Received Session Report Response - quota exhaustion acknowledged");
-    if let Some(cause_ie) = msg.find_ie(IeType::Cause) {
+    if let Some(cause_ie) = msg.ies(IeType::Cause).next() {
         let cause_value = CauseValue::from(cause_ie.payload[0]);
         println!("  Response cause: {cause_value:?}");
     }
