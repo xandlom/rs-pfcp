@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-12-05
+
+### Added
+
+#### 🎯 API Improvements
+- **Unified IE Access Patterns** (daeaf9e): Iterator-based API for accessing Information Elements
+  - New `ies()` method on Message trait returning `IeIter<'_>`
+  - Unified API across all 26 message types (100% coverage)
+  - Standard Iterator trait with full combinator support (map, filter, count, collect, etc.)
+  - Zero-cost abstraction optimizing to direct field access
+  - Type-safe with compile-time guarantees
+  - 11 comprehensive tests in `tests/ie_iteration_tests.rs`
+  - Created `src/message/ie_iter.rs` infrastructure (361 lines)
+
+#### 📚 Examples
+- **Updated Examples** (daeaf9e): Demonstrate new iterator API
+  - `pdn-type-demo.rs` - Use `ies().next()` instead of `find_ie()`
+  - `pdn-type-simple.rs` - Iterator-based IE access
+  - `session-client/main.rs` - New API for session reports
+  - `session-server/main.rs` - Iterator pattern for IE lookup
+  - `display.rs` - Updated message formatting to use `ies().collect()`
+
+### Deprecated
+
+- **Message IE Access Methods**: Deprecated in favor of unified iterator API
+  - `find_ie(ie_type)` → Use `ies(ie_type).next()` instead
+  - `find_all_ies(ie_type)` → Use `ies(ie_type).collect()` or iterate directly
+  - Non-breaking deprecation with clear migration messages
+  - Backward compatibility maintained for smooth transition
+
+### Changed
+
+#### 🔧 Internal Improvements
+- Added `IeIter` with three storage patterns: Single, Multiple, Generic
+- Optimized IE iteration for different message field types
+- Enhanced `as_deref()` usage for cleaner optional Vec handling (clippy suggestions)
+
+### Documentation
+
+- **API Status Updates** (98dd1ca): Updated implementation tracking
+  - Marked Unified IE Access (#4) as completed
+  - Updated metrics: 7/9 API improvements done (78%)
+  - Added completion notes to `unified-ie-access.md`
+  - Updated v0.2.2 completed items in status document
+
+### Performance
+
+- Zero-cost abstraction: Iterator compiles down to direct field access
+- No runtime overhead compared to previous `find_ie()` implementation
+- All 1,972 tests passing with no performance regression
+
 ## [0.2.1] - 2025-12-04
 
 ### Added
