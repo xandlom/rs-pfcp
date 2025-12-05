@@ -98,6 +98,10 @@ Active task tracking and work-in-progress planning:
 **Status**: ✅ COMPLETE
 **Outcome**: Protocol-level rejection with allowlist for 3 legitimate cases
 
+#### [Ethernet IE Spec Compliance Audit](completed/ethernet-ie-spec-compliance-audit.md)
+**Status**: ✅ COMPLETE (2025-11-04)
+**Outcome**: 15/15 Ethernet IEs fully compliant, VLAN tag support added, 100% R16 compliance
+
 ### Version-Specific Implementation
 
 #### [v0.2.1 IntoIe Implementation](completed/v0.2.1-into-ie-implementation.md)
@@ -181,11 +185,6 @@ Comprehensive IE-specific validation enhancement:
   - ✅ Remove IEs (4/4)
   - ⏳ Medium-priority grouped IEs (ongoing)
 
-#### [Ethernet IE Spec Compliance Audit](ongoing/ethernet-ie-spec-compliance-audit.md)
-**Status**: 🔄 IN PROGRESS
-
-Detailed compliance audit of 15 Ethernet IEs against 3GPP TS 29.244
-
 ## Document Lifecycle
 
 ### From Active to Archived
@@ -257,8 +256,8 @@ When starting new research or planning:
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Completed Analyses | 18 | ✅ Archived |
-| Ongoing Tasks | 8 | 🔄 Active |
+| Completed Analyses | 19 | ✅ Archived |
+| Ongoing Tasks | 7 | 🔄 Active |
 | Version | 0.2.2 | Released |
 | Total Tests | 1,979 | ✅ Passing |
 | Test Coverage | ~89% | 🎯 Target: 95% |
