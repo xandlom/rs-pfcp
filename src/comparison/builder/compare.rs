@@ -177,12 +177,14 @@ fn compare_headers(
 }
 
 /// Collect all IEs from a message into a map grouped by type.
-fn collect_ies(msg: &dyn Message) -> HashMap<IeType, Vec<Ie>> {
-    let mut ie_map: HashMap<IeType, Vec<Ie>> = HashMap::new();
+///
+/// Uses references to avoid unnecessary cloning of IE data.
+fn collect_ies(msg: &dyn Message) -> HashMap<IeType, Vec<&Ie>> {
+    let mut ie_map: HashMap<IeType, Vec<&Ie>> = HashMap::new();
 
-    // Get all IEs from the message
+    // Get all IEs from the message - no cloning needed
     for ie in msg.all_ies() {
-        ie_map.entry(ie.ie_type).or_default().push(ie.clone());
+        ie_map.entry(ie.ie_type).or_default().push(ie);
     }
 
     ie_map
@@ -191,8 +193,8 @@ fn collect_ies(msg: &dyn Message) -> HashMap<IeType, Vec<Ie>> {
 /// Compare IEs from both messages.
 #[allow(clippy::type_complexity)]
 fn compare_ies(
-    left_ies: &HashMap<IeType, Vec<Ie>>,
-    right_ies: &HashMap<IeType, Vec<Ie>>,
+    left_ies: &HashMap<IeType, Vec<&Ie>>,
+    right_ies: &HashMap<IeType, Vec<&Ie>>,
     options: &ComparisonOptions,
     stats: &mut ComparisonStats,
 ) -> Result<(Vec<IeMatch>, Vec<IeMismatch>, Vec<IeType>, Vec<IeType>), io::Error> {
@@ -283,8 +285,8 @@ enum IeComparisonResult {
 
 /// Compare instances of a specific IE type.
 fn compare_ie_instances(
-    left: &[Ie],
-    right: &[Ie],
+    left: &[&Ie],
+    right: &[&Ie],
     ie_type: IeType,
     options: &ComparisonOptions,
 ) -> Result<IeComparisonResult, io::Error> {
@@ -302,8 +304,8 @@ fn compare_ie_instances(
 
     // Single instance case
     if left.len() == 1 {
-        let left_ie = &left[0];
-        let right_ie = &right[0];
+        let left_ie = left[0];
+        let right_ie = right[0];
 
         return compare_single_ie(left_ie, right_ie, ie_type, options);
     }
@@ -312,8 +314,8 @@ fn compare_ie_instances(
     match options.ie_multiplicity_mode {
         crate::comparison::IeMultiplicityMode::ExactMatch => {
             // All must match in some order
-            for left_ie in left {
-                let found_match = right.iter().any(|right_ie| {
+            for &left_ie in left {
+                let found_match = right.iter().any(|&right_ie| {
                     matches!(
                         compare_single_ie(left_ie, right_ie, ie_type, options),
                         Ok(IeComparisonResult::Match(_))
@@ -331,7 +333,7 @@ fn compare_ie_instances(
         }
         crate::comparison::IeMultiplicityMode::SetEquality => {
             // Order matters - compare pairwise
-            for (left_ie, right_ie) in left.iter().zip(right.iter()) {
+            for (&left_ie, &right_ie) in left.iter().zip(right.iter()) {
                 match compare_single_ie(left_ie, right_ie, ie_type, options)? {
                     IeComparisonResult::Match(_) => {}
                     mismatch => return Ok(mismatch),
@@ -341,8 +343,8 @@ fn compare_ie_instances(
         }
         crate::comparison::IeMultiplicityMode::Lenient => {
             // At least one match is sufficient
-            for left_ie in left {
-                for right_ie in right {
+            for &left_ie in left {
+                for &right_ie in right {
                     if matches!(
                         compare_single_ie(left_ie, right_ie, ie_type, options),
                         Ok(IeComparisonResult::Match(_))
@@ -375,14 +377,14 @@ fn compare_grouped_ie_deep(
     let left_children = parse_child_ies(&left.payload)?;
     let right_children = parse_child_ies(&right.payload)?;
 
-    // Group child IEs by type (same as top-level IE collection)
-    let mut left_grouped: HashMap<IeType, Vec<Ie>> = HashMap::new();
-    for ie in left_children {
+    // Group child IEs by type using references (same as top-level IE collection)
+    let mut left_grouped: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+    for ie in &left_children {
         left_grouped.entry(ie.ie_type).or_default().push(ie);
     }
 
-    let mut right_grouped: HashMap<IeType, Vec<Ie>> = HashMap::new();
-    for ie in right_children {
+    let mut right_grouped: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+    for ie in &right_children {
         right_grouped.entry(ie.ie_type).or_default().push(ie);
     }
 
