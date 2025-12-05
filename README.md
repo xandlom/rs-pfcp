@@ -18,7 +18,7 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 - 🏆 **100% 3GPP TS 29.244 Release 18 Compliance** - 139+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Zero-copy binary protocol implementation with Rust's memory safety
-- 🧪 **Battle Tested** - 1,942 comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 1,979 comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
@@ -42,6 +42,21 @@ let request = AssociationSetupRequestBuilder::new(seq)
     .node_id(Ipv4Addr::new(10, 0, 0, 1))
     .recovery_time_stamp(SystemTime::now())
     .marshal();
+
+// IntoIe tuple conversions for common IEs
+use rs_pfcp::ie::IntoIe;
+
+let fseid_ie = (session_seid, ip_address).into_ie();  // F-SEID from tuple
+let fteid_ie = (teid, ip_address).into_ie();           // F-TEID from tuple
+let ue_ip_ie = (ipv4, ipv6).into_ie();                 // UE IP dual-stack
+
+// Iterator-based IE access
+for pdr in msg.ies(IeType::CreatePdr) {
+    process_pdr(pdr);
+}
+
+let first_fseid = msg.ies(IeType::Fseid).next();
+let pdr_count = msg.ies(IeType::CreatePdr).count();
 ```
 
 ### Protocol Coverage
@@ -58,7 +73,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.1.7"
+rs-pfcp = "0.2.2"
 ```
 
 ### Basic Usage
@@ -225,10 +240,10 @@ rs-pfcp/
 
 ## 🔒 API Stability
 
-rs-pfcp is currently **pre-1.0** (version 0.1.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
+rs-pfcp is currently **pre-1.0** (version 0.2.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
 
 **Current Status:**
-- **Version**: 0.1.7
+- **Version**: 0.2.2
 - **MSRV**: Rust 1.90.0
 - **Spec Compliance**: 3GPP TS 29.244 Release 18
 - **Stability**: Pre-1.0 (API evolving)
@@ -258,7 +273,7 @@ We provide migration guides for all breaking changes and deprecate features befo
 # Build the library
 cargo build
 
-# Run all tests (1,942 tests)
+# Run all tests (1,979 tests)
 cargo test
 
 # Run specific test category
