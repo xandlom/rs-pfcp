@@ -836,6 +836,26 @@ impl From<u16> for IeType {
     }
 }
 
+/// Helper trait to convert marshal results into Vec<u8>.
+///
+/// This trait provides a unified interface for handling both `Vec<u8>` and
+/// fixed-size arrays `[u8; N]` returned from IE `marshal()` methods.
+pub trait IntoIePayload {
+    fn into_payload(self) -> Vec<u8>;
+}
+
+impl IntoIePayload for Vec<u8> {
+    fn into_payload(self) -> Vec<u8> {
+        self
+    }
+}
+
+impl<const N: usize> IntoIePayload for [u8; N] {
+    fn into_payload(self) -> Vec<u8> {
+        self.to_vec()
+    }
+}
+
 /// Represents a PFCP Information Element.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ie {
@@ -878,6 +898,24 @@ impl Ie {
             payload,
             child_ies: ies,
         }
+    }
+
+    /// Creates a new IE from a marshal result.
+    ///
+    /// This method accepts both `Vec<u8>` and `[u8; N]` return types from
+    /// IE `marshal()` methods, eliminating the need to manually call `.to_vec()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::ie::{Ie, IeType, cause::Cause};
+    ///
+    /// // Works with both Vec<u8> and [u8; N] returns
+    /// let cause = Cause::new(1);
+    /// let ie = Ie::from_marshal(IeType::Cause, cause.marshal());
+    /// ```
+    pub fn from_marshal<T: IntoIePayload>(ie_type: IeType, payload: T) -> Self {
+        Ie::new(ie_type, payload.into_payload())
     }
 
     /// Returns the length of the IE in bytes.
@@ -1736,6 +1774,28 @@ mod tests {
             v
         };
         assert_eq!(grouped.payload, expected_payload);
+    }
+
+    #[test]
+    fn test_ie_from_marshal() {
+        use crate::ie::cause::{Cause, CauseValue};
+        use crate::ie::destination_interface::{DestinationInterface, Interface};
+
+        // Test with IE that returns [u8; N] (array)
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let ie_from_array = Ie::from_marshal(IeType::Cause, cause.marshal());
+        assert_eq!(ie_from_array.ie_type, IeType::Cause);
+        assert_eq!(ie_from_array.payload, vec![1]);
+
+        // Test with IE that returns Vec<u8>
+        let dest_if = DestinationInterface::new(Interface::Core);
+        let ie_from_vec = Ie::from_marshal(IeType::DestinationInterface, dest_if.marshal());
+        assert_eq!(ie_from_vec.ie_type, IeType::DestinationInterface);
+        assert_eq!(ie_from_vec.payload, vec![0x01]); // Interface::Core = 1
+
+        // Verify both methods produce identical results to Ie::new()
+        let ie_traditional = Ie::new(IeType::Cause, cause.marshal().to_vec());
+        assert_eq!(ie_from_array, ie_traditional);
     }
 
     // ========================================================================

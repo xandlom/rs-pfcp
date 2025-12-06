@@ -51,7 +51,7 @@ impl CreatedPdr {
     }
 
     pub fn to_ie(&self) -> Ie {
-        Ie::new(IeType::CreatedPdr, self.marshal())
+        Ie::from_marshal(IeType::CreatedPdr, self.marshal())
     }
 }
 

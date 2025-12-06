@@ -37,7 +37,7 @@ impl ApplicationId {
 
     /// Wraps the Application ID in an ApplicationId IE.
     pub fn to_ie(&self) -> Ie {
-        Ie::new(IeType::ApplicationId, self.marshal())
+        Ie::from_marshal(IeType::ApplicationId, self.marshal())
     }
 }
 

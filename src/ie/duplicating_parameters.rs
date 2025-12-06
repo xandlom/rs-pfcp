@@ -32,13 +32,10 @@ impl DuplicatingParameters {
         let mut ies = Vec::new();
         ies.push(Ie::new(
             IeType::DestinationInterface,
-            self.destination_interface.marshal().to_vec(),
+            self.destination_interface.marshal(),
         ));
         if let Some(tlm) = &self.transport_level_marking {
-            ies.push(Ie::new(
-                IeType::TransportLevelMarking,
-                tlm.marshal().to_vec(),
-            ));
+            ies.push(Ie::new(IeType::TransportLevelMarking, tlm.marshal()));
         }
         if let Some(fp) = &self.forwarding_policy {
             ies.push(Ie::new(IeType::ForwardingPolicy, fp.marshal()));
