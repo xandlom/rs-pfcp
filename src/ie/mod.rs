@@ -836,7 +836,7 @@ impl From<u16> for IeType {
     }
 }
 
-/// Helper trait to convert marshal results into Vec<u8>.
+/// Helper trait to convert marshal results into `Vec<u8>`.
 ///
 /// This trait provides a unified interface for handling both `Vec<u8>` and
 /// fixed-size arrays `[u8; N]` returned from IE `marshal()` methods.
@@ -908,10 +908,10 @@ impl Ie {
     /// # Examples
     ///
     /// ```
-    /// use rs_pfcp::ie::{Ie, IeType, cause::Cause};
+    /// use rs_pfcp::ie::{Ie, IeType, cause::{Cause, CauseValue}};
     ///
     /// // Works with both Vec<u8> and [u8; N] returns
-    /// let cause = Cause::new(1);
+    /// let cause = Cause::new(CauseValue::RequestAccepted);
     /// let ie = Ie::from_marshal(IeType::Cause, cause.marshal());
     /// ```
     pub fn from_marshal<T: IntoIePayload>(ie_type: IeType, payload: T) -> Self {
