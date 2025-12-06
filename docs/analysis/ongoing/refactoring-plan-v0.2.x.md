@@ -536,16 +536,32 @@ mod test_fixtures {
   4. Add doc comments for each error type
   5. Update CLAUDE.md with error handling patterns
 
-#### Task 1.3: Pre-allocate Vec Capacity
-- **Effort**: 1 week
+#### Task 1.3: Pre-allocate Vec Capacity ✅ COMPLETED
+- **Effort**: 1 week → **Actual: 1 day**
 - **Risk**: LOW
-- **Files**: Marshal paths in IE and message files
-- **Impact**: 2-5% performance improvement
+- **Files**: Marshal paths in IE and message files → **Actual: 21 grouped IE files**
+- **Impact**: 2-5% performance improvement → **Actual: 17.5% average improvement**
 - **Steps**:
-  1. Add capacity hints to grouped IE marshal loops
-  2. Add capacity hints to message marshal paths
-  3. Benchmark before/after performance
-  4. Document pattern for future implementations
+  1. Add capacity hints to grouped IE marshal loops ✅
+  2. Add capacity hints to message marshal paths ✅ (already optimized)
+  3. Benchmark before/after performance ✅
+  4. Document pattern for future implementations ✅
+
+**Completion Date**: 2025-12-06
+**Commit**: f154f67
+**Implementation**:
+- Optimized 21 grouped IE marshal methods with Vec::with_capacity()
+- Messages already used capacity hints (no changes needed)
+- Pattern: `let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();`
+- All 1,980 tests passing
+
+**Performance Results** (cargo bench):
+- `pdi_simple`: 97.7 ns → 86.7 ns (**↓ 11.3%**)
+- `create_pdr`: 343.5 ns → 260.3 ns (**↓ 24.2%**)
+- `create_far`: 171.8 ns → 142.8 ns (**↓ 16.9%**)
+- **Average: 17.5% faster** (3.5× better than 2-5% estimate)
+
+**Key Insight**: Messages were already optimized with `marshaled_size()` pattern. Grouped IEs had the most significant opportunity for improvement. The create_pdr improvement (24%) shows the value compounds with more complex IEs.
 
 **Phase 1 Deliverable**: v0.2.4 release with quick wins
 
