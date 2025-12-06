@@ -20,7 +20,9 @@ impl CreatedPdr {
 
     pub fn marshal(&self) -> Vec<u8> {
         let ies = vec![self.pdr_id.to_ie(), self.f_teid.to_ie()];
-        let mut data = Vec::new();
+        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
+
+        let mut data = Vec::with_capacity(capacity);
         for ie in ies {
             data.extend_from_slice(&ie.marshal());
         }

@@ -138,7 +138,8 @@ impl CreateFar {
         }
 
         // Serialize all IEs
-        let mut data = Vec::new();
+        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
+        let mut data = Vec::with_capacity(capacity);
         for ie in ies {
             data.extend_from_slice(&ie.marshal());
         }
