@@ -432,6 +432,47 @@ Conventional commit format is appreciated (but not required):
 
 ## Release Process (Maintainers)
 
+### Automated Release (Recommended)
+
+Use the automated release script for consistent, safe releases:
+
+```bash
+# Test the release process (dry-run)
+./scripts/release.sh 0.2.3 --dry-run --auto-changelog
+
+# Perform actual release with auto-generated changelog
+./scripts/release.sh 0.2.3 --auto-changelog
+
+# Perform release with manual changelog entry
+./scripts/release.sh 0.2.3
+
+# Skip publishing to crates.io
+./scripts/release.sh 0.2.3 --no-publish
+```
+
+**Features:**
+- Version validation (semantic versioning)
+- Git status and branch checks
+- Automated test execution
+- Cargo.toml version updates
+- CHANGELOG.md management (manual or auto-generated from git log)
+- Git commit, tag, and push operations
+- Cargo publish integration
+- Dry-run mode for safety
+- Interactive prompts for push and publish
+
+**Safety Checks:**
+- Validates version format (X.Y.Z)
+- Ensures working directory is clean
+- Confirms on main branch (warns otherwise)
+- Runs all tests before proceeding
+- Checks tag doesn't already exist
+- Prompts before push and publish operations
+
+### Manual Release
+
+If you prefer manual control:
+
 1. Update version in `Cargo.toml`
 2. Update `CHANGELOG.md` with version and changes
 3. Commit: `git commit -m "chore: bump version to X.Y.Z"`
