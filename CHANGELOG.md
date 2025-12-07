@@ -7,6 +7,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-12-07
+
+### Added
+
+#### 🎯 API Improvements
+- **Expanded IntoIe Trait** (358e4c3): Additional tuple conversions for ergonomic IE construction
+  - `(u32, Ipv4Addr).into_ie()` → F-TEID with IPv4
+  - `(u32, Ipv6Addr).into_ie()` → F-TEID with IPv6
+  - `(u32, IpAddr).into_ie()` → F-TEID (auto-detects IPv4/IPv6)
+  - `(Ipv4Addr, Ipv6Addr).into_ie()` → UE IP Address (dual-stack)
+  - 7 new comprehensive tests for tuple conversions
+  - Reduces boilerplate in PDI and forwarding parameter construction
+
+- **Default Trait for Message Builders** (24f6063): All 20 message builders now implement Default
+  - Association builders (6): Setup/Release/Update Request/Response
+  - Node Report builders (2): Request/Response
+  - Session builders (12): Establishment/Modification/Deletion/Report/SessionSet
+  - Enables struct update syntax and test fixtures
+  - Consistent initialization pattern across all message types
+
+#### 🛠️ Developer Tools
+- **Automated Release Script** (64b84a2): Comprehensive release automation
+  - Version validation and git status checks
+  - Automated test execution before release
+  - Cargo.toml version updates
+  - CHANGELOG.md management (manual or auto-generated)
+  - Git commit, tag, and push operations
+  - Cargo publish integration with safety prompts
+  - Dry-run mode for testing
+  - Documented in CLAUDE.md with usage examples
+
+### Changed
+
+#### ⚡ Performance Improvements (Refactoring Plan Phase 1)
+- **Vec Capacity Pre-allocation** (f154f67): Optimized 21 grouped IE marshal methods ✅ **Task 1.3 Complete**
+  - Pre-calculate capacity before Vec allocation in marshal loops
+  - Pattern: `Vec::with_capacity(ies.iter().map(|ie| ie.len()).sum())`
+  - **Performance Results** (cargo bench):
+    - `pdi_simple`: 97.7 ns → 86.7 ns (**↓ 11.3%**)
+    - `create_pdr`: 343.5 ns → 260.3 ns (**↓ 24.2%**)
+    - `create_far`: 171.8 ns → 142.8 ns (**↓ 16.9%**)
+    - **Average: 17.5% faster** (3.5× better than estimated 2-5%)
+  - Affected files: 21 grouped IE files (create_pdr, create_far, create_qer, etc.)
+  - Messages already optimized (no changes needed)
+
+- **Eliminate Unnecessary Cloning** (0a54a5a): Removed redundant IE clones in comparison logic
+  - Reduces memory allocations in hot comparison paths
+  - Cleaner code without performance overhead
+
+#### 🔧 Code Quality (Refactoring Plan Phase 1)
+- **IntoIePayload Trait** (bb464cc): Unified handling of marshal return types ✅ **Task 1.1 Complete**
+  - Trait-based solution for `Vec<u8>` vs `[u8; N]` marshal returns
+  - Added `Ie::from_marshal()` convenience method
+  - Eliminates unnecessary `.to_vec()` calls automatically
+  - Zero-cost abstraction with compile-time resolution
+  - Applied to: duplicating_parameters.rs, application_id.rs, created_pdr.rs
+  - Comprehensive test coverage (`test_ie_from_marshal`)
+
+### Documentation
+
+- **Refactoring Plan** (1054032): Comprehensive v0.2.x refactoring roadmap
+  - Analysis of 186 source files, ~84,000 lines, 1,979 tests
+  - Identified 3,000-4,000 LOC reduction potential
+  - Phase 1 (Quick Wins): 3 tasks, 2 completed in v0.2.3
+  - Phase 2-3 roadmap for future releases
+  - Located in `docs/analysis/ongoing/refactoring-plan-v0.2.x.md`
+
+- **API Improvements Tracking** (5cc64a9, cfbcd24): Updated implementation status
+  - Marked IntoIe expansion as completed (Action #6)
+  - Marked Default traits as completed (Action #7)
+  - Updated metrics: 7/9 API improvements done (78%)
+
+- **Rustdoc Fixes** (9be4909): Fixed all rustdoc warnings and doctest failures
+  - Ensures `cargo doc` runs cleanly
+  - All doc examples compile and pass
+
+- **README Updates** (0e3e8d5): Updated to reflect v0.2.2+ API changes
+
+- **Analysis Organization** (6e0b2cd, b6cf2f2): Reorganized docs/analysis/ directory
+  - Archived completed work for clarity
+  - Better structure for ongoing planning documents
+
+### Performance
+
+- **17.5% average improvement** in grouped IE marshal operations
+- **Zero-cost abstractions**: IntoIePayload trait compiles to same code as manual handling
+- **No regressions**: All 1,980 tests passing with improved performance
+
+### Implementation Status
+
+- **Refactoring Plan Phase 1**: 2/3 tasks complete (66%)
+  - ✅ Task 1.1: Standardize .to_vec() usage (IntoIePayload trait)
+  - ⏸️ Task 1.2: Centralize error messages (deferred, aligned with v0.3.0 PfcpError)
+  - ✅ Task 1.3: Pre-allocate Vec capacity (17.5% performance gain)
+- **API Improvements**: 7/9 complete (78%)
+  - Remaining: Custom Error Type (#2) and Newtype Wrappers (#5) deferred to v0.3.0
+- **All Tests**: 1,980 passing (0 failures)
+
+### Notes
+
+- **Non-breaking Release**: All changes are backward compatible
+- **Coordinates with**: API-IMPROVEMENTS-INDEX.md and refactoring-plan-v0.2.x.md
+- **Next Release**: v0.2.4 will continue with Task 1.2 (Error Message Module) and Phase 2
+
 ## [0.2.2] - 2025-12-05
 
 ### Added

@@ -18,6 +18,34 @@ Analysis of the rs-pfcp codebase (186 source files, ~84,000 lines of IE code, 1,
 
 ---
 
+## 📚 Document Alignment
+
+**This refactoring plan coordinates with:**
+- **[API-IMPROVEMENTS-INDEX.md](./API-IMPROVEMENTS-INDEX.md)**: Public API improvements (v0.2.0-v0.2.2, mostly complete)
+- **[API-IMPROVEMENTS-STATUS.md](./API-IMPROVEMENTS-STATUS.md)**: Implementation status (7/9 done, 78% complete)
+- **[custom-error-type.md](./custom-error-type.md)**: Custom PfcpError enum (deferred to v0.3.0)
+
+**Key Coordination Points:**
+1. **Error Handling (Task 1.2 ↔ API-IMPROVEMENTS #2)**:
+   - v0.2.4: Error message constants (this plan) - non-breaking foundation
+   - v0.3.0: Custom PfcpError enum (API improvements) - breaking change
+   - **Strategy**: Two-phase approach avoids conflict, v0.2.4 work feeds v0.3.0
+
+2. **Breaking Changes Deferred to v0.3.0**:
+   - Custom Error Type (API #2)
+   - Newtype Wrappers (API #5)
+   - Optional: Message Marshal Macro (Task 3.1)
+   - Optional: Builder Derive Macro (Task 3.2)
+
+3. **Version Targets**:
+   - v0.2.4: Phase 1 quick wins (this plan)
+   - v0.2.5: Phase 2 structural improvements (this plan)
+   - v0.3.0: All breaking changes bundled together
+
+**Last Alignment Review**: 2025-12-07
+
+---
+
 ## 🎯 Refactoring Goals
 
 1. **Reduce code duplication** (~3,000+ lines)
@@ -524,17 +552,32 @@ mod test_fixtures {
 
 **Key Insight**: Rather than hunting down all unnecessary `.to_vec()` calls, implemented a trait-based solution that provides zero-cost abstraction and prevents future issues. This is MORE impactful than the original plan.
 
-#### Task 1.2: Centralize Error Messages
+#### Task 1.2: Error Message Module (Foundation for v0.3.0) 🔄 IN PROGRESS
 - **Effort**: 1 week
 - **Risk**: LOW
 - **Files**: Create `src/error.rs`
-- **Impact**: Consistency, easier i18n later
+- **Impact**: Consistency, prepares for v0.3.0 custom error type
+- **Alignment**: **Coordinates with API-IMPROVEMENTS-INDEX.md #2** (Custom Error Type)
+  - v0.2.4: Error message constants (this task) - non-breaking
+  - v0.3.0: Full PfcpError enum (see `docs/analysis/ongoing/custom-error-type.md`)
 - **Steps**:
-  1. Create `src/error.rs` module
-  2. Define error message constants
-  3. Replace hard-coded strings incrementally
-  4. Add doc comments for each error type
-  5. Update CLAUDE.md with error handling patterns
+  1. Create `src/error.rs` with `messages` module for constants
+  2. Add TODO comment referencing custom-error-type.md for v0.3.0
+  3. Define error message template constants (~10 common patterns)
+  4. Replace hard-coded strings incrementally (25+ files, batched by IE type)
+  5. Add doc comments explaining two-phase strategy (v0.2.4 → v0.3.0)
+  6. Update CLAUDE.md with error handling evolution plan
+- **Design**:
+  ```rust
+  // src/error.rs (v0.2.4)
+  pub mod messages {
+      pub const MISSING_MANDATORY_IE: &str = "Missing mandatory {} IE in {}";
+      pub const INVALID_IE_LENGTH: &str = "Invalid {} length: expected at least {} bytes, got {}";
+      // ... ~10 more templates
+  }
+  // TODO(v0.3.0): Add PfcpError enum (see custom-error-type.md)
+  ```
+- **Key Insight**: This avoids conflict with API-IMPROVEMENTS #2 by providing a non-breaking foundation that will be leveraged (not replaced) in v0.3.0
 
 #### Task 1.3: Pre-allocate Vec Capacity ✅ COMPLETED
 - **Effort**: 1 week → **Actual: 1 day**

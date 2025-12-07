@@ -4,6 +4,31 @@
 **Category:** Error Handling & Developer Experience
 **Estimated Effort:** Medium (3-4 days)
 **Breaking Change:** Yes (changes error type in signatures)
+**Target Release:** v0.3.0
+
+---
+
+## 🔗 Coordination Notice (Updated 2025-12-07)
+
+**This task coordinates with refactoring-plan-v0.2.x.md Task 1.2:**
+
+- **v0.2.4 (Now)**: refactoring-plan Task 1.2 creates error message constants in `src/error.rs`
+  - Non-breaking change
+  - Centralizes error messages as templates
+  - Prepares foundation for this task
+
+- **v0.3.0 (Future)**: This task adds PfcpError enum to same `src/error.rs`
+  - Breaking change (bundled with other v0.3.0 breaking changes)
+  - Leverages error message constants from v0.2.4
+  - Builds on existing foundation
+
+**Strategy**: Two-phase approach ensures v0.2.4 work is not wasted and directly feeds v0.3.0 implementation.
+
+See also:
+- [refactoring-plan-v0.2.x.md](./refactoring-plan-v0.2.x.md) - Task 1.2
+- [API-IMPROVEMENTS-STATUS.md](./API-IMPROVEMENTS-STATUS.md) - Overall status
+
+---
 
 ## Problem Statement
 

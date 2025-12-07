@@ -7,6 +7,27 @@ This document tracks the actual implementation status of items from API-IMPROVEM
 
 ---
 
+## 📚 Related Planning Documents
+
+**This status document coordinates with:**
+- **[API-IMPROVEMENTS-INDEX.md](./API-IMPROVEMENTS-INDEX.md)**: Original planning document (2024-11-15)
+- **[refactoring-plan-v0.2.x.md](./refactoring-plan-v0.2.x.md)**: Internal refactoring (v0.2.4+)
+- **[custom-error-type.md](./custom-error-type.md)**: Custom error type design (v0.3.0)
+
+**Coordination Note:**
+- API Improvements focus on **public API** (developer-facing features)
+- Refactoring Plan focuses on **internal code quality** (reducing duplication, performance)
+- Both converge in v0.3.0 for breaking changes
+
+**Error Handling Coordination:**
+- refactoring-plan Task 1.2 (v0.2.4): Error message constants - prepares foundation
+- API-IMPROVEMENTS #2 (v0.3.0): Custom PfcpError enum - builds on foundation
+- **Strategy**: Two-phase approach ensures no wasted work
+
+**Last Alignment Review**: 2025-12-07
+
+---
+
 ## Implementation Status Summary
 
 | # | Item | Status | Notes |
