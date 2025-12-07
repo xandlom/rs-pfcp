@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.3] - 2025-12-07
+
+- Version bump to 0.2.3
+
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
