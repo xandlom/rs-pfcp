@@ -1,5 +1,6 @@
 //! Session Establishment Request message.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -243,10 +244,14 @@ impl Message for SessionEstablishmentRequest {
         Ok(SessionEstablishmentRequest {
             header,
             node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    messages::ie_not_found("Node ID"),
+                )
             })?,
-            fseid: fseid
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?,
+            fseid: fseid.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("F-SEID"))
+            })?,
             create_pdrs,
             create_fars,
             create_urrs,
@@ -673,12 +678,15 @@ impl SessionEstablishmentRequestBuilder {
     }
 
     pub fn build(self) -> Result<SessionEstablishmentRequest, io::Error> {
-        let node_id = self
-            .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found"))?;
-        let fseid = self
-            .fseid
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?;
+        let node_id = self.node_id.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                messages::ie_not_found("Node ID"),
+            )
+        })?;
+        let fseid = self.fseid.ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("F-SEID"))
+        })?;
         if self.create_pdrs.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

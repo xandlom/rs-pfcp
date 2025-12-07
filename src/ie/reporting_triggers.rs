@@ -1,5 +1,6 @@
 //! ReportingTriggers IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -106,7 +107,7 @@ impl ReportingTriggers {
         if payload.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Reporting Triggers payload too short",
+                messages::payload_too_short("Reporting Triggers"),
             ));
         }
         Ok(ReportingTriggers {

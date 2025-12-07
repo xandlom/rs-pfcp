@@ -1,5 +1,6 @@
 //! MeasurementMethod IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -41,7 +42,7 @@ impl MeasurementMethod {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Measurement Method payload too short",
+                messages::payload_too_short("Measurement Method"),
             ));
         }
         Ok(MeasurementMethod {

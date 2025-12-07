@@ -4,6 +4,7 @@
 //! should be activated in the User Plane Function.
 //! Per 3GPP TS 29.244 Section 8.2.121.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -105,7 +106,7 @@ impl ActivationTime {
         if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
-                "Activation Time requires 4 bytes",
+                messages::requires_at_least_bytes("Activation Time", 4),
             ));
         }
 

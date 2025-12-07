@@ -2,6 +2,7 @@
 
 //! Association Setup Response message implementation.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -102,10 +103,14 @@ impl Message for AssociationSetupResponse {
 
         Ok(AssociationSetupResponse {
             header,
-            cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+            cause: cause.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            })?,
             node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    messages::ie_not_found("Node ID"),
+                )
             })?,
             up_function_features,
             cp_function_features,
