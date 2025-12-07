@@ -122,5 +122,6 @@
 //! - [`comparison`] - Message comparison tools for testing, debugging, and validation
 
 pub mod comparison;
+pub mod error;
 pub mod ie;
 pub mod message;
