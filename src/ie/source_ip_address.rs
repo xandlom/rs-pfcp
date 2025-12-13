@@ -1,5 +1,6 @@
 //! Source IP Address IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -109,7 +110,7 @@ impl SourceIpAddress {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Source IP Address requires at least 1 byte, got 0",
+                messages::requires_at_least_bytes("Source IP Address", 1),
             ));
         }
 

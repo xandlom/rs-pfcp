@@ -1,5 +1,6 @@
 //! SDF Filter IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -29,7 +30,7 @@ impl SdfFilter {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "SDF Filter requires at least 1 byte, got 0",
+                messages::requires_at_least_bytes("SDF Filter", 1),
             ));
         }
         let flow_description = String::from_utf8(payload.to_vec())
@@ -65,6 +66,5 @@ mod tests {
         let err = result.unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("requires at least 1 byte"));
-        assert!(err.to_string().contains("got 0"));
     }
 }

@@ -3,6 +3,7 @@
 //! Specifies HTTP header or URL/URI enrichment for traffic steering
 //! and service identification in 5G networks.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -128,7 +129,7 @@ impl HeaderEnrichment {
         if payload.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Header Enrichment payload too short",
+                messages::payload_too_short("Header Enrichment"),
             ));
         }
 
