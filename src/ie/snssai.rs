@@ -1,5 +1,6 @@
 //! S-NSSAI (Single Network Slice Selection Assistance Information) IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -59,7 +60,7 @@ impl Snssai {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "S-NSSAI payload too short",
+                messages::payload_too_short("S-NSSAI"),
             ));
         }
 

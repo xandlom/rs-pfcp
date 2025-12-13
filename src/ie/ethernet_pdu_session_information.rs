@@ -4,6 +4,7 @@
 //! is carrying Ethernet frames or untagged Ethernet frames. Per 3GPP TS 29.244 Section 8.2.102,
 //! this IE provides information about the Ethernet encapsulation used in the session.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -156,7 +157,7 @@ impl EthernetPduSessionInformation {
         if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Ethernet PDU Session Information requires at least 1 byte",
+                messages::requires_at_least_bytes("Ethernet PDU Session Information", 1),
             ));
         }
 

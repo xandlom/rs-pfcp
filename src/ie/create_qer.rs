@@ -2,6 +2,7 @@
 
 //! Create QER Information Element.
 
+use crate::error::messages;
 use crate::ie::gate_status::GateStatus;
 use crate::ie::gbr::Gbr;
 use crate::ie::mbr::Mbr;
@@ -92,10 +93,15 @@ impl CreateQer {
             offset += ie.len() as usize;
         }
 
+        let qer_id = qer_id.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                messages::missing_mandatory_ie_short("QER ID"),
+            )
+        })?;
+
         Ok(CreateQer {
-            qer_id: qer_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory QER ID IE")
-            })?,
+            qer_id,
             qer_correlation_id,
             gate_status,
             mbr,
@@ -202,9 +208,9 @@ impl CreateQerBuilder {
     ///
     /// Returns an error if the QER ID is not set.
     pub fn build(self) -> Result<CreateQer, io::Error> {
-        let qer_id = self
-            .qer_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "QER ID is required"))?;
+        let qer_id = self.qer_id.ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, messages::ie_required("QER ID"))
+        })?;
 
         Ok(CreateQer {
             qer_id,

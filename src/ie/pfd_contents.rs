@@ -13,6 +13,7 @@
 //! - `"deny in udp from 192.168.1.0/24 to any"`
 //! - `"permit out ip from any to 10.0.0.0/8"`
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -327,7 +328,7 @@ impl PfdContents {
         if payload.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "PFD Contents payload too short",
+                messages::payload_too_short("PFD Contents"),
             ));
         }
         let flags = payload[0];

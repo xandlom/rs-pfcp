@@ -1,5 +1,6 @@
 //! Path Failure Report IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -126,7 +127,7 @@ impl RemotePeerAddress {
         if *offset + 2 > payload.len() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Remote peer address header too short",
+                messages::too_short("Remote peer address"),
             ));
         }
 
@@ -139,7 +140,7 @@ impl RemotePeerAddress {
         if *offset + address_len > payload.len() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Remote peer address data too short",
+                messages::payload_too_short("Remote peer address"),
             ));
         }
 
@@ -232,7 +233,7 @@ impl PathFailureReport {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Path Failure Report payload too short",
+                messages::payload_too_short("Path Failure Report"),
             ));
         }
 
@@ -420,7 +421,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("Remote peer address header too short"));
+            .contains("Remote peer address too short"));
     }
 
     #[test]
@@ -432,7 +433,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("Remote peer address data too short"));
+            .contains("Remote peer address payload too short"));
     }
 
     #[test]

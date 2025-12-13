@@ -3,6 +3,7 @@
 //! This IE specifies the creation of GTP-U, UDP/IPv4, or UDP/IPv6 outer headers
 //! for forwarding packets. Used in ForwardingParameters to configure tunnel endpoints.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -260,7 +261,7 @@ impl OuterHeaderCreation {
         if payload.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Outer Header Creation payload too short",
+                messages::payload_too_short("Outer Header Creation"),
             ));
         }
 

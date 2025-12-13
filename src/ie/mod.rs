@@ -1,5 +1,6 @@
 //! Information Elements for PFCP messages.
 
+use crate::error::messages;
 use std::io;
 
 pub mod activate_predefined_rules;
@@ -1034,7 +1035,10 @@ impl Ie {
     /// Deserializes a byte slice into an IE.
     pub fn unmarshal(b: &[u8]) -> Result<Self, io::Error> {
         if b.len() < 4 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "IE too short"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                messages::too_short("IE"),
+            ));
         }
 
         // Read raw type value to preserve vendor bit (0x8000)
@@ -1049,6 +1053,7 @@ impl Ie {
         if length == 0 && !Self::allows_zero_length(ie_type) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
+                // messages::zero_length_ie_not_allowed(ie_name, ie_type),
                 format!(
                     "Zero-length IE not allowed for {:?} (IE type: {})",
                     ie_type, raw_type
@@ -1062,7 +1067,7 @@ impl Ie {
             if b.len() < 6 {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    "Vendor-specific IE too short",
+                    messages::too_short("Vendor-specific IE"),
                 ));
             }
             offset += 2;

@@ -3,6 +3,7 @@
 //! The Packet Rate IE specifies rate limits for uplink and/or downlink traffic.
 //! Per 3GPP TS 29.244 Section 8.2.63.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -315,7 +316,7 @@ impl PacketRate {
         if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
-                "Packet Rate requires at least 1 byte",
+                messages::requires_at_least_bytes("Packet Rate", 1),
             ));
         }
 

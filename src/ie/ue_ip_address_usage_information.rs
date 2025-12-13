@@ -1,6 +1,7 @@
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,7 +143,7 @@ impl UEIPAddressUsageInformation {
         if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
-                "UE IP address usage information requires at least 1 byte",
+                messages::requires_at_least_bytes("UE IP address usage information", 1),
             ));
         }
 

@@ -1,5 +1,6 @@
 //! Trace Information IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -143,7 +144,7 @@ impl TraceInformation {
         if payload.len() < 9 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Trace Information payload too short",
+                messages::payload_too_short("Trace Information"),
             ));
         }
 

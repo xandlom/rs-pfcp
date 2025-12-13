@@ -1,5 +1,6 @@
 //! Create Traffic Endpoint IE.
 
+use crate::error::messages;
 use crate::ie::f_teid::Fteid;
 use crate::ie::ue_ip_address::UeIpAddress;
 use crate::ie::{Ie, IeType};
@@ -24,7 +25,7 @@ impl TrafficEndpointId {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Traffic Endpoint ID payload too short",
+                messages::payload_too_short("Traffic Endpoint ID"),
             ));
         }
         Ok(TrafficEndpointId { id: payload[0] })
@@ -106,7 +107,7 @@ impl CreateTrafficEndpoint {
         } else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Missing Traffic Endpoint ID",
+                messages::missing_ie("Traffic Endpoint ID"),
             ));
         };
 

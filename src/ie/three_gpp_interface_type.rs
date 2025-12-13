@@ -3,6 +3,7 @@
 //! Identifies the type of interface in the 5G network architecture (N3, N6, N9, etc.).
 //! Used in ForwardingParameters to specify the interface type for packet forwarding.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -111,7 +112,7 @@ impl ThreeGppInterfaceTypeIe {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "3GPP Interface Type payload too short",
+                messages::payload_too_short("3GPP Interface Type"),
             ));
         }
 
