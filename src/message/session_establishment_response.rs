@@ -1,5 +1,6 @@
 //! Session Establishment Response message.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -219,11 +220,13 @@ impl Message for SessionEstablishmentResponse {
 
         Ok(SessionEstablishmentResponse {
             header,
-            cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+            cause: cause.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            })?,
             offending_ie,
-            fseid: fseid
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE not found"))?,
+            fseid: fseid.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("F-SEID"))
+            })?,
             created_pdrs,
             pdn_type,
             load_control_information,

@@ -1,5 +1,6 @@
 //! PFD Management Response message.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -106,8 +107,9 @@ impl Message for PfdManagementResponse {
 
         Ok(PfdManagementResponse {
             header,
-            cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+            cause: cause.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            })?,
             offending_ie,
             node_id,
             ies,

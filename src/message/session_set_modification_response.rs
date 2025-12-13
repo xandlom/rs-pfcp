@@ -3,6 +3,7 @@
 //! The PFCP Session Set Modification Response message is sent by the UPF to the SMF
 //! as a response to the Session Set Modification Request message.
 
+use crate::error::messages;
 use crate::ie::cause::CauseValue;
 use crate::ie::offending_ie::OffendingIe;
 use crate::ie::{Ie, IeType};
@@ -81,8 +82,12 @@ impl Message for SessionSetModificationResponse {
             offset += ie_len;
         }
 
-        let cause = cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE is mandatory"))?;
+        let cause = cause.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                messages::missing_mandatory_ie_short("Cause"),
+            )
+        })?;
 
         Ok(SessionSetModificationResponse {
             header,
