@@ -1,5 +1,6 @@
 // src/message/session_deletion_response.rs
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 
@@ -142,7 +143,10 @@ impl Message for SessionDeletionResponse {
         Ok(SessionDeletionResponse {
             header,
             cause: cause.ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "Cause IE not found")
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    messages::ie_not_found("Cause"),
+                )
             })?,
             offending_ie,
             load_control_information,

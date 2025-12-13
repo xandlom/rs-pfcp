@@ -1,5 +1,6 @@
 //! Node ID IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -56,7 +57,7 @@ impl NodeId {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Node ID requires at least 1 byte (type field), got 0",
+                messages::requires_at_least_bytes("Node ID", 1),
             ));
         }
         match payload[0] {
@@ -64,7 +65,7 @@ impl NodeId {
                 if payload.len() < 5 {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
-                        "IPv4 Node ID payload too short",
+                        messages::payload_too_short("IPv4 Node ID"),
                     ));
                 }
                 Ok(NodeId::IPv4(Ipv4Addr::new(
@@ -75,7 +76,7 @@ impl NodeId {
                 if payload.len() < 17 {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
-                        "IPv6 Node ID payload too short",
+                        messages::payload_too_short("IPv6 Node ID"),
                     ));
                 }
                 let mut octets = [0; 16];

@@ -1,5 +1,6 @@
 //! Session Modification Response message.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -118,8 +119,9 @@ impl Message for SessionModificationResponse {
 
         Ok(SessionModificationResponse {
             header,
-            cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+            cause: cause.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            })?,
             offending_ie,
             created_pdr,
             load_control_information,
