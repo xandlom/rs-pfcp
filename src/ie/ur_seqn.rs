@@ -3,6 +3,7 @@
 //! The UR-SEQN IE contains the sequence number of a usage report.
 //! Per 3GPP TS 29.244 Section 8.2.71.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -103,7 +104,7 @@ impl UrSeqn {
         if data.len() < 4 {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
-                "UR-SEQN requires 4 bytes",
+                messages::requires_at_least_bytes("UR-SEQN", 4),
             ));
         }
 

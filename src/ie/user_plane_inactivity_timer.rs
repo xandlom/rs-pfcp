@@ -1,5 +1,6 @@
 //! User Plane Inactivity Timer IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 use std::time::Duration;
@@ -75,7 +76,7 @@ impl UserPlaneInactivityTimer {
         if payload.len() != 4 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "User Plane Inactivity Timer payload must be 4 bytes",
+                messages::requires_at_least_bytes("User Plane Inactivity Timer", 4),
             ));
         }
 
@@ -214,7 +215,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("User Plane Inactivity Timer payload must be 4 bytes"));
+            .contains("requires at least 4 byte"));
 
         // Test with too long payload
         let result = UserPlaneInactivityTimer::unmarshal(&[0x01, 0x02, 0x03, 0x04, 0x05]);
@@ -222,7 +223,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("User Plane Inactivity Timer payload must be 4 bytes"));
+            .contains("requires at least 4 byte"));
     }
 
     #[test]
@@ -232,7 +233,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("User Plane Inactivity Timer payload must be 4 bytes"));
+            .contains("requires at least 4 byte"));
     }
 
     #[test]

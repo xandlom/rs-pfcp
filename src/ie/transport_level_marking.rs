@@ -1,5 +1,6 @@
 //! TransportLevelMarking IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -27,7 +28,7 @@ impl TransportLevelMarking {
         if payload.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Transport Level Marking payload too short",
+                messages::payload_too_short("Transport Level Marking"),
             ));
         }
         Ok(TransportLevelMarking {

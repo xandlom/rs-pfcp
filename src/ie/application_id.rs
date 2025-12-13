@@ -1,5 +1,6 @@
 //! Application ID IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -27,7 +28,7 @@ impl ApplicationId {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Application ID requires at least 1 byte, got 0",
+                messages::requires_at_least_bytes("Application ID", 1),
             ));
         }
         let id = String::from_utf8(payload.to_vec())
@@ -60,6 +61,5 @@ mod tests {
         let err = result.unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("requires at least 1 byte"));
-        assert!(err.to_string().contains("got 0"));
     }
 }
