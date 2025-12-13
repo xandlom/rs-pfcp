@@ -1,5 +1,6 @@
 //! Downlink Data Notification Delay IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 use std::time::Duration;
@@ -27,7 +28,7 @@ impl DownlinkDataNotificationDelay {
         if payload.len() < 3 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Downlink Data Notification Delay payload too short",
+                messages::payload_too_short("Downlink Data Notification Delay"),
             ));
         }
         let delay_val = u32::from_be_bytes([0, payload[0], payload[1], payload[2]]);

@@ -3,6 +3,7 @@
 //! Indicates whether proxying functionality is enabled (ARP proxying or ND proxying).
 //! Used in ForwardingParameters for IP address resolution proxying.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -81,7 +82,7 @@ impl Proxying {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Proxying payload too short",
+                messages::payload_too_short("Proxying"),
             ));
         }
 

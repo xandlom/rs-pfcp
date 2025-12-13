@@ -1,5 +1,6 @@
 //! Suggested Buffering Packets Count IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -25,7 +26,7 @@ impl SuggestedBufferingPacketsCount {
         if payload.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Suggested Buffering Packets Count payload too short",
+                messages::payload_too_short("Suggested Buffering Packets Count"),
             ));
         }
         Ok(SuggestedBufferingPacketsCount {

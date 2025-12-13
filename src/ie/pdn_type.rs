@@ -1,5 +1,6 @@
 //! PDN Type IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -114,7 +115,7 @@ impl PdnType {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "PDN Type payload too short",
+                messages::payload_too_short("PDN Type"),
             ));
         }
 
@@ -235,7 +236,7 @@ mod tests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("PDN Type payload too short"));
+            .contains("payload too short"));
     }
 
     #[test]
