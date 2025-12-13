@@ -4,6 +4,7 @@
 //! Function to the Control Plane Function in PFCP messages.
 //! Per 3GPP TS 29.244 Section 8.2.21.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -193,7 +194,7 @@ impl ReportType {
         if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Report Type payload too short: expected at least 1 byte",
+                messages::requires_at_least_bytes("Report Type", 1),
             ));
         }
 

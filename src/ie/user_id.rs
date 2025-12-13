@@ -1,5 +1,6 @@
 //! User ID IE.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -142,7 +143,7 @@ impl UserId {
         if payload.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "User ID payload too short",
+                messages::payload_too_short("User ID"),
             ));
         }
 

@@ -1,5 +1,6 @@
 //! Session Report Response message.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -128,8 +129,9 @@ impl Message for SessionReportResponse {
 
         Ok(SessionReportResponse {
             header,
-            cause: cause
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE not found"))?,
+            cause: cause.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            })?,
             offending_ie,
             update_bar_within_session_report_response,
             pfcpsrrsp_flags,
@@ -413,9 +415,12 @@ impl SessionReportResponseBuilder {
     }
 
     pub fn build(self) -> Result<SessionReportResponse, io::Error> {
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE is required"))?;
+        let cause = self.cause.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                messages::missing_mandatory_ie_short("Cause"),
+            )
+        })?;
 
         let mut payload_len = cause.len();
         if let Some(ie) = &self.offending_ie {

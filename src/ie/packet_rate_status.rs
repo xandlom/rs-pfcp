@@ -3,6 +3,7 @@
 //! The Packet Rate Status IE reports the packet rate enforcement status and remaining packet counts.
 //! Per 3GPP TS 29.244 Section 8.2.139.
 
+use crate::error::messages;
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -246,7 +247,7 @@ impl PacketRateStatus {
         if data.is_empty() {
             return Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
-                "Packet Rate Status requires at least 1 byte",
+                messages::requires_at_least_bytes("Packet Rate Status", 1),
             ));
         }
 
