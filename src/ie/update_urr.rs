@@ -2,11 +2,11 @@
 //! UpdateURR IE and its sub-IEs.
 
 use crate::ie::{
-    inactivity_detection_time::InactivityDetectionTime, measurement_method::MeasurementMethod,
-    monitoring_time::MonitoringTime, reporting_triggers::ReportingTriggers,
-    subsequent_time_threshold::SubsequentTimeThreshold,
+    inactivity_detection_time::InactivityDetectionTime, marshal_ies,
+    measurement_method::MeasurementMethod, monitoring_time::MonitoringTime,
+    reporting_triggers::ReportingTriggers, subsequent_time_threshold::SubsequentTimeThreshold,
     subsequent_volume_threshold::SubsequentVolumeThreshold, time_threshold::TimeThreshold,
-    urr_id::UrrId, volume_threshold::VolumeThreshold, Ie, IeType,
+    urr_id::UrrId, volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
 };
 use std::io;
 
@@ -91,13 +91,7 @@ impl UpdateUrr {
             ));
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals a byte slice into a Update Urr IE.
@@ -112,9 +106,8 @@ impl UpdateUrr {
         let mut subsequent_time_threshold = None;
         let mut inactivity_detection_time = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::UrrId => {
                     urr_id = Some(UrrId::unmarshal(&ie.payload)?);
@@ -148,7 +141,6 @@ impl UpdateUrr {
                 }
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         Ok(UpdateUrr {

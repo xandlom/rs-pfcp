@@ -8,7 +8,7 @@ use crate::ie::gbr::Gbr;
 use crate::ie::mbr::Mbr;
 use crate::ie::qer_correlation_id::QerCorrelationId;
 use crate::ie::qer_id::QerId;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,13 +52,7 @@ impl CreateQer {
             ies.push(Ie::new(IeType::Gbr, gbr.marshal().to_vec()));
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals a byte slice into a Create QER IE.
@@ -69,9 +63,8 @@ impl CreateQer {
         let mut mbr = None;
         let mut gbr = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::QerId => {
                     qer_id = Some(QerId::unmarshal(&ie.payload)?);
@@ -90,7 +83,6 @@ impl CreateQer {
                 }
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         let qer_id = qer_id.ok_or_else(|| {

@@ -3,6 +3,7 @@
 use crate::ie::{
     destination_interface::DestinationInterface,
     header_enrichment::HeaderEnrichment,
+    marshal_ies,
     network_instance::NetworkInstance,
     outer_header_creation::OuterHeaderCreation,
     proxying::Proxying,
@@ -10,6 +11,7 @@ use crate::ie::{
     // TODO: traffic_endpoint_id::TrafficEndpointId,
     transport_level_marking::TransportLevelMarking,
     Ie,
+    IeIterator,
     IeType,
 };
 use std::io;
@@ -120,79 +122,56 @@ impl ForwardingParameters {
             ies.push(he.to_ie());
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals a byte slice into a Forwarding Parameters IE.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        let mut ies = Vec::new();
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
-            ies.push(ie.clone());
-            offset += ie.len() as usize;
+        let mut destination_interface = None;
+        let mut network_instance = None;
+        let mut transport_level_marking = None;
+        let mut outer_header_creation = None;
+        let mut proxying = None;
+        let mut three_gpp_interface_type = None;
+        let mut header_enrichment = None;
+
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
+            match ie.ie_type {
+                IeType::DestinationInterface => {
+                    destination_interface = Some(DestinationInterface::unmarshal(&ie.payload)?)
+                }
+                IeType::NetworkInstance => {
+                    network_instance = Some(NetworkInstance::unmarshal(&ie.payload)?)
+                }
+                IeType::TransportLevelMarking => {
+                    transport_level_marking = Some(TransportLevelMarking::unmarshal(&ie.payload)?)
+                }
+                IeType::OuterHeaderCreation => {
+                    outer_header_creation = Some(OuterHeaderCreation::unmarshal(&ie.payload)?)
+                }
+                // TODO: Add traffic_endpoint_id unmarshaling once implemented
+                // IeType::TrafficEndpointId => {
+                //     traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?)
+                // }
+                IeType::Proxying => proxying = Some(Proxying::unmarshal(&ie.payload)?),
+                IeType::TgppInterfaceType => {
+                    three_gpp_interface_type =
+                        Some(ThreeGppInterfaceTypeIe::unmarshal(&ie.payload)?)
+                }
+                IeType::HeaderEnrichment => {
+                    header_enrichment = Some(HeaderEnrichment::unmarshal(&ie.payload)?)
+                }
+                _ => (),
+            }
         }
 
-        let destination_interface = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::DestinationInterface)
-            .map(|ie| DestinationInterface::unmarshal(&ie.payload))
-            .transpose()?
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory Destination Interface IE",
-                )
-            })?;
-
-        let network_instance = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::NetworkInstance)
-            .map(|ie| NetworkInstance::unmarshal(&ie.payload))
-            .transpose()?;
-
-        let transport_level_marking = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::TransportLevelMarking)
-            .map(|ie| TransportLevelMarking::unmarshal(&ie.payload))
-            .transpose()?;
-
-        let outer_header_creation = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::OuterHeaderCreation)
-            .map(|ie| OuterHeaderCreation::unmarshal(&ie.payload))
-            .transpose()?;
-
-        // TODO: Add traffic_endpoint_id unmarshaling once implemented
-        // let traffic_endpoint_id = ies
-        //     .iter()
-        //     .find(|ie| ie.ie_type == IeType::TrafficEndpointId)
-        //     .map(|ie| TrafficEndpointId::unmarshal(&ie.payload))
-        //     .transpose()?;
-
-        let proxying = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::Proxying)
-            .map(|ie| Proxying::unmarshal(&ie.payload))
-            .transpose()?;
-
-        let three_gpp_interface_type = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::TgppInterfaceType)
-            .map(|ie| ThreeGppInterfaceTypeIe::unmarshal(&ie.payload))
-            .transpose()?;
-
-        let header_enrichment = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::HeaderEnrichment)
-            .map(|ie| HeaderEnrichment::unmarshal(&ie.payload))
-            .transpose()?;
+        let destination_interface = destination_interface.ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Missing mandatory Destination Interface IE",
+            )
+        })?;
 
         Ok(ForwardingParameters {
             destination_interface,

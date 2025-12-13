@@ -3,7 +3,7 @@
 use crate::ie::bar_id::BarId;
 use crate::ie::downlink_data_notification_delay::DownlinkDataNotificationDelay;
 use crate::ie::suggested_buffering_packets_count::SuggestedBufferingPacketsCount;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 /// Represents the Update BAR within Session Report Response.
@@ -64,45 +64,34 @@ impl UpdateBarWithinSessionReportResponse {
             ));
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals a byte slice into an Update BAR within Session Report Response IE.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        let mut ies = Vec::new();
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
-            ies.push(ie.clone());
-            offset += ie.len() as usize;
+        let mut bar_id = None;
+        let mut downlink_data_notification_delay = None;
+        let mut suggested_buffering_packets_count = None;
+
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
+            match ie.ie_type {
+                IeType::BarId => bar_id = Some(BarId::unmarshal(&ie.payload)?),
+                IeType::DownlinkDataNotificationDelay => {
+                    downlink_data_notification_delay =
+                        Some(DownlinkDataNotificationDelay::unmarshal(&ie.payload)?)
+                }
+                IeType::DlBufferingSuggestedPacketCount => {
+                    suggested_buffering_packets_count =
+                        Some(SuggestedBufferingPacketsCount::unmarshal(&ie.payload)?)
+                }
+                _ => (),
+            }
         }
 
-        let bar_id = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::BarId)
-            .map(|ie| BarId::unmarshal(&ie.payload))
-            .transpose()?
-            .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory BAR ID IE")
-            })?;
-
-        let downlink_data_notification_delay = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::DownlinkDataNotificationDelay)
-            .map(|ie| DownlinkDataNotificationDelay::unmarshal(&ie.payload))
-            .transpose()?;
-
-        let suggested_buffering_packets_count = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::DlBufferingSuggestedPacketCount)
-            .map(|ie| SuggestedBufferingPacketsCount::unmarshal(&ie.payload))
-            .transpose()?;
+        let bar_id = bar_id.ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory BAR ID IE")
+        })?;
 
         Ok(UpdateBarWithinSessionReportResponse {
             bar_id,

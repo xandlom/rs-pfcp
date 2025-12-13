@@ -3,7 +3,7 @@
 use crate::error::messages;
 use crate::ie::f_teid::Fteid;
 use crate::ie::ue_ip_address::UeIpAddress;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 /// Traffic Endpoint ID - 1 byte identifier
@@ -82,46 +82,40 @@ impl CreateTrafficEndpoint {
             ies.push(Ie::new(IeType::UeIpAddress, ue_ip.marshal()));
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals a byte slice into a Create Traffic Endpoint IE.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        let mut ies = Vec::new();
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
-            ies.push(ie.clone());
-            offset += ie.len() as usize;
+        let mut traffic_endpoint_id = None;
+        let mut local_f_teid = None;
+        let mut ue_ip_address = None;
+
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
+            match ie.ie_type {
+                IeType::Unknown => {
+                    // For now, assume Unknown IE contains traffic endpoint ID
+                    if traffic_endpoint_id.is_none() {
+                        traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?);
+                    }
+                }
+                IeType::Fteid => {
+                    local_f_teid = Some(Fteid::unmarshal(&ie.payload)?);
+                }
+                IeType::UeIpAddress => {
+                    ue_ip_address = Some(UeIpAddress::unmarshal(&ie.payload)?);
+                }
+                _ => (),
+            }
         }
 
-        // For now, assume first IE contains traffic endpoint ID
-        let traffic_endpoint_id = if let Some(first_ie) = ies.first() {
-            TrafficEndpointId::unmarshal(&first_ie.payload)?
-        } else {
-            return Err(io::Error::new(
+        let traffic_endpoint_id = traffic_endpoint_id.ok_or_else(|| {
+            io::Error::new(
                 io::ErrorKind::InvalidData,
                 messages::missing_ie("Traffic Endpoint ID"),
-            ));
-        };
-
-        let local_f_teid = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::Fteid)
-            .map(|ie| Fteid::unmarshal(&ie.payload))
-            .transpose()?;
-
-        let ue_ip_address = ies
-            .iter()
-            .find(|ie| ie.ie_type == IeType::UeIpAddress)
-            .map(|ie| UeIpAddress::unmarshal(&ie.payload))
-            .transpose()?;
+            )
+        })?;
 
         Ok(CreateTrafficEndpoint {
             traffic_endpoint_id,

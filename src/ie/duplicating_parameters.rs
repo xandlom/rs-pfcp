@@ -3,8 +3,8 @@
 //! Duplicating Parameters Information Element.
 
 use crate::ie::{
-    destination_interface::DestinationInterface, forwarding_policy::ForwardingPolicy,
-    transport_level_marking::TransportLevelMarking, Ie, IeType,
+    destination_interface::DestinationInterface, forwarding_policy::ForwardingPolicy, marshal_ies,
+    transport_level_marking::TransportLevelMarking, Ie, IeIterator, IeType,
 };
 use std::io;
 
@@ -41,13 +41,7 @@ impl DuplicatingParameters {
             ies.push(Ie::new(IeType::ForwardingPolicy, fp.marshal()));
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
@@ -55,9 +49,8 @@ impl DuplicatingParameters {
         let mut transport_level_marking = None;
         let mut forwarding_policy = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::DestinationInterface => {
                     destination_interface = Some(DestinationInterface::unmarshal(&ie.payload)?);
@@ -70,7 +63,6 @@ impl DuplicatingParameters {
                 }
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         Ok(DuplicatingParameters {

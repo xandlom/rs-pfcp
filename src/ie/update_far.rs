@@ -7,7 +7,7 @@ use crate::ie::bar_id::BarId;
 use crate::ie::duplicating_parameters::DuplicatingParameters;
 use crate::ie::far_id::FarId;
 use crate::ie::update_forwarding_parameters::UpdateForwardingParameters;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,13 +50,7 @@ impl UpdateFar {
         if let Some(bar_id) = &self.bar_id {
             ies.push(bar_id.to_ie());
         }
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
@@ -66,9 +60,8 @@ impl UpdateFar {
         let mut duplicating_parameters = None;
         let mut bar_id = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::FarId => far_id = Some(FarId::unmarshal(&ie.payload)?),
                 IeType::ApplyAction => apply_action = Some(ApplyAction::unmarshal(&ie.payload)?),
@@ -82,7 +75,6 @@ impl UpdateFar {
                 IeType::BarId => bar_id = Some(BarId::unmarshal(&ie.payload)?),
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         Ok(UpdateFar {

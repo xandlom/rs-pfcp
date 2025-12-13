@@ -4,7 +4,7 @@
 
 use crate::ie::bar_id::BarId;
 use crate::ie::suggested_buffering_packets_count::SuggestedBufferingPacketsCount;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,22 +31,15 @@ impl UpdateBar {
             ies.push(sbpc.to_ie());
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
         let mut bar_id = None;
         let mut suggested_buffering_packets_count = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::BarId => {
                     bar_id = Some(BarId::unmarshal(&ie.payload)?);
@@ -57,7 +50,6 @@ impl UpdateBar {
                 }
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         Ok(UpdateBar {
