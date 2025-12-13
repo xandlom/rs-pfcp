@@ -3,9 +3,9 @@
 //! Packet Detection Information (PDI) IE and its sub-IEs.
 
 use crate::ie::{
-    ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid, network_instance::NetworkInstance,
-    sdf_filter::SdfFilter, source_interface::SourceInterface, ue_ip_address::UeIpAddress, Ie,
-    IeType,
+    ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid, marshal_ies,
+    network_instance::NetworkInstance, sdf_filter::SdfFilter, source_interface::SourceInterface,
+    ue_ip_address::UeIpAddress, Ie, IeIterator, IeType,
 };
 
 /// Represents the Packet Detection Information.
@@ -65,12 +65,7 @@ impl Pdi {
             ies.push(eth_filter.to_ie());
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals a byte slice into a PDI IE.
@@ -83,9 +78,8 @@ impl Pdi {
         let mut application_id = None;
         let mut ethernet_packet_filter = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::SourceInterface => {
                     source_interface = Some(SourceInterface::unmarshal(&ie.payload)?);
@@ -110,7 +104,6 @@ impl Pdi {
                 }
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         Ok(Pdi {

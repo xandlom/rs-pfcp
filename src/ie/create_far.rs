@@ -9,7 +9,7 @@ use crate::ie::duplicating_parameters::DuplicatingParameters;
 use crate::ie::far_id::FarId;
 use crate::ie::forwarding_parameters::ForwardingParameters;
 use crate::ie::network_instance::NetworkInstance;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 /// Traffic direction for FAR rules
@@ -138,12 +138,7 @@ impl CreateFar {
         }
 
         // Serialize all IEs
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     /// Unmarshals Create FAR from bytes.
@@ -154,9 +149,8 @@ impl CreateFar {
         let mut duplicating_parameters = None;
         let mut bar_id = None;
 
-        let mut cursor = 0;
-        while cursor < data.len() {
-            let ie = Ie::unmarshal(&data[cursor..])?;
+        for ie_result in IeIterator::new(data) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::FarId => far_id = Some(FarId::unmarshal(&ie.payload)?),
                 IeType::ApplyAction => apply_action = Some(ApplyAction::unmarshal(&ie.payload)?),
@@ -169,7 +163,6 @@ impl CreateFar {
                 IeType::BarId => bar_id = Some(BarId::unmarshal(&ie.payload)?),
                 _ => {} // Ignore unknown IEs
             }
-            cursor += ie.len() as usize;
         }
 
         Ok(CreateFar {

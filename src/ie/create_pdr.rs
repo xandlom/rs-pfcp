@@ -10,7 +10,7 @@ use crate::ie::pdr_id::PdrId;
 use crate::ie::precedence::Precedence;
 use crate::ie::qer_id::QerId;
 use crate::ie::urr_id::UrrId;
-use crate::ie::{Ie, IeType};
+use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,12 +72,7 @@ impl CreatePdr {
             ies.push(Ie::new(IeType::ActivatePredefinedRules, apr.marshal()));
         }
 
-        let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
-        let mut data = Vec::with_capacity(capacity);
-        for ie in ies {
-            data.extend_from_slice(&ie.marshal());
-        }
-        data
+        marshal_ies(&ies)
     }
 
     pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
@@ -90,9 +85,8 @@ impl CreatePdr {
         let mut qer_id = None;
         let mut activate_predefined_rules = None;
 
-        let mut offset = 0;
-        while offset < payload.len() {
-            let ie = Ie::unmarshal(&payload[offset..])?;
+        for ie_result in IeIterator::new(payload) {
+            let ie = ie_result?;
             match ie.ie_type {
                 IeType::PdrId => pdr_id = Some(PdrId::unmarshal(&ie.payload)?),
                 IeType::Precedence => precedence = Some(Precedence::unmarshal(&ie.payload)?),
@@ -109,7 +103,6 @@ impl CreatePdr {
                 }
                 _ => (),
             }
-            offset += ie.len() as usize;
         }
 
         Ok(CreatePdr {

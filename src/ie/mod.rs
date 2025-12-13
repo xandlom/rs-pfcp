@@ -1180,6 +1180,121 @@ impl Ie {
     }
 }
 
+/// Efficiently marshals a slice of IEs into a byte vector.
+///
+/// Pre-allocates capacity based on IE lengths to avoid reallocations.
+/// This is the standard pattern for marshaling grouped IEs.
+///
+/// # Examples
+///
+/// ```
+/// use rs_pfcp::ie::{marshal_ies, Ie, IeType};
+///
+/// let ies = vec![
+///     Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+///     Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+/// ];
+///
+/// let marshaled = marshal_ies(&ies);
+/// let expected_len: usize = ies.iter().map(|ie| ie.len() as usize).sum();
+/// assert_eq!(marshaled.len(), expected_len);
+/// ```
+///
+/// # Performance
+///
+/// This function pre-calculates the required capacity and allocates once,
+/// avoiding multiple reallocations during marshaling. It's equivalent to
+/// the pattern used in Phase 1 capacity optimization but extracted for reuse.
+pub fn marshal_ies(ies: &[Ie]) -> Vec<u8> {
+    let capacity: usize = ies.iter().map(|ie| ie.len() as usize).sum();
+    let mut data = Vec::with_capacity(capacity);
+    for ie in ies {
+        data.extend_from_slice(&ie.marshal());
+    }
+    data
+}
+
+/// Iterator over Information Elements in a payload.
+///
+/// Automatically tracks byte offset and unmarshals IEs sequentially.
+/// This is the standard pattern for parsing grouped IE payloads.
+///
+/// # Examples
+///
+/// ```
+/// use rs_pfcp::ie::{IeIterator, IeType, pdr_id::PdrId, far_id::FarId};
+///
+/// # fn example(payload: &[u8]) -> Result<(), std::io::Error> {
+/// let mut pdr_id = None;
+/// let mut far_id = None;
+///
+/// for ie_result in IeIterator::new(payload) {
+///     let ie = ie_result?;
+///     match ie.ie_type {
+///         IeType::PdrId => pdr_id = Some(PdrId::unmarshal(&ie.payload)?),
+///         IeType::FarId => far_id = Some(FarId::unmarshal(&ie.payload)?),
+///         _ => (), // Ignore unknown IEs
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - IE header is malformed
+/// - Payload is truncated (IE extends past end)
+///
+/// # Implementation Notes
+///
+/// This iterator automatically stops on the first error and won't continue
+/// iteration after an error is encountered. This matches the standard error
+/// handling pattern for PFCP parsing.
+pub struct IeIterator<'a> {
+    payload: &'a [u8],
+    offset: usize,
+}
+
+impl<'a> IeIterator<'a> {
+    /// Creates a new IE iterator over the given payload.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::ie::IeIterator;
+    ///
+    /// let payload = vec![/* IE bytes */];
+    /// let iter = IeIterator::new(&payload);
+    /// ```
+    pub fn new(payload: &'a [u8]) -> Self {
+        IeIterator { payload, offset: 0 }
+    }
+}
+
+impl<'a> Iterator for IeIterator<'a> {
+    type Item = Result<Ie, io::Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.offset >= self.payload.len() {
+            return None;
+        }
+
+        match Ie::unmarshal(&self.payload[self.offset..]) {
+            Ok(ie) => {
+                let ie_len = ie.len() as usize;
+                self.offset += ie_len;
+                Some(Ok(ie))
+            }
+            Err(e) => {
+                // Move to end to stop iteration
+                self.offset = self.payload.len();
+                Some(Err(e))
+            }
+        }
+    }
+}
+
 /// Ergonomic builder support for converting common Rust types to IEs.
 ///
 /// This module provides the `IntoIe` trait and implementations for common types
@@ -2350,6 +2465,220 @@ mod tests {
             // Verify it matches explicit construction
             let explicit_ue_ip = UeIpAddress::new(Some(ipv4), Some(ipv6));
             assert_eq!(ue_ip, explicit_ue_ip);
+        }
+    }
+
+    /// Tests for grouped IE helper functions (Phase 2)
+    mod grouped_ie_helpers {
+        use super::*;
+
+        #[test]
+        fn test_marshal_ies_empty() {
+            let ies: Vec<Ie> = vec![];
+            let result = marshal_ies(&ies);
+            assert_eq!(result.len(), 0);
+        }
+
+        #[test]
+        fn test_marshal_ies_single() {
+            let ies = vec![Ie::new(IeType::PdrId, vec![0x00, 0x01])];
+            let result = marshal_ies(&ies);
+
+            // Verify result contains IE header + payload
+            // IE header is 4 bytes (type:2 + length:2)
+            assert!(result.len() >= 4);
+
+            // Verify length matches sum of IE lengths
+            let expected_len: usize = ies.iter().map(|ie| ie.len() as usize).sum();
+            assert_eq!(result.len(), expected_len);
+        }
+
+        #[test]
+        fn test_marshal_ies_multiple() {
+            let ies = vec![
+                Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+                Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+                Ie::new(IeType::Precedence, vec![0x00, 0x00, 0x00, 0x64]),
+            ];
+            let result = marshal_ies(&ies);
+
+            // Verify length matches sum of all IE lengths
+            let expected_len: usize = ies.iter().map(|ie| ie.len() as usize).sum();
+            assert_eq!(result.len(), expected_len);
+        }
+
+        #[test]
+        fn test_marshal_ies_round_trip() {
+            // Create some IEs, marshal them, then unmarshal and verify
+            let original_ies = vec![
+                Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+                Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+            ];
+
+            let marshaled = marshal_ies(&original_ies);
+
+            // Use IeIterator to parse them back
+            let mut parsed_ies = vec![];
+            for ie_result in IeIterator::new(&marshaled) {
+                parsed_ies.push(ie_result.unwrap());
+            }
+
+            assert_eq!(parsed_ies.len(), original_ies.len());
+            assert_eq!(parsed_ies[0].ie_type, IeType::PdrId);
+            assert_eq!(parsed_ies[1].ie_type, IeType::FarId);
+        }
+
+        #[test]
+        fn test_ie_iterator_empty() {
+            let payload: Vec<u8> = vec![];
+            let mut iter = IeIterator::new(&payload);
+            assert!(iter.next().is_none());
+        }
+
+        #[test]
+        fn test_ie_iterator_single() {
+            // Create valid IE payload
+            let ie = Ie::new(IeType::PdrId, vec![0x00, 0x01]);
+            let payload = ie.marshal();
+
+            let mut count = 0;
+            for ie_result in IeIterator::new(&payload) {
+                let parsed_ie = ie_result.unwrap();
+                assert_eq!(parsed_ie.ie_type, IeType::PdrId);
+                assert_eq!(parsed_ie.payload, vec![0x00, 0x01]);
+                count += 1;
+            }
+            assert_eq!(count, 1);
+        }
+
+        #[test]
+        fn test_ie_iterator_multiple() {
+            let ies = vec![
+                Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+                Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+                Ie::new(IeType::Precedence, vec![0x00, 0x00, 0x00, 0x64]),
+            ];
+            let payload = marshal_ies(&ies);
+
+            let mut count = 0;
+            let expected_types = [IeType::PdrId, IeType::FarId, IeType::Precedence];
+
+            for ie_result in IeIterator::new(&payload) {
+                let ie = ie_result.unwrap();
+                assert_eq!(ie.ie_type, expected_types[count]);
+                count += 1;
+            }
+            assert_eq!(count, 3);
+        }
+
+        #[test]
+        fn test_ie_iterator_with_question_mark_operator() {
+            // Test that the iterator works well with ? operator
+            fn parse_ies(payload: &[u8]) -> Result<Vec<IeType>, io::Error> {
+                let mut types = vec![];
+                for ie_result in IeIterator::new(payload) {
+                    let ie = ie_result?; // ← Test ? operator
+                    types.push(ie.ie_type);
+                }
+                Ok(types)
+            }
+
+            let ies = vec![
+                Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+                Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+            ];
+            let payload = marshal_ies(&ies);
+
+            let types = parse_ies(&payload).unwrap();
+            assert_eq!(types, vec![IeType::PdrId, IeType::FarId]);
+        }
+
+        #[test]
+        fn test_ie_iterator_error_truncated() {
+            // Malformed payload (truncated IE header)
+            let payload = vec![0x00, 0x01]; // IE header needs 4 bytes minimum
+
+            let mut iter = IeIterator::new(&payload);
+            match iter.next() {
+                Some(Err(_)) => (), // Expected error
+                other => panic!("Expected error for truncated payload, got: {:?}", other),
+            }
+
+            // Iterator should stop after error
+            assert!(iter.next().is_none());
+        }
+
+        #[test]
+        fn test_ie_iterator_stops_on_error() {
+            // Create payload with valid IE followed by truncated IE
+            let valid_ie = Ie::new(IeType::PdrId, vec![0x00, 0x01]);
+            let mut payload = valid_ie.marshal();
+            payload.extend_from_slice(&[0x00, 0x01]); // Truncated IE
+
+            let mut count = 0;
+            let mut error_found = false;
+
+            for ie_result in IeIterator::new(&payload) {
+                match ie_result {
+                    Ok(_) => count += 1,
+                    Err(_) => {
+                        error_found = true;
+                        break;
+                    }
+                }
+            }
+
+            assert_eq!(count, 1, "Should parse one valid IE");
+            assert!(error_found, "Should encounter error on truncated IE");
+        }
+
+        #[test]
+        fn test_marshal_ies_preserves_order() {
+            // Verify that marshal_ies preserves IE order
+            let ies = vec![
+                Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+                Ie::new(IeType::Precedence, vec![0x00, 0x00, 0x00, 0x64]),
+                Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+            ];
+
+            let marshaled = marshal_ies(&ies);
+
+            // Parse back and verify order
+            let mut types = vec![];
+            for ie_result in IeIterator::new(&marshaled) {
+                types.push(ie_result.unwrap().ie_type);
+            }
+
+            assert_eq!(
+                types,
+                vec![IeType::PdrId, IeType::Precedence, IeType::FarId]
+            );
+        }
+
+        #[test]
+        fn test_ie_iterator_offset_tracking() {
+            // Verify that offset is tracked correctly
+            let ies = vec![
+                Ie::new(IeType::PdrId, vec![0x00, 0x01]),
+                Ie::new(IeType::FarId, vec![0x00, 0x00, 0x00, 0x02]),
+            ];
+            let payload = marshal_ies(&ies);
+
+            let mut iter = IeIterator::new(&payload);
+
+            // First IE
+            assert_eq!(iter.offset, 0);
+            let ie1 = iter.next().unwrap().unwrap();
+            let ie1_len = ie1.len() as usize;
+            assert_eq!(iter.offset, ie1_len);
+
+            // Second IE
+            let ie2 = iter.next().unwrap().unwrap();
+            assert_eq!(iter.offset, ie1_len + ie2.len() as usize);
+
+            // End of payload
+            assert_eq!(iter.offset, payload.len());
+            assert!(iter.next().is_none());
         }
     }
 }
