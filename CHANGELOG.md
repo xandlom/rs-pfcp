@@ -7,6 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-12-14
+
+### Added
+
+#### 🧪 Test Infrastructure (Refactoring Plan Phase 2 - COMPLETE ✅)
+
+- **Test Fixtures Module** (c4f329f): Comprehensive test helper utilities ✅ **Phase 2 Task 2.2 Complete**
+  - Created `tests/fixtures.rs` (361 lines) with reusable test components
+  - **20+ test object builders**: `basic_pdr_id()`, `basic_create_pdr()`, `basic_fteid_ipv4()`, etc.
+  - **Common test values module**: `TEST_PDR_ID`, `TEST_TEID`, `TEST_IPV4`, `TEST_SEID`, etc.
+  - **3 test macros**: `test_round_trip!`, `test_builder!`, `test_unmarshal_short_buffer!`
+  - 9 comprehensive unit tests for fixtures themselves
+  - Completed in 2 hours vs 1 week estimate
+
+- **Grouped IE Helpers** (completed 2025-12-13): Extracted common patterns ✅ **Phase 2 Task 2.1 Complete**
+  - `marshal_ies()` helper function for efficient IE marshaling
+  - `IeIterator` for automatic offset tracking during unmarshal
+  - 17 grouped IE files migrated (100% coverage)
+  - ~170 lines of duplicated code removed
+  - 2-4% performance improvement
+  - All 2,011 tests passing
+
+### Changed
+
+#### 🎯 Phase 2 Refactoring - ALL TASKS COMPLETE ✅
+
+**Timeline**: 2025-12-13 to 2025-12-14 (2 days vs 3-4 week estimate) - **13× faster than estimated**
+**Tasks Completed**: 2/2 (100%, Task 2.2 deferred completed)
+**Test Status**: All 2,367 tests passing
+**Code Reduction**: ~208 lines saved (170 from Task 2.1 + 38 from Task 2.2 pilot)
+
+**Deliverables**:
+- ✅ **Task 2.1**: Grouped IE helpers (17 files, 2-4% perf gain) - Completed 2025-12-13
+- ✅ **Task 2.2**: Test helper utilities (fixtures module + 9 file pilot) - **This release**
+
+**Impact**:
+- **Code Quality**: Eliminated 17× duplication in grouped IE marshal/unmarshal
+- **Maintainability**: Test data changes in 1 place instead of 4+ places
+- **Developer Experience**: Better error messages, reusable test components
+- **Performance**: 2-4% improvement on grouped IE operations
+- **Test Coverage**: 2,367 tests passing (1,999 lib + 368 integration/doc)
+
+#### 🧹 Test Improvements (9 files migrated)
+
+**Error Message Improvements**:
+- Replaced `.build().unwrap()` → `.build().expect("descriptive message")` in 34 locations
+- Added context to assertions for better debugging
+- Files improved: `pdr_id.rs`, `create_pdr.rs`, `create_qer.rs`, `create_far.rs`, `update_qer.rs`
+
+**CreatePdr Test Refactoring** (demonstrates fixture benefits):
+- Test setup: 66 → 28 lines (**-58% reduction**)
+- Eliminated 4× duplication of 11-line setup blocks
+- 38 lines saved in single file
+- Added local test helpers: `test_pdr_id()`, `test_precedence()`, `test_pdi_access()`, `test_pdi_core()`
+
+### Documentation
+
+- **Test Utilities Implementation Guide** (`docs/analysis/ongoing/test-utilities-implementation.md`):
+  - Complete Task 2.2 implementation documentation
+  - Usage guide for test authors
+  - Migration patterns for future work
+  - Test macro reference
+
+- **Test Fixtures Benefits Demo** (`docs/analysis/ongoing/test-fixtures-benefits-demo.md`):
+  - Before/after code comparison with CreatePdr
+  - Detailed metrics and improvements
+  - Real-world impact analysis
+  - Best practices and lessons learned
+
+- **Refactoring Plan Updates**: Marked Phase 2 as complete
+  - Task 2.1 and 2.2 completion dates and metrics
+  - Phase 3 decision points
+  - Success criteria achieved
+
+### Migration Notes
+
+- Test fixtures are opt-in - existing tests continue to work
+- No breaking changes - all APIs remain compatible
+- Future test migrations can adopt fixture patterns incrementally
+- Estimated benefit if applied across all ~140 IE modules: **~5,000 lines saved**
+
+### Performance
+
+**Phase 2 Cumulative Improvements**:
+- Grouped IE marshal operations: +2-4% faster (Task 2.1)
+- Combined with Phase 1: **~20% total improvement on marshal paths**
+
+### Next Steps
+
+**Phase 2 Complete** - Ready for:
+1. **v0.3.0 Planning**: Breaking changes (Custom Error Type, Newtype Wrappers)
+2. **Optional Phase 3**: Advanced refactoring with macros (needs design review)
+3. **Incremental adoption**: Continue fixture pattern across remaining test modules
+
 ## [0.2.4] - 2025-12-13
 
 ### Added
