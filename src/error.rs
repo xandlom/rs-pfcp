@@ -336,29 +336,438 @@ pub mod messages {
     }
 }
 
-// TODO(v0.3.0): Add custom PfcpError enum here
-//
-// The error messages above will be integrated into the Display implementation
-// of the PfcpError enum in v0.3.0. See docs/analysis/ongoing/custom-error-type.md
-//
-// Example future structure:
-//
-// pub enum PfcpError {
-//     MissingMandatoryIe { ie_type: IeType, message_type: Option<MsgType> },
-//     InvalidIePayload { ie_type: IeType, reason: String, ... },
-//     // ... other variants
-// }
-//
-// impl Display for PfcpError {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self {
-//             PfcpError::MissingMandatoryIe { ie_type, .. } => {
-//                 write!(f, "{}", messages::missing_mandatory_ie_short(&format!("{:?}", ie_type)))
-//             }
-//             // ... use message templates for consistent formatting
-//         }
-//     }
-// }
+// ============================================================================
+// PfcpError - Custom Error Type (v0.3.0+)
+// ============================================================================
+
+use std::fmt;
+use std::io;
+
+/// PFCP protocol error type
+///
+/// This enum represents all error conditions that can occur when parsing,
+/// validating, or constructing PFCP messages and Information Elements.
+///
+/// # Error Categories
+///
+/// - **Parsing Errors**: IE/message parsing failures, malformed data
+/// - **Validation Errors**: Missing mandatory fields, invalid values
+/// - **Encoding Errors**: UTF-8 conversion failures
+/// - **I/O Errors**: Underlying transport errors
+///
+/// # Examples
+///
+/// ```rust
+/// use rs_pfcp::error::PfcpError;
+/// use rs_pfcp::ie::IeType;
+///
+/// // Pattern matching on error type
+/// # fn example(result: Result<(), PfcpError>) {
+/// match result {
+///     Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
+///         println!("Missing required IE: {:?}", ie_type);
+///     }
+///     Err(PfcpError::InvalidLength { ie_name, expected, actual, .. }) => {
+///         println!("{} length mismatch: expected {}, got {}", ie_name, expected, actual);
+///     }
+///     Err(e) => println!("Other error: {}", e),
+///     Ok(_) => println!("Success"),
+/// }
+/// # }
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum PfcpError {
+    /// Missing mandatory Information Element
+    ///
+    /// This error occurs when a required IE is not present in a message or grouped IE.
+    ///
+    /// # Fields
+    /// - `ie_type`: The missing IE type
+    /// - `message_type`: Optional message type context (if missing from message)
+    /// - `parent_ie`: Optional parent IE context (if missing from grouped IE)
+    MissingMandatoryIe {
+        ie_type: crate::ie::IeType,
+        message_type: Option<crate::message::MsgType>,
+        parent_ie: Option<crate::ie::IeType>,
+    },
+
+    /// Information Element parsing error
+    ///
+    /// This error occurs when an IE's payload cannot be parsed due to invalid format,
+    /// insufficient data, or protocol violations.
+    ///
+    /// # Fields
+    /// - `ie_type`: The IE type that failed to parse
+    /// - `reason`: Human-readable explanation of the failure
+    /// - `offset`: Optional byte offset where the error occurred
+    IeParseError {
+        ie_type: crate::ie::IeType,
+        reason: String,
+        offset: Option<usize>,
+    },
+
+    /// Invalid IE payload length
+    ///
+    /// This error occurs when an IE's payload is too short or doesn't match
+    /// the expected length per 3GPP TS 29.244.
+    ///
+    /// # Fields
+    /// - `ie_name`: Human-readable IE name
+    /// - `ie_type`: The IE type
+    /// - `expected`: Minimum expected length in bytes
+    /// - `actual`: Actual length received
+    InvalidLength {
+        ie_name: String,
+        ie_type: crate::ie::IeType,
+        expected: usize,
+        actual: usize,
+    },
+
+    /// Invalid field value
+    ///
+    /// This error occurs when a field contains an invalid or out-of-range value.
+    ///
+    /// # Fields
+    /// - `field`: Field name
+    /// - `value`: The invalid value (as string)
+    /// - `reason`: Explanation of why it's invalid
+    InvalidValue {
+        field: String,
+        value: String,
+        reason: String,
+    },
+
+    /// Builder validation error
+    ///
+    /// This error occurs when a builder's `.build()` method is called but
+    /// required fields are missing or validation fails.
+    ///
+    /// # Fields
+    /// - `builder`: Builder type name
+    /// - `field`: Missing or invalid field name
+    /// - `reason`: Validation failure reason
+    ValidationError {
+        builder: String,
+        field: String,
+        reason: String,
+    },
+
+    /// UTF-8 encoding error
+    ///
+    /// This error occurs when IE payload contains invalid UTF-8 data.
+    ///
+    /// # Fields
+    /// - `ie_name`: Human-readable IE name
+    /// - `ie_type`: The IE type
+    /// - `source`: The underlying UTF-8 error
+    EncodingError {
+        ie_name: String,
+        ie_type: crate::ie::IeType,
+        source: std::str::Utf8Error,
+    },
+
+    /// Zero-length IE security violation
+    ///
+    /// This error occurs when an IE that must not be zero-length has a zero-length payload,
+    /// which could indicate a DoS attempt per 3GPP TS 29.244 security considerations.
+    ///
+    /// # Fields
+    /// - `ie_name`: Human-readable IE name
+    /// - `ie_type`: The IE type (as u16)
+    ZeroLengthNotAllowed { ie_name: String, ie_type: u16 },
+
+    /// Message parsing error
+    ///
+    /// This error occurs when a PFCP message cannot be parsed from the wire format.
+    ///
+    /// # Fields
+    /// - `message_type`: Optional message type if header was parsed
+    /// - `reason`: Human-readable explanation
+    MessageParseError {
+        message_type: Option<crate::message::MsgType>,
+        reason: String,
+    },
+
+    /// Underlying I/O error
+    ///
+    /// This error wraps transport-level I/O errors from the standard library.
+    /// Note: We store the error kind and message rather than the actual io::Error
+    /// to allow PfcpError to implement Clone and PartialEq.
+    IoError {
+        kind: io::ErrorKind,
+        message: String,
+    },
+}
+
+impl fmt::Display for PfcpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PfcpError::MissingMandatoryIe {
+                ie_type,
+                message_type,
+                parent_ie,
+            } => {
+                let ie_name = format!("{:?}", ie_type);
+                if let Some(msg_type) = message_type {
+                    write!(
+                        f,
+                        "{} in {:?}",
+                        messages::missing_mandatory_ie_short(&ie_name),
+                        msg_type
+                    )
+                } else if let Some(parent) = parent_ie {
+                    write!(
+                        f,
+                        "{} in grouped IE {:?}",
+                        messages::missing_mandatory_ie_short(&ie_name),
+                        parent
+                    )
+                } else {
+                    write!(f, "{}", messages::missing_mandatory_ie_short(&ie_name))
+                }
+            }
+
+            PfcpError::IeParseError {
+                ie_type,
+                reason,
+                offset,
+            } => {
+                if let Some(off) = offset {
+                    write!(
+                        f,
+                        "Failed to parse {:?} at offset {}: {}",
+                        ie_type, off, reason
+                    )
+                } else {
+                    write!(f, "Failed to parse {:?}: {}", ie_type, reason)
+                }
+            }
+
+            PfcpError::InvalidLength {
+                ie_name,
+                expected,
+                actual,
+                ..
+            } => {
+                write!(
+                    f,
+                    "{}",
+                    messages::invalid_length(ie_name, *expected, *actual)
+                )
+            }
+
+            PfcpError::InvalidValue {
+                field,
+                value,
+                reason,
+            } => {
+                write!(f, "Invalid {} value '{}': {}", field, value, reason)
+            }
+
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                write!(
+                    f,
+                    "Validation failed for {}: field '{}' - {}",
+                    builder, field, reason
+                )
+            }
+
+            PfcpError::EncodingError { ie_name, .. } => {
+                write!(f, "{}", messages::invalid_utf8(ie_name))
+            }
+
+            PfcpError::ZeroLengthNotAllowed { ie_name, ie_type } => {
+                write!(
+                    f,
+                    "{}",
+                    messages::zero_length_ie_not_allowed(ie_name, *ie_type)
+                )
+            }
+
+            PfcpError::MessageParseError {
+                message_type,
+                reason,
+            } => {
+                if let Some(msg_type) = message_type {
+                    write!(f, "Failed to parse {:?}: {}", msg_type, reason)
+                } else {
+                    write!(f, "Failed to parse PFCP message: {}", reason)
+                }
+            }
+
+            PfcpError::IoError { kind, message } => {
+                write!(f, "I/O error ({:?}): {}", kind, message)
+            }
+        }
+    }
+}
+
+impl std::error::Error for PfcpError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            PfcpError::EncodingError { source, .. } => Some(source),
+            // IoError stores kind+message, not the actual error, so no source
+            _ => None,
+        }
+    }
+}
+
+// ============================================================================
+// Conversions from std::io::Error and other error types
+// ============================================================================
+
+impl From<io::Error> for PfcpError {
+    fn from(err: io::Error) -> Self {
+        PfcpError::IoError {
+            kind: err.kind(),
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<std::str::Utf8Error> for PfcpError {
+    fn from(source: std::str::Utf8Error) -> Self {
+        // Note: This is a generic conversion. Prefer using PfcpError::encoding_error()
+        // which allows specifying the IE name and type for better error messages.
+        PfcpError::EncodingError {
+            ie_name: "Unknown IE".to_string(),
+            ie_type: crate::ie::IeType::CreatePdr, // Placeholder
+            source,
+        }
+    }
+}
+
+// ============================================================================
+// Helper constructors for common error patterns
+// ============================================================================
+
+impl PfcpError {
+    /// Create a missing mandatory IE error
+    pub fn missing_ie(ie_type: crate::ie::IeType) -> Self {
+        PfcpError::MissingMandatoryIe {
+            ie_type,
+            message_type: None,
+            parent_ie: None,
+        }
+    }
+
+    /// Create a missing mandatory IE error with message context
+    pub fn missing_ie_in_message(
+        ie_type: crate::ie::IeType,
+        message_type: crate::message::MsgType,
+    ) -> Self {
+        PfcpError::MissingMandatoryIe {
+            ie_type,
+            message_type: Some(message_type),
+            parent_ie: None,
+        }
+    }
+
+    /// Create a missing mandatory IE error with parent IE context
+    pub fn missing_ie_in_grouped(ie_type: crate::ie::IeType, parent_ie: crate::ie::IeType) -> Self {
+        PfcpError::MissingMandatoryIe {
+            ie_type,
+            message_type: None,
+            parent_ie: Some(parent_ie),
+        }
+    }
+
+    /// Create an IE parse error
+    pub fn parse_error(ie_type: crate::ie::IeType, reason: impl Into<String>) -> Self {
+        PfcpError::IeParseError {
+            ie_type,
+            reason: reason.into(),
+            offset: None,
+        }
+    }
+
+    /// Create an IE parse error with offset
+    pub fn parse_error_at(
+        ie_type: crate::ie::IeType,
+        reason: impl Into<String>,
+        offset: usize,
+    ) -> Self {
+        PfcpError::IeParseError {
+            ie_type,
+            reason: reason.into(),
+            offset: Some(offset),
+        }
+    }
+
+    /// Create an invalid length error
+    pub fn invalid_length(
+        ie_name: impl Into<String>,
+        ie_type: crate::ie::IeType,
+        expected: usize,
+        actual: usize,
+    ) -> Self {
+        PfcpError::InvalidLength {
+            ie_name: ie_name.into(),
+            ie_type,
+            expected,
+            actual,
+        }
+    }
+
+    /// Create an invalid value error
+    pub fn invalid_value(
+        field: impl Into<String>,
+        value: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
+        PfcpError::InvalidValue {
+            field: field.into(),
+            value: value.into(),
+            reason: reason.into(),
+        }
+    }
+
+    /// Create a builder validation error
+    pub fn validation_error(
+        builder: impl Into<String>,
+        field: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> Self {
+        PfcpError::ValidationError {
+            builder: builder.into(),
+            field: field.into(),
+            reason: reason.into(),
+        }
+    }
+
+    /// Create a zero-length IE security error
+    pub fn zero_length_not_allowed(ie_name: impl Into<String>, ie_type: u16) -> Self {
+        PfcpError::ZeroLengthNotAllowed {
+            ie_name: ie_name.into(),
+            ie_type,
+        }
+    }
+
+    /// Create a message parse error
+    pub fn message_parse_error(reason: impl Into<String>) -> Self {
+        PfcpError::MessageParseError {
+            message_type: None,
+            reason: reason.into(),
+        }
+    }
+
+    /// Create a UTF-8 encoding error with context
+    pub fn encoding_error(
+        ie_name: impl Into<String>,
+        ie_type: crate::ie::IeType,
+        source: std::str::Utf8Error,
+    ) -> Self {
+        PfcpError::EncodingError {
+            ie_name: ie_name.into(),
+            ie_type,
+            source,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -462,5 +871,283 @@ mod tests {
             messages::payload_too_short_expected("Test", 10),
             "Test payload too short: expected at least 10 bytes"
         );
+    }
+
+    // ========================================================================
+    // PfcpError Tests (v0.3.0+)
+    // ========================================================================
+
+    use super::PfcpError;
+    use std::error::Error;
+    use std::io;
+
+    #[test]
+    fn test_pfcp_error_missing_mandatory_ie() {
+        let err = PfcpError::missing_ie(crate::ie::IeType::PdrId);
+        assert!(matches!(
+            err,
+            PfcpError::MissingMandatoryIe {
+                ie_type: crate::ie::IeType::PdrId,
+                message_type: None,
+                parent_ie: None,
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Missing mandatory"));
+        assert!(display.contains("PdrId"));
+    }
+
+    #[test]
+    fn test_pfcp_error_missing_ie_in_message() {
+        let err = PfcpError::missing_ie_in_message(
+            crate::ie::IeType::NodeId,
+            crate::message::MsgType::HeartbeatRequest,
+        );
+        assert!(matches!(
+            err,
+            PfcpError::MissingMandatoryIe {
+                ie_type: crate::ie::IeType::NodeId,
+                message_type: Some(crate::message::MsgType::HeartbeatRequest),
+                parent_ie: None,
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Missing mandatory"));
+        assert!(display.contains("NodeId"));
+        assert!(display.contains("HeartbeatRequest"));
+    }
+
+    #[test]
+    fn test_pfcp_error_missing_ie_in_grouped() {
+        let err = PfcpError::missing_ie_in_grouped(
+            crate::ie::IeType::PdrId,
+            crate::ie::IeType::CreatePdr,
+        );
+        assert!(matches!(
+            err,
+            PfcpError::MissingMandatoryIe {
+                ie_type: crate::ie::IeType::PdrId,
+                message_type: None,
+                parent_ie: Some(crate::ie::IeType::CreatePdr),
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Missing mandatory"));
+        assert!(display.contains("PdrId"));
+        assert!(display.contains("CreatePdr"));
+    }
+
+    #[test]
+    fn test_pfcp_error_parse_error() {
+        let err = PfcpError::parse_error(crate::ie::IeType::Fteid, "Invalid flags");
+        assert!(matches!(
+            err,
+            PfcpError::IeParseError {
+                ie_type: crate::ie::IeType::Fteid,
+                offset: None,
+                ..
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Failed to parse"));
+        assert!(display.contains("Fteid"));
+        assert!(display.contains("Invalid flags"));
+    }
+
+    #[test]
+    fn test_pfcp_error_parse_error_at() {
+        let err = PfcpError::parse_error_at(crate::ie::IeType::CreatePdr, "Bad PDI", 42);
+        assert!(matches!(
+            err,
+            PfcpError::IeParseError {
+                ie_type: crate::ie::IeType::CreatePdr,
+                offset: Some(42),
+                ..
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Failed to parse"));
+        assert!(display.contains("CreatePdr"));
+        assert!(display.contains("Bad PDI"));
+        assert!(display.contains("offset 42"));
+    }
+
+    #[test]
+    fn test_pfcp_error_invalid_length() {
+        let err = PfcpError::invalid_length("F-TEID", crate::ie::IeType::Fteid, 9, 5);
+        assert!(matches!(
+            err,
+            PfcpError::InvalidLength {
+                ie_type: crate::ie::IeType::Fteid,
+                expected: 9,
+                actual: 5,
+                ..
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Invalid F-TEID length"));
+        assert!(display.contains("expected at least 9"));
+        assert!(display.contains("got 5"));
+    }
+
+    #[test]
+    fn test_pfcp_error_invalid_value() {
+        let err = PfcpError::invalid_value("gate_status", "5", "must be 0-3");
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
+        let display = format!("{}", err);
+        assert!(display.contains("Invalid gate_status value"));
+        assert!(display.contains("must be 0-3"));
+    }
+
+    #[test]
+    fn test_pfcp_error_validation_error() {
+        let err = PfcpError::validation_error("CreatePdrBuilder", "pdr_id", "PDR ID is required");
+        assert!(matches!(err, PfcpError::ValidationError { .. }));
+        let display = format!("{}", err);
+        assert!(display.contains("Validation failed"));
+        assert!(display.contains("CreatePdrBuilder"));
+        assert!(display.contains("pdr_id"));
+        assert!(display.contains("PDR ID is required"));
+    }
+
+    #[test]
+    fn test_pfcp_error_encoding_error() {
+        // Create a UTF-8 error by trying to parse invalid UTF-8
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let utf8_err = std::str::from_utf8(&invalid_utf8).unwrap_err();
+
+        let err = PfcpError::encoding_error(
+            "Network Instance",
+            crate::ie::IeType::NetworkInstance,
+            utf8_err,
+        );
+        assert!(matches!(err, PfcpError::EncodingError { .. }));
+        let display = format!("{}", err);
+        assert!(display.contains("Invalid UTF-8"));
+        assert!(display.contains("Network Instance"));
+    }
+
+    #[test]
+    fn test_pfcp_error_zero_length_not_allowed() {
+        let err = PfcpError::zero_length_not_allowed("F-TEID", 21);
+        assert!(matches!(
+            err,
+            PfcpError::ZeroLengthNotAllowed { ie_type: 21, .. }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Zero-length IE not allowed"));
+        assert!(display.contains("F-TEID"));
+        assert!(display.contains("21"));
+    }
+
+    #[test]
+    fn test_pfcp_error_message_parse_error() {
+        let err = PfcpError::message_parse_error("Unexpected message type");
+        assert!(matches!(
+            err,
+            PfcpError::MessageParseError {
+                message_type: None,
+                ..
+            }
+        ));
+        let display = format!("{}", err);
+        assert!(display.contains("Failed to parse PFCP message"));
+        assert!(display.contains("Unexpected message type"));
+    }
+
+    #[test]
+    fn test_pfcp_error_from_io_error() {
+        let io_err = io::Error::new(io::ErrorKind::UnexpectedEof, "short read");
+        let pfcp_err: PfcpError = io_err.into();
+        assert!(matches!(
+            pfcp_err,
+            PfcpError::IoError {
+                kind: io::ErrorKind::UnexpectedEof,
+                ..
+            }
+        ));
+        let display = format!("{}", pfcp_err);
+        assert!(display.contains("I/O error"));
+        assert!(display.contains("short read"));
+    }
+
+    #[test]
+    fn test_pfcp_error_from_utf8_error() {
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let utf8_err = std::str::from_utf8(&invalid_utf8).unwrap_err();
+        let pfcp_err: PfcpError = utf8_err.into();
+        assert!(matches!(pfcp_err, PfcpError::EncodingError { .. }));
+    }
+
+    #[test]
+    fn test_pfcp_error_source() {
+        // Test error with source (EncodingError)
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let utf8_err = std::str::from_utf8(&invalid_utf8).unwrap_err();
+        let pfcp_err =
+            PfcpError::encoding_error("Test IE", crate::ie::IeType::NetworkInstance, utf8_err);
+        assert!(pfcp_err.source().is_some());
+
+        // Test error without source (IoError - stores kind+message, not original error)
+        let io_err = io::Error::new(io::ErrorKind::UnexpectedEof, "test");
+        let pfcp_err: PfcpError = io_err.into();
+        assert!(pfcp_err.source().is_none());
+
+        // Test error without source (MissingMandatoryIe)
+        let pfcp_err = PfcpError::missing_ie(crate::ie::IeType::PdrId);
+        assert!(pfcp_err.source().is_none());
+
+        // Test error without source (InvalidValue)
+        let pfcp_err = PfcpError::invalid_value("field", "value", "reason");
+        assert!(pfcp_err.source().is_none());
+    }
+
+    #[test]
+    fn test_pfcp_error_clone() {
+        let err1 = PfcpError::missing_ie(crate::ie::IeType::PdrId);
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_pfcp_error_debug() {
+        let err = PfcpError::invalid_value("test_field", "bad_value", "test reason");
+        let debug_str = format!("{:?}", err);
+        assert!(debug_str.contains("InvalidValue"));
+        assert!(debug_str.contains("test_field"));
+        assert!(debug_str.contains("bad_value"));
+    }
+
+    #[test]
+    fn test_pfcp_error_display_all_variants() {
+        // Test that all error variants produce non-empty display strings
+        let errors = vec![
+            PfcpError::missing_ie(crate::ie::IeType::PdrId),
+            PfcpError::missing_ie_in_message(
+                crate::ie::IeType::NodeId,
+                crate::message::MsgType::HeartbeatRequest,
+            ),
+            PfcpError::missing_ie_in_grouped(
+                crate::ie::IeType::PdrId,
+                crate::ie::IeType::CreatePdr,
+            ),
+            PfcpError::parse_error(crate::ie::IeType::Fteid, "test error"),
+            PfcpError::parse_error_at(crate::ie::IeType::CreatePdr, "test error", 10),
+            PfcpError::invalid_length("Test IE", crate::ie::IeType::PdrId, 10, 5),
+            PfcpError::invalid_value("field", "value", "reason"),
+            PfcpError::validation_error("Builder", "field", "reason"),
+            PfcpError::zero_length_not_allowed("IE", 42),
+            PfcpError::message_parse_error("test error"),
+            PfcpError::IoError {
+                kind: io::ErrorKind::InvalidData,
+                message: "test error".to_string(),
+            },
+        ];
+
+        for err in errors {
+            let display = format!("{}", err);
+            assert!(!display.is_empty(), "Error display should not be empty");
+            assert!(display.len() > 10, "Error display should be descriptive");
+        }
     }
 }
