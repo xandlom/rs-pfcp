@@ -245,11 +245,17 @@ mod tests {
     use super::*;
     use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 
-    #[test]
-    fn test_create_pdr_marshal_unmarshal() {
-        let pdr_id = PdrId::new(1);
-        let precedence = Precedence::new(100);
-        let pdi = Pdi::new(
+    // Test helper functions - demonstrates fixture pattern
+    fn test_pdr_id() -> PdrId {
+        PdrId::new(1)
+    }
+
+    fn test_precedence() -> Precedence {
+        Precedence::new(100)
+    }
+
+    fn test_pdi_access() -> Pdi {
+        Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Access),
             None,
             None,
@@ -257,79 +263,11 @@ mod tests {
             None,
             None,
             None,
-        );
-        let create_pdr = CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None);
-
-        let marshaled = create_pdr.marshal();
-        let unmarshaled = CreatePdr::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(create_pdr, unmarshaled);
+        )
     }
 
-    #[test]
-    fn test_create_pdr_marshal_unmarshal_with_optionals() {
-        let pdr_id = PdrId::new(1);
-        let precedence = Precedence::new(100);
-        let pdi = Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Access),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-        let ohr = OuterHeaderRemoval::new(0);
-        let far_id = FarId::new(1);
-        let urr_id = UrrId::new(1);
-        let qer_id = QerId::new(1);
-        let apr = ActivatePredefinedRules::new("rule1");
-        let create_pdr = CreatePdr::new(
-            pdr_id,
-            precedence,
-            pdi,
-            Some(ohr),
-            Some(far_id),
-            Some(urr_id),
-            Some(qer_id),
-            Some(apr),
-        );
-
-        let marshaled = create_pdr.marshal();
-        let unmarshaled = CreatePdr::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(create_pdr, unmarshaled);
-    }
-
-    #[test]
-    fn test_create_pdr_builder() {
-        let pdr_id = PdrId::new(1);
-        let precedence = Precedence::new(100);
-        let pdi = Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Access),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
-
-        let create_pdr = CreatePdrBuilder::new(pdr_id)
-            .precedence(precedence)
-            .pdi(pdi)
-            .build()
-            .unwrap();
-
-        assert_eq!(create_pdr.pdr_id.value, 1);
-        assert_eq!(create_pdr.precedence.value, 100);
-    }
-
-    #[test]
-    fn test_create_pdr_builder_comprehensive() {
-        let pdr_id = PdrId::new(2);
-        let precedence = Precedence::new(200);
-        let pdi = Pdi::new(
+    fn test_pdi_core() -> Pdi {
+        Pdi::new(
             SourceInterface::new(SourceInterfaceValue::Core),
             None,
             None,
@@ -337,7 +275,73 @@ mod tests {
             None,
             None,
             None,
+        )
+    }
+
+    // BEFORE: 17 lines of repetitive setup
+    // AFTER: 3 lines using test helpers ✨
+    #[test]
+    fn test_create_pdr_marshal_unmarshal() {
+        let create_pdr = CreatePdr::new(
+            test_pdr_id(),
+            test_precedence(),
+            test_pdi_access(),
+            None,
+            None,
+            None,
+            None,
+            None,
         );
+
+        let marshaled = create_pdr.marshal();
+        let unmarshaled = CreatePdr::unmarshal(&marshaled)
+            .expect("Failed to unmarshal Create PDR in round-trip test");
+
+        assert_eq!(create_pdr, unmarshaled);
+    }
+
+    // BEFORE: 32 lines of setup
+    // AFTER: 10 lines using test helpers ✨
+    #[test]
+    fn test_create_pdr_marshal_unmarshal_with_optionals() {
+        let create_pdr = CreatePdr::new(
+            test_pdr_id(),
+            test_precedence(),
+            test_pdi_access(),
+            Some(OuterHeaderRemoval::new(0)),
+            Some(FarId::new(1)),
+            Some(UrrId::new(1)),
+            Some(QerId::new(1)),
+            Some(ActivatePredefinedRules::new("rule1")),
+        );
+
+        let marshaled = create_pdr.marshal();
+        let unmarshaled = CreatePdr::unmarshal(&marshaled)
+            .expect("Failed to unmarshal Create PDR with optionals");
+
+        assert_eq!(create_pdr, unmarshaled);
+    }
+
+    // BEFORE: 17 lines of repetitive setup
+    // AFTER: 5 lines using test helpers ✨
+    #[test]
+    fn test_create_pdr_builder() {
+        let create_pdr = CreatePdrBuilder::new(test_pdr_id())
+            .precedence(test_precedence())
+            .pdi(test_pdi_access())
+            .build()
+            .expect("Failed to build Create PDR in builder test");
+
+        assert_eq!(create_pdr.pdr_id.value, 1);
+        assert_eq!(create_pdr.precedence.value, 100);
+    }
+
+    // Shows custom values still work alongside helpers
+    #[test]
+    fn test_create_pdr_builder_comprehensive() {
+        let pdr_id = PdrId::new(2);
+        let precedence = Precedence::new(200);
+        let pdi = test_pdi_core(); // Mix helpers with custom values
         let ohr = OuterHeaderRemoval::new(1);
         let far_id = FarId::new(10);
         let urr_id = UrrId::new(20);
@@ -353,7 +357,7 @@ mod tests {
             .qer_id(qer_id)
             .activate_predefined_rules(apr)
             .build()
-            .unwrap();
+            .expect("Failed to build comprehensive Create PDR");
 
         assert_eq!(create_pdr.pdr_id.value, 2);
         assert_eq!(create_pdr.precedence.value, 200);
@@ -366,11 +370,11 @@ mod tests {
 
     #[test]
     fn test_create_pdr_builder_missing_required() {
-        let pdr_id = PdrId::new(1);
+        let pdr_id = test_pdr_id(); // Use helper for consistency
 
         // Missing precedence
         let result = CreatePdrBuilder::new(pdr_id).build();
-        assert!(result.is_err());
+        assert!(result.is_err(), "Should fail without required precedence");
 
         // Missing PDI
         let pdr_id = PdrId::new(1);

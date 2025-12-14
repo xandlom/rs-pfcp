@@ -389,7 +389,9 @@ mod tests {
     #[test]
     fn test_builder_new() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::new(qer_id).build().unwrap();
+        let qer = CreateQerBuilder::new(qer_id)
+            .build()
+            .expect("Failed to build minimal Create QER");
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.qer_correlation_id.is_none());
@@ -412,7 +414,7 @@ mod tests {
             .mbr(mbr)
             .gbr(gbr)
             .build()
-            .unwrap();
+            .expect("Failed to build Create QER with all fields");
 
         assert_eq!(qer.qer_id, qer_id);
         assert_eq!(qer.qer_correlation_id, Some(qer_correlation_id));
@@ -427,11 +429,11 @@ mod tests {
         let qer = CreateQerBuilder::new(qer_id)
             .rate_limit(1000000, 2000000)
             .build()
-            .unwrap();
+            .expect("Failed to build Create QER with rate limit");
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.mbr.is_some());
-        let mbr = qer.mbr.unwrap();
+        let mbr = qer.mbr.expect("MBR should be set by rate_limit()");
         assert_eq!(mbr.uplink, 1000000);
         assert_eq!(mbr.downlink, 2000000);
     }
@@ -454,7 +456,9 @@ mod tests {
     #[test]
     fn test_builder_open_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::open_gate(qer_id).build().unwrap();
+        let qer = CreateQerBuilder::open_gate(qer_id)
+            .build()
+            .expect("Failed to build open gate QER");
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -466,7 +470,9 @@ mod tests {
     #[test]
     fn test_builder_closed_gate() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::closed_gate(qer_id).build().unwrap();
+        let qer = CreateQerBuilder::closed_gate(qer_id)
+            .build()
+            .expect("Failed to build closed gate QER");
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -478,7 +484,9 @@ mod tests {
     #[test]
     fn test_builder_downlink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::downlink_only(qer_id).build().unwrap();
+        let qer = CreateQerBuilder::downlink_only(qer_id)
+            .build()
+            .expect("Failed to build downlink-only QER");
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -490,7 +498,9 @@ mod tests {
     #[test]
     fn test_builder_uplink_only() {
         let qer_id = QerId::new(1);
-        let qer = CreateQerBuilder::uplink_only(qer_id).build().unwrap();
+        let qer = CreateQerBuilder::uplink_only(qer_id)
+            .build()
+            .expect("Failed to build uplink-only QER");
 
         assert_eq!(qer.qer_id, qer_id);
         assert!(qer.gate_status.is_some());
@@ -621,7 +631,9 @@ mod tests {
     fn test_convenience_builder() {
         let qer_id = QerId::new(1);
         let builder = CreateQer::builder(qer_id);
-        let qer = builder.build().unwrap();
+        let qer = builder
+            .build()
+            .expect("Failed to build QER in comprehensive test");
 
         assert_eq!(qer.qer_id, qer_id);
     }

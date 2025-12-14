@@ -307,7 +307,9 @@ mod tests {
 
     #[test]
     fn test_update_qer_builder_open_gate() {
-        let qer = UpdateQerBuilder::open_gate(QerId::new(5)).build().unwrap();
+        let qer = UpdateQerBuilder::open_gate(QerId::new(5))
+            .build()
+            .expect("Failed to build open_gate update QER");
 
         assert_eq!(qer.qer_id, QerId::new(5));
         assert!(qer.gate_status.is_some());

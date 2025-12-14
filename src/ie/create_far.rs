@@ -650,7 +650,9 @@ mod tests {
     #[test]
     fn test_builder_convenience_drop_traffic() {
         let far_id = FarId::new(102);
-        let far = CreateFarBuilder::drop_traffic(far_id).build().unwrap();
+        let far = CreateFarBuilder::drop_traffic(far_id)
+            .build()
+            .expect("Failed to build drop_traffic FAR");
 
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::DROP);
@@ -674,7 +676,9 @@ mod tests {
     #[test]
     fn test_builder_convenience_uplink_to_core() {
         let far_id = FarId::new(104);
-        let far = CreateFarBuilder::uplink_to_core(far_id).build().unwrap();
+        let far = CreateFarBuilder::uplink_to_core(far_id)
+            .build()
+            .expect("Failed to build uplink_to_core FAR");
 
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);
@@ -708,7 +712,9 @@ mod tests {
     #[test]
     fn test_builder_convenience_to_data_network() {
         let far_id = FarId::new(106);
-        let far = CreateFarBuilder::to_data_network(far_id).build().unwrap();
+        let far = CreateFarBuilder::to_data_network(far_id)
+            .build()
+            .expect("Failed to build to_data_network FAR");
 
         assert_eq!(far.far_id, far_id);
         assert_eq!(far.apply_action, ApplyAction::FORW);

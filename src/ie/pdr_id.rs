@@ -47,7 +47,8 @@ mod tests {
     fn test_pdr_id_marshal_unmarshal() {
         let pdr_id = PdrId::new(1);
         let marshaled = pdr_id.marshal();
-        let unmarshaled = PdrId::unmarshal(&marshaled).unwrap();
+        let unmarshaled =
+            PdrId::unmarshal(&marshaled).expect("Failed to unmarshal PDR ID in round-trip test");
         assert_eq!(unmarshaled, pdr_id);
     }
 
@@ -55,14 +56,14 @@ mod tests {
     fn test_pdr_id_unmarshal_invalid_data() {
         let data = [0; 1];
         let result = PdrId::unmarshal(&data);
-        assert!(result.is_err());
+        assert!(result.is_err(), "Expected error for 1-byte PDR ID payload");
     }
 
     #[test]
     fn test_pdr_id_unmarshal_empty() {
         let result = PdrId::unmarshal(&[]);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
+        assert!(result.is_err(), "Expected error for empty PDR ID payload");
+        let err = result.expect_err("Should have error");
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("requires 2 bytes"));
         assert!(err.to_string().contains("got 0"));
