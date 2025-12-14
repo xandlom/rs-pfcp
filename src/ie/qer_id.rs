@@ -2,8 +2,8 @@
 
 //! QER ID Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct QerId {
@@ -22,11 +22,13 @@ impl QerId {
     /// Unmarshals a byte slice into a QER ID.
     ///
     /// Per 3GPP TS 29.244, QER ID requires exactly 4 bytes (Rule ID).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("QER ID requires 4 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "QER ID",
+                IeType::QerId,
+                4,
+                data.len(),
             ));
         }
         Ok(QerId {
@@ -42,6 +44,7 @@ impl QerId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::PfcpError;
 
     #[test]
     fn test_qer_id_marshal_unmarshal() {
@@ -63,8 +66,9 @@ mod tests {
         let result = QerId::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("QER ID"));
+        assert!(err.to_string().contains("4"));
+        assert!(err.to_string().contains("0"));
     }
 }

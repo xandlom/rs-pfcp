@@ -629,6 +629,16 @@ impl From<io::Error> for PfcpError {
     }
 }
 
+// TEMPORARY: Bridge conversion for incremental migration (v0.3.0 Phase 1.3)
+// This allows migrated IEs (returning PfcpError) to work with non-migrated code (expecting io::Error).
+// TODO: Remove this once all IEs and messages are migrated to PfcpError.
+impl From<PfcpError> for io::Error {
+    fn from(err: PfcpError) -> Self {
+        // Convert PfcpError back to io::Error during migration
+        io::Error::new(io::ErrorKind::InvalidData, err.to_string())
+    }
+}
+
 impl From<std::str::Utf8Error> for PfcpError {
     fn from(source: std::str::Utf8Error) -> Self {
         // Note: This is a generic conversion. Prefer using PfcpError::encoding_error()
@@ -765,6 +775,77 @@ impl PfcpError {
             ie_name: ie_name.into(),
             ie_type,
             source,
+        }
+    }
+
+    // ========================================================================
+    // 3GPP Cause Code Mapping
+    // ========================================================================
+
+    /// Convert PfcpError to appropriate 3GPP PFCP Cause code for protocol responses.
+    ///
+    /// This mapping allows PFCP implementations to return proper Cause IEs in response
+    /// messages based on the error that occurred during processing.
+    ///
+    /// # Mapping Rules
+    ///
+    /// Per 3GPP TS 29.244 Section 8.2.1 and Table 8.2.1-1:
+    /// - Missing mandatory IEs → Cause 66 (Mandatory IE Missing)
+    /// - Invalid IE length → Cause 68 (Invalid Length)
+    /// - IE parsing errors → Cause 69 (Mandatory IE Incorrect)
+    /// - Validation errors → Cause 73 (Rule Creation/Modification Failure)
+    /// - System errors → Cause 77 (System Failure)
+    /// - Message parsing errors → Cause 64 (Request Rejected)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::error::PfcpError;
+    /// use rs_pfcp::ie::{IeType, cause::CauseValue};
+    ///
+    /// let error = PfcpError::missing_ie(IeType::PdrId);
+    /// assert_eq!(error.to_cause_code(), CauseValue::MandatoryIeMissing);
+    ///
+    /// let error = PfcpError::invalid_length("F-TEID", IeType::Fteid, 9, 5);
+    /// assert_eq!(error.to_cause_code(), CauseValue::InvalidLength);
+    /// ```
+    pub fn to_cause_code(&self) -> crate::ie::cause::CauseValue {
+        use crate::ie::cause::CauseValue;
+
+        match self {
+            // Missing mandatory IE → Cause 66 (Mandatory IE Missing)
+            PfcpError::MissingMandatoryIe { .. } => CauseValue::MandatoryIeMissing,
+
+            // IE parsing errors → Cause 69 (Mandatory IE Incorrect)
+            // This indicates the IE was present but could not be parsed correctly
+            PfcpError::IeParseError { .. } => CauseValue::MandatoryIeIncorrect,
+
+            // Invalid length → Cause 68 (Invalid Length)
+            PfcpError::InvalidLength { .. } => CauseValue::InvalidLength,
+
+            // Invalid value → Cause 69 (Mandatory IE Incorrect)
+            // The IE value is outside acceptable range or format
+            PfcpError::InvalidValue { .. } => CauseValue::MandatoryIeIncorrect,
+
+            // Builder validation errors → Cause 73 (Rule Creation/Modification Failure)
+            // These occur when constructing rules (PDR, FAR, QER, URR)
+            PfcpError::ValidationError { .. } => CauseValue::RuleCreationModificationFailure,
+
+            // UTF-8 encoding errors → Cause 69 (Mandatory IE Incorrect)
+            // String IEs contain invalid UTF-8 data
+            PfcpError::EncodingError { .. } => CauseValue::MandatoryIeIncorrect,
+
+            // Zero-length IE security violation → Cause 68 (Invalid Length)
+            // Zero-length IEs where not permitted per 3GPP security considerations
+            PfcpError::ZeroLengthNotAllowed { .. } => CauseValue::InvalidLength,
+
+            // Message parsing errors → Cause 64 (Request Rejected)
+            // Unable to parse message structure itself
+            PfcpError::MessageParseError { .. } => CauseValue::RequestRejected,
+
+            // I/O errors → Cause 77 (System Failure)
+            // Underlying transport or system issues
+            PfcpError::IoError { .. } => CauseValue::SystemFailure,
         }
     }
 }
@@ -1148,6 +1229,140 @@ mod tests {
             let display = format!("{}", err);
             assert!(!display.is_empty(), "Error display should not be empty");
             assert!(display.len() > 10, "Error display should be descriptive");
+        }
+    }
+
+    // ========================================================================
+    // 3GPP Cause Code Mapping Tests
+    // ========================================================================
+
+    use crate::ie::cause::CauseValue;
+
+    #[test]
+    fn test_to_cause_code_missing_mandatory_ie() {
+        let err = PfcpError::missing_ie(crate::ie::IeType::PdrId);
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeMissing);
+
+        let err = PfcpError::missing_ie_in_message(
+            crate::ie::IeType::NodeId,
+            crate::message::MsgType::HeartbeatRequest,
+        );
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeMissing);
+
+        let err = PfcpError::missing_ie_in_grouped(
+            crate::ie::IeType::PdrId,
+            crate::ie::IeType::CreatePdr,
+        );
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeMissing);
+    }
+
+    #[test]
+    fn test_to_cause_code_ie_parse_error() {
+        let err = PfcpError::parse_error(crate::ie::IeType::Fteid, "Invalid flags");
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeIncorrect);
+
+        let err = PfcpError::parse_error_at(crate::ie::IeType::CreatePdr, "Bad PDI", 42);
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeIncorrect);
+    }
+
+    #[test]
+    fn test_to_cause_code_invalid_length() {
+        let err = PfcpError::invalid_length("F-TEID", crate::ie::IeType::Fteid, 9, 5);
+        assert_eq!(err.to_cause_code(), CauseValue::InvalidLength);
+
+        let err = PfcpError::zero_length_not_allowed("F-TEID", 21);
+        assert_eq!(err.to_cause_code(), CauseValue::InvalidLength);
+    }
+
+    #[test]
+    fn test_to_cause_code_invalid_value() {
+        let err = PfcpError::invalid_value("gate_status", "5", "must be 0-3");
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeIncorrect);
+    }
+
+    #[test]
+    fn test_to_cause_code_validation_error() {
+        let err = PfcpError::validation_error("CreatePdrBuilder", "pdr_id", "PDR ID is required");
+        assert_eq!(
+            err.to_cause_code(),
+            CauseValue::RuleCreationModificationFailure
+        );
+    }
+
+    #[test]
+    fn test_to_cause_code_encoding_error() {
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let utf8_err = std::str::from_utf8(&invalid_utf8).unwrap_err();
+        let err = PfcpError::encoding_error(
+            "Network Instance",
+            crate::ie::IeType::NetworkInstance,
+            utf8_err,
+        );
+        assert_eq!(err.to_cause_code(), CauseValue::MandatoryIeIncorrect);
+    }
+
+    #[test]
+    fn test_to_cause_code_message_parse_error() {
+        let err = PfcpError::message_parse_error("Unexpected message type");
+        assert_eq!(err.to_cause_code(), CauseValue::RequestRejected);
+    }
+
+    #[test]
+    fn test_to_cause_code_io_error() {
+        let io_err = io::Error::new(io::ErrorKind::UnexpectedEof, "short read");
+        let err: PfcpError = io_err.into();
+        assert_eq!(err.to_cause_code(), CauseValue::SystemFailure);
+    }
+
+    #[test]
+    fn test_to_cause_code_all_variants() {
+        // Test that all error variants have a cause code mapping
+        let errors_and_causes = vec![
+            (
+                PfcpError::missing_ie(crate::ie::IeType::PdrId),
+                CauseValue::MandatoryIeMissing,
+            ),
+            (
+                PfcpError::parse_error(crate::ie::IeType::Fteid, "test"),
+                CauseValue::MandatoryIeIncorrect,
+            ),
+            (
+                PfcpError::invalid_length("Test", crate::ie::IeType::PdrId, 10, 5),
+                CauseValue::InvalidLength,
+            ),
+            (
+                PfcpError::invalid_value("field", "value", "reason"),
+                CauseValue::MandatoryIeIncorrect,
+            ),
+            (
+                PfcpError::validation_error("Builder", "field", "reason"),
+                CauseValue::RuleCreationModificationFailure,
+            ),
+            (
+                PfcpError::zero_length_not_allowed("IE", 42),
+                CauseValue::InvalidLength,
+            ),
+            (
+                PfcpError::message_parse_error("test"),
+                CauseValue::RequestRejected,
+            ),
+            (
+                PfcpError::IoError {
+                    kind: io::ErrorKind::InvalidData,
+                    message: "test".to_string(),
+                },
+                CauseValue::SystemFailure,
+            ),
+        ];
+
+        for (error, expected_cause) in errors_and_causes {
+            assert_eq!(
+                error.to_cause_code(),
+                expected_cause,
+                "Error {:?} should map to cause {:?}",
+                error,
+                expected_cause
+            );
         }
     }
 }

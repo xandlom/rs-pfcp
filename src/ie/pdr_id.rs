@@ -2,8 +2,8 @@
 
 //! PDR ID Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PdrId {
@@ -22,11 +22,13 @@ impl PdrId {
     /// Unmarshals a byte slice into a PDR ID.
     ///
     /// Per 3GPP TS 29.244, PDR ID requires exactly 2 bytes (Rule ID).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("PDR ID requires 2 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "PDR ID",
+                IeType::PdrId,
+                2,
+                data.len(),
             ));
         }
         Ok(PdrId {
@@ -42,6 +44,7 @@ impl PdrId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::PfcpError;
 
     #[test]
     fn test_pdr_id_marshal_unmarshal() {
@@ -64,8 +67,9 @@ mod tests {
         let result = PdrId::unmarshal(&[]);
         assert!(result.is_err(), "Expected error for empty PDR ID payload");
         let err = result.expect_err("Should have error");
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 2 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("PDR ID"));
+        assert!(err.to_string().contains("2"));
+        assert!(err.to_string().contains("0"));
     }
 }
