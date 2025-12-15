@@ -55,7 +55,7 @@ jobs:
         verbose: true
 
     - name: Upload HTML coverage report
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-report
         path: target/coverage/
@@ -154,7 +154,7 @@ jobs:
         done || echo "- None found" >> $GITHUB_STEP_SUMMARY
 
     - name: Upload detailed report
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-gaps
         path: target/coverage/
