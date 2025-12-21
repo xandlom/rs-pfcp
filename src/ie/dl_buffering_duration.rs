@@ -2,7 +2,8 @@
 
 //! DL Buffering Duration Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DlBufferingDuration {
@@ -18,11 +19,13 @@ impl DlBufferingDuration {
         self.value.to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for DlBufferingDuration",
+            return Err(PfcpError::invalid_length(
+                "DL Buffering Duration",
+                IeType::DlBufferingDuration,
+                4,
+                data.len(),
             ));
         }
         Ok(DlBufferingDuration {
@@ -48,5 +51,8 @@ mod tests {
         let data = [0; 3];
         let result = DlBufferingDuration::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("DL Buffering Duration"));
     }
 }

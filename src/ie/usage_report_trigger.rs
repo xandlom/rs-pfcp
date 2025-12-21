@@ -1,6 +1,7 @@
 // src/ie/usage_report_trigger.rs
 
-use crate::ie::Ie;
+use crate::error::PfcpError;
+use crate::ie::{Ie, IeType};
 use bitflags::bitflags;
 
 bitflags! {
@@ -26,17 +27,41 @@ impl UsageReportTrigger {
         vec![self.bits()]
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "invalid length",
+            return Err(PfcpError::invalid_length(
+                "Usage Report Trigger",
+                IeType::UsageReportTrigger,
+                1,
+                0,
             ));
         }
         Ok(UsageReportTrigger::from_bits_truncate(data[0]))
     }
 
     pub fn to_ie(&self) -> Ie {
-        Ie::new(super::IeType::UsageReportTrigger, self.marshal())
+        Ie::new(IeType::UsageReportTrigger, self.marshal())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_usage_report_trigger_marshal_unmarshal() {
+        let trigger = UsageReportTrigger::PERIO | UsageReportTrigger::VOLTH;
+        let marshaled = trigger.marshal();
+        let unmarshaled = UsageReportTrigger::unmarshal(&marshaled).unwrap();
+        assert_eq!(trigger, unmarshaled);
+    }
+
+    #[test]
+    fn test_usage_report_trigger_unmarshal_empty() {
+        let result = UsageReportTrigger::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Usage Report Trigger"));
     }
 }

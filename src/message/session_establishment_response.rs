@@ -1,6 +1,6 @@
 //! Session Establishment Response message.
 
-use crate::error::messages;
+use crate::error::{messages, PfcpError};
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -40,7 +40,7 @@ impl SessionEstablishmentResponse {
     }
 
     /// Returns the offending IE if present.
-    pub fn offending_ie(&self) -> Option<Result<crate::ie::offending_ie::OffendingIe, io::Error>> {
+    pub fn offending_ie(&self) -> Option<Result<crate::ie::offending_ie::OffendingIe, PfcpError>> {
         self.offending_ie
             .as_ref()
             .map(|ie| crate::ie::offending_ie::OffendingIe::unmarshal(&ie.payload))

@@ -2,7 +2,8 @@
 
 //! Outer Header Removal Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OuterHeaderRemoval {
@@ -18,11 +19,13 @@ impl OuterHeaderRemoval {
         [self.description]
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for Outer Header Removal",
+            return Err(PfcpError::invalid_length(
+                "Outer Header Removal",
+                IeType::OuterHeaderRemoval,
+                1,
+                0,
             ));
         }
         Ok(OuterHeaderRemoval {
@@ -48,5 +51,8 @@ mod tests {
         let data = [];
         let result = OuterHeaderRemoval::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Outer Header Removal"));
     }
 }

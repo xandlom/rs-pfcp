@@ -2,6 +2,8 @@
 
 //! CP Function Features Information Element.
 
+use crate::error::PfcpError;
+use crate::ie::IeType;
 use bitflags::bitflags;
 
 bitflags! {
@@ -26,11 +28,13 @@ impl CPFunctionFeatures {
         self.bits().to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Not enough data for CPFunctionFeatures",
+            return Err(PfcpError::invalid_length(
+                "CP Function Features",
+                IeType::CpFunctionFeatures,
+                1,
+                0,
             ));
         }
         Ok(CPFunctionFeatures::from_bits_truncate(data[0]))
@@ -47,5 +51,14 @@ mod tests {
         let marshaled = features.marshal();
         let unmarshaled = CPFunctionFeatures::unmarshal(&marshaled).unwrap();
         assert_eq!(features, unmarshaled);
+    }
+
+    #[test]
+    fn test_cp_function_features_unmarshal_empty() {
+        let result = CPFunctionFeatures::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("CP Function Features"));
     }
 }

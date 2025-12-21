@@ -2,7 +2,8 @@
 
 //! Offending IE Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OffendingIe {
@@ -18,11 +19,13 @@ impl OffendingIe {
         self.ie_type.to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for OffendingIe",
+            return Err(PfcpError::invalid_length(
+                "Offending IE",
+                IeType::OffendingIe,
+                2,
+                data.len(),
             ));
         }
         Ok(OffendingIe {
@@ -48,5 +51,8 @@ mod tests {
         let data = [0; 1];
         let result = OffendingIe::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Offending IE"));
     }
 }
