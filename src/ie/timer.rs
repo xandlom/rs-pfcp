@@ -2,7 +2,8 @@
 
 //! Timer Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Timer {
@@ -21,11 +22,13 @@ impl Timer {
     /// Unmarshals a byte slice into a Timer.
     ///
     /// Per 3GPP TS 29.244, Timer requires exactly 4 bytes (u32).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Timer requires 4 bytes (u32), got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "Timer",
+                IeType::Timer,
+                4,
+                data.len(),
             ));
         }
         Ok(Timer {
@@ -52,9 +55,19 @@ mod tests {
         let result = Timer::unmarshal(&data);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 3"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Timer");
+            assert_eq!(ie_type, IeType::Timer);
+            assert_eq!(expected, 4);
+            assert_eq!(actual, 3);
+        }
     }
 
     #[test]
@@ -62,9 +75,19 @@ mod tests {
         let result = Timer::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Timer");
+            assert_eq!(ie_type, IeType::Timer);
+            assert_eq!(expected, 4);
+            assert_eq!(actual, 0);
+        }
     }
 
     #[test]

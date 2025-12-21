@@ -2,7 +2,8 @@
 
 //! GBR Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Gbr {
@@ -22,11 +23,13 @@ impl Gbr {
         bytes
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 10 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for GBR",
+            return Err(PfcpError::invalid_length(
+                "GBR",
+                IeType::Gbr,
+                10,
+                data.len(),
             ));
         }
         let mut ul_bytes = [0u8; 8];
@@ -57,5 +60,19 @@ mod tests {
         let data = [0; 9];
         let result = Gbr::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "GBR");
+            assert_eq!(ie_type, IeType::Gbr);
+            assert_eq!(expected, 10);
+            assert_eq!(actual, 9);
+        }
     }
 }

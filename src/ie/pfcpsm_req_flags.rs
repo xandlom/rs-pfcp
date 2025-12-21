@@ -2,8 +2,9 @@
 
 //! PFCPSM Req-Flags Information Element.
 
+use crate::error::PfcpError;
+use crate::ie::IeType;
 use bitflags::bitflags;
-use std::io;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -24,11 +25,13 @@ impl PfcpsmReqFlags {
         self.bits().to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for PfcpsmReqFlags",
+            return Err(PfcpError::invalid_length(
+                "PFCPSM Req-Flags",
+                IeType::PfcpsmReqFlags,
+                1,
+                0,
             ));
         }
         Ok(PfcpsmReqFlags::from_bits_truncate(data[0]))
@@ -52,5 +55,19 @@ mod tests {
         let data = [];
         let result = PfcpsmReqFlags::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "PFCPSM Req-Flags");
+            assert_eq!(ie_type, IeType::PfcpsmReqFlags);
+            assert_eq!(expected, 1);
+            assert_eq!(actual, 0);
+        }
     }
 }
