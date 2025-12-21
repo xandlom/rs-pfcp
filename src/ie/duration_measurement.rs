@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +15,23 @@ impl DurationMeasurement {
         4 // u32
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+        self.marshal_to(&mut buf);
+        buf
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.duration_seconds.to_be_bytes());
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Duration measurement requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Duration Measurement",
+                IeType::DurationMeasurement,
+                4,
+                data.len(),
             ));
         }
 
@@ -41,9 +41,9 @@ impl DurationMeasurement {
         Ok(Self { duration_seconds })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::DurationMeasurement, data))
+    pub fn to_ie(&self) -> Ie {
+        let data = self.marshal();
+        Ie::new(IeType::DurationMeasurement, data)
     }
 }
 
@@ -61,7 +61,7 @@ mod tests {
     fn test_duration_measurement_marshal_unmarshal() {
         let dm = DurationMeasurement::new(7200);
 
-        let data = dm.marshal().unwrap();
+        let data = dm.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = DurationMeasurement::unmarshal(&data).unwrap();
@@ -73,7 +73,7 @@ mod tests {
     fn test_duration_measurement_marshal_zero() {
         let dm = DurationMeasurement::new(0);
 
-        let data = dm.marshal().unwrap();
+        let data = dm.marshal();
         let unmarshaled = DurationMeasurement::unmarshal(&data).unwrap();
 
         assert_eq!(dm, unmarshaled);
@@ -84,7 +84,7 @@ mod tests {
     fn test_duration_measurement_marshal_max_value() {
         let dm = DurationMeasurement::new(u32::MAX);
 
-        let data = dm.marshal().unwrap();
+        let data = dm.marshal();
         let unmarshaled = DurationMeasurement::unmarshal(&data).unwrap();
 
         assert_eq!(dm, unmarshaled);
@@ -95,7 +95,7 @@ mod tests {
     fn test_duration_measurement_to_ie() {
         let dm = DurationMeasurement::new(1800);
 
-        let ie = dm.to_ie().unwrap();
+        let ie = dm.to_ie();
         assert_eq!(ie.ie_type, IeType::DurationMeasurement);
     }
 
@@ -105,7 +105,8 @@ mod tests {
         let result = DurationMeasurement::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -114,7 +115,20 @@ mod tests {
         let result = DurationMeasurement::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Duration Measurement");
+            assert_eq!(ie_type, IeType::DurationMeasurement);
+            assert_eq!(expected, 4);
+            assert_eq!(actual, 0);
+        }
     }
 
     #[test]
@@ -129,7 +143,7 @@ mod tests {
 
         for &value in &test_values {
             let dm = DurationMeasurement::new(value);
-            let data = dm.marshal().unwrap();
+            let data = dm.marshal();
             let unmarshaled = DurationMeasurement::unmarshal(&data).unwrap();
             assert_eq!(dm, unmarshaled);
         }

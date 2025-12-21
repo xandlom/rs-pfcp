@@ -1,8 +1,7 @@
 //! MeasurementMethod IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a Measurement Method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,11 +37,13 @@ impl MeasurementMethod {
     }
 
     /// Unmarshals a byte slice into a Measurement Method.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Measurement Method"),
+            return Err(PfcpError::invalid_length(
+                "Measurement Method",
+                IeType::MeasurementMethod,
+                1,
+                0,
             ));
         }
         Ok(MeasurementMethod {
@@ -55,5 +56,38 @@ impl MeasurementMethod {
     /// Wraps the Measurement Method in a MeasurementMethod IE.
     pub fn to_ie(&self) -> Ie {
         Ie::new(IeType::MeasurementMethod, self.marshal())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_measurement_method_marshal_unmarshal() {
+        let mm = MeasurementMethod::new(true, true, false);
+        let marshaled = mm.marshal();
+        let unmarshaled = MeasurementMethod::unmarshal(&marshaled).unwrap();
+        assert_eq!(unmarshaled, mm);
+    }
+
+    #[test]
+    fn test_measurement_method_unmarshal_empty() {
+        let result = MeasurementMethod::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Measurement Method");
+            assert_eq!(ie_type, IeType::MeasurementMethod);
+            assert_eq!(expected, 1);
+            assert_eq!(actual, 0);
+        }
     }
 }

@@ -4,8 +4,8 @@
 //! should be deactivated in the User Plane Function.
 //! Per 3GPP TS 29.244 Section 8.2.122.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Deactivation Time
 ///
@@ -29,10 +29,9 @@ use std::io;
 /// assert_eq!(deactivation.timestamp(), 0x87654321);
 ///
 /// // Marshal and unmarshal
-/// let bytes = deactivation.marshal()?;
-/// let parsed = DeactivationTime::unmarshal(&bytes)?;
+/// let bytes = deactivation.marshal();
+/// let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
 /// assert_eq!(deactivation, parsed);
-/// # Ok::<(), std::io::Error>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DeactivationTime {
@@ -74,13 +73,8 @@ impl DeactivationTime {
     ///
     /// # Returns
     /// 4-byte vector containing 3GPP NTP timestamp (big-endian)
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(4);
-        buf.extend_from_slice(&self.timestamp.to_be_bytes());
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.timestamp.to_be_bytes().to_vec()
     }
 
     /// Unmarshal Deactivation Time from bytes
@@ -96,16 +90,17 @@ impl DeactivationTime {
     /// use rs_pfcp::ie::deactivation_time::DeactivationTime;
     ///
     /// let deactivation = DeactivationTime::new(0x99887766);
-    /// let bytes = deactivation.marshal()?;
-    /// let parsed = DeactivationTime::unmarshal(&bytes)?;
+    /// let bytes = deactivation.marshal();
+    /// let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
     /// assert_eq!(deactivation, parsed);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Deactivation Time requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Deactivation Time",
+                IeType::DeactivationTime,
+                4,
+                data.len(),
             ));
         }
 
@@ -123,13 +118,12 @@ impl DeactivationTime {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let deactivation = DeactivationTime::new(0x00000000);
-    /// let ie = deactivation.to_ie()?;
+    /// let ie = deactivation.to_ie();
     /// assert_eq!(ie.ie_type, IeType::DeactivationTime);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::DeactivationTime, data))
+    pub fn to_ie(&self) -> Ie {
+        let data = self.marshal();
+        Ie::new(IeType::DeactivationTime, data)
     }
 }
 
@@ -147,7 +141,7 @@ mod tests {
     #[test]
     fn test_deactivation_time_marshal_unmarshal() {
         let original = DeactivationTime::new(0xCAFEBABE);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 4);
 
         let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
@@ -158,7 +152,7 @@ mod tests {
     #[test]
     fn test_deactivation_time_marshal_zero() {
         let dt = DeactivationTime::new(0);
-        let bytes = dt.marshal().unwrap();
+        let bytes = dt.marshal();
         let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(dt, parsed);
@@ -168,7 +162,7 @@ mod tests {
     #[test]
     fn test_deactivation_time_marshal_max_value() {
         let dt = DeactivationTime::new(u32::MAX);
-        let bytes = dt.marshal().unwrap();
+        let bytes = dt.marshal();
         let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(dt, parsed);
@@ -180,6 +174,8 @@ mod tests {
         let data = vec![0x00, 0x00, 0x00]; // Only 3 bytes
         let result = DeactivationTime::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -187,12 +183,26 @@ mod tests {
         let data = vec![];
         let result = DeactivationTime::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Deactivation Time");
+            assert_eq!(ie_type, IeType::DeactivationTime);
+            assert_eq!(expected, 4);
+            assert_eq!(actual, 0);
+        }
     }
 
     #[test]
     fn test_deactivation_time_to_ie() {
         let dt = DeactivationTime::new(0x11223344);
-        let ie = dt.to_ie().unwrap();
+        let ie = dt.to_ie();
         assert_eq!(ie.ie_type, IeType::DeactivationTime);
         assert_eq!(ie.payload.len(), 4);
 
@@ -206,7 +216,7 @@ mod tests {
         let values = vec![1, 100, 1000, 100000, 1000000, 0xFFFFFFFF];
         for timestamp in values {
             let original = DeactivationTime::new(timestamp);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for timestamp {}", timestamp);
         }
@@ -216,7 +226,7 @@ mod tests {
     fn test_deactivation_time_byte_order() {
         // Verify big-endian encoding
         let dt = DeactivationTime::new(0x87654321);
-        let bytes = dt.marshal().unwrap();
+        let bytes = dt.marshal();
         assert_eq!(bytes, vec![0x87, 0x65, 0x43, 0x21]);
     }
 
@@ -231,7 +241,7 @@ mod tests {
     fn test_deactivation_time_5g_rule_deactivation() {
         // Scenario: Schedule PDR deactivation
         let deactivation = DeactivationTime::new(0x5A5A5A5A);
-        let bytes = deactivation.marshal().unwrap();
+        let bytes = deactivation.marshal();
         let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.timestamp(), 0x5A5A5A5A);
@@ -242,7 +252,7 @@ mod tests {
     fn test_deactivation_time_scheduled_deprovisioning() {
         // Scenario: Time-based rule deprovisioning
         let deactivation = DeactivationTime::new(0x99887766);
-        let bytes = deactivation.marshal().unwrap();
+        let bytes = deactivation.marshal();
         let parsed = DeactivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed, deactivation);

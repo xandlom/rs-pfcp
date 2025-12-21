@@ -4,9 +4,8 @@
 //! should be activated in the User Plane Function.
 //! Per 3GPP TS 29.244 Section 8.2.121.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Activation Time
 ///
@@ -30,10 +29,9 @@ use std::io;
 /// assert_eq!(activation.timestamp(), 0x12345678);
 ///
 /// // Marshal and unmarshal
-/// let bytes = activation.marshal()?;
-/// let parsed = ActivationTime::unmarshal(&bytes)?;
+/// let bytes = activation.marshal();
+/// let parsed = ActivationTime::unmarshal(&bytes).unwrap();
 /// assert_eq!(activation, parsed);
-/// # Ok::<(), std::io::Error>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ActivationTime {
@@ -75,13 +73,8 @@ impl ActivationTime {
     ///
     /// # Returns
     /// 4-byte vector containing 3GPP NTP timestamp (big-endian)
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(4);
-        buf.extend_from_slice(&self.timestamp.to_be_bytes());
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.timestamp.to_be_bytes().to_vec()
     }
 
     /// Unmarshal Activation Time from bytes
@@ -97,16 +90,17 @@ impl ActivationTime {
     /// use rs_pfcp::ie::activation_time::ActivationTime;
     ///
     /// let activation = ActivationTime::new(0x11223344);
-    /// let bytes = activation.marshal()?;
-    /// let parsed = ActivationTime::unmarshal(&bytes)?;
+    /// let bytes = activation.marshal();
+    /// let parsed = ActivationTime::unmarshal(&bytes).unwrap();
     /// assert_eq!(activation, parsed);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                messages::requires_at_least_bytes("Activation Time", 4),
+            return Err(PfcpError::invalid_length(
+                "Activation Time",
+                IeType::ActivationTime,
+                4,
+                data.len(),
             ));
         }
 
@@ -124,13 +118,12 @@ impl ActivationTime {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let activation = ActivationTime::new(0xFFFFFFFF);
-    /// let ie = activation.to_ie()?;
+    /// let ie = activation.to_ie();
     /// assert_eq!(ie.ie_type, IeType::ActivationTime);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::ActivationTime, data))
+    pub fn to_ie(&self) -> Ie {
+        let data = self.marshal();
+        Ie::new(IeType::ActivationTime, data)
     }
 }
 
@@ -148,7 +141,7 @@ mod tests {
     #[test]
     fn test_activation_time_marshal_unmarshal() {
         let original = ActivationTime::new(0xDEADBEEF);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 4);
 
         let parsed = ActivationTime::unmarshal(&bytes).unwrap();
@@ -159,7 +152,7 @@ mod tests {
     #[test]
     fn test_activation_time_marshal_zero() {
         let at = ActivationTime::new(0);
-        let bytes = at.marshal().unwrap();
+        let bytes = at.marshal();
         let parsed = ActivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(at, parsed);
@@ -169,7 +162,7 @@ mod tests {
     #[test]
     fn test_activation_time_marshal_max_value() {
         let at = ActivationTime::new(u32::MAX);
-        let bytes = at.marshal().unwrap();
+        let bytes = at.marshal();
         let parsed = ActivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(at, parsed);
@@ -181,6 +174,8 @@ mod tests {
         let data = vec![0x00, 0x00, 0x00]; // Only 3 bytes
         let result = ActivationTime::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -188,12 +183,26 @@ mod tests {
         let data = vec![];
         let result = ActivationTime::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Activation Time");
+            assert_eq!(ie_type, IeType::ActivationTime);
+            assert_eq!(expected, 4);
+            assert_eq!(actual, 0);
+        }
     }
 
     #[test]
     fn test_activation_time_to_ie() {
         let at = ActivationTime::new(0x44332211);
-        let ie = at.to_ie().unwrap();
+        let ie = at.to_ie();
         assert_eq!(ie.ie_type, IeType::ActivationTime);
         assert_eq!(ie.payload.len(), 4);
 
@@ -207,7 +216,7 @@ mod tests {
         let values = vec![1, 100, 1000, 100000, 1000000, 0xFFFFFFFF];
         for timestamp in values {
             let original = ActivationTime::new(timestamp);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = ActivationTime::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for timestamp {}", timestamp);
         }
@@ -217,7 +226,7 @@ mod tests {
     fn test_activation_time_byte_order() {
         // Verify big-endian encoding
         let at = ActivationTime::new(0x12345678);
-        let bytes = at.marshal().unwrap();
+        let bytes = at.marshal();
         assert_eq!(bytes, vec![0x12, 0x34, 0x56, 0x78]);
     }
 
@@ -232,7 +241,7 @@ mod tests {
     fn test_activation_time_5g_rule_activation() {
         // Scenario: Schedule PDR activation
         let activation = ActivationTime::new(0x5A5A5A5A);
-        let bytes = activation.marshal().unwrap();
+        let bytes = activation.marshal();
         let parsed = ActivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.timestamp(), 0x5A5A5A5A);
@@ -243,7 +252,7 @@ mod tests {
     fn test_activation_time_scheduled_provisioning() {
         // Scenario: Time-based rule provisioning
         let activation = ActivationTime::new(0x12341234);
-        let bytes = activation.marshal().unwrap();
+        let bytes = activation.marshal();
         let parsed = ActivationTime::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed, activation);

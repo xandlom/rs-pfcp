@@ -97,9 +97,8 @@ impl UsageReport {
             }
         }
         if let Some(ref dm) = self.duration_measurement {
-            if let Ok(ie) = dm.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = dm.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref tofp) = self.time_of_first_packet {
             if let Ok(ie) = tofp.to_ie() {

@@ -2,7 +2,8 @@
 
 //! Monitoring Time Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 // NTP epoch (1900-01-01T00:00:00Z) is 2208988800 seconds before the Unix epoch (1970-01-01T00:00:00Z).
@@ -28,17 +29,20 @@ impl MonitoringTime {
         ntp_timestamp.to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 8 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for MonitoringTime",
+            return Err(PfcpError::invalid_length(
+                "Monitoring Time",
+                IeType::MonitoringTime,
+                8,
+                data.len(),
             ));
         }
         let ntp_timestamp = u64::from_be_bytes(data[0..8].try_into().unwrap());
         if ntp_timestamp < NTP_EPOCH_OFFSET {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::invalid_value(
+                "timestamp",
+                ntp_timestamp.to_string(),
                 "NTP timestamp is before Unix epoch",
             ));
         }
@@ -75,5 +79,29 @@ mod tests {
         let data = [0; 7];
         let result = MonitoringTime::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Monitoring Time");
+            assert_eq!(ie_type, IeType::MonitoringTime);
+            assert_eq!(expected, 8);
+            assert_eq!(actual, 7);
+        }
+    }
+
+    #[test]
+    fn test_monitoring_time_unmarshal_before_unix_epoch() {
+        // NTP timestamp before Unix epoch (less than NTP_EPOCH_OFFSET)
+        let data = 1000u64.to_be_bytes();
+        let result = MonitoringTime::unmarshal(&data);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 }
