@@ -1,6 +1,6 @@
+use crate::error::PfcpError;
 use crate::ie::pdr_id::PdrId;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemovePdr {
@@ -20,7 +20,7 @@ impl RemovePdr {
         Ie::new(IeType::RemovePdr, self.marshal())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         Ok(RemovePdr {
             pdr_id: PdrId::unmarshal(data)?,
         })
@@ -51,8 +51,15 @@ mod tests {
     #[test]
     fn invalid_unmarshal() {
         // Empty payload
-        assert!(RemovePdr::unmarshal(&[]).is_err());
+        let result = RemovePdr::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+
         // Too short (1 byte instead of 2)
-        assert!(RemovePdr::unmarshal(&[0x00]).is_err());
+        let result = RemovePdr::unmarshal(&[0x00]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

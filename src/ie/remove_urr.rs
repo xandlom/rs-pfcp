@@ -1,6 +1,6 @@
+use crate::error::PfcpError;
 use crate::ie::urr_id::UrrId;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemoveUrr {
@@ -20,7 +20,7 @@ impl RemoveUrr {
         Ie::new(IeType::RemoveUrr, self.marshal())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         Ok(RemoveUrr {
             urr_id: UrrId::unmarshal(data)?,
         })
@@ -50,6 +50,9 @@ mod tests {
 
     #[test]
     fn invalid_unmarshal() {
-        assert!(RemoveUrr::unmarshal(&[0x00]).is_err());
+        let result = RemoveUrr::unmarshal(&[0x00]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

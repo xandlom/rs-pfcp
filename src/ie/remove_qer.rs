@@ -1,6 +1,6 @@
+use crate::error::PfcpError;
 use crate::ie::qer_id::QerId;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RemoveQer {
@@ -20,7 +20,7 @@ impl RemoveQer {
         Ie::new(IeType::RemoveQer, self.marshal())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         Ok(RemoveQer {
             qer_id: QerId::unmarshal(data)?,
         })
@@ -50,6 +50,9 @@ mod tests {
 
     #[test]
     fn invalid_unmarshal() {
-        assert!(RemoveQer::unmarshal(&[0x00]).is_err());
+        let result = RemoveQer::unmarshal(&[0x00]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

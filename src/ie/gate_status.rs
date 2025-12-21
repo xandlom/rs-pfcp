@@ -2,7 +2,8 @@
 
 //! Gate Status Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GateStatusValue {
@@ -35,11 +36,13 @@ impl GateStatus {
         [value]
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for GateStatus",
+            return Err(PfcpError::invalid_length(
+                "Gate Status",
+                IeType::GateStatus,
+                1,
+                0,
             ));
         }
         let downlink_gate = if (data[0] & 0b01) == 0b01 {
@@ -95,5 +98,19 @@ mod tests {
         let data = [];
         let result = GateStatus::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        if let PfcpError::InvalidLength {
+            ie_name,
+            ie_type,
+            expected,
+            actual,
+        } = err
+        {
+            assert_eq!(ie_name, "Gate Status");
+            assert_eq!(ie_type, IeType::GateStatus);
+            assert_eq!(expected, 1);
+            assert_eq!(actual, 0);
+        }
     }
 }
