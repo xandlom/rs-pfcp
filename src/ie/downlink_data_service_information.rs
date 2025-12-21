@@ -2,7 +2,8 @@
 
 //! Downlink Data Service Information IE and its flags.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DownlinkDataServiceInformation {
@@ -26,11 +27,13 @@ impl DownlinkDataServiceInformation {
         data
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for DownlinkDataServiceInformation",
+            return Err(PfcpError::invalid_length(
+                "Downlink Data Service Information",
+                IeType::DownlinkDataServiceInformation,
+                1,
+                0,
             ));
         }
         Ok(DownlinkDataServiceInformation {
@@ -67,5 +70,7 @@ mod tests {
         let data = [];
         let result = DownlinkDataServiceInformation::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

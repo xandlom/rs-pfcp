@@ -1,7 +1,7 @@
 //! Application IDs PFDs IE.
 
+use crate::error::PfcpError;
 use crate::ie::{application_id::ApplicationId, pfd_context::PfdContext, Ie, IeType};
-use std::io;
 
 /// Represents Application IDs PFDs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,7 +28,7 @@ impl ApplicationIdsPfds {
     }
 
     /// Unmarshals a byte slice into Application IDs PFDs.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut application_id = None;
         let mut pfd_context = None;
         let mut offset = 0;
@@ -46,10 +46,11 @@ impl ApplicationIdsPfds {
 
         Ok(ApplicationIdsPfds {
             application_id: application_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing Application ID")
+                PfcpError::missing_ie_in_grouped(IeType::ApplicationId, IeType::ApplicationIdsPfds)
             })?,
-            pfd_context: pfd_context
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing PFD Context"))?,
+            pfd_context: pfd_context.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::PfdContext, IeType::ApplicationIdsPfds)
+            })?,
         })
     }
 

@@ -1,5 +1,6 @@
 // tests/update_bar_tests.rs - Tests for Update BAR IE (currently 0% coverage)
 
+use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::bar_id::BarId;
 use rs_pfcp::ie::suggested_buffering_packets_count::SuggestedBufferingPacketsCount;
 use rs_pfcp::ie::update_bar::UpdateBar;
@@ -112,7 +113,7 @@ fn test_update_bar_unmarshal_missing_bar_id() {
 
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    assert!(matches!(err, PfcpError::MissingMandatoryIe { .. }));
 }
 
 #[test]

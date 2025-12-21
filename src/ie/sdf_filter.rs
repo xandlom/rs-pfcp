@@ -1,8 +1,7 @@
 //! SDF Filter IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a SDF Filter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,15 +25,18 @@ impl SdfFilter {
     /// Unmarshals a byte slice into a SDF Filter.
     ///
     /// Per 3GPP TS 29.244, SDF Filter requires at least 1 byte (flow description).
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("SDF Filter", 1),
+            return Err(PfcpError::invalid_length(
+                "SDF Filter",
+                IeType::SdfFilter,
+                1,
+                0,
             ));
         }
-        let flow_description = String::from_utf8(payload.to_vec())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let flow_description = String::from_utf8(payload.to_vec()).map_err(|e| {
+            PfcpError::encoding_error("SDF Filter", IeType::SdfFilter, e.utf8_error())
+        })?;
         Ok(SdfFilter { flow_description })
     }
 
@@ -64,7 +66,6 @@ mod tests {
         let result = SdfFilter::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires at least 1 byte"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

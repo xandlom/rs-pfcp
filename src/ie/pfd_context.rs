@@ -1,8 +1,8 @@
 //! PFD Context IE.
 
+use crate::error::PfcpError;
 use crate::ie::pfd_contents::PfdContents;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a PFD Context.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,7 +26,7 @@ impl PfdContext {
     }
 
     /// Unmarshals a byte slice into a PFD Context.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut pfd_contents = Vec::new();
         let mut offset = 0;
         while offset < payload.len() {
