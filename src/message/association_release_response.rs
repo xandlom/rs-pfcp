@@ -34,7 +34,7 @@ impl AssociationReleaseResponse {
 
     /// Returns the cause.
     pub fn cause(&self) -> Result<crate::ie::cause::Cause, io::Error> {
-        crate::ie::cause::Cause::unmarshal(&self.cause.payload)
+        crate::ie::cause::Cause::unmarshal(&self.cause.payload).map_err(Into::into)
     }
 
     // Raw IE accessors (compatibility layer)

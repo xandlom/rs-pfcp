@@ -2,8 +2,8 @@
 
 //! Precedence Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Precedence {
@@ -22,11 +22,13 @@ impl Precedence {
     /// Unmarshals a byte slice into a Precedence.
     ///
     /// Per 3GPP TS 29.244, Precedence requires exactly 4 bytes (Priority value).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Precedence requires 4 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "Precedence",
+                IeType::Precedence,
+                4,
+                data.len(),
             ));
         }
         Ok(Precedence {
@@ -56,6 +58,11 @@ mod tests {
         let data = [0; 3];
         let result = Precedence::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Precedence"));
+        assert!(err.to_string().contains("4"));
+        assert!(err.to_string().contains("3"));
     }
 
     #[test]
@@ -63,8 +70,9 @@ mod tests {
         let result = Precedence::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Precedence"));
+        assert!(err.to_string().contains("4"));
+        assert!(err.to_string().contains("0"));
     }
 }

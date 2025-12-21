@@ -6,8 +6,8 @@
 //! Reflective QoS allows the UE to derive uplink QoS rules from downlink traffic,
 //! simplifying QoS management in 5G networks.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// RQI (Reflective QoS Indicator)
 ///
@@ -129,12 +129,9 @@ impl Rqi {
     /// let parsed = Rqi::unmarshal(&bytes).unwrap();
     /// assert_eq!(rqi, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for RQI: expected 1 byte",
-            ));
+            return Err(PfcpError::invalid_length("RQI", IeType::Rqi, 1, 0));
         }
 
         // Extract bit 1 (LSB) per 3GPP TS 29.244 Section 8.2.88
@@ -229,7 +226,11 @@ mod tests {
         let data = [];
         let result = Rqi::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("RQI"));
+        assert!(err.to_string().contains("1"));
+        assert!(err.to_string().contains("0"));
     }
 
     #[test]

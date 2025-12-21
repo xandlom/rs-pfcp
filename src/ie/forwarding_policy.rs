@@ -2,7 +2,8 @@
 
 //! Forwarding Policy Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForwardingPolicy {
@@ -20,9 +21,14 @@ impl ForwardingPolicy {
         self.identifier.as_bytes().to_vec()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
-        let identifier = String::from_utf8(data.to_vec())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
+        let identifier = String::from_utf8(data.to_vec()).map_err(|e| {
+            PfcpError::encoding_error(
+                "Forwarding Policy",
+                IeType::ForwardingPolicy,
+                e.utf8_error(),
+            )
+        })?;
         Ok(ForwardingPolicy { identifier })
     }
 }
@@ -37,5 +43,15 @@ mod tests {
         let marshaled = fp.marshal();
         let unmarshaled = ForwardingPolicy::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, fp);
+    }
+
+    #[test]
+    fn test_forwarding_policy_invalid_utf8() {
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let result = ForwardingPolicy::unmarshal(&invalid_utf8);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::EncodingError { .. }));
+        assert!(err.to_string().contains("Forwarding Policy"));
     }
 }

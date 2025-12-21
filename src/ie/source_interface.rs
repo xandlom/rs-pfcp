@@ -1,7 +1,7 @@
 //! Source Interface IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a Source Interface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,11 +45,13 @@ impl SourceInterface {
     /// Unmarshals a byte slice into a Source Interface.
     ///
     /// Per 3GPP TS 29.244, Source Interface requires exactly 1 byte (interface type).
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Source Interface requires 1 byte, got 0",
+            return Err(PfcpError::invalid_length(
+                "Source Interface",
+                IeType::SourceInterface,
+                1,
+                0,
             ));
         }
         Ok(SourceInterface {
@@ -80,8 +82,9 @@ mod tests {
         let result = SourceInterface::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 1 byte"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Source Interface"));
+        assert!(err.to_string().contains("1"));
+        assert!(err.to_string().contains("0"));
     }
 }

@@ -2,7 +2,8 @@
 
 //! Metric Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Metric {
@@ -18,12 +19,9 @@ impl Metric {
         [self.value]
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for Metric",
-            ));
+            return Err(PfcpError::invalid_length("Metric", IeType::Metric, 1, 0));
         }
         Ok(Metric { value: data[0] })
     }
@@ -39,5 +37,14 @@ mod tests {
         let marshaled = m.marshal();
         let unmarshaled = Metric::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, m);
+    }
+
+    #[test]
+    fn test_metric_unmarshal_empty() {
+        let result = Metric::unmarshal(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Metric"));
     }
 }

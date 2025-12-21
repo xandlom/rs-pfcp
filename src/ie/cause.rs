@@ -4,7 +4,8 @@
 //!
 //! Per 3GPP TS 29.244 Section 8.2.1 and Table 8.2.1-1.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 /// Cause values per 3GPP TS 29.244 Table 8.2.1-1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,12 +132,9 @@ impl Cause {
         [self.value as u8]
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for Cause",
-            ));
+            return Err(PfcpError::invalid_length("Cause", IeType::Cause, 1, 0));
         }
         Ok(Cause {
             value: CauseValue::from(data[0]),
@@ -162,6 +160,11 @@ mod tests {
         let data = [];
         let result = Cause::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Cause"));
+        assert!(err.to_string().contains("1"));
+        assert!(err.to_string().contains("0"));
     }
 
     #[test]

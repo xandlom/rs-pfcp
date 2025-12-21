@@ -36,7 +36,7 @@ impl SessionEstablishmentResponse {
 
     /// Returns the cause value.
     pub fn cause(&self) -> Result<crate::ie::cause::Cause, io::Error> {
-        crate::ie::cause::Cause::unmarshal(&self.cause.payload)
+        crate::ie::cause::Cause::unmarshal(&self.cause.payload).map_err(Into::into)
     }
 
     /// Returns the offending IE if present.

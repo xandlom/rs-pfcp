@@ -2,8 +2,7 @@
 
 //! Deactivate Predefined Rules Information Element.
 
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,11 +21,15 @@ impl DeactivatePredefinedRules {
         self.rule_name.as_bytes().to_vec()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
-        Ok(DeactivatePredefinedRules {
-            rule_name: String::from_utf8(data.to_vec())
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-        })
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
+        let rule_name = String::from_utf8(data.to_vec()).map_err(|e| {
+            PfcpError::encoding_error(
+                "Deactivate Predefined Rules",
+                IeType::DeactivatePredefinedRules,
+                e.utf8_error(),
+            )
+        })?;
+        Ok(DeactivatePredefinedRules { rule_name })
     }
 
     pub fn to_ie(&self) -> Ie {
@@ -44,5 +47,15 @@ mod tests {
         let marshaled = dpr.marshal();
         let unmarshaled = DeactivatePredefinedRules::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, dpr);
+    }
+
+    #[test]
+    fn test_deactivate_predefined_rules_invalid_utf8() {
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let result = DeactivatePredefinedRules::unmarshal(&invalid_utf8);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::EncodingError { .. }));
+        assert!(err.to_string().contains("Deactivate Predefined Rules"));
     }
 }

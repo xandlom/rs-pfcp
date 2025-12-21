@@ -1,7 +1,7 @@
 //! URR ID IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a URR ID.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,11 +23,13 @@ impl UrrId {
     /// Unmarshals a byte slice into a URR ID.
     ///
     /// Per 3GPP TS 29.244, URR ID requires exactly 4 bytes (u32).
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("URR ID requires 4 bytes (u32), got {}", payload.len()),
+            return Err(PfcpError::invalid_length(
+                "URR ID",
+                IeType::UrrId,
+                4,
+                payload.len(),
             ));
         }
         Ok(UrrId {
@@ -44,6 +46,7 @@ impl UrrId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::PfcpError;
 
     #[test]
     fn test_urr_id_marshal_unmarshal() {
@@ -60,9 +63,10 @@ mod tests {
         let result = UrrId::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("URR ID"));
+        assert!(err.to_string().contains("4"));
+        assert!(err.to_string().contains("0"));
     }
 
     #[test]
@@ -73,9 +77,10 @@ mod tests {
             let result = UrrId::unmarshal(&data);
             assert!(result.is_err());
             let err = result.unwrap_err();
-            assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-            assert!(err.to_string().contains("requires 4 bytes"));
-            assert!(err.to_string().contains(&format!("got {}", len)));
+            assert!(matches!(err, PfcpError::InvalidLength { .. }));
+            assert!(err.to_string().contains("URR ID"));
+            assert!(err.to_string().contains("4"));
+            assert!(err.to_string().contains(&len.to_string()));
         }
     }
 

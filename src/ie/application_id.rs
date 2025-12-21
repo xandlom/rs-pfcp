@@ -1,8 +1,7 @@
 //! Application ID IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents an Application ID.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,15 +23,18 @@ impl ApplicationId {
     /// Unmarshals a byte slice into an Application ID.
     ///
     /// Per 3GPP TS 29.244, Application ID requires at least 1 byte (application identifier).
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("Application ID", 1),
+            return Err(PfcpError::invalid_length(
+                "Application ID",
+                IeType::ApplicationId,
+                1,
+                0,
             ));
         }
-        let id = String::from_utf8(payload.to_vec())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let id = String::from_utf8(payload.to_vec()).map_err(|e| {
+            PfcpError::encoding_error("Application ID", IeType::ApplicationId, e.utf8_error())
+        })?;
         Ok(ApplicationId { id })
     }
 
@@ -59,7 +61,18 @@ mod tests {
         let result = ApplicationId::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires at least 1 byte"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Application ID"));
+        assert!(err.to_string().contains("1"));
+    }
+
+    #[test]
+    fn test_application_id_unmarshal_invalid_utf8() {
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let result = ApplicationId::unmarshal(&invalid_utf8);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::EncodingError { .. }));
+        assert!(err.to_string().contains("Application ID"));
     }
 }

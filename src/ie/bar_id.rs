@@ -1,7 +1,7 @@
 //! BAR ID IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a BAR ID.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,12 +23,9 @@ impl BarId {
     /// Unmarshals a byte slice into a BAR ID.
     ///
     /// Per 3GPP TS 29.244, BAR ID requires exactly 1 byte (u8).
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "BAR ID requires 1 byte (u8), got 0",
-            ));
+            return Err(PfcpError::invalid_length("BAR ID", IeType::BarId, 1, 0));
         }
         Ok(BarId { id: payload[0] })
     }
@@ -42,6 +39,7 @@ impl BarId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::PfcpError;
 
     #[test]
     fn test_bar_id_marshal_unmarshal() {
@@ -58,9 +56,10 @@ mod tests {
         let result = BarId::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 1 byte"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("BAR ID"));
+        assert!(err.to_string().contains("1"));
+        assert!(err.to_string().contains("0"));
     }
 
     #[test]
