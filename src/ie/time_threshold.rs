@@ -2,7 +2,8 @@
 
 //! Time Threshold Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimeThreshold {
@@ -18,11 +19,13 @@ impl TimeThreshold {
         self.value.to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for TimeThreshold",
+            return Err(PfcpError::invalid_length(
+                "Time Threshold",
+                IeType::TimeThreshold,
+                4,
+                data.len(),
             ));
         }
         Ok(TimeThreshold {
@@ -48,5 +51,8 @@ mod tests {
         let data = [0; 3];
         let result = TimeThreshold::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Time Threshold"));
     }
 }
