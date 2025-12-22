@@ -1,5 +1,6 @@
 //! ForwardingParameters IE and its sub-IEs.
 
+use crate::error::PfcpError;
 use crate::ie::{
     destination_interface::DestinationInterface,
     header_enrichment::HeaderEnrichment,
@@ -14,7 +15,6 @@ use crate::ie::{
     IeIterator,
     IeType,
 };
-use std::io;
 
 /// Represents the Forwarding Parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,7 +126,7 @@ impl ForwardingParameters {
     }
 
     /// Unmarshals a byte slice into a Forwarding Parameters IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut destination_interface = None;
         let mut network_instance = None;
         let mut transport_level_marking = None;
@@ -167,9 +167,9 @@ impl ForwardingParameters {
         }
 
         let destination_interface = destination_interface.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing mandatory Destination Interface IE",
+            PfcpError::missing_ie_in_grouped(
+                IeType::DestinationInterface,
+                IeType::ForwardingParameters,
             )
         })?;
 

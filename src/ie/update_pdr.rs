@@ -2,6 +2,7 @@
 
 //! Update PDR Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::activate_predefined_rules::ActivatePredefinedRules;
 use crate::ie::deactivate_predefined_rules::DeactivatePredefinedRules;
 use crate::ie::far_id::FarId;
@@ -89,7 +90,7 @@ impl UpdatePdr {
         marshal_ies(&ies)
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut pdr_id = None;
         let mut precedence = None;
         let mut pdi = None;
@@ -125,8 +126,9 @@ impl UpdatePdr {
         }
 
         Ok(UpdatePdr {
-            pdr_id: pdr_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing PDR ID"))?,
+            pdr_id: pdr_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::PdrId, IeType::UpdatePdr)
+            })?,
             precedence,
             pdi,
             outer_header_removal,
