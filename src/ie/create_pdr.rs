@@ -2,6 +2,7 @@
 
 //! Create PDR Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::activate_predefined_rules::ActivatePredefinedRules;
 use crate::ie::far_id::FarId;
 use crate::ie::outer_header_removal::OuterHeaderRemoval;
@@ -75,7 +76,7 @@ impl CreatePdr {
         marshal_ies(&ies)
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut pdr_id = None;
         let mut precedence = None;
         let mut pdi = None;
@@ -106,11 +107,14 @@ impl CreatePdr {
         }
 
         Ok(CreatePdr {
-            pdr_id: pdr_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing PDR ID"))?,
-            precedence: precedence
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Precedence"))?,
-            pdi: pdi.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing PDI"))?,
+            pdr_id: pdr_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::PdrId, IeType::CreatePdr)
+            })?,
+            precedence: precedence.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::Precedence, IeType::CreatePdr)
+            })?,
+            pdi: pdi
+                .ok_or_else(|| PfcpError::missing_ie_in_grouped(IeType::Pdi, IeType::CreatePdr))?,
             outer_header_removal,
             far_id,
             urr_id,

@@ -2,6 +2,7 @@
 
 //! Create FAR Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::apply_action::ApplyAction;
 use crate::ie::bar_id::BarId;
 use crate::ie::destination_interface::{DestinationInterface, Interface};
@@ -142,7 +143,7 @@ impl CreateFar {
     }
 
     /// Unmarshals Create FAR from bytes.
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let mut far_id = None;
         let mut apply_action = None;
         let mut forwarding_parameters = None;
@@ -166,10 +167,11 @@ impl CreateFar {
         }
 
         Ok(CreateFar {
-            far_id: far_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "FAR ID not found"))?,
+            far_id: far_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::FarId, IeType::CreateFar)
+            })?,
             apply_action: apply_action.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Apply Action not found")
+                PfcpError::missing_ie_in_grouped(IeType::ApplyAction, IeType::CreateFar)
             })?,
             forwarding_parameters,
             duplicating_parameters,
@@ -395,6 +397,7 @@ mod tests {
     use super::*;
     use crate::ie::bar_id::BarId;
     use crate::ie::far_id::FarId;
+    use std::io;
 
     #[test]
     fn test_create_far_basic_construction() {

@@ -2,7 +2,7 @@
 
 //! Create QER Information Element.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::gate_status::GateStatus;
 use crate::ie::gbr::Gbr;
 use crate::ie::mbr::Mbr;
@@ -56,7 +56,7 @@ impl CreateQer {
     }
 
     /// Unmarshals a byte slice into a Create QER IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut qer_id = None;
         let mut qer_correlation_id = None;
         let mut gate_status = None;
@@ -85,12 +85,8 @@ impl CreateQer {
             }
         }
 
-        let qer_id = qer_id.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::missing_mandatory_ie_short("QER ID"),
-            )
-        })?;
+        let qer_id = qer_id
+            .ok_or_else(|| PfcpError::missing_ie_in_grouped(IeType::QerId, IeType::CreateQer))?;
 
         Ok(CreateQer {
             qer_id,
@@ -200,9 +196,9 @@ impl CreateQerBuilder {
     ///
     /// Returns an error if the QER ID is not set.
     pub fn build(self) -> Result<CreateQer, io::Error> {
-        let qer_id = self.qer_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, messages::ie_required("QER ID"))
-        })?;
+        let qer_id = self
+            .qer_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "QER ID is required"))?;
 
         Ok(CreateQer {
             qer_id,
@@ -371,8 +367,7 @@ mod tests {
         assert!(result.is_err());
 
         let error = result.unwrap_err();
-        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
-        assert!(error.to_string().contains("Missing mandatory QER ID IE"));
+        assert!(matches!(error, PfcpError::MissingMandatoryIe { .. }));
     }
 
     #[test]

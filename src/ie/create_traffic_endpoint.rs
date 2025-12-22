@@ -1,10 +1,9 @@
 //! Create Traffic Endpoint IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::f_teid::Fteid;
 use crate::ie::ue_ip_address::UeIpAddress;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 /// Traffic Endpoint ID - 1 byte identifier
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,11 +20,13 @@ impl TrafficEndpointId {
         vec![self.id]
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Traffic Endpoint ID"),
+            return Err(PfcpError::invalid_length(
+                "Traffic Endpoint ID",
+                IeType::Unknown,
+                1,
+                payload.len(),
             ));
         }
         Ok(TrafficEndpointId { id: payload[0] })
@@ -86,7 +87,7 @@ impl CreateTrafficEndpoint {
     }
 
     /// Unmarshals a byte slice into a Create Traffic Endpoint IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut traffic_endpoint_id = None;
         let mut local_f_teid = None;
         let mut ue_ip_address = None;
@@ -111,10 +112,7 @@ impl CreateTrafficEndpoint {
         }
 
         let traffic_endpoint_id = traffic_endpoint_id.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::missing_ie("Traffic Endpoint ID"),
-            )
+            PfcpError::missing_ie_in_grouped(IeType::Unknown, IeType::CreateTrafficEndpoint)
         })?;
 
         Ok(CreateTrafficEndpoint {
@@ -148,10 +146,10 @@ mod tests {
     fn test_traffic_endpoint_id_unmarshal_empty() {
         let result = TrafficEndpointId::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Traffic Endpoint ID payload too short"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]

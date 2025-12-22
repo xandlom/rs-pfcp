@@ -1,5 +1,6 @@
 //! CreateURR IE and its sub-IEs.
 
+use crate::error::PfcpError;
 use crate::ie::{
     inactivity_detection_time::InactivityDetectionTime, marshal_ies,
     measurement_method::MeasurementMethod, monitoring_time::MonitoringTime,
@@ -92,7 +93,7 @@ impl CreateUrr {
     }
 
     /// Unmarshals a byte slice into a Create Urr IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut urr_id = None;
         let mut measurement_method = None;
         let mut reporting_triggers = None;
@@ -142,19 +143,13 @@ impl CreateUrr {
 
         Ok(CreateUrr {
             urr_id: urr_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory URR ID IE")
+                PfcpError::missing_ie_in_grouped(IeType::UrrId, IeType::CreateUrr)
             })?,
             measurement_method: measurement_method.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory Measurement Method IE",
-                )
+                PfcpError::missing_ie_in_grouped(IeType::MeasurementMethod, IeType::CreateUrr)
             })?,
             reporting_triggers: reporting_triggers.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory Reporting Triggers IE",
-                )
+                PfcpError::missing_ie_in_grouped(IeType::ReportingTriggers, IeType::CreateUrr)
             })?,
             monitoring_time,
             volume_threshold,
