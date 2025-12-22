@@ -1,18 +1,11 @@
 //! Update Forwarding Parameters IE and its sub-IEs.
 
 use crate::ie::{
-    destination_interface::DestinationInterface,
-    header_enrichment::HeaderEnrichment,
-    marshal_ies,
-    network_instance::NetworkInstance,
-    outer_header_creation::OuterHeaderCreation,
-    proxying::Proxying,
+    create_traffic_endpoint::TrafficEndpointId, destination_interface::DestinationInterface,
+    header_enrichment::HeaderEnrichment, marshal_ies, network_instance::NetworkInstance,
+    outer_header_creation::OuterHeaderCreation, proxying::Proxying,
     three_gpp_interface_type::ThreeGppInterfaceTypeIe,
-    // TODO: traffic_endpoint_id::TrafficEndpointId,
-    transport_level_marking::TransportLevelMarking,
-    Ie,
-    IeIterator,
-    IeType,
+    transport_level_marking::TransportLevelMarking, Ie, IeIterator, IeType,
 };
 use std::io;
 
@@ -23,7 +16,7 @@ pub struct UpdateForwardingParameters {
     pub network_instance: Option<NetworkInstance>,
     pub transport_level_marking: Option<TransportLevelMarking>,
     pub outer_header_creation: Option<OuterHeaderCreation>,
-    // TODO: pub traffic_endpoint_id: Option<TrafficEndpointId>,
+    pub traffic_endpoint_id: Option<TrafficEndpointId>,
     pub proxying: Option<Proxying>,
     pub three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
     pub header_enrichment: Option<HeaderEnrichment>,
@@ -37,7 +30,7 @@ impl UpdateForwardingParameters {
             network_instance: None,
             transport_level_marking: None,
             outer_header_creation: None,
-            // TODO: traffic_endpoint_id: None,
+            traffic_endpoint_id: None,
             proxying: None,
             three_gpp_interface_type: None,
             header_enrichment: None,
@@ -77,11 +70,11 @@ impl UpdateForwardingParameters {
         self
     }
 
-    // TODO: Add Traffic Endpoint ID support once the IE is implemented
-    // pub fn with_traffic_endpoint_id(mut self, traffic_endpoint_id: TrafficEndpointId) -> Self {
-    //     self.traffic_endpoint_id = Some(traffic_endpoint_id);
-    //     self
-    // }
+    /// Adds Traffic Endpoint ID to the Update Forwarding Parameters.
+    pub fn with_traffic_endpoint_id(mut self, traffic_endpoint_id: TrafficEndpointId) -> Self {
+        self.traffic_endpoint_id = Some(traffic_endpoint_id);
+        self
+    }
 
     /// Adds Proxying to the Update Forwarding Parameters.
     pub fn with_proxying(mut self, proxying: Proxying) -> Self {
@@ -120,10 +113,9 @@ impl UpdateForwardingParameters {
         if let Some(ref ohc) = self.outer_header_creation {
             ies.push(ohc.to_ie());
         }
-        // TODO: Add traffic_endpoint_id marshaling once implemented
-        // if let Some(ref tei) = self.traffic_endpoint_id {
-        //     ies.push(tei.to_ie());
-        // }
+        if let Some(ref tei) = self.traffic_endpoint_id {
+            ies.push(tei.to_ie());
+        }
         if let Some(ref prox) = self.proxying {
             ies.push(prox.to_ie());
         }
@@ -143,6 +135,7 @@ impl UpdateForwardingParameters {
         let mut network_instance = None;
         let mut transport_level_marking = None;
         let mut outer_header_creation = None;
+        let mut traffic_endpoint_id = None;
         let mut proxying = None;
         let mut three_gpp_interface_type = None;
         let mut header_enrichment = None;
@@ -162,10 +155,9 @@ impl UpdateForwardingParameters {
                 IeType::OuterHeaderCreation => {
                     outer_header_creation = Some(OuterHeaderCreation::unmarshal(&ie.payload)?)
                 }
-                // TODO: Add traffic_endpoint_id unmarshaling once implemented
-                // IeType::TrafficEndpointId => {
-                //     traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?)
-                // }
+                IeType::TrafficEndpointId => {
+                    traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?)
+                }
                 IeType::Proxying => proxying = Some(Proxying::unmarshal(&ie.payload)?),
                 IeType::TgppInterfaceType => {
                     three_gpp_interface_type =
@@ -183,7 +175,7 @@ impl UpdateForwardingParameters {
             network_instance,
             transport_level_marking,
             outer_header_creation,
-            // TODO: traffic_endpoint_id,
+            traffic_endpoint_id,
             proxying,
             three_gpp_interface_type,
             header_enrichment,
