@@ -2,18 +2,11 @@
 
 use crate::error::PfcpError;
 use crate::ie::{
-    destination_interface::DestinationInterface,
-    header_enrichment::HeaderEnrichment,
-    marshal_ies,
-    network_instance::NetworkInstance,
-    outer_header_creation::OuterHeaderCreation,
-    proxying::Proxying,
+    create_traffic_endpoint::TrafficEndpointId, destination_interface::DestinationInterface,
+    header_enrichment::HeaderEnrichment, marshal_ies, network_instance::NetworkInstance,
+    outer_header_creation::OuterHeaderCreation, proxying::Proxying,
     three_gpp_interface_type::ThreeGppInterfaceTypeIe,
-    // TODO: traffic_endpoint_id::TrafficEndpointId,
-    transport_level_marking::TransportLevelMarking,
-    Ie,
-    IeIterator,
-    IeType,
+    transport_level_marking::TransportLevelMarking, Ie, IeIterator, IeType,
 };
 
 /// Represents the Forwarding Parameters.
@@ -23,7 +16,7 @@ pub struct ForwardingParameters {
     pub network_instance: Option<NetworkInstance>,
     pub transport_level_marking: Option<TransportLevelMarking>,
     pub outer_header_creation: Option<OuterHeaderCreation>,
-    // TODO: pub traffic_endpoint_id: Option<TrafficEndpointId>,
+    pub traffic_endpoint_id: Option<TrafficEndpointId>,
     pub proxying: Option<Proxying>,
     pub three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
     pub header_enrichment: Option<HeaderEnrichment>,
@@ -37,7 +30,7 @@ impl ForwardingParameters {
             network_instance: None,
             transport_level_marking: None,
             outer_header_creation: None,
-            // TODO: traffic_endpoint_id: None,
+            traffic_endpoint_id: None,
             proxying: None,
             three_gpp_interface_type: None,
             header_enrichment: None,
@@ -68,11 +61,11 @@ impl ForwardingParameters {
         self
     }
 
-    // TODO: Add Traffic Endpoint ID support once the IE is implemented
-    // pub fn with_traffic_endpoint_id(mut self, traffic_endpoint_id: TrafficEndpointId) -> Self {
-    //     self.traffic_endpoint_id = Some(traffic_endpoint_id);
-    //     self
-    // }
+    /// Adds Traffic Endpoint ID to the Forwarding Parameters.
+    pub fn with_traffic_endpoint_id(mut self, traffic_endpoint_id: TrafficEndpointId) -> Self {
+        self.traffic_endpoint_id = Some(traffic_endpoint_id);
+        self
+    }
 
     /// Adds Proxying to the Forwarding Parameters.
     pub fn with_proxying(mut self, proxying: Proxying) -> Self {
@@ -108,10 +101,9 @@ impl ForwardingParameters {
         if let Some(ref ohc) = self.outer_header_creation {
             ies.push(ohc.to_ie());
         }
-        // TODO: Add traffic_endpoint_id marshaling once implemented
-        // if let Some(ref tei) = self.traffic_endpoint_id {
-        //     ies.push(tei.to_ie());
-        // }
+        if let Some(ref tei) = self.traffic_endpoint_id {
+            ies.push(tei.to_ie());
+        }
         if let Some(ref prox) = self.proxying {
             ies.push(prox.to_ie());
         }
@@ -131,6 +123,7 @@ impl ForwardingParameters {
         let mut network_instance = None;
         let mut transport_level_marking = None;
         let mut outer_header_creation = None;
+        let mut traffic_endpoint_id = None;
         let mut proxying = None;
         let mut three_gpp_interface_type = None;
         let mut header_enrichment = None;
@@ -150,10 +143,9 @@ impl ForwardingParameters {
                 IeType::OuterHeaderCreation => {
                     outer_header_creation = Some(OuterHeaderCreation::unmarshal(&ie.payload)?)
                 }
-                // TODO: Add traffic_endpoint_id unmarshaling once implemented
-                // IeType::TrafficEndpointId => {
-                //     traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?)
-                // }
+                IeType::TrafficEndpointId => {
+                    traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?)
+                }
                 IeType::Proxying => proxying = Some(Proxying::unmarshal(&ie.payload)?),
                 IeType::TgppInterfaceType => {
                     three_gpp_interface_type =
@@ -178,7 +170,7 @@ impl ForwardingParameters {
             network_instance,
             transport_level_marking,
             outer_header_creation,
-            // TODO: traffic_endpoint_id,
+            traffic_endpoint_id,
             proxying,
             three_gpp_interface_type,
             header_enrichment,
@@ -195,12 +187,12 @@ impl ForwardingParameters {
 mod tests {
     use super::*;
     use crate::ie::{
+        create_traffic_endpoint::TrafficEndpointId,
         destination_interface::Interface,
         header_enrichment::HeaderEnrichment,
         outer_header_creation::OuterHeaderCreation,
         proxying::Proxying,
         three_gpp_interface_type::{ThreeGppInterfaceType, ThreeGppInterfaceTypeIe},
-        // TODO: traffic_endpoint_id::TrafficEndpointId,
     };
     use std::net::Ipv4Addr;
 
@@ -255,22 +247,21 @@ mod tests {
         assert_eq!(params, unmarshaled);
     }
 
-    // TODO: Add test once TrafficEndpointId is implemented
-    // #[test]
-    // fn test_forwarding_parameters_with_traffic_endpoint_id() {
-    //     let traffic_endpoint_id = TrafficEndpointId::new(42);
-    //
-    //     let params = ForwardingParameters::new(DestinationInterface::new(Interface::Access))
-    //         .with_traffic_endpoint_id(traffic_endpoint_id);
-    //
-    //     assert!(params.traffic_endpoint_id.is_some());
-    //     assert_eq!(params.traffic_endpoint_id.as_ref().unwrap().id, 42);
-    //
-    //     let marshaled = params.marshal();
-    //     let unmarshaled = ForwardingParameters::unmarshal(&marshaled).unwrap();
-    //
-    //     assert_eq!(params, unmarshaled);
-    // }
+    #[test]
+    fn test_forwarding_parameters_with_traffic_endpoint_id() {
+        let traffic_endpoint_id = TrafficEndpointId::new(42);
+
+        let params = ForwardingParameters::new(DestinationInterface::new(Interface::Access))
+            .with_traffic_endpoint_id(traffic_endpoint_id);
+
+        assert!(params.traffic_endpoint_id.is_some());
+        assert_eq!(params.traffic_endpoint_id.as_ref().unwrap().id, 42);
+
+        let marshaled = params.marshal();
+        let unmarshaled = ForwardingParameters::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(params, unmarshaled);
+    }
 
     #[test]
     fn test_forwarding_parameters_with_proxying() {
@@ -342,7 +333,7 @@ mod tests {
                 0x12345678,
                 "192.168.1.1".parse().unwrap(),
             ))
-            // TODO: .with_traffic_endpoint_id(TrafficEndpointId::new(42))
+            .with_traffic_endpoint_id(TrafficEndpointId::new(42))
             .with_proxying(Proxying::both())
             .with_three_gpp_interface_type(ThreeGppInterfaceTypeIe::new(ThreeGppInterfaceType::N6))
             .with_header_enrichment(HeaderEnrichment::http_header(
@@ -354,7 +345,7 @@ mod tests {
         assert!(params.network_instance.is_some());
         assert!(params.transport_level_marking.is_some());
         assert!(params.outer_header_creation.is_some());
-        // TODO: assert!(params.traffic_endpoint_id.is_some());
+        assert!(params.traffic_endpoint_id.is_some());
         assert!(params.proxying.is_some());
         assert!(params.three_gpp_interface_type.is_some());
         assert!(params.header_enrichment.is_some());

@@ -24,12 +24,17 @@ impl TrafficEndpointId {
         if payload.is_empty() {
             return Err(PfcpError::invalid_length(
                 "Traffic Endpoint ID",
-                IeType::Unknown,
+                IeType::TrafficEndpointId,
                 1,
                 payload.len(),
             ));
         }
         Ok(TrafficEndpointId { id: payload[0] })
+    }
+
+    /// Converts Traffic Endpoint ID to an IE.
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::TrafficEndpointId, self.marshal())
     }
 }
 
@@ -68,12 +73,8 @@ impl CreateTrafficEndpoint {
     pub fn marshal(&self) -> Vec<u8> {
         let mut ies = Vec::new();
 
-        // Traffic Endpoint ID (using a custom IE type, but for now we'll embed it)
-        // In a real implementation, this might be a separate IE type
-        let mut te_id_data = Vec::new();
-        te_id_data.extend_from_slice(&self.traffic_endpoint_id.marshal());
-        let te_id_ie = Ie::new(IeType::Unknown, te_id_data); // Placeholder - would need proper IE type
-        ies.push(te_id_ie);
+        // Traffic Endpoint ID (IE Type 131 per 3GPP TS 29.244 Section 8.2.92)
+        ies.push(self.traffic_endpoint_id.to_ie());
 
         if let Some(ref f_teid) = self.local_f_teid {
             ies.push(Ie::new(IeType::Fteid, f_teid.marshal()));
@@ -95,11 +96,8 @@ impl CreateTrafficEndpoint {
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
             match ie.ie_type {
-                IeType::Unknown => {
-                    // For now, assume Unknown IE contains traffic endpoint ID
-                    if traffic_endpoint_id.is_none() {
-                        traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?);
-                    }
+                IeType::TrafficEndpointId => {
+                    traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?);
                 }
                 IeType::Fteid => {
                     local_f_teid = Some(Fteid::unmarshal(&ie.payload)?);
@@ -112,7 +110,10 @@ impl CreateTrafficEndpoint {
         }
 
         let traffic_endpoint_id = traffic_endpoint_id.ok_or_else(|| {
-            PfcpError::missing_ie_in_grouped(IeType::Unknown, IeType::CreateTrafficEndpoint)
+            PfcpError::missing_ie_in_grouped(
+                IeType::TrafficEndpointId,
+                IeType::CreateTrafficEndpoint,
+            )
         })?;
 
         Ok(CreateTrafficEndpoint {
