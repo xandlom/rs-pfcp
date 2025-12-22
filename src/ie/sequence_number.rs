@@ -2,8 +2,8 @@
 
 //! Sequence Number Information Element.
 
-use crate::ie::Ie;
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SequenceNumber {
@@ -22,11 +22,13 @@ impl SequenceNumber {
     /// Unmarshals a byte slice into a Sequence Number.
     ///
     /// Per 3GPP TS 29.244, Sequence Number requires exactly 4 bytes (u32).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Sequence Number requires 4 bytes (u32), got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "Sequence Number",
+                IeType::SequenceNumber,
+                4,
+                data.len(),
             ));
         }
         Ok(SequenceNumber {
@@ -58,9 +60,7 @@ mod tests {
         let result = SequenceNumber::unmarshal(&data);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 3"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -68,9 +68,7 @@ mod tests {
         let result = SequenceNumber::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

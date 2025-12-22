@@ -2,7 +2,8 @@
 
 //! Subsequent Volume Threshold Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SubsequentVolumeThreshold {
@@ -58,11 +59,13 @@ impl SubsequentVolumeThreshold {
         data
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for SubsequentVolumeThreshold",
+            return Err(PfcpError::invalid_length(
+                "Subsequent Volume Threshold",
+                IeType::SubsequentVolumeThreshold,
+                1,
+                0,
             ));
         }
         let flags = data[0];
@@ -73,9 +76,11 @@ impl SubsequentVolumeThreshold {
         let mut offset = 1;
         let total_volume = if tovol {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for Total Volume",
+                return Err(PfcpError::invalid_length(
+                    "Subsequent Volume Threshold (Total Volume)",
+                    IeType::SubsequentVolumeThreshold,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
@@ -87,9 +92,11 @@ impl SubsequentVolumeThreshold {
 
         let uplink_volume = if ulvol {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for Uplink Volume",
+                return Err(PfcpError::invalid_length(
+                    "Subsequent Volume Threshold (Uplink Volume)",
+                    IeType::SubsequentVolumeThreshold,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
@@ -101,9 +108,11 @@ impl SubsequentVolumeThreshold {
 
         let downlink_volume = if dlvol {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for Downlink Volume",
+                return Err(PfcpError::invalid_length(
+                    "Subsequent Volume Threshold (Downlink Volume)",
+                    IeType::SubsequentVolumeThreshold,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());

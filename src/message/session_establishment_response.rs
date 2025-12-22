@@ -60,9 +60,9 @@ impl SessionEstablishmentResponse {
     pub fn created_pdrs_typed(
         &self,
     ) -> impl Iterator<Item = Result<crate::ie::created_pdr::CreatedPdr, io::Error>> + '_ {
-        self.created_pdrs
-            .iter()
-            .map(|ie| crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload))
+        self.created_pdrs.iter().map(|ie| {
+            crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload).map_err(Into::into)
+        })
     }
 
     /// Returns the PDN type if present.

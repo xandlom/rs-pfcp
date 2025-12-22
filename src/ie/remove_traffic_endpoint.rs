@@ -1,8 +1,8 @@
 //! Remove Traffic Endpoint IE.
 
+use crate::error::PfcpError;
 use crate::ie::create_traffic_endpoint::TrafficEndpointId;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents the Remove Traffic Endpoint.
 /// Used to remove existing traffic endpoints in multi-access scenarios.
@@ -26,7 +26,7 @@ impl RemoveTrafficEndpoint {
     }
 
     /// Unmarshals a byte slice into a Remove Traffic Endpoint IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let traffic_endpoint_id = TrafficEndpointId::unmarshal(payload)?;
 
         Ok(RemoveTrafficEndpoint {

@@ -2,11 +2,11 @@
 
 //! Duplicating Parameters Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{
     destination_interface::DestinationInterface, forwarding_policy::ForwardingPolicy, marshal_ies,
     transport_level_marking::TransportLevelMarking, Ie, IeIterator, IeType,
 };
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DuplicatingParameters {
@@ -44,7 +44,7 @@ impl DuplicatingParameters {
         marshal_ies(&ies)
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut destination_interface = None;
         let mut transport_level_marking = None;
         let mut forwarding_policy = None;
@@ -67,7 +67,10 @@ impl DuplicatingParameters {
 
         Ok(DuplicatingParameters {
             destination_interface: destination_interface.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing Destination Interface")
+                PfcpError::missing_ie_in_grouped(
+                    IeType::DestinationInterface,
+                    IeType::DuplicatingParameters,
+                )
             })?,
             transport_level_marking,
             forwarding_policy,

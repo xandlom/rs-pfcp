@@ -2,10 +2,10 @@
 
 //! Created PDR Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::f_teid::Fteid;
 use crate::ie::pdr_id::PdrId;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreatedPdr {
@@ -29,7 +29,7 @@ impl CreatedPdr {
         data
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut pdr_id = None;
         let mut f_teid = None;
 
@@ -45,10 +45,12 @@ impl CreatedPdr {
         }
 
         Ok(CreatedPdr {
-            pdr_id: pdr_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing PDR ID"))?,
-            f_teid: f_teid
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing F-TEID"))?,
+            pdr_id: pdr_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::PdrId, IeType::CreatedPdr)
+            })?,
+            f_teid: f_teid.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::Fteid, IeType::CreatedPdr)
+            })?,
         })
     }
 
