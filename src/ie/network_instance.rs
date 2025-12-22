@@ -1,7 +1,7 @@
 //! Network Instance IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a Network Instance.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,9 +33,10 @@ impl NetworkInstance {
     /// - Omitted IE: Keep current network instance
     /// - Present with value: Change to new network instance
     /// - Present with zero-length: Clear network instance (default routing)
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-        let instance = String::from_utf8(payload.to_vec())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
+        let instance = String::from_utf8(payload.to_vec()).map_err(|e| {
+            PfcpError::encoding_error("Network Instance", IeType::NetworkInstance, e.utf8_error())
+        })?;
         Ok(NetworkInstance { instance })
     }
 

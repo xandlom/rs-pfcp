@@ -2,8 +2,8 @@
 
 //! Load Control Information Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{metric::Metric, sequence_number::SequenceNumber, Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LoadControlInformation {
@@ -37,7 +37,7 @@ impl LoadControlInformation {
         data
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut sequence_number = None;
         let mut metric = None;
 
@@ -58,10 +58,14 @@ impl LoadControlInformation {
 
         Ok(LoadControlInformation {
             sequence_number: sequence_number.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing Sequence Number")
+                PfcpError::missing_ie_in_grouped(
+                    IeType::SequenceNumber,
+                    IeType::LoadControlInformation,
+                )
             })?,
-            metric: metric
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Metric"))?,
+            metric: metric.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::Metric, IeType::LoadControlInformation)
+            })?,
         })
     }
 }

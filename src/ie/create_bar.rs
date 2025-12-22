@@ -2,10 +2,10 @@
 
 //! Create BAR Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::bar_id::BarId;
 use crate::ie::suggested_buffering_packets_count::SuggestedBufferingPacketsCount;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateBar {
@@ -34,7 +34,7 @@ impl CreateBar {
         marshal_ies(&ies)
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut bar_id = None;
         let mut suggested_buffering_packets_count = None;
 
@@ -53,8 +53,9 @@ impl CreateBar {
         }
 
         Ok(CreateBar {
-            bar_id: bar_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing BAR ID"))?,
+            bar_id: bar_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::BarId, IeType::CreateBar)
+            })?,
             suggested_buffering_packets_count,
         })
     }

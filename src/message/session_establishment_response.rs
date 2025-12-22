@@ -79,6 +79,7 @@ impl SessionEstablishmentResponse {
     {
         self.load_control_information.as_ref().map(|ie| {
             crate::ie::load_control_information::LoadControlInformation::unmarshal(&ie.payload)
+                .map_err(Into::into)
         })
     }
 

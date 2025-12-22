@@ -1,10 +1,10 @@
 //! Bar IE.
 
+use crate::error::PfcpError;
 use crate::ie::{
     bar_id::BarId, downlink_data_notification_delay::DownlinkDataNotificationDelay,
     suggested_buffering_packets_count::SuggestedBufferingPacketsCount, Ie, IeType,
 };
-use std::io;
 
 /// Represents a Bar.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +41,7 @@ impl Bar {
     }
 
     /// Unmarshals a byte slice into a Bar.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut ie = Ie::unmarshal(payload)?;
         let ies = ie.as_ies()?;
         let mut bar_id = None;
@@ -65,9 +65,8 @@ impl Bar {
             }
         }
 
-        let bar_id = bar_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Bar ID not found in Bar IE")
-        })?;
+        let bar_id = bar_id
+            .ok_or_else(|| PfcpError::missing_ie_in_grouped(IeType::BarId, IeType::CreateBar))?;
 
         Ok(Bar {
             bar_id,

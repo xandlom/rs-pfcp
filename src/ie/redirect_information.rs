@@ -2,7 +2,8 @@
 
 //! Redirect Information Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RedirectAddressType {
@@ -45,16 +46,23 @@ impl RedirectInformation {
         data
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for RedirectInformation",
+            return Err(PfcpError::invalid_length(
+                "Redirect Information",
+                IeType::RedirectInformation,
+                2,
+                data.len(),
             ));
         }
         let address_type = RedirectAddressType::from(data[0]);
-        let server_address = String::from_utf8(data[1..].to_vec())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let server_address = String::from_utf8(data[1..].to_vec()).map_err(|e| {
+            PfcpError::encoding_error(
+                "Redirect Information",
+                IeType::RedirectInformation,
+                e.utf8_error(),
+            )
+        })?;
         Ok(RedirectInformation {
             address_type,
             server_address,
