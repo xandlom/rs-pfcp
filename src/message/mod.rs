@@ -939,10 +939,12 @@ mod tests {
 
     #[test]
     fn test_parse_session_establishment_response() {
+        use crate::ie::node_id::NodeId;
         use crate::message::session_establishment_response::SessionEstablishmentResponseBuilder;
         use std::net::{IpAddr, Ipv4Addr};
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xABCDEF, 77777)
+            .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 100)).to_ie())
             .fseid(0xABCDEF, IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)))
             .marshal()
             .unwrap();

@@ -1672,6 +1672,7 @@ mod tests {
     fn create_session_establishment_response() -> Box<dyn Message> {
         Box::new(
             SessionEstablishmentResponseBuilder::accepted(0x1234567890ABCDEF, 54321)
+                .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 100)).to_ie())
                 .fseid(
                     0xFEDCBA0987654321,
                     std::net::IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)),

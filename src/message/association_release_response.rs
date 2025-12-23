@@ -29,7 +29,7 @@ impl AssociationReleaseResponse {
 
     /// Returns the node ID.
     pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, io::Error> {
-        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload)
+        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload).map_err(Into::into)
     }
 
     /// Returns the cause.

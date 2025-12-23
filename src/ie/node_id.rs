@@ -1,8 +1,7 @@
 //! Node ID IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a Node ID.
@@ -53,19 +52,24 @@ impl NodeId {
     /// Unmarshals a byte slice into a Node ID.
     ///
     /// Per 3GPP TS 29.244, Node ID requires minimum 1 byte (type) plus address data.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("Node ID", 1),
+            return Err(PfcpError::invalid_length(
+                "Node ID",
+                IeType::NodeId,
+                1,
+                payload.len(),
             ));
         }
         match payload[0] {
             0 => {
+                // IPv4: 1 byte type + 4 bytes address = 5 bytes minimum
                 if payload.len() < 5 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        messages::payload_too_short("IPv4 Node ID"),
+                    return Err(PfcpError::invalid_length(
+                        "Node ID (IPv4)",
+                        IeType::NodeId,
+                        5,
+                        payload.len(),
                     ));
                 }
                 Ok(NodeId::IPv4(Ipv4Addr::new(
@@ -73,10 +77,13 @@ impl NodeId {
                 )))
             }
             1 => {
+                // IPv6: 1 byte type + 16 bytes address = 17 bytes minimum
                 if payload.len() < 17 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        messages::payload_too_short("IPv6 Node ID"),
+                    return Err(PfcpError::invalid_length(
+                        "Node ID (IPv6)",
+                        IeType::NodeId,
+                        17,
+                        payload.len(),
                     ));
                 }
                 let mut octets = [0; 16];
@@ -84,14 +91,20 @@ impl NodeId {
                 Ok(NodeId::IPv6(Ipv6Addr::from(octets)))
             }
             2 => {
-                // FQDN decoding is more complex, for now just use the string bytes
-                let fqdn = String::from_utf8(payload[1..].to_vec())
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                // FQDN: 1 byte type + variable length UTF-8 string
+                let fqdn = String::from_utf8(payload[1..].to_vec()).map_err(|_| {
+                    PfcpError::invalid_value(
+                        "Node ID (FQDN)",
+                        String::from_utf8_lossy(&payload[1..]).to_string(),
+                        "Invalid UTF-8 encoding",
+                    )
+                })?;
                 Ok(NodeId::FQDN(fqdn))
             }
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid Node ID type",
+            _ => Err(PfcpError::invalid_value(
+                "Node ID type",
+                format!("{}", payload[0]),
+                "Invalid Node ID type (expected 0=IPv4, 1=IPv6, or 2=FQDN)".to_string(),
             )),
         }
     }

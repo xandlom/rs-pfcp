@@ -22,7 +22,7 @@ use std::io;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetModificationRequest {
     pub header: Header,
-    // TODO: [IE Type 60] Node ID - M - Node identity of originating node (Sxb/N4 only, not Sxa/Sxc/N4mb)
+    pub node_id: crate::ie::node_id::NodeId, // M - IE Type 60 - Node identity of originating node (Sxb/N4 only, not Sxa/Sxc/N4mb)
     // TODO: [IE Type 290] PFCP Session Change Info - M - Grouped IE, Multiple instances
     //       Note: Current implementation flattens the grouped IE structure
     //       PFCP Session Change Info contains:
@@ -36,6 +36,7 @@ pub struct SessionSetModificationRequest {
     pub cp_ip_addresses: Option<Vec<CpIpAddress>>,
     pub ies: Vec<Ie>,
     // Raw IEs for backwards compatibility with find_ie
+    node_id_ie: Ie,
     alternative_smf_ip_address_ie: Ie,
     fq_csids_ies: Option<Vec<Ie>>,
     group_ids_ies: Option<Vec<Ie>>,
@@ -52,6 +53,7 @@ impl Message for SessionSetModificationRequest {
     fn marshal_into(&self, buf: &mut Vec<u8>) {
         buf.reserve(self.marshaled_size());
         self.header.marshal_into(buf);
+        self.node_id_ie.marshal_into(buf);
         self.alternative_smf_ip_address_ie.marshal_into(buf);
         if let Some(ref ies) = self.fq_csids_ies {
             for ie in ies {
@@ -75,6 +77,7 @@ impl Message for SessionSetModificationRequest {
 
     fn marshaled_size(&self) -> usize {
         let mut size = self.header.len() as usize;
+        size += self.node_id_ie.len() as usize;
         size += self.alternative_smf_ip_address_ie.len() as usize;
         if let Some(ref ies) = self.fq_csids_ies {
             for ie in ies {
@@ -99,6 +102,7 @@ impl Message for SessionSetModificationRequest {
 
     fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
         let header = Header::unmarshal(data)?;
+        let mut node_id = None;
         let mut alternative_smf_ip_address = None;
         let mut fq_csids = None;
         let mut group_ids = None;
@@ -110,6 +114,18 @@ impl Message for SessionSetModificationRequest {
             let ie = Ie::unmarshal(&data[offset..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
+                IeType::NodeId => {
+                    if node_id.is_none() {
+                        let typed_ie = crate::ie::node_id::NodeId::unmarshal(&ie.payload)
+                            .map_err(io::Error::from)?;
+                        node_id = Some((typed_ie, ie));
+                    } else {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            "Duplicate Node ID IE",
+                        ));
+                    }
+                }
                 IeType::AlternativeSmfIpAddress => {
                     if alternative_smf_ip_address.is_none() {
                         let typed_ie = AlternativeSmfIpAddress::unmarshal(&ie.payload)?;
@@ -144,6 +160,9 @@ impl Message for SessionSetModificationRequest {
             offset += ie_len;
         }
 
+        let (node_id, node_id_ie) = node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID IE is mandatory"))?;
+
         let (alternative_smf_ip_address, alternative_smf_ip_address_ie) =
             alternative_smf_ip_address.ok_or_else(|| {
                 io::Error::new(
@@ -176,11 +195,13 @@ impl Message for SessionSetModificationRequest {
 
         Ok(SessionSetModificationRequest {
             header,
+            node_id,
             alternative_smf_ip_address,
             fq_csids: typed_fq_csids,
             group_ids: typed_group_ids,
             cp_ip_addresses: typed_cp_ip_addresses,
             ies,
+            node_id_ie,
             alternative_smf_ip_address_ie,
             fq_csids_ies,
             group_ids_ies,
@@ -208,6 +229,7 @@ impl Message for SessionSetModificationRequest {
         use crate::message::IeIter;
 
         match ie_type {
+            IeType::NodeId => IeIter::single(Some(&self.node_id_ie), ie_type),
             IeType::AlternativeSmfIpAddress => {
                 IeIter::single(Some(&self.alternative_smf_ip_address_ie), ie_type)
             }
@@ -227,6 +249,7 @@ impl Message for SessionSetModificationRequest {
     #[allow(deprecated)]
     fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
         match ie_type {
+            IeType::NodeId => Some(&self.node_id_ie),
             IeType::AlternativeSmfIpAddress => Some(&self.alternative_smf_ip_address_ie),
             IeType::FqCsid => {
                 if let Some(ies) = &self.fq_csids_ies {
@@ -301,6 +324,7 @@ impl Message for SessionSetModificationRequest {
 #[derive(Debug, Default)]
 pub struct SessionSetModificationRequestBuilder {
     seq: u32,
+    node_id: Option<crate::ie::node_id::NodeId>,
     alternative_smf_ip_address: Option<AlternativeSmfIpAddress>,
     fq_csids: Option<Vec<FqCsid>>,
     group_ids: Option<Vec<GroupId>>,
@@ -312,12 +336,18 @@ impl SessionSetModificationRequestBuilder {
     pub fn new(seq: u32) -> Self {
         SessionSetModificationRequestBuilder {
             seq,
+            node_id: None,
             alternative_smf_ip_address: None,
             fq_csids: None,
             group_ids: None,
             cp_ip_addresses: None,
             ies: Vec::new(),
         }
+    }
+
+    pub fn node_id(mut self, node_id: crate::ie::node_id::NodeId) -> Self {
+        self.node_id = Some(node_id);
+        self
     }
 
     pub fn alternative_smf_ip_address(
@@ -366,6 +396,10 @@ impl SessionSetModificationRequestBuilder {
     }
 
     pub fn build(self) -> Result<SessionSetModificationRequest, io::Error> {
+        let node_id = self
+            .node_id
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID is mandatory"))?;
+
         let alternative_smf_ip_address = self.alternative_smf_ip_address.ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -374,8 +408,9 @@ impl SessionSetModificationRequestBuilder {
         })?;
 
         // Create raw IE versions for backwards compatibility
+        let node_id_ie = node_id.to_ie();
         let alternative_smf_ip_address_ie = alternative_smf_ip_address.to_ie();
-        let mut payload_len = alternative_smf_ip_address_ie.len();
+        let mut payload_len = node_id_ie.len() + alternative_smf_ip_address_ie.len();
 
         let fq_csids_ies = if let Some(ref ies) = self.fq_csids {
             let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
@@ -421,11 +456,13 @@ impl SessionSetModificationRequestBuilder {
 
         Ok(SessionSetModificationRequest {
             header,
+            node_id,
             alternative_smf_ip_address,
             fq_csids: self.fq_csids,
             group_ids: self.group_ids,
             cp_ip_addresses: self.cp_ip_addresses,
             ies: self.ies,
+            node_id_ie,
             alternative_smf_ip_address_ie,
             fq_csids_ies,
             group_ids_ies,

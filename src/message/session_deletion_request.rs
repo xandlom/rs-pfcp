@@ -201,7 +201,7 @@ impl SessionDeletionRequest {
     pub fn node_id(&self) -> Option<Result<NodeId, std::io::Error>> {
         self.node_id
             .as_ref()
-            .map(|ie| NodeId::unmarshal(&ie.payload))
+            .map(|ie| NodeId::unmarshal(&ie.payload).map_err(Into::into))
     }
 
     /// Returns the CP F-SEID if present.

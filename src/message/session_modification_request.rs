@@ -40,7 +40,7 @@ pub struct SessionModificationRequest {
     // TODO: [IE Type 168] Remove MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     // TODO: [IE Type 170] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For new MA PDR
-    // TODO: [IE Type 60] Node ID - C - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
+    pub node_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 60 - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
     // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
     // TODO: [IE Type 211] Remove SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
     // TODO: [IE Type 208] Create SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
@@ -196,6 +196,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.node_id {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.ethernet_context_information {
             ie.marshal_into(buf);
         }
@@ -326,6 +329,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.node_id {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.ethernet_context_information {
             size += ie.len() as usize;
         }
@@ -365,6 +371,7 @@ impl Message for SessionModificationRequest {
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
+        let mut node_id = None;
         let mut ethernet_context_information = None;
         let mut ies = Vec::new();
 
@@ -407,6 +414,7 @@ impl Message for SessionModificationRequest {
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
+                IeType::NodeId => node_id = Some(ie),
                 IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
                 _ => ies.push(ie),
             }
@@ -443,6 +451,7 @@ impl Message for SessionModificationRequest {
             apn_dnn,
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
+            node_id,
             ethernet_context_information,
             ies,
         })
@@ -535,6 +544,7 @@ impl Message for SessionModificationRequest {
                 IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
             }
             IeType::TraceInformation => IeIter::single(self.trace_information.as_ref(), ie_type),
+            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
             IeType::EthernetContextInformation => {
                 IeIter::single(self.ethernet_context_information.as_ref(), ie_type)
             }
@@ -563,6 +573,7 @@ impl Message for SessionModificationRequest {
             IeType::ApnDnn => self.apn_dnn.as_ref(),
             IeType::UserPlaneInactivityTimer => self.user_plane_inactivity_timer.as_ref(),
             IeType::PfcpsmReqFlags => self.pfcpsm_req_flags.as_ref(),
+            IeType::NodeId => self.node_id.as_ref(),
             IeType::EthernetContextInformation => self.ethernet_context_information.as_ref(),
             _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
         }
@@ -654,6 +665,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
+        if let Some(ref ie) = self.node_id {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.ethernet_context_information {
             result.push(ie);
         }
@@ -694,6 +708,7 @@ pub struct SessionModificationRequestBuilder {
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
+    node_id: Option<Ie>,
     ethernet_context_information: Option<Ie>,
     ies: Vec<Ie>,
 }
@@ -731,6 +746,7 @@ impl SessionModificationRequestBuilder {
             apn_dnn: None,
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
+            node_id: None,
             ethernet_context_information: None,
             ies: Vec::new(),
         }
@@ -931,6 +947,11 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn node_id(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
+        self
+    }
+
     pub fn ethernet_context_information(mut self, ethernet_context_information: Ie) -> Self {
         self.ethernet_context_information = Some(ethernet_context_information);
         self
@@ -1063,6 +1084,9 @@ impl SessionModificationRequestBuilder {
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.node_id {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.ethernet_context_information {
             payload_len += ie.len();
         }
@@ -1106,6 +1130,7 @@ impl SessionModificationRequestBuilder {
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
+            node_id: self.node_id,
             ethernet_context_information: self.ethernet_context_information,
             ies: self.ies,
         }

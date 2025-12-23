@@ -112,7 +112,7 @@ impl Message for PfdManagementRequest {
                             "Duplicate Node ID IE",
                         ));
                     }
-                    node_id = Some(NodeId::unmarshal(&ie.payload)?);
+                    node_id = Some(NodeId::unmarshal(&ie.payload).map_err(io::Error::from)?);
                 }
                 IeType::ApplicationIdsPfds => {
                     let typed_ie = ApplicationIdsPfds::unmarshal(&ie.payload)?;
