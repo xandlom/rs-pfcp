@@ -27,6 +27,7 @@ pub mod create_qer;
 pub mod create_traffic_endpoint;
 pub mod create_urr;
 pub mod created_pdr;
+pub mod created_traffic_endpoint;
 pub mod deactivate_predefined_rules;
 pub mod deactivation_time;
 pub mod destination_interface;
