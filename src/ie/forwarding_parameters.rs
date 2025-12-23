@@ -62,6 +62,28 @@ impl ForwardingParameters {
     }
 
     /// Adds Traffic Endpoint ID to the Forwarding Parameters.
+    ///
+    /// Traffic Endpoint ID identifies a specific traffic endpoint within a PDU session
+    /// for multi-access scenarios. This enables traffic steering between different access
+    /// paths (e.g., WiFi and cellular) within the same session.
+    ///
+    /// # Arguments
+    /// * `traffic_endpoint_id` - The traffic endpoint identifier (0-255)
+    ///
+    /// # 3GPP Reference
+    /// 3GPP TS 29.244 Section 8.2.92 - IE Type 131
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::forwarding_parameters::ForwardingParameters;
+    /// use rs_pfcp::ie::destination_interface::{DestinationInterface, Interface};
+    /// use rs_pfcp::ie::create_traffic_endpoint::TrafficEndpointId;
+    ///
+    /// let params = ForwardingParameters::new(DestinationInterface::new(Interface::Access))
+    ///     .with_traffic_endpoint_id(TrafficEndpointId::new(42));
+    ///
+    /// assert_eq!(params.traffic_endpoint_id.unwrap().id, 42);
+    /// ```
     pub fn with_traffic_endpoint_id(mut self, traffic_endpoint_id: TrafficEndpointId) -> Self {
         self.traffic_endpoint_id = Some(traffic_endpoint_id);
         self
