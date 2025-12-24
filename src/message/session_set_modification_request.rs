@@ -482,8 +482,10 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_basic() {
+        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
         let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let request = SessionSetModificationRequestBuilder::new(123)
+            .node_id(node_id)
             .alternative_smf_ip_address(alt_smf_ip)
             .build()
             .unwrap();
@@ -491,17 +493,20 @@ mod tests {
         assert_eq!(request.msg_type(), MsgType::SessionSetModificationRequest);
         assert_eq!(request.sequence(), 123);
         assert_eq!(request.seid(), None);
+        assert!(request.find_ie(IeType::NodeId).is_some());
         assert!(request.find_ie(IeType::AlternativeSmfIpAddress).is_some());
     }
 
     #[test]
     fn test_session_set_modification_request_with_optional_ies() {
+        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
         let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let fq_csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
         let group_id = GroupId::new(vec![0x05, 0x06]);
-        let cp_ip = CpIpAddress::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let cp_ip = CpIpAddress::new_ipv4(Ipv4Addr::new(10, 0, 0, 2));
 
         let request = SessionSetModificationRequestBuilder::new(456)
+            .node_id(node_id)
             .alternative_smf_ip_address(alt_smf_ip)
             .add_fq_csid(fq_csid)
             .add_group_id(group_id)
@@ -519,7 +524,19 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_missing_mandatory_ie() {
+        // Test missing Node ID
         let result = SessionSetModificationRequestBuilder::new(789).build();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Node ID is mandatory"));
+
+        // Test missing Alternative SMF IP Address
+        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let result = SessionSetModificationRequestBuilder::new(789)
+            .node_id(node_id)
+            .build();
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -529,10 +546,12 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_round_trip() {
+        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
         let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let fq_csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
 
         let original = SessionSetModificationRequestBuilder::new(999)
+            .node_id(node_id)
             .alternative_smf_ip_address(alt_smf_ip)
             .add_fq_csid(fq_csid)
             .build()
@@ -548,11 +567,13 @@ mod tests {
 
     #[test]
     fn test_session_set_modification_request_find_all_ies() {
+        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
         let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let fq_csid1 = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
         let fq_csid2 = FqCsid::new_ipv4(Ipv4Addr::new(5, 6, 7, 8), vec![2]);
 
         let request = SessionSetModificationRequestBuilder::new(111)
+            .node_id(node_id)
             .alternative_smf_ip_address(alt_smf_ip)
             .add_fq_csid(fq_csid1)
             .add_fq_csid(fq_csid2)
