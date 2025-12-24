@@ -13,7 +13,6 @@ use crate::ie::precedence::Precedence;
 use crate::ie::qer_id::QerId;
 use crate::ie::urr_id::UrrId;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpdatePdr {
@@ -281,11 +280,11 @@ impl UpdatePdrBuilder {
     ///
     /// Unlike CreatePdr, UpdatePdr allows all fields except pdr_id to be optional,
     /// as you may want to update only specific fields of an existing PDR.
-    pub fn build(self) -> Result<UpdatePdr, io::Error> {
+    pub fn build(self) -> Result<UpdatePdr, PfcpError> {
         // Validate required field
-        let pdr_id = self
-            .pdr_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "PDR ID is required"))?;
+        let pdr_id = self.pdr_id.ok_or_else(|| {
+            PfcpError::validation_error("UpdatePdrBuilder", "pdr_id", "PDR ID is required")
+        })?;
 
         Ok(UpdatePdr {
             pdr_id,
@@ -366,7 +365,9 @@ mod tests {
         let result = UpdatePdrBuilder::default().build();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "PDR ID is required");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("PDR ID is required"));
+        assert!(err_msg.contains("UpdatePdrBuilder"));
     }
 
     #[test]

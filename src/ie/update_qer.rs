@@ -2,13 +2,13 @@
 
 //! Update QER Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::gate_status::GateStatus;
 use crate::ie::gbr::Gbr;
 use crate::ie::mbr::Mbr;
 use crate::ie::qer_correlation_id::QerCorrelationId;
 use crate::ie::qer_id::QerId;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpdateQer {
@@ -56,7 +56,7 @@ impl UpdateQer {
         marshal_ies(&ies)
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut qer_id = None;
         let mut qer_correlation_id = None;
         let mut gate_status = None;
@@ -78,8 +78,9 @@ impl UpdateQer {
         }
 
         Ok(UpdateQer {
-            qer_id: qer_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing QER ID"))?,
+            qer_id: qer_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::QerId, IeType::UpdateQer)
+            })?,
             qer_correlation_id,
             gate_status,
             mbr,
@@ -221,10 +222,10 @@ impl UpdateQerBuilder {
     /// # Errors
     ///
     /// Returns an error if the QER ID is not set.
-    pub fn build(self) -> Result<UpdateQer, io::Error> {
-        let qer_id = self
-            .qer_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "QER ID is required"))?;
+    pub fn build(self) -> Result<UpdateQer, PfcpError> {
+        let qer_id = self.qer_id.ok_or_else(|| {
+            PfcpError::validation_error("UpdateQerBuilder", "qer_id", "QER ID is required")
+        })?;
 
         Ok(UpdateQer {
             qer_id,

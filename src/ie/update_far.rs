@@ -2,13 +2,13 @@
 
 //! Update FAR Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::apply_action::ApplyAction;
 use crate::ie::bar_id::BarId;
 use crate::ie::duplicating_parameters::DuplicatingParameters;
 use crate::ie::far_id::FarId;
 use crate::ie::update_forwarding_parameters::UpdateForwardingParameters;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpdateFar {
@@ -53,7 +53,7 @@ impl UpdateFar {
         marshal_ies(&ies)
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut far_id = None;
         let mut apply_action = None;
         let mut update_forwarding_parameters = None;
@@ -78,8 +78,9 @@ impl UpdateFar {
         }
 
         Ok(UpdateFar {
-            far_id: far_id
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing FAR ID"))?,
+            far_id: far_id.ok_or_else(|| {
+                PfcpError::missing_ie_in_grouped(IeType::FarId, IeType::UpdateFar)
+            })?,
             apply_action,
             update_forwarding_parameters,
             duplicating_parameters,
@@ -164,10 +165,10 @@ impl UpdateFarBuilder {
     }
 
     /// Builds the Update FAR.
-    pub fn build(self) -> Result<UpdateFar, io::Error> {
-        let far_id = self
-            .far_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "FAR ID is required"))?;
+    pub fn build(self) -> Result<UpdateFar, PfcpError> {
+        let far_id = self.far_id.ok_or_else(|| {
+            PfcpError::validation_error("UpdateFarBuilder", "far_id", "FAR ID is required")
+        })?;
 
         Ok(UpdateFar {
             far_id,
