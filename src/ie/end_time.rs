@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +15,24 @@ impl EndTime {
         4 // u32 for 3GPP NTP timestamp
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(self.marshal_len());
         self.marshal_to(&mut buf)?;
         Ok(buf)
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
         buf.extend_from_slice(&self.timestamp.to_be_bytes());
         Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "End time requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "End Time",
+                IeType::EndTime,
+                4,
+                data.len(),
             ));
         }
 
@@ -41,7 +42,7 @@ impl EndTime {
         Ok(Self { timestamp })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::EndTime, data))
     }
@@ -108,7 +109,13 @@ mod tests {
         let result = EndTime::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("End Time"), "Error message: {}", err_msg);
+        assert!(
+            err_msg.contains("4") || err_msg.contains("length"),
+            "Error message: {}",
+            err_msg
+        );
     }
 
     #[test]
@@ -117,7 +124,12 @@ mod tests {
         let result = EndTime::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("End Time") || err_msg.contains("length"),
+            "Error message: {}",
+            err_msg
+        );
     }
 
     #[test]

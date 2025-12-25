@@ -3,8 +3,8 @@
 //! The Graceful Release Period IE specifies the period for graceful release of PFCP association.
 //! Per 3GPP TS 29.244 Section 8.2.78.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Graceful Release Period
 ///
@@ -75,7 +75,7 @@ impl GracefulReleasePeriod {
     ///
     /// # Errors
     /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(2);
         buf.extend_from_slice(&self.period.to_be_bytes());
         Ok(buf)
@@ -99,11 +99,13 @@ impl GracefulReleasePeriod {
     /// assert_eq!(period, parsed);
     /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Graceful Release Period requires 2 bytes",
+            return Err(PfcpError::invalid_length(
+                "Graceful Release Period",
+                IeType::GracefulReleasePeriod,
+                2,
+                data.len(),
             ));
         }
 
@@ -125,7 +127,7 @@ impl GracefulReleasePeriod {
     /// assert_eq!(ie.ie_type, IeType::GracefulReleasePeriod);
     /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::GracefulReleasePeriod, data))
     }

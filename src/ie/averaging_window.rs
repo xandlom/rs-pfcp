@@ -4,8 +4,8 @@
 //! QoS metrics for measurement and reporting purposes.
 //! Per 3GPP TS 29.244 Section 8.2.115.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Averaging Window
 ///
@@ -77,14 +77,14 @@ impl AveragingWindow {
     ///
     /// # Errors
     /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(4);
         self.marshal_to(&mut buf)?;
         Ok(buf)
     }
 
     /// Marshal to a buffer
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
         buf.extend_from_slice(&self.milliseconds.to_be_bytes());
         Ok(())
     }
@@ -107,11 +107,13 @@ impl AveragingWindow {
     /// assert_eq!(window, parsed);
     /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Averaging Window requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Averaging Window",
+                IeType::AveragingWindow,
+                4,
+                data.len(),
             ));
         }
 
@@ -133,7 +135,7 @@ impl AveragingWindow {
     /// assert_eq!(ie.ie_type, IeType::AveragingWindow);
     /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::AveragingWindow, data))
     }
