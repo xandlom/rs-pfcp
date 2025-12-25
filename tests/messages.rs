@@ -642,13 +642,18 @@ fn test_session_report_response_unmarshal_missing_cause() {
 #[test]
 fn test_session_establishment_response_multiple_created_pdrs() {
     use rs_pfcp::ie::{
-        cause::Cause, created_pdr::CreatedPdr, f_teid::Fteid, fseid::Fseid, pdr_id::PdrId,
+        cause::Cause, created_pdr::CreatedPdr, f_teid::Fteid, fseid::Fseid, node_id::NodeId,
+        pdr_id::PdrId,
     };
     use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
 
     // Test SessionEstablishmentResponse with multiple Created PDR IEs
     let seid = 0x0000000000000001;
     let sequence = 2;
+
+    // Create Node ID IE (required for session messages)
+    let node_id = NodeId::new_ipv4(Ipv4Addr::new(127, 0, 0, 1));
+    let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
 
     // Create cause IE
     let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
@@ -686,6 +691,7 @@ fn test_session_establishment_response_multiple_created_pdrs() {
 
     // Build SessionEstablishmentResponse with multiple Created PDRs using the builder pattern
     let response = SessionEstablishmentResponseBuilder::new_with_ie(seid, sequence, cause_ie)
+        .node_id(node_id_ie)
         .fseid_ie(fseid_ie)
         .created_pdr(created_pdr1_ie)
         .created_pdr(created_pdr2_ie)
