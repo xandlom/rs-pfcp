@@ -192,7 +192,7 @@ impl CreateTrafficEndpoint {
     /// use std::net::Ipv4Addr;
     ///
     /// let endpoint_id = TrafficEndpointId::new(1);
-    /// let fteid = Fteid::new_v4(0x12345678, Ipv4Addr::new(10, 0, 0, 1));
+    /// let fteid = Fteid::ipv4(0x12345678, Ipv4Addr::new(10, 0, 0, 1));
     /// let create_te = CreateTrafficEndpoint::new(endpoint_id)
     ///     .with_local_f_teid(fteid);
     /// assert!(create_te.local_f_teid.is_some());
@@ -214,7 +214,7 @@ impl CreateTrafficEndpoint {
     /// use std::net::Ipv4Addr;
     ///
     /// let endpoint_id = TrafficEndpointId::new(1);
-    /// let ue_ip = UeIpAddress::new_v4(Ipv4Addr::new(192, 168, 1, 100));
+    /// let ue_ip = UeIpAddress::new(Some(Ipv4Addr::new(192, 168, 1, 100)), None);
     /// let create_te = CreateTrafficEndpoint::new(endpoint_id)
     ///     .with_ue_ip_address(ue_ip);
     /// assert!(create_te.ue_ip_address.is_some());
