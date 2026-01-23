@@ -1,8 +1,8 @@
 //! Heartbeat Request message.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Heartbeat Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +53,7 @@ impl HeartbeatRequest {
     /// ```
     pub fn recovery_time_stamp(
         &self,
-    ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
+    ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, PfcpError> {
         crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
             &self.recovery_time_stamp.payload,
         )
@@ -77,7 +77,7 @@ impl HeartbeatRequest {
     /// ```
     pub fn source_ip_address(
         &self,
-    ) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, io::Error>> {
+    ) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, PfcpError>> {
         self.source_ip_address
             .as_ref()
             .map(|ie| crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload))
@@ -132,7 +132,7 @@ impl Message for HeartbeatRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut recovery_time_stamp = None;
         let mut source_ip_address = None;
@@ -151,12 +151,12 @@ impl Message for HeartbeatRequest {
         }
 
         // Validate mandatory IE is present per 3GPP TS 29.244 Table 7.4.2.1-1
-        let recovery_time_stamp = recovery_time_stamp.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "HeartbeatRequest: Missing mandatory Recovery Time Stamp IE (3GPP TS 29.244 Table 7.4.2.1-1)",
-            )
-        })?;
+        let recovery_time_stamp =
+            recovery_time_stamp.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::RecoveryTimeStamp,
+                message_type: Some(MsgType::HeartbeatRequest),
+                parent_ie: None,
+            })?;
 
         Ok(HeartbeatRequest {
             header,
@@ -861,7 +861,12 @@ mod tests {
         // Unmarshaling should fail because recovery_time_stamp is mandatory
         let result = HeartbeatRequest::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::RecoveryTimeStamp);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

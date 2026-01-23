@@ -1,7 +1,7 @@
 //! PFCP message header.
 
+use crate::error::PfcpError;
 use crate::message::MsgType;
-use std::io;
 
 /// Represents a PFCP message header.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,12 +101,15 @@ impl Header {
     }
 
     /// Deserializes a byte slice into a Header.
-    pub fn unmarshal(b: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(b: &[u8]) -> Result<Self, PfcpError> {
         if b.len() < 8 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Header too short",
-            ));
+            return Err(PfcpError::MessageParseError {
+                message_type: None,
+                reason: format!(
+                    "Header too short (expected at least 8 bytes, got {})",
+                    b.len()
+                ),
+            });
         }
 
         let flags = b[0];
@@ -121,10 +124,14 @@ impl Header {
         let mut offset = 4;
         let seid = if has_seid {
             if b.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Header with SEID too short",
-                ));
+                return Err(PfcpError::MessageParseError {
+                    message_type: Some(message_type),
+                    reason: format!(
+                        "Header with SEID flag set but too short (expected at least {} bytes, got {})",
+                        offset + 8,
+                        b.len()
+                    ),
+                });
             }
             offset += 8;
             u64::from_be_bytes([
@@ -142,10 +149,14 @@ impl Header {
         };
 
         if b.len() < offset + 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Header sequence number part too short",
-            ));
+            return Err(PfcpError::MessageParseError {
+                message_type: Some(message_type),
+                reason: format!(
+                    "Header sequence number part too short (expected at least {} bytes, got {})",
+                    offset + 4,
+                    b.len()
+                ),
+            });
         }
         let sequence_number = u32::from_be_bytes([0, b[offset], b[offset + 1], b[offset + 2]]);
         let message_priority = b[offset + 3];

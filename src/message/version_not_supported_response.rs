@@ -2,9 +2,9 @@
 
 //! Version Not Supported Response message implementation.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Version Not Supported Response message.
 /// This message is sent when a PFCP peer receives a message with an unsupported version.
@@ -70,7 +70,7 @@ impl Message for VersionNotSupportedResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {

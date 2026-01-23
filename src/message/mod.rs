@@ -29,8 +29,8 @@ pub mod session_set_modification_request;
 pub mod session_set_modification_response;
 pub mod version_not_supported_response;
 
+use crate::error::PfcpError;
 use crate::ie::Ie;
-use std::io;
 
 // Re-export IE iterator types for public API
 pub use ie_iter::IeIter;
@@ -213,7 +213,7 @@ pub trait Message {
         self.marshal().len()
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized;
     fn msg_type(&self) -> MsgType;
@@ -385,13 +385,12 @@ impl Message for Generic {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = header::Header::unmarshal(data)?;
         let mut cursor = header.len() as usize;
         let mut ies = Vec::new();
         while cursor < data.len() {
-            let ie = Ie::unmarshal(&data[cursor..])
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            let ie = Ie::unmarshal(&data[cursor..])?;
             let ie_len = ie.len() as usize;
             ies.push(ie);
             cursor += ie_len;
@@ -434,7 +433,7 @@ impl Message for Generic {
 }
 
 // A simple parse function. In a real implementation, this would be more complex.
-pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, io::Error> {
+pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, PfcpError> {
     let header = header::Header::unmarshal(data)?;
     match header.message_type {
         MsgType::HeartbeatRequest => Ok(Box::new(HeartbeatRequest::unmarshal(data)?)),
