@@ -1,8 +1,8 @@
 //! Heartbeat Response message.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Heartbeat Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,7 +48,7 @@ impl HeartbeatResponse {
     /// ```
     pub fn recovery_time_stamp(
         &self,
-    ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, io::Error> {
+    ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, PfcpError> {
         crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
             &self.recovery_time_stamp.payload,
         )
@@ -92,7 +92,7 @@ impl Message for HeartbeatResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut recovery_time_stamp = None;
         let mut ies = Vec::new();
@@ -109,12 +109,12 @@ impl Message for HeartbeatResponse {
         }
 
         // Validate mandatory IE is present per 3GPP TS 29.244 Table 7.4.2.2-1
-        let recovery_time_stamp = recovery_time_stamp.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "HeartbeatResponse: Missing mandatory Recovery Time Stamp IE (3GPP TS 29.244 Table 7.4.2.2-1)",
-            )
-        })?;
+        let recovery_time_stamp =
+            recovery_time_stamp.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::RecoveryTimeStamp,
+                message_type: Some(MsgType::HeartbeatResponse),
+                parent_ie: None,
+            })?;
 
         Ok(HeartbeatResponse {
             header,
@@ -645,7 +645,12 @@ mod tests {
         // Unmarshaling should fail because recovery_time_stamp is mandatory
         let result = HeartbeatResponse::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::RecoveryTimeStamp);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
