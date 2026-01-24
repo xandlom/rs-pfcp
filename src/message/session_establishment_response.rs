@@ -1,9 +1,8 @@
 //! Session Establishment Response message.
 
-use crate::error::{messages, PfcpError};
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Establishment Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -198,7 +197,7 @@ impl Message for SessionEstablishmentResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut node_id = None;
         let mut cause = None;
@@ -230,18 +229,21 @@ impl Message for SessionEstablishmentResponse {
 
         Ok(SessionEstablishmentResponse {
             header,
-            node_id: node_id.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    messages::ie_not_found("Node ID"),
-                )
+            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::SessionEstablishmentResponse),
+                parent_ie: None,
             })?,
-            cause: cause.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionEstablishmentResponse),
+                parent_ie: None,
             })?,
             offending_ie,
-            fseid: fseid.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("F-SEID"))
+            fseid: fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Fseid,
+                message_type: Some(MsgType::SessionEstablishmentResponse),
+                parent_ie: None,
             })?,
             created_pdrs,
             pdn_type,
@@ -470,16 +472,22 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionEstablishmentResponse, io::Error> {
-        let node_id = self
-            .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID IE required"))?;
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause IE required"))?;
-        let fseid = self
-            .fseid
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "F-SEID IE required"))?;
+    pub fn build(self) -> Result<SessionEstablishmentResponse, PfcpError> {
+        let node_id = self.node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::SessionEstablishmentResponse),
+            parent_ie: None,
+        })?;
+        let cause = self.cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Cause,
+            message_type: Some(MsgType::SessionEstablishmentResponse),
+            parent_ie: None,
+        })?;
+        let fseid = self.fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Fseid,
+            message_type: Some(MsgType::SessionEstablishmentResponse),
+            parent_ie: None,
+        })?;
 
         let mut payload_len = node_id.len() + cause.len() + fseid.len();
         if let Some(ie) = &self.offending_ie {
