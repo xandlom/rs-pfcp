@@ -1,9 +1,8 @@
 //! Session Establishment Request message.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Establishment Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,7 +175,7 @@ impl Message for SessionEstablishmentRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut node_id = None;
         let mut fseid = None;
@@ -229,28 +228,31 @@ impl Message for SessionEstablishmentRequest {
         }
 
         if create_pdrs.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create PDR IE not found",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::CreatePdr,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+                parent_ie: None,
+            });
         }
         if create_fars.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create FAR IE not found",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::CreateFar,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+                parent_ie: None,
+            });
         }
 
         Ok(SessionEstablishmentRequest {
             header,
-            node_id: node_id.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    messages::ie_not_found("Node ID"),
-                )
+            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+                parent_ie: None,
             })?,
-            fseid: fseid.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("F-SEID"))
+            fseid: fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Fseid,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+                parent_ie: None,
             })?,
             create_pdrs,
             create_fars,
@@ -677,27 +679,30 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionEstablishmentRequest, io::Error> {
-        let node_id = self.node_id.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::ie_not_found("Node ID"),
-            )
+    pub fn build(self) -> Result<SessionEstablishmentRequest, PfcpError> {
+        let node_id = self.node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::SessionEstablishmentRequest),
+            parent_ie: None,
         })?;
-        let fseid = self.fseid.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("F-SEID"))
+        let fseid = self.fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Fseid,
+            message_type: Some(MsgType::SessionEstablishmentRequest),
+            parent_ie: None,
         })?;
         if self.create_pdrs.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create PDR IE not found",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::CreatePdr,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+                parent_ie: None,
+            });
         }
         if self.create_fars.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Create FAR IE not found",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::CreateFar,
+                message_type: Some(MsgType::SessionEstablishmentRequest),
+                parent_ie: None,
+            });
         }
 
         let mut payload_len = node_id.len() + fseid.len();
@@ -803,7 +808,7 @@ impl SessionEstablishmentRequestBuilder {
     ///     .create_fars(vec![Ie::new(rs_pfcp::ie::IeType::CreateFar, vec![])])
     ///     .marshal();
     /// ```
-    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(self) -> Result<Vec<u8>, PfcpError> {
         Ok(self.build()?.marshal())
     }
 }
