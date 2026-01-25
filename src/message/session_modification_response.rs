@@ -1,9 +1,8 @@
 //! Session Modification Response message.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Modification Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,7 +88,7 @@ impl Message for SessionModificationResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -119,8 +118,10 @@ impl Message for SessionModificationResponse {
 
         Ok(SessionModificationResponse {
             header,
-            cause: cause.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionModificationResponse),
+                parent_ie: None,
             })?,
             offending_ie,
             created_pdr,

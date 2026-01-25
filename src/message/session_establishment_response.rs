@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use std::io;
 
 /// Represents a Session Establishment Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
