@@ -1,5 +1,6 @@
 // src/message/session_deletion_request.rs
 
+use crate::error::PfcpError;
 use crate::ie::fseid::Fseid;
 use crate::ie::node_id::NodeId;
 use crate::ie::{Ie, IeType};
@@ -61,7 +62,7 @@ impl Message for SessionDeletionRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cursor = header.len() as usize;
 
@@ -71,8 +72,7 @@ impl Message for SessionDeletionRequest {
         let mut ies: Vec<Ie> = Vec::new();
 
         while cursor < data.len() {
-            let ie = Ie::unmarshal(&data[cursor..])
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            let ie = Ie::unmarshal(&data[cursor..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
                 IeType::NodeId => node_id = Some(ie),
@@ -198,17 +198,17 @@ impl SessionDeletionRequest {
     }
 
     /// Returns the Node ID if present.
-    pub fn node_id(&self) -> Option<Result<NodeId, std::io::Error>> {
+    pub fn node_id(&self) -> Option<Result<NodeId, PfcpError>> {
         self.node_id
             .as_ref()
             .map(|ie| NodeId::unmarshal(&ie.payload).map_err(Into::into))
     }
 
     /// Returns the CP F-SEID if present.
-    pub fn cp_fseid(&self) -> Option<Result<Fseid, std::io::Error>> {
+    pub fn cp_fseid(&self) -> Option<Result<Fseid, PfcpError>> {
         self.cp_fseid
             .as_ref()
-            .map(|ie| Fseid::unmarshal(&ie.payload))
+            .map(|ie| Fseid::unmarshal(&ie.payload).map_err(Into::into))
     }
 }
 

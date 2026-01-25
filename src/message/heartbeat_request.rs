@@ -54,8 +54,10 @@ impl HeartbeatRequest {
     pub fn recovery_time_stamp(
         &self,
     ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, PfcpError> {
-        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
-            &self.recovery_time_stamp.payload,
+        Ok(
+            crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
+                &self.recovery_time_stamp.payload,
+            )?,
         )
     }
 
@@ -78,9 +80,10 @@ impl HeartbeatRequest {
     pub fn source_ip_address(
         &self,
     ) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, PfcpError>> {
-        self.source_ip_address
-            .as_ref()
-            .map(|ie| crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload))
+        self.source_ip_address.as_ref().map(|ie| {
+            crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload)
+                .map_err(Into::into)
+        })
     }
 
     /// Returns a slice of additional IEs.

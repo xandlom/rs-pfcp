@@ -49,8 +49,10 @@ impl HeartbeatResponse {
     pub fn recovery_time_stamp(
         &self,
     ) -> Result<crate::ie::recovery_time_stamp::RecoveryTimeStamp, PfcpError> {
-        crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
-            &self.recovery_time_stamp.payload,
+        Ok(
+            crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(
+                &self.recovery_time_stamp.payload,
+            )?,
         )
     }
 

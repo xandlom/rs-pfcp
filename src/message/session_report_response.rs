@@ -1,9 +1,8 @@
 //! Session Report Response message.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Report Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,7 +95,7 @@ impl Message for SessionReportResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -129,8 +128,10 @@ impl Message for SessionReportResponse {
 
         Ok(SessionReportResponse {
             header,
-            cause: cause.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionReportResponse),
+                parent_ie: None,
             })?,
             offending_ie,
             update_bar_within_session_report_response,
@@ -414,12 +415,11 @@ impl SessionReportResponseBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionReportResponse, io::Error> {
-        let cause = self.cause.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::missing_mandatory_ie_short("Cause"),
-            )
+    pub fn build(self) -> Result<SessionReportResponse, PfcpError> {
+        let cause = self.cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Cause,
+            message_type: Some(MsgType::SessionReportResponse),
+            parent_ie: None,
         })?;
 
         let mut payload_len = cause.len();
@@ -476,7 +476,7 @@ impl SessionReportResponseBuilder {
     ///
     /// [`build()`]: #method.build
     /// [`Message::marshal()`]: trait.Message.html#tymethod.marshal
-    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(self) -> Result<Vec<u8>, PfcpError> {
         Ok(self.build()?.marshal())
     }
 }

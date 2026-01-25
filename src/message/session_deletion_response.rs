@@ -1,6 +1,6 @@
 // src/message/session_deletion_response.rs
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 
@@ -103,7 +103,7 @@ impl Message for SessionDeletionResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cursor = header.len() as usize;
         let mut cause = None;
@@ -119,8 +119,7 @@ impl Message for SessionDeletionResponse {
         let mut ies = Vec::new();
 
         while cursor < data.len() {
-            let ie = Ie::unmarshal(&data[cursor..])
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+            let ie = Ie::unmarshal(&data[cursor..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
                 IeType::Cause => cause = Some(ie),
@@ -142,11 +141,10 @@ impl Message for SessionDeletionResponse {
 
         Ok(SessionDeletionResponse {
             header,
-            cause: cause.ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    messages::ie_not_found("Cause"),
-                )
+            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::SessionDeletionResponse),
+                parent_ie: None,
             })?,
             offending_ie,
             load_control_information,
