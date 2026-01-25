@@ -102,12 +102,12 @@ impl Message for AssociationSetupResponse {
 
         Ok(AssociationSetupResponse {
             header,
-            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            cause: cause.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Cause,
                 message_type: Some(MsgType::AssociationSetupResponse),
                 parent_ie: None,
             })?,
-            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            node_id: node_id.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::NodeId,
                 message_type: Some(MsgType::AssociationSetupResponse),
                 parent_ie: None,

@@ -161,14 +161,14 @@ impl Message for SessionSetModificationRequest {
             offset += ie_len;
         }
 
-        let (node_id, node_id_ie) = node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let (node_id, node_id_ie) = node_id.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::NodeId,
             message_type: Some(MsgType::SessionSetModificationRequest),
             parent_ie: None,
         })?;
 
         let (alternative_smf_ip_address, alternative_smf_ip_address_ie) =
-            alternative_smf_ip_address.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            alternative_smf_ip_address.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::AlternativeSmfIpAddress,
                 message_type: Some(MsgType::SessionSetModificationRequest),
                 parent_ie: None,

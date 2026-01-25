@@ -230,18 +230,18 @@ impl Message for SessionEstablishmentResponse {
 
         Ok(SessionEstablishmentResponse {
             header,
-            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            node_id: node_id.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::NodeId,
                 message_type: Some(MsgType::SessionEstablishmentResponse),
                 parent_ie: None,
             })?,
-            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            cause: cause.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Cause,
                 message_type: Some(MsgType::SessionEstablishmentResponse),
                 parent_ie: None,
             })?,
             offending_ie,
-            fseid: fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            fseid: fseid.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Fseid,
                 message_type: Some(MsgType::SessionEstablishmentResponse),
                 parent_ie: None,
@@ -474,17 +474,17 @@ impl SessionEstablishmentResponseBuilder {
     }
 
     pub fn build(self) -> Result<SessionEstablishmentResponse, PfcpError> {
-        let node_id = self.node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let node_id = self.node_id.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::NodeId,
             message_type: Some(MsgType::SessionEstablishmentResponse),
             parent_ie: None,
         })?;
-        let cause = self.cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let cause = self.cause.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::Cause,
             message_type: Some(MsgType::SessionEstablishmentResponse),
             parent_ie: None,
         })?;
-        let fseid = self.fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let fseid = self.fseid.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::Fseid,
             message_type: Some(MsgType::SessionEstablishmentResponse),
             parent_ie: None,

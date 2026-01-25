@@ -154,12 +154,11 @@ impl Message for HeartbeatRequest {
         }
 
         // Validate mandatory IE is present per 3GPP TS 29.244 Table 7.4.2.1-1
-        let recovery_time_stamp =
-            recovery_time_stamp.ok_or_else(|| PfcpError::MissingMandatoryIe {
-                ie_type: IeType::RecoveryTimeStamp,
-                message_type: Some(MsgType::HeartbeatRequest),
-                parent_ie: None,
-            })?;
+        let recovery_time_stamp = recovery_time_stamp.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::RecoveryTimeStamp,
+            message_type: Some(MsgType::HeartbeatRequest),
+            parent_ie: None,
+        })?;
 
         Ok(HeartbeatRequest {
             header,

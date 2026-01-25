@@ -128,7 +128,7 @@ impl Message for SessionReportResponse {
 
         Ok(SessionReportResponse {
             header,
-            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            cause: cause.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Cause,
                 message_type: Some(MsgType::SessionReportResponse),
                 parent_ie: None,
@@ -416,7 +416,7 @@ impl SessionReportResponseBuilder {
     }
 
     pub fn build(self) -> Result<SessionReportResponse, PfcpError> {
-        let cause = self.cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let cause = self.cause.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::Cause,
             message_type: Some(MsgType::SessionReportResponse),
             parent_ie: None,

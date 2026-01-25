@@ -118,7 +118,7 @@ impl Message for SessionModificationResponse {
 
         Ok(SessionModificationResponse {
             header,
-            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            cause: cause.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Cause,
                 message_type: Some(MsgType::SessionModificationResponse),
                 parent_ie: None,

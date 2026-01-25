@@ -244,12 +244,12 @@ impl Message for SessionEstablishmentRequest {
 
         Ok(SessionEstablishmentRequest {
             header,
-            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            node_id: node_id.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::NodeId,
                 message_type: Some(MsgType::SessionEstablishmentRequest),
                 parent_ie: None,
             })?,
-            fseid: fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            fseid: fseid.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Fseid,
                 message_type: Some(MsgType::SessionEstablishmentRequest),
                 parent_ie: None,
@@ -680,12 +680,12 @@ impl SessionEstablishmentRequestBuilder {
     }
 
     pub fn build(self) -> Result<SessionEstablishmentRequest, PfcpError> {
-        let node_id = self.node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let node_id = self.node_id.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::NodeId,
             message_type: Some(MsgType::SessionEstablishmentRequest),
             parent_ie: None,
         })?;
-        let fseid = self.fseid.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let fseid = self.fseid.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::Fseid,
             message_type: Some(MsgType::SessionEstablishmentRequest),
             parent_ie: None,

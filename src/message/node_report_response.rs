@@ -101,12 +101,12 @@ impl Message for NodeReportResponse {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let node_id = node_id.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::NodeId,
             message_type: Some(MsgType::NodeReportResponse),
             parent_ie: None,
         })?;
-        let cause = cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let cause = cause.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::Cause,
             message_type: Some(MsgType::NodeReportResponse),
             parent_ie: None,

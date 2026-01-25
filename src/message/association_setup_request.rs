@@ -94,12 +94,12 @@ impl Message for AssociationSetupRequest {
 
         Ok(AssociationSetupRequest {
             header,
-            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            node_id: node_id.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::NodeId,
                 message_type: Some(MsgType::AssociationSetupRequest),
                 parent_ie: None,
             })?,
-            recovery_time_stamp: recovery_time_stamp.ok_or_else(|| {
+            recovery_time_stamp: recovery_time_stamp.ok_or({
                 PfcpError::MissingMandatoryIe {
                     ie_type: IeType::RecoveryTimeStamp,
                     message_type: Some(MsgType::AssociationSetupRequest),

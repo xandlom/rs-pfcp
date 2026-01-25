@@ -106,7 +106,7 @@ impl Message for PfdManagementResponse {
 
         Ok(PfdManagementResponse {
             header,
-            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            cause: cause.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Cause,
                 message_type: Some(MsgType::PfdManagementResponse),
                 parent_ie: None,

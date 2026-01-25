@@ -82,7 +82,7 @@ impl Message for SessionSetModificationResponse {
             offset += ie_len;
         }
 
-        let cause = cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+        let cause = cause.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::Cause,
             message_type: Some(MsgType::SessionSetModificationResponse),
             parent_ie: None,

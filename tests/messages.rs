@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 // tests/messages.rs
+use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
 use rs_pfcp::message::session_report_response::SessionReportResponse;
@@ -636,7 +637,12 @@ fn test_session_report_response_unmarshal_missing_cause() {
 
     let result = SessionReportResponse::unmarshal(&serialized);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
+    match result.unwrap_err() {
+        PfcpError::MissingMandatoryIe { ie_type, .. } => {
+            assert_eq!(ie_type, IeType::Cause);
+        }
+        _ => panic!("Expected MissingMandatoryIe error for Cause"),
+    }
 }
 
 #[test]

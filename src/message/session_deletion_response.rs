@@ -141,7 +141,7 @@ impl Message for SessionDeletionResponse {
 
         Ok(SessionDeletionResponse {
             header,
-            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            cause: cause.ok_or(PfcpError::MissingMandatoryIe {
                 ie_type: IeType::Cause,
                 message_type: Some(MsgType::SessionDeletionResponse),
                 parent_ie: None,
