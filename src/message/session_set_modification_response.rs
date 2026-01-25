@@ -3,7 +3,7 @@
 //! The PFCP Session Set Modification Response message is sent by the UPF to the SMF
 //! as a response to the Session Set Modification Request message.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::cause::CauseValue;
 use crate::ie::offending_ie::OffendingIe;
 use crate::ie::{Ie, IeType};
@@ -55,7 +55,7 @@ impl Message for SessionSetModificationResponse {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
@@ -70,10 +70,10 @@ impl Message for SessionSetModificationResponse {
                     if cause.is_none() {
                         cause = Some(ie);
                     } else {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Duplicate Cause IE",
-                        ));
+                        return Err(PfcpError::MessageParseError {
+                            message_type: Some(MsgType::SessionSetModificationResponse),
+                            reason: "Duplicate Cause IE".to_string(),
+                        });
                     }
                 }
                 IeType::OffendingIe => offending_ie = Some(ie),
@@ -82,11 +82,10 @@ impl Message for SessionSetModificationResponse {
             offset += ie_len;
         }
 
-        let cause = cause.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::missing_mandatory_ie_short("Cause"),
-            )
+        let cause = cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Cause,
+            message_type: Some(MsgType::SessionSetModificationResponse),
+            parent_ie: None,
         })?;
 
         Ok(SessionSetModificationResponse {
