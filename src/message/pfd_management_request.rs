@@ -1,5 +1,6 @@
 //! PFD Management Request message.
 
+use crate::error::PfcpError;
 use crate::ie::application_ids_pfds::ApplicationIdsPfds;
 use crate::ie::node_id::NodeId;
 use crate::ie::{Ie, IeType};
@@ -94,7 +95,7 @@ impl Message for PfdManagementRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut node_id = None;
         let mut application_ids_pfds = None;
@@ -107,10 +108,10 @@ impl Message for PfdManagementRequest {
             match ie.ie_type {
                 IeType::NodeId => {
                     if node_id.is_some() {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Duplicate Node ID IE",
-                        ));
+                        return Err(PfcpError::MessageParseError {
+                            message_type: Some(MsgType::PfdManagementRequest),
+                            reason: "Duplicate Node ID IE".to_string(),
+                        });
                     }
                     node_id = Some(NodeId::unmarshal(&ie.payload).map_err(io::Error::from)?);
                 }

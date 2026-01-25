@@ -2,9 +2,9 @@
 
 //! Node Report Request message implementation.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Node Report Request message.
 /// Used by UPF to report node-level events and information to the CP function.
@@ -96,7 +96,7 @@ impl Message for NodeReportRequest {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -119,8 +119,11 @@ impl Message for NodeReportRequest {
             cursor += ie_len;
         }
 
-        let node_id = node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
+        let node_id = node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::NodeReportRequest),
+            parent_ie: None,
+        })?;
 
         Ok(NodeReportRequest {
             header,

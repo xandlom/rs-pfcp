@@ -4,6 +4,7 @@
 //! to request the UPF(s) to send subsequent PFCP Session Report Request messages to the
 //! alternative SMF. This is used for SMF set management and session handover scenarios.
 
+use crate::error::PfcpError;
 use crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
 use crate::ie::cp_ip_address::CpIpAddress;
 use crate::ie::fq_csid::FqCsid;
@@ -100,7 +101,7 @@ impl Message for SessionSetModificationRequest {
         size
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut node_id = None;
         let mut alternative_smf_ip_address = None;
@@ -120,10 +121,10 @@ impl Message for SessionSetModificationRequest {
                             .map_err(io::Error::from)?;
                         node_id = Some((typed_ie, ie));
                     } else {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Duplicate Node ID IE",
-                        ));
+                        return Err(PfcpError::MessageParseError {
+                            message_type: Some(MsgType::SessionSetModificationRequest),
+                            reason: "Duplicate Node ID IE".to_string(),
+                        });
                     }
                 }
                 IeType::AlternativeSmfIpAddress => {
@@ -131,10 +132,10 @@ impl Message for SessionSetModificationRequest {
                         let typed_ie = AlternativeSmfIpAddress::unmarshal(&ie.payload)?;
                         alternative_smf_ip_address = Some((typed_ie, ie));
                     } else {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "Duplicate Alternative SMF IP Address IE",
-                        ));
+                        return Err(PfcpError::MessageParseError {
+                            message_type: Some(MsgType::SessionSetModificationRequest),
+                            reason: "Duplicate Alternative SMF IP Address IE".to_string(),
+                        });
                     }
                 }
                 IeType::FqCsid => {
@@ -160,15 +161,17 @@ impl Message for SessionSetModificationRequest {
             offset += ie_len;
         }
 
-        let (node_id, node_id_ie) = node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID IE is mandatory"))?;
+        let (node_id, node_id_ie) = node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::SessionSetModificationRequest),
+            parent_ie: None,
+        })?;
 
         let (alternative_smf_ip_address, alternative_smf_ip_address_ie) =
-            alternative_smf_ip_address.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Alternative SMF IP Address IE is mandatory",
-                )
+            alternative_smf_ip_address.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::AlternativeSmfIpAddress,
+                message_type: Some(MsgType::SessionSetModificationRequest),
+                parent_ie: None,
             })?;
 
         // Extract typed and raw IEs
