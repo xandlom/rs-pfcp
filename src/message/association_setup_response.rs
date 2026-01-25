@@ -2,10 +2,9 @@
 
 //! Association Setup Response message implementation.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationSetupResponse {
@@ -74,7 +73,7 @@ impl Message for AssociationSetupResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -103,14 +102,15 @@ impl Message for AssociationSetupResponse {
 
         Ok(AssociationSetupResponse {
             header,
-            cause: cause.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, messages::ie_not_found("Cause"))
+            cause: cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Cause,
+                message_type: Some(MsgType::AssociationSetupResponse),
+                parent_ie: None,
             })?,
-            node_id: node_id.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    messages::ie_not_found("Node ID"),
-                )
+            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::AssociationSetupResponse),
+                parent_ie: None,
             })?,
             up_function_features,
             cp_function_features,
@@ -1008,9 +1008,12 @@ mod tests {
 
         let result = AssociationSetupResponse::unmarshal(&buf);
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("Cause"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::Cause);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
@@ -1026,9 +1029,12 @@ mod tests {
 
         let result = AssociationSetupResponse::unmarshal(&buf);
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("Node ID"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::NodeId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

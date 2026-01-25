@@ -2,9 +2,9 @@
 
 //! Association Update Response message implementation.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationUpdateResponse {
@@ -95,7 +95,7 @@ impl Message for AssociationUpdateResponse {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -120,10 +120,16 @@ impl Message for AssociationUpdateResponse {
             cursor += ie_len;
         }
 
-        let node_id = node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing NodeId IE"))?;
-        let cause =
-            cause.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Missing Cause IE"))?;
+        let node_id = node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::AssociationUpdateResponse),
+            parent_ie: None,
+        })?;
+        let cause = cause.ok_or_else(|| PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Cause,
+            message_type: Some(MsgType::AssociationUpdateResponse),
+            parent_ie: None,
+        })?;
 
         Ok(AssociationUpdateResponse {
             header,

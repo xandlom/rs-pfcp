@@ -2,9 +2,9 @@
 
 //! Association Setup Request message implementation.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationSetupRequest {
@@ -67,7 +67,7 @@ impl Message for AssociationSetupRequest {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -94,14 +94,17 @@ impl Message for AssociationSetupRequest {
 
         Ok(AssociationSetupRequest {
             header,
-            node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::AssociationSetupRequest),
+                parent_ie: None,
             })?,
             recovery_time_stamp: recovery_time_stamp.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Recovery Time Stamp IE not found",
-                )
+                PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::RecoveryTimeStamp,
+                    message_type: Some(MsgType::AssociationSetupRequest),
+                    parent_ie: None,
+                }
             })?,
             up_function_features,
             cp_function_features,
@@ -874,9 +877,12 @@ mod tests {
 
         let result = AssociationSetupRequest::unmarshal(&buf);
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("Node ID"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::NodeId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
@@ -892,9 +898,12 @@ mod tests {
 
         let result = AssociationSetupRequest::unmarshal(&buf);
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("Recovery Time Stamp"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::RecoveryTimeStamp);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

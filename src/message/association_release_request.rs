@@ -2,6 +2,7 @@
 
 //! Association Release Request message implementation.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use std::io;
@@ -57,7 +58,7 @@ impl Message for AssociationReleaseRequest {
         size
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized,
     {
@@ -76,8 +77,10 @@ impl Message for AssociationReleaseRequest {
 
         Ok(AssociationReleaseRequest {
             header,
-            node_id: node_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Node ID IE not found")
+            node_id: node_id.ok_or_else(|| PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                message_type: Some(MsgType::AssociationReleaseRequest),
+                parent_ie: None,
             })?,
         })
     }
