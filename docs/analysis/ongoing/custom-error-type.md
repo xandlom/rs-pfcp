@@ -36,10 +36,11 @@
   - All session, association, session set, node report, and PFD management messages ✅
   - **Result: 100% message layer coverage**
 
-- ✅ **Phase 4: Migrate Builders (MOSTLY COMPLETE)** - commit 200cfb7
+- ✅ **Phase 4: Migrate Builders (COMPLETE)** - commits 200cfb7, 63ec8de
   - Core grouped IE builders migrated: CreateFar, CreatePdr, CreateQer, CreateUrr, UpdateUrr ✅
+  - All 9 secondary builders migrated: Pdi, FteidBuilder, PfdContents, Ethernet IEs, UsageReport, SessionSetModification ✅
   - Message builder tests updated for PfcpError ✅
-  - Remaining: 9 secondary builders (Pdi, FteidBuilder, Ethernet IEs, SessionSetModification)
+  - All builder validation methods using PfcpError::validation_error() ✅
 
 - 🔄 **Phase 5: Update Tests & Examples (PARTIAL)**
   - All tests passing (2,054 tests) ✅
@@ -53,16 +54,16 @@
 | Phase 1: Foundation | ✅ DONE | 100% | PfcpError enum, traits, Cause mapping |
 | Phase 2: IE Layer | ✅ MOSTLY DONE | 80%+ | 76+ files migrated across 5 batches |
 | Phase 3: Message Layer | ✅ COMPLETE | 100% | All 25 messages + header + parse() migrated |
-| Phase 4: Builders | ✅ MOSTLY DONE | ~90% | Core grouped IE builders done, 9 secondary builders remaining |
+| Phase 4: Builders | ✅ COMPLETE | 100% | All core and secondary builders migrated |
 | Phase 5: Tests/Examples | 🔄 PARTIAL | ~60% | 2,054 tests passing, examples need work |
 
-**Overall Completion: ~92%** (Updated 2026-01-30)
+**Overall Completion: ~94%** (Updated 2026-01-30)
 
-### 🎯 What's Remaining (~8%):
+### 🎯 What's Remaining (~6%):
 
 - ~~Complete message layer migration~~ ✅ DONE (2026-01-25)
-- ~~Migrate core grouped IE builders~~ ✅ DONE (2026-01-30)
-- Finish remaining 9 secondary builders (Pdi, F-TEID, Ethernet IEs, etc.)
+- ~~Migrate core grouped IE builders~~ ✅ DONE (2026-01-30 AM)
+- ~~Finish remaining 9 secondary builders~~ ✅ DONE (2026-01-30 PM)
 - Migrate 74 simple IE unmarshal methods (low priority)
 - Add examples demonstrating PfcpError handling patterns
 - Final CHANGELOG entry
@@ -81,17 +82,25 @@ This feature was **accelerated from v0.3.0 to v0.2.5** due to its high value for
   - Phase 4: Association messages (6 files)
   - Phase 5: Remaining messages (session set, node report, PFD management - 8 files)
 
-- **2026-01-30:** Core grouped IE builders migrated (commit 200cfb7)
+- **2026-01-30 (AM):** Core grouped IE builders migrated (commit 200cfb7)
   - CreateFar, CreatePdr, CreateQer, CreateUrr, UpdateUrr builders
   - All builder validation methods migrated to PfcpError
   - 15+ test cases updated to pattern match on PfcpError variants
   - Applied clippy optimizations (ok_or vs ok_or_else)
 
+- **2026-01-30 (PM):** All remaining 9 builders migrated - Phase 4 COMPLETE! (commit 63ec8de)
+  - IE Builders (7): Pdi, FteidBuilder, PfdContentsBuilder, EthernetContextInformation, EthernetPacketFilter, EthernetTrafficInformation, UsageReport
+  - Message Builders (2): SessionSetModificationRequest, SessionSetModificationResponse
+  - All build(), unmarshal(), and convenience methods migrated to PfcpError
+  - 4 test cases updated to pattern match on PfcpError::MissingMandatoryIe and ValidationError
+  - Fixed clippy warnings (needless borrow, useless conversion)
+  - All 2,054 tests passing with zero warnings
+
 ### 📋 Detailed Breakdown of Remaining Work:
 
-**1. Remaining Builders (9 files):**
-- IE Builders (7): pdi.rs, pfd_contents.rs, ethernet_context_information.rs, f_teid.rs, ethernet_packet_filter.rs, ethernet_traffic_information.rs, usage_report.rs
-- Message Builders (2): session_set_modification_request.rs, session_set_modification_response.rs
+**1. ~~Remaining Builders (9 files)~~:** ✅ COMPLETE (commit 63ec8de)
+- ~~IE Builders (7): pdi.rs, pfd_contents.rs, ethernet_context_information.rs, f_teid.rs, ethernet_packet_filter.rs, ethernet_traffic_information.rs, usage_report.rs~~
+- ~~Message Builders (2): session_set_modification_request.rs, session_set_modification_response.rs~~
 
 **2. Simple IE unmarshal methods (~74 IEs):**
 - Ethernet-related IEs (ethertype, ethernet filters, etc.)
@@ -100,7 +109,7 @@ This feature was **accelerated from v0.3.0 to v0.2.5** due to its high value for
 - Miscellaneous simple IEs
 - **Priority:** Lower (doesn't affect builder APIs, can be batched)
 
-**Target for Final 8%:** v0.2.6 or v0.3.0
+**Target for Final 6%:** v0.2.6 or v0.3.0
 
 ---
 
