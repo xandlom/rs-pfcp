@@ -12,7 +12,6 @@ use crate::ie::precedence::Precedence;
 use crate::ie::qer_id::QerId;
 use crate::ie::urr_id::UrrId;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreatePdr {
@@ -107,14 +106,18 @@ impl CreatePdr {
         }
 
         Ok(CreatePdr {
-            pdr_id: pdr_id.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::PdrId, IeType::CreatePdr)
-            })?,
-            precedence: precedence.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::Precedence, IeType::CreatePdr)
-            })?,
-            pdi: pdi
-                .ok_or_else(|| PfcpError::missing_ie_in_grouped(IeType::Pdi, IeType::CreatePdr))?,
+            pdr_id: pdr_id.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::PdrId,
+                IeType::CreatePdr,
+            ))?,
+            precedence: precedence.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::Precedence,
+                IeType::CreatePdr,
+            ))?,
+            pdi: pdi.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::Pdi,
+                IeType::CreatePdr,
+            ))?,
             outer_header_removal,
             far_id,
             urr_id,
@@ -186,16 +189,22 @@ impl CreatePdrBuilder {
         self
     }
 
-    pub fn build(self) -> Result<CreatePdr, io::Error> {
-        let pdr_id = self
-            .pdr_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "PDR ID is required"))?;
-        let precedence = self
-            .precedence
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Precedence is required"))?;
-        let pdi = self
-            .pdi
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "PDI is required"))?;
+    pub fn build(self) -> Result<CreatePdr, PfcpError> {
+        let pdr_id = self.pdr_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::PdrId,
+            message_type: None,
+            parent_ie: Some(IeType::CreatePdr),
+        })?;
+        let precedence = self.precedence.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Precedence,
+            message_type: None,
+            parent_ie: Some(IeType::CreatePdr),
+        })?;
+        let pdi = self.pdi.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Pdi,
+            message_type: None,
+            parent_ie: Some(IeType::CreatePdr),
+        })?;
 
         Ok(CreatePdr {
             pdr_id,
@@ -379,12 +388,24 @@ mod tests {
         // Missing precedence
         let result = CreatePdrBuilder::new(pdr_id).build();
         assert!(result.is_err(), "Should fail without required precedence");
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::Precedence);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
 
         // Missing PDI
         let pdr_id = PdrId::new(1);
         let precedence = Precedence::new(100);
         let result = CreatePdrBuilder::new(pdr_id).precedence(precedence).build();
         assert!(result.is_err());
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::Pdi);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

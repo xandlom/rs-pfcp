@@ -9,7 +9,6 @@ use crate::ie::mbr::Mbr;
 use crate::ie::qer_correlation_id::QerCorrelationId;
 use crate::ie::qer_id::QerId;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreateQer {
@@ -85,8 +84,10 @@ impl CreateQer {
             }
         }
 
-        let qer_id = qer_id
-            .ok_or_else(|| PfcpError::missing_ie_in_grouped(IeType::QerId, IeType::CreateQer))?;
+        let qer_id = qer_id.ok_or(PfcpError::missing_ie_in_grouped(
+            IeType::QerId,
+            IeType::CreateQer,
+        ))?;
 
         Ok(CreateQer {
             qer_id,
@@ -195,10 +196,12 @@ impl CreateQerBuilder {
     /// # Errors
     ///
     /// Returns an error if the QER ID is not set.
-    pub fn build(self) -> Result<CreateQer, io::Error> {
-        let qer_id = self
-            .qer_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "QER ID is required"))?;
+    pub fn build(self) -> Result<CreateQer, PfcpError> {
+        let qer_id = self.qer_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::QerId,
+            message_type: None,
+            parent_ie: Some(IeType::CreateQer),
+        })?;
 
         Ok(CreateQer {
             qer_id,

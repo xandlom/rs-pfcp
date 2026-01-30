@@ -8,7 +8,6 @@ use crate::ie::{
     subsequent_volume_threshold::SubsequentVolumeThreshold, time_threshold::TimeThreshold,
     urr_id::UrrId, volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
 };
-use std::io;
 
 /// Represents the Create URR.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,15 +141,18 @@ impl CreateUrr {
         }
 
         Ok(CreateUrr {
-            urr_id: urr_id.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::UrrId, IeType::CreateUrr)
-            })?,
-            measurement_method: measurement_method.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::MeasurementMethod, IeType::CreateUrr)
-            })?,
-            reporting_triggers: reporting_triggers.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::ReportingTriggers, IeType::CreateUrr)
-            })?,
+            urr_id: urr_id.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::UrrId,
+                IeType::CreateUrr,
+            ))?,
+            measurement_method: measurement_method.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::MeasurementMethod,
+                IeType::CreateUrr,
+            ))?,
+            reporting_triggers: reporting_triggers.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::ReportingTriggers,
+                IeType::CreateUrr,
+            ))?,
             monitoring_time,
             volume_threshold,
             time_threshold,
@@ -358,22 +360,30 @@ impl CreateUrrBuilder {
     ///   - Duration measurement enabled but no time threshold set
     ///   - Volume threshold set but volume measurement disabled
     ///   - Time threshold set but duration measurement disabled
-    pub fn build(self) -> Result<CreateUrr, io::Error> {
+    pub fn build(self) -> Result<CreateUrr, PfcpError> {
         // Validate required fields first (without consuming)
-        self.urr_id
+        self.urr_id.as_ref().ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::UrrId,
+            message_type: None,
+            parent_ie: Some(IeType::CreateUrr),
+        })?;
+
+        let measurement_method =
+            self.measurement_method
+                .as_ref()
+                .ok_or(PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::MeasurementMethod,
+                    message_type: None,
+                    parent_ie: Some(IeType::CreateUrr),
+                })?;
+
+        self.reporting_triggers
             .as_ref()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "URR ID is required"))?;
-
-        let measurement_method = self.measurement_method.as_ref().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Measurement method is required")
-        })?;
-
-        self.reporting_triggers.as_ref().ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Reporting triggers are required",
-            )
-        })?;
+            .ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::ReportingTriggers,
+                message_type: None,
+                parent_ie: Some(IeType::CreateUrr),
+            })?;
 
         // Validate measurement method and threshold consistency
         self.validate_measurement_thresholds(measurement_method)?;
@@ -396,20 +406,22 @@ impl CreateUrrBuilder {
     fn validate_measurement_thresholds(
         &self,
         measurement_method: &MeasurementMethod,
-    ) -> Result<(), io::Error> {
+    ) -> Result<(), PfcpError> {
         // Validate volume measurement consistency
         if measurement_method.volume {
             if self.volume_threshold.is_none() && self.subsequent_volume_threshold.is_none() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::validation_error(
+                    "CreateUrrBuilder",
+                    "volume_threshold",
                     "Volume measurement enabled but no volume threshold configured",
                 ));
             }
         } else {
             // Volume measurement disabled but volume thresholds configured
             if self.volume_threshold.is_some() || self.subsequent_volume_threshold.is_some() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::validation_error(
+                    "CreateUrrBuilder",
+                    "volume_threshold",
                     "Volume threshold configured but volume measurement is disabled",
                 ));
             }
@@ -418,16 +430,18 @@ impl CreateUrrBuilder {
         // Validate duration measurement consistency
         if measurement_method.duration {
             if self.time_threshold.is_none() && self.subsequent_time_threshold.is_none() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::validation_error(
+                    "CreateUrrBuilder",
+                    "time_threshold",
                     "Duration measurement enabled but no time threshold configured",
                 ));
             }
         } else {
             // Duration measurement disabled but time thresholds configured
             if self.time_threshold.is_some() || self.subsequent_time_threshold.is_some() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::validation_error(
+                    "CreateUrrBuilder",
+                    "time_threshold",
                     "Time threshold configured but duration measurement is disabled",
                 ));
             }
@@ -596,10 +610,12 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Measurement method is required"
-        );
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::MeasurementMethod);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
@@ -609,10 +625,12 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Reporting triggers are required"
-        );
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::ReportingTriggers);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
@@ -668,10 +686,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Volume measurement enabled but no volume threshold configured"
-        );
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "CreateUrrBuilder");
+                assert_eq!(field, "volume_threshold");
+                assert!(reason.contains("Volume measurement enabled"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]
@@ -684,10 +710,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Volume threshold configured but volume measurement is disabled"
-        );
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "CreateUrrBuilder");
+                assert_eq!(field, "volume_threshold");
+                assert!(reason.contains("Volume threshold configured"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]
@@ -699,10 +733,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Duration measurement enabled but no time threshold configured"
-        );
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "CreateUrrBuilder");
+                assert_eq!(field, "time_threshold");
+                assert!(reason.contains("Duration measurement enabled"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]
@@ -715,10 +757,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Time threshold configured but duration measurement is disabled"
-        );
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "CreateUrrBuilder");
+                assert_eq!(field, "time_threshold");
+                assert!(reason.contains("Time threshold configured"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]

@@ -11,7 +11,6 @@ use crate::ie::far_id::FarId;
 use crate::ie::forwarding_parameters::ForwardingParameters;
 use crate::ie::network_instance::NetworkInstance;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 /// Traffic direction for FAR rules
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -167,12 +166,14 @@ impl CreateFar {
         }
 
         Ok(CreateFar {
-            far_id: far_id.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::FarId, IeType::CreateFar)
-            })?,
-            apply_action: apply_action.ok_or_else(|| {
-                PfcpError::missing_ie_in_grouped(IeType::ApplyAction, IeType::CreateFar)
-            })?,
+            far_id: far_id.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::FarId,
+                IeType::CreateFar,
+            ))?,
+            apply_action: apply_action.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::ApplyAction,
+                IeType::CreateFar,
+            ))?,
             forwarding_parameters,
             duplicating_parameters,
             bar_id,
@@ -305,13 +306,17 @@ impl CreateFarBuilder {
     /// - Action and parameter combinations are invalid (e.g., BUFF without BAR ID)
     /// - FORW action without forwarding parameters
     /// - DUPL action without duplicating parameters
-    pub fn build(self) -> Result<CreateFar, io::Error> {
-        let far_id = self
-            .far_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "FAR ID is required"))?;
+    pub fn build(self) -> Result<CreateFar, PfcpError> {
+        let far_id = self.far_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::FarId,
+            message_type: None,
+            parent_ie: Some(IeType::CreateFar),
+        })?;
 
-        let apply_action = self.apply_action.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Apply Action is required")
+        let apply_action = self.apply_action.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::ApplyAction,
+            message_type: None,
+            parent_ie: Some(IeType::CreateFar),
         })?;
 
         // Validate action and parameter combinations
@@ -327,11 +332,12 @@ impl CreateFarBuilder {
     }
 
     /// Validates that action and parameter combinations are correct.
-    fn validate_action_parameters(&self, apply_action: &ApplyAction) -> Result<(), io::Error> {
+    fn validate_action_parameters(&self, apply_action: &ApplyAction) -> Result<(), PfcpError> {
         // Check BUFF requires BAR ID
         if apply_action.contains(ApplyAction::BUFF) && self.bar_id.is_none() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "CreateFarBuilder",
+                "bar_id",
                 "BUFF action requires BAR ID to be set",
             ));
         }
@@ -397,7 +403,6 @@ mod tests {
     use super::*;
     use crate::ie::bar_id::BarId;
     use crate::ie::far_id::FarId;
-    use std::io;
 
     #[test]
     fn test_create_far_basic_construction() {
@@ -543,7 +548,12 @@ mod tests {
         let result = CreateFarBuilder::new(far_id).build();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::ApplyAction);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
@@ -630,9 +640,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        let error = result.unwrap_err();
-        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
-        assert!(error.to_string().contains("BUFF action requires BAR ID"));
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "CreateFarBuilder");
+                assert_eq!(field, "bar_id");
+                assert!(reason.contains("BUFF action requires BAR ID"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]
@@ -758,8 +777,12 @@ mod tests {
 
         let result = builder.build();
         assert!(result.is_err());
-        let error = result.unwrap_err();
-        assert!(error.to_string().contains("FAR ID is required"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::FarId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

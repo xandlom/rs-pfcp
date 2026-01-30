@@ -710,8 +710,12 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("F-SEID"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::Fseid);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     // ========================================================================

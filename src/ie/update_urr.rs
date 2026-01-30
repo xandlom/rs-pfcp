@@ -1,6 +1,7 @@
 // src/ie/update_urr.rs
 //! UpdateURR IE and its sub-IEs.
 
+use crate::error::PfcpError;
 use crate::ie::{
     inactivity_detection_time::InactivityDetectionTime, marshal_ies,
     measurement_method::MeasurementMethod, monitoring_time::MonitoringTime,
@@ -8,7 +9,6 @@ use crate::ie::{
     subsequent_volume_threshold::SubsequentVolumeThreshold, time_threshold::TimeThreshold,
     urr_id::UrrId, volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
 };
-use std::io;
 
 /// Represents the Update URR.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,7 +95,7 @@ impl UpdateUrr {
     }
 
     /// Unmarshals a byte slice into a Update Urr IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut urr_id = None;
         let mut measurement_method = None;
         let mut reporting_triggers = None;
@@ -144,9 +144,10 @@ impl UpdateUrr {
         }
 
         Ok(UpdateUrr {
-            urr_id: urr_id.ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory URR ID IE")
-            })?,
+            urr_id: urr_id.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::UrrId,
+                IeType::UpdateUrr,
+            ))?,
             measurement_method,
             reporting_triggers,
             monitoring_time,
@@ -353,11 +354,13 @@ impl UpdateUrrBuilder {
     ///
     /// Unlike CreateUrr, UpdateUrr allows all fields except urr_id to be optional,
     /// as you may want to update only specific fields of an existing URR.
-    pub fn build(self) -> Result<UpdateUrr, io::Error> {
+    pub fn build(self) -> Result<UpdateUrr, PfcpError> {
         // Validate required field first (without consuming)
-        self.urr_id
-            .as_ref()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "URR ID is required"))?;
+        self.urr_id.as_ref().ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::UrrId,
+            message_type: None,
+            parent_ie: Some(IeType::UpdateUrr),
+        })?;
 
         // If measurement method is being updated, validate consistency with thresholds
         if let Some(ref measurement_method) = self.measurement_method {
@@ -384,7 +387,7 @@ impl UpdateUrrBuilder {
     fn validate_measurement_thresholds(
         &self,
         measurement_method: &MeasurementMethod,
-    ) -> Result<(), io::Error> {
+    ) -> Result<(), PfcpError> {
         // Validate volume measurement consistency
         if measurement_method.volume {
             if self.volume_threshold.is_some() || self.subsequent_volume_threshold.is_some() {
@@ -394,8 +397,9 @@ impl UpdateUrrBuilder {
         } else {
             // Volume measurement disabled - warn if volume thresholds are being set
             if self.volume_threshold.is_some() || self.subsequent_volume_threshold.is_some() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::validation_error(
+                    "UpdateUrrBuilder",
+                    "volume_threshold",
                     "Volume threshold configured but volume measurement is disabled",
                 ));
             }
@@ -410,8 +414,9 @@ impl UpdateUrrBuilder {
         } else {
             // Duration measurement disabled - warn if time thresholds are being set
             if self.time_threshold.is_some() || self.subsequent_time_threshold.is_some() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::validation_error(
+                    "UpdateUrrBuilder",
+                    "time_threshold",
                     "Time threshold configured but duration measurement is disabled",
                 ));
             }
@@ -477,7 +482,12 @@ mod tests {
         let result = UpdateUrrBuilder::default().build();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "URR ID is required");
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::UrrId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
@@ -503,10 +513,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("volume measurement is disabled"));
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "UpdateUrrBuilder");
+                assert_eq!(field, "volume_threshold");
+                assert!(reason.contains("volume measurement is disabled"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]
@@ -519,10 +537,18 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("duration measurement is disabled"));
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "UpdateUrrBuilder");
+                assert_eq!(field, "time_threshold");
+                assert!(reason.contains("duration measurement is disabled"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]
@@ -894,7 +920,12 @@ mod tests {
         let result = UpdateUrr::unmarshal(&empty_data);
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("URR ID"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::UrrId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
