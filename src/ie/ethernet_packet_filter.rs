@@ -5,6 +5,7 @@
 //! Per 3GPP TS 29.244 Section 7.5.2.2 Table 7.5.2.2-3 (IE type 132), this IE is used
 //! to define Ethernet-specific packet detection rules.
 
+use crate::error::PfcpError;
 use crate::ie::c_tag::CTag;
 use crate::ie::ethernet_filter_id::EthernetFilterId;
 use crate::ie::ethernet_filter_properties::EthernetFilterProperties;
@@ -335,11 +336,12 @@ impl EthernetPacketFilterBuilder {
     ///
     /// # Errors
     /// Returns error if more than 16 MAC addresses are specified (per 3GPP TS 29.244)
-    pub fn build(self) -> Result<EthernetPacketFilter, io::Error> {
+    pub fn build(self) -> Result<EthernetPacketFilter, PfcpError> {
         // Validate MAC address count per 3GPP spec
         if self.mac_addresses.len() > 16 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
+            return Err(PfcpError::validation_error(
+                "EthernetPacketFilterBuilder",
+                "mac_addresses",
                 format!(
                     "Ethernet Packet Filter can have at most 16 MAC addresses, got {}",
                     self.mac_addresses.len()

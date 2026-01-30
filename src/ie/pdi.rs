@@ -2,6 +2,7 @@
 
 //! Packet Detection Information (PDI) IE and its sub-IEs.
 
+use crate::error::PfcpError;
 use crate::ie::{
     ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid, marshal_ies,
     network_instance::NetworkInstance, sdf_filter::SdfFilter, source_interface::SourceInterface,
@@ -69,7 +70,7 @@ impl Pdi {
     }
 
     /// Unmarshals a byte slice into a PDI IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut source_interface = None;
         let mut f_teid = None;
         let mut network_instance = None;
@@ -107,12 +108,10 @@ impl Pdi {
         }
 
         Ok(Pdi {
-            source_interface: source_interface.ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Missing mandatory Source Interface IE",
-                )
-            })?,
+            source_interface: source_interface.ok_or(PfcpError::missing_ie_in_grouped(
+                IeType::SourceInterface,
+                IeType::Pdi,
+            ))?,
             f_teid,
             network_instance,
             ue_ip_address,
@@ -238,12 +237,11 @@ impl PdiBuilder {
     /// # Errors
     ///
     /// Returns an error if the source interface is not set.
-    pub fn build(self) -> Result<Pdi, std::io::Error> {
-        let source_interface = self.source_interface.ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Source Interface is required for PDI",
-            )
+    pub fn build(self) -> Result<Pdi, PfcpError> {
+        let source_interface = self.source_interface.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::SourceInterface,
+            message_type: None,
+            parent_ie: Some(IeType::Pdi),
         })?;
 
         Ok(Pdi {
@@ -528,10 +526,12 @@ mod tests {
     fn test_pdi_builder_missing_source_interface() {
         let result = PdiBuilder::default().build();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Source Interface is required"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::SourceInterface);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     // Convenience method tests

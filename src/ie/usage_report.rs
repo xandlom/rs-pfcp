@@ -1,5 +1,6 @@
 // src/ie/usage_report.rs
 
+use crate::error::PfcpError;
 use crate::ie::additional_usage_reports_information::AdditionalUsageReportsInformation;
 use crate::ie::application_detection_information::ApplicationDetectionInformation;
 use crate::ie::duration_measurement::DurationMeasurement;
@@ -19,7 +20,6 @@ use crate::ie::usage_report_trigger::UsageReportTrigger;
 use crate::ie::volume_measurement::VolumeMeasurement;
 use crate::ie::volume_quota::VolumeQuota;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsageReport {
@@ -464,21 +464,26 @@ impl UsageReportBuilder {
     /// # Errors
     ///
     /// Returns an error if any required fields are missing.
-    pub fn build(self) -> Result<UsageReport, io::Error> {
-        let urr_id = self
-            .urr_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "URR ID is required"))?;
-
-        let ur_seqn = self.ur_seqn.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Sequence number is required")
+    pub fn build(self) -> Result<UsageReport, PfcpError> {
+        let urr_id = self.urr_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::UrrId,
+            message_type: None,
+            parent_ie: Some(IeType::UsageReportWithinSessionReportRequest),
         })?;
 
-        let usage_report_trigger = self.usage_report_trigger.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Usage report trigger is required",
-            )
+        let ur_seqn = self.ur_seqn.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::UrSeqn,
+            message_type: None,
+            parent_ie: Some(IeType::UsageReportWithinSessionReportRequest),
         })?;
+
+        let usage_report_trigger =
+            self.usage_report_trigger
+                .ok_or(PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::UsageReportTrigger,
+                    message_type: None,
+                    parent_ie: Some(IeType::UsageReportWithinSessionReportRequest),
+                })?;
 
         Ok(UsageReport {
             urr_id,
@@ -1156,17 +1161,24 @@ mod tests {
         let builder = UsageReportBuilder::default();
         let result = builder.build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "URR ID is required");
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::UrrId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
 
         // Test missing sequence number
         let urr_id = UrrId::new(1);
         let builder = UsageReportBuilder::new(urr_id);
         let result = builder.build();
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Sequence number is required"
-        );
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::UrSeqn);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
 
         // Test missing usage report trigger
         let urr_id = UrrId::new(1);
@@ -1174,10 +1186,12 @@ mod tests {
         let builder = UsageReportBuilder::new(urr_id).sequence_number(ur_seqn);
         let result = builder.build();
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Usage report trigger is required"
-        );
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::UsageReportTrigger);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

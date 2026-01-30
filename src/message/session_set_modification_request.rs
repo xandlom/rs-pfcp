@@ -398,17 +398,20 @@ impl SessionSetModificationRequestBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionSetModificationRequest, io::Error> {
-        let node_id = self
-            .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID is mandatory"))?;
-
-        let alternative_smf_ip_address = self.alternative_smf_ip_address.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Alternative SMF IP Address is mandatory",
-            )
+    pub fn build(self) -> Result<SessionSetModificationRequest, PfcpError> {
+        let node_id = self.node_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::SessionSetModificationRequest),
+            parent_ie: None,
         })?;
+
+        let alternative_smf_ip_address =
+            self.alternative_smf_ip_address
+                .ok_or(PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::AlternativeSmfIpAddress,
+                    message_type: Some(MsgType::SessionSetModificationRequest),
+                    parent_ie: None,
+                })?;
 
         // Create raw IE versions for backwards compatibility
         let node_id_ie = node_id.to_ie();
@@ -530,10 +533,12 @@ mod tests {
         // Test missing Node ID
         let result = SessionSetModificationRequestBuilder::new(789).build();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Node ID is mandatory"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::NodeId);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
 
         // Test missing Alternative SMF IP Address
         let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
@@ -541,10 +546,12 @@ mod tests {
             .node_id(node_id)
             .build();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Alternative SMF IP Address is mandatory"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::AlternativeSmfIpAddress);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]

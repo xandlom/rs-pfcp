@@ -7,6 +7,7 @@
 //! NOTE: This IE contains only MAC Addresses Detected (for provisioning from SMF to UPF).
 //! For reporting MAC address events from UPF to SMF, see Ethernet Traffic Information IE (143).
 
+use crate::error::PfcpError;
 use crate::ie::mac_addresses_detected::MacAddressesDetected;
 use crate::ie::{Ie, IeType};
 use std::io;
@@ -200,10 +201,11 @@ impl EthernetContextInformationBuilder {
     ///
     /// # Errors
     /// Returns error if no MAC Addresses Detected IE has been added (mandatory per spec)
-    pub fn build(self) -> Result<EthernetContextInformation, io::Error> {
+    pub fn build(self) -> Result<EthernetContextInformation, PfcpError> {
         if self.mac_addresses_detected.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
+            return Err(PfcpError::validation_error(
+                "EthernetContextInformationBuilder",
+                "mac_addresses_detected",
                 "Ethernet Context Information requires at least one MAC Addresses Detected IE per 3GPP TS 29.244 Table 7.5.4.21-1",
             ));
         }

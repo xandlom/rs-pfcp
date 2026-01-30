@@ -1,5 +1,6 @@
 //! F-TEID IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -330,23 +331,27 @@ impl FteidBuilder {
     /// - No IP addressing method is specified (neither explicit addresses nor CHOOSE flags)
     /// - Both explicit address and CHOOSE flag are set for the same IP version
     /// - CHOOSE ID is set but no CHOOSE flags are enabled
-    pub fn build(self) -> Result<Fteid, io::Error> {
-        let teid = self
-            .teid
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "TEID is required"))?;
+    pub fn build(self) -> Result<Fteid, PfcpError> {
+        let teid = self.teid.ok_or(PfcpError::validation_error(
+            "FteidBuilder",
+            "teid",
+            "TEID is required",
+        ))?;
 
         // Validate IPv4 configuration
         if self.ipv4_address.is_some() && self.choose_ipv4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "FteidBuilder",
+                "ipv4_address",
                 "Cannot specify both explicit IPv4 address and CHOOSE IPv4 flag",
             ));
         }
 
         // Validate IPv6 configuration
         if self.ipv6_address.is_some() && self.choose_ipv6 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "FteidBuilder",
+                "ipv6_address",
                 "Cannot specify both explicit IPv6 address and CHOOSE IPv6 flag",
             ));
         }
@@ -356,16 +361,18 @@ impl FteidBuilder {
         let has_ipv6 = self.ipv6_address.is_some() || self.choose_ipv6;
 
         if !has_ipv4 && !has_ipv6 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "FteidBuilder",
+                "ipv4_address",
                 "At least one IP addressing method must be specified (IPv4, IPv6, or CHOOSE flags)",
             ));
         }
 
         // Validate CHOOSE ID usage
         if self.choose_id.is_some() && !self.choose_ipv4 && !self.choose_ipv6 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "FteidBuilder",
+                "choose_id",
                 "CHOOSE ID can only be used with CHOOSE flags",
             ));
         }

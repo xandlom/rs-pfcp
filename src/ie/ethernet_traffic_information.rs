@@ -4,6 +4,7 @@
 //! of MAC learning events within Usage Reports. Per 3GPP TS 29.244 Table 7.5.8.3-3,
 //! it contains MAC addresses detected and/or removed during an Ethernet PDU session.
 
+use crate::error::PfcpError;
 use crate::ie::{
     mac_addresses_detected::MacAddressesDetected, mac_addresses_removed::MacAddressesRemoved, Ie,
     IeType,
@@ -92,10 +93,11 @@ impl EthernetTrafficInformation {
     pub fn new(
         mac_addresses_detected: Vec<MacAddressesDetected>,
         mac_addresses_removed: Vec<MacAddressesRemoved>,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if mac_addresses_detected.is_empty() && mac_addresses_removed.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
+            return Err(PfcpError::validation_error(
+                "EthernetTrafficInformation",
+                "mac_addresses",
                 "Ethernet Traffic Information requires at least one MAC Addresses Detected or Removed IE (per 3GPP TS 29.244 Table 7.5.8.3-3)",
             ));
         }
@@ -280,7 +282,7 @@ impl EthernetTrafficInformationBuilder {
     ///
     /// # Errors
     /// Returns error if no MAC Addresses Detected or Removed IEs were added
-    pub fn build(self) -> Result<EthernetTrafficInformation, io::Error> {
+    pub fn build(self) -> Result<EthernetTrafficInformation, PfcpError> {
         EthernetTrafficInformation::new(self.mac_addresses_detected, self.mac_addresses_removed)
     }
 }

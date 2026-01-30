@@ -13,7 +13,7 @@
 //! - `"deny in udp from 192.168.1.0/24 to any"`
 //! - `"permit out ip from any to 10.0.0.0/8"`
 
-use crate::error::messages;
+use crate::error::{messages, PfcpError};
 use crate::ie::{Ie, IeType};
 use std::io;
 
@@ -183,7 +183,7 @@ impl PfdContentsBuilder {
     ///
     /// # Errors
     /// Returns an error if no fields are set (PFD Contents must have at least one field).
-    pub fn build(self) -> Result<PfdContents, io::Error> {
+    pub fn build(self) -> Result<PfdContents, PfcpError> {
         // Validate that at least one field is set
         if self.flow_description.is_none()
             && self.url.is_none()
@@ -194,8 +194,9 @@ impl PfdContentsBuilder {
             && self.additional_url.is_empty()
             && self.additional_domain_name_and_protocol.is_empty()
         {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "PfdContentsBuilder",
+                "fields",
                 "PfdContents must have at least one field set",
             ));
         }
@@ -251,19 +252,19 @@ impl PfdContents {
     ///
     /// The flow description shall be an IP filter rule as specified in 3GPP TS 29.251 clause 6.4.3.7.
     /// Format: "action dir proto from src to dst \[options\]"
-    pub fn flow_description<S: Into<String>>(flow_description: S) -> Result<Self, io::Error> {
+    pub fn flow_description<S: Into<String>>(flow_description: S) -> Result<Self, PfcpError> {
         PfdContentsBuilder::new()
             .flow_description(flow_description)
             .build()
     }
 
     /// Creates a PfdContents with just a URL.
-    pub fn url<S: Into<String>>(url: S) -> Result<Self, io::Error> {
+    pub fn url<S: Into<String>>(url: S) -> Result<Self, PfcpError> {
         PfdContentsBuilder::new().url(url).build()
     }
 
     /// Creates a PfdContents with just a domain name.
-    pub fn domain_name<S: Into<String>>(domain_name: S) -> Result<Self, io::Error> {
+    pub fn domain_name<S: Into<String>>(domain_name: S) -> Result<Self, PfcpError> {
         PfdContentsBuilder::new().domain_name(domain_name).build()
     }
 
@@ -273,7 +274,7 @@ impl PfdContents {
     pub fn flow_and_url<S1: Into<String>, S2: Into<String>>(
         flow_description: S1,
         url: S2,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         PfdContentsBuilder::new()
             .flow_description(flow_description)
             .url(url)
@@ -284,7 +285,7 @@ impl PfdContents {
     pub fn domain_and_protocol<S1: Into<String>, S2: Into<String>>(
         domain_name: S1,
         protocol: S2,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         PfdContentsBuilder::new()
             .domain_name(domain_name)
             .domain_name_protocol(protocol)
@@ -324,12 +325,13 @@ impl PfdContents {
     }
 
     /// Unmarshals a byte slice into PFD Contents.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 2 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 messages::payload_too_short("PFD Contents"),
-            ));
+            )
+            .into());
         }
         let flags = payload[0];
         let mut offset = 2;
@@ -346,8 +348,9 @@ impl PfdContents {
                     "Not enough data for field",
                 ));
             }
-            let val = String::from_utf8(payload[*offset..*offset + len].to_vec())
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+            let val = String::from_utf8(payload[*offset..*offset + len].to_vec()).map_err(|e| {
+                Into::<PfcpError>::into(io::Error::new(io::ErrorKind::InvalidData, e))
+            })?;
             *offset += len;
             Ok(Some(val))
         };
@@ -515,10 +518,18 @@ mod tests {
     fn test_pfd_contents_builder_empty_error() {
         let result = PfdContentsBuilder::new().build();
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "PfdContents must have at least one field set"
-        );
+        match result.unwrap_err() {
+            PfcpError::ValidationError {
+                builder,
+                field,
+                reason,
+            } => {
+                assert_eq!(builder, "PfdContentsBuilder");
+                assert_eq!(field, "fields");
+                assert!(reason.contains("PfdContents must have at least one field set"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 
     #[test]

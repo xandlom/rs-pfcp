@@ -212,10 +212,12 @@ impl SessionSetModificationResponseBuilder {
         self
     }
 
-    pub fn build(self) -> Result<SessionSetModificationResponse, io::Error> {
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause is mandatory"))?;
+    pub fn build(self) -> Result<SessionSetModificationResponse, PfcpError> {
+        let cause = self.cause.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::Cause,
+            message_type: Some(MsgType::SessionSetModificationResponse),
+            parent_ie: None,
+        })?;
 
         let mut payload_len = cause.len();
 
@@ -265,17 +267,18 @@ impl SessionSetModificationResponseBuilder {
 /// Convenience constructors for common response scenarios
 impl SessionSetModificationResponse {
     /// Create a successful response
-    pub fn success(seq: u32) -> Result<Self, io::Error> {
+    pub fn success(seq: u32) -> Result<Self, PfcpError> {
         SessionSetModificationResponseBuilder::new(seq)
             .cause(CauseValue::RequestAccepted)
             .build()
     }
 
     /// Create a rejection response with cause
-    pub fn reject(seq: u32, cause_value: CauseValue) -> Result<Self, io::Error> {
+    pub fn reject(seq: u32, cause_value: CauseValue) -> Result<Self, PfcpError> {
         if cause_value == CauseValue::RequestAccepted {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
+            return Err(PfcpError::validation_error(
+                "SessionSetModificationResponse",
+                "cause",
                 "Cannot use RequestAccepted as rejection cause",
             ));
         }
@@ -289,10 +292,11 @@ impl SessionSetModificationResponse {
         seq: u32,
         cause_value: CauseValue,
         offending_ie_type: IeType,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if cause_value == CauseValue::RequestAccepted {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
+            return Err(PfcpError::validation_error(
+                "SessionSetModificationResponse",
+                "cause",
                 "Cannot use RequestAccepted as rejection cause",
             ));
         }
@@ -354,10 +358,12 @@ mod tests {
     fn test_session_set_modification_response_missing_mandatory_ie() {
         let result = SessionSetModificationResponseBuilder::new(789).build();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Cause is mandatory"));
+        match result.unwrap_err() {
+            PfcpError::MissingMandatoryIe { ie_type, .. } => {
+                assert_eq!(ie_type, IeType::Cause);
+            }
+            _ => panic!("Expected MissingMandatoryIe error"),
+        }
     }
 
     #[test]
