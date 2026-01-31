@@ -73,3 +73,11 @@ harness = false
 [[bench]]
 name = "ie_operations"
 harness = false
+
+[[bench]]
+name = "comprehensive_performance"
+harness = false
+
+[[bench]]
+name = "phase_performance"
+harness = false
