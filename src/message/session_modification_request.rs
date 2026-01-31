@@ -28,7 +28,7 @@ pub struct SessionModificationRequest {
     pub update_bars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 86 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
     pub update_traffic_endpoints: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 132 - Multiple instances, Grouped IE
     pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 139 - Flags: DROBU/QAURR/SUMPC/RUMUC/DETEID/HRSBOM
-    // TODO: [IE Type 109] Query URR - C - Multiple instances, Grouped IE - Request immediate usage reports
+    pub query_urrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 77 - Multiple instances, Grouped IE - Request immediate usage reports
     // TODO: [IE Type 65] PGW-C/SMF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
     // TODO: [IE Type 65] SGW-C FQ-CSID - C - (Sxa/Sxb only, not Sxc/N4/N4mb) - Per clause 23 of 3GPP TS 23.007
     // TODO: [IE Type 65] MME FQ-CSID - C - (Sxa/Sxb only, not Sxc/N4/N4mb) - Per clause 23 of 3GPP TS 23.007
@@ -196,6 +196,11 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             ie.marshal_into(buf);
         }
+        if let Some(ref ies) = self.query_urrs {
+            for ie in ies {
+                ie.marshal_into(buf);
+            }
+        }
         if let Some(ref ie) = self.node_id {
             ie.marshal_into(buf);
         }
@@ -329,6 +334,11 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             size += ie.len() as usize;
         }
+        if let Some(ref ies) = self.query_urrs {
+            for ie in ies {
+                size += ie.len() as usize;
+            }
+        }
         if let Some(ref ie) = self.node_id {
             size += ie.len() as usize;
         }
@@ -371,6 +381,7 @@ impl Message for SessionModificationRequest {
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
+        let mut query_urrs = None;
         let mut node_id = None;
         let mut ethernet_context_information = None;
         let mut ies = Vec::new();
@@ -414,6 +425,7 @@ impl Message for SessionModificationRequest {
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
+                IeType::QueryUrr => query_urrs.get_or_insert(Vec::new()).push(ie),
                 IeType::NodeId => node_id = Some(ie),
                 IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
                 _ => ies.push(ie),
@@ -451,6 +463,7 @@ impl Message for SessionModificationRequest {
             apn_dnn,
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
+            query_urrs,
             node_id,
             ethernet_context_information,
             ies,
@@ -540,6 +553,9 @@ impl Message for SessionModificationRequest {
                 ie_type,
             ),
             IeType::PfcpsmReqFlags => IeIter::single(self.pfcpsm_req_flags.as_ref(), ie_type),
+            IeType::QueryUrr => {
+                IeIter::multiple(self.query_urrs.as_deref().unwrap_or(&[]), ie_type)
+            }
             IeType::UserPlaneInactivityTimer => {
                 IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
             }
@@ -665,6 +681,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
+        if let Some(ref vec) = self.query_urrs {
+            result.extend(vec.iter());
+        }
         if let Some(ref ie) = self.node_id {
             result.push(ie);
         }
@@ -708,6 +727,7 @@ pub struct SessionModificationRequestBuilder {
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
+    query_urrs: Option<Vec<Ie>>,
     node_id: Option<Ie>,
     ethernet_context_information: Option<Ie>,
     ies: Vec<Ie>,
@@ -746,6 +766,7 @@ impl SessionModificationRequestBuilder {
             apn_dnn: None,
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
+            query_urrs: None,
             node_id: None,
             ethernet_context_information: None,
             ies: Vec::new(),
@@ -947,6 +968,11 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn query_urrs(mut self, query_urrs: Vec<Ie>) -> Self {
+        self.query_urrs = Some(query_urrs);
+        self
+    }
+
     pub fn node_id(mut self, node_id: Ie) -> Self {
         self.node_id = Some(node_id);
         self
@@ -1084,6 +1110,11 @@ impl SessionModificationRequestBuilder {
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
+        if let Some(ies) = &self.query_urrs {
+            for ie in ies {
+                payload_len += ie.len();
+            }
+        }
         if let Some(ie) = &self.node_id {
             payload_len += ie.len();
         }
@@ -1130,6 +1161,7 @@ impl SessionModificationRequestBuilder {
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
+            query_urrs: self.query_urrs,
             node_id: self.node_id,
             ethernet_context_information: self.ethernet_context_information,
             ies: self.ies,

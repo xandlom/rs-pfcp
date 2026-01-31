@@ -95,6 +95,7 @@ pub mod qer_control_indications;
 pub mod qer_correlation_id;
 pub mod qer_id;
 pub mod qfi;
+pub mod query_urr;
 pub mod query_urr_reference;
 pub mod quota_holding_time;
 pub mod recovery_time_stamp;
@@ -125,6 +126,7 @@ pub mod time_quota;
 pub mod time_threshold;
 pub mod timer;
 pub mod trace_information;
+pub mod traffic_endpoint_id;
 pub mod transport_level_marking;
 pub mod ue_ip_address;
 pub mod ue_ip_address_usage_information;
@@ -153,7 +155,9 @@ pub mod volume_threshold;
 
 // Re-export commonly used IE types for convenience
 pub use node_id::NodeId;
+pub use query_urr::QueryUrr;
 pub use recovery_time_stamp::RecoveryTimeStamp;
+pub use traffic_endpoint_id::TrafficEndpointId;
 
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
