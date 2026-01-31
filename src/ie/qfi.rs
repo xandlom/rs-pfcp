@@ -6,8 +6,8 @@
 //! QFI is used to differentiate QoS flows within a PDU session, allowing
 //! fine-grained QoS control in 5G networks.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Maximum valid QFI value (6 bits = 0-63)
 const QFI_MAX: u8 = 63;
@@ -66,11 +66,12 @@ impl Qfi {
     /// // Out of range
     /// assert!(Qfi::new(64).is_err());
     /// ```
-    pub fn new(value: u8) -> Result<Self, io::Error> {
+    pub fn new(value: u8) -> Result<Self, PfcpError> {
         if value > QFI_MAX {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("QFI value {} exceeds maximum {}", value, QFI_MAX),
+            return Err(PfcpError::invalid_value(
+                "QFI",
+                value.to_string(),
+                format!("exceeds maximum {}", QFI_MAX),
             ));
         }
         Ok(Qfi { qfi: value })
@@ -115,12 +116,9 @@ impl Qfi {
     /// let parsed = Qfi::unmarshal(&bytes).unwrap();
     /// assert_eq!(qfi, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for QFI: expected 1 byte",
-            ));
+            return Err(PfcpError::invalid_length("QFI", IeType::Qfi, 1, 0));
         }
 
         // Extract bits 1-6 (QFI value), ignore spare bits 7-8
@@ -128,9 +126,10 @@ impl Qfi {
 
         // Validate range (should be 0-63, but mask ensures this)
         if qfi_value > QFI_MAX {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("QFI value {} exceeds maximum {}", qfi_value, QFI_MAX),
+            return Err(PfcpError::invalid_value(
+                "QFI",
+                qfi_value.to_string(),
+                format!("exceeds maximum {}", QFI_MAX),
             ));
         }
 
@@ -226,7 +225,9 @@ mod tests {
         let data = [];
         let result = Qfi::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("QFI"));
     }
 
     #[test]

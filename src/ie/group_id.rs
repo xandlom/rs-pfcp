@@ -1,7 +1,7 @@
 //! Group ID Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents a Group ID.
 ///
@@ -27,11 +27,12 @@ impl GroupId {
     }
 
     /// Creates a new Group ID from a hex string (for UUID format).
-    pub fn new_from_hex(hex_str: &str) -> Result<Self, io::Error> {
+    pub fn new_from_hex(hex_str: &str) -> Result<Self, PfcpError> {
         let hex_clean = hex_str.replace("-", "").replace(" ", "");
         if !hex_clean.len().is_multiple_of(2) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
+            return Err(PfcpError::invalid_value(
+                "Group ID",
+                hex_str.to_string(),
                 "Hex string must have even length",
             ));
         }
@@ -39,8 +40,9 @@ impl GroupId {
         let mut bytes = Vec::new();
         for i in (0..hex_clean.len()).step_by(2) {
             let byte_str = &hex_clean[i..i + 2];
-            let byte = u8::from_str_radix(byte_str, 16)
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid hex string"))?;
+            let byte = u8::from_str_radix(byte_str, 16).map_err(|_| {
+                PfcpError::invalid_value("Group ID", hex_str.to_string(), "Invalid hex string")
+            })?;
             bytes.push(byte);
         }
 
@@ -82,12 +84,9 @@ impl GroupId {
     }
 
     /// Unmarshals a Group ID from a byte slice.
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Group ID data cannot be empty",
-            ));
+            return Err(PfcpError::invalid_length("Group ID", IeType::GroupId, 1, 0));
         }
 
         Ok(GroupId {
@@ -230,7 +229,9 @@ mod tests {
         // Empty data
         let result = GroupId::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("cannot be empty"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Group ID"));
     }
 
     #[test]

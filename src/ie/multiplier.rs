@@ -4,8 +4,8 @@
 //! for multiplying usage quota values.
 //! Per 3GPP TS 29.244 Section 8.2.84.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Multiplier
 ///
@@ -29,10 +29,10 @@ use std::io;
 /// assert_eq!(multiplier.value(), 100);
 ///
 /// // Marshal and unmarshal
-/// let bytes = multiplier.marshal()?;
+/// let bytes = multiplier.marshal();
 /// let parsed = Multiplier::unmarshal(&bytes)?;
 /// assert_eq!(multiplier, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Multiplier {
@@ -74,13 +74,8 @@ impl Multiplier {
     ///
     /// # Returns
     /// 4-byte vector containing multiplier value (big-endian)
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(4);
-        buf.extend_from_slice(&self.value.to_be_bytes());
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.value.to_be_bytes().to_vec()
     }
 
     /// Unmarshal Multiplier from bytes
@@ -96,16 +91,18 @@ impl Multiplier {
     /// use rs_pfcp::ie::multiplier::Multiplier;
     ///
     /// let multiplier = Multiplier::new(75000);
-    /// let bytes = multiplier.marshal()?;
+    /// let bytes = multiplier.marshal();
     /// let parsed = Multiplier::unmarshal(&bytes)?;
     /// assert_eq!(multiplier, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Multiplier requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Multiplier",
+                IeType::Multiplier,
+                4,
+                data.len(),
             ));
         }
 
@@ -123,13 +120,11 @@ impl Multiplier {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let multiplier = Multiplier::new(100);
-    /// let ie = multiplier.to_ie()?;
+    /// let ie = multiplier.to_ie();
     /// assert_eq!(ie.ie_type, IeType::Multiplier);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::Multiplier, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::Multiplier, self.marshal())
     }
 }
 
@@ -146,7 +141,7 @@ mod tests {
     #[test]
     fn test_multiplier_marshal_unmarshal() {
         let original = Multiplier::new(5000);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 4);
 
         let parsed = Multiplier::unmarshal(&bytes).unwrap();
@@ -157,7 +152,7 @@ mod tests {
     #[test]
     fn test_multiplier_marshal_zero() {
         let multiplier = Multiplier::new(0);
-        let bytes = multiplier.marshal().unwrap();
+        let bytes = multiplier.marshal();
         let parsed = Multiplier::unmarshal(&bytes).unwrap();
 
         assert_eq!(multiplier, parsed);
@@ -167,7 +162,7 @@ mod tests {
     #[test]
     fn test_multiplier_marshal_max_value() {
         let multiplier = Multiplier::new(u32::MAX);
-        let bytes = multiplier.marshal().unwrap();
+        let bytes = multiplier.marshal();
         let parsed = Multiplier::unmarshal(&bytes).unwrap();
 
         assert_eq!(multiplier, parsed);
@@ -179,6 +174,8 @@ mod tests {
         let data = vec![0x00, 0x00, 0x00]; // Only 3 bytes
         let result = Multiplier::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -186,12 +183,14 @@ mod tests {
         let data = vec![];
         let result = Multiplier::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_multiplier_to_ie() {
         let multiplier = Multiplier::new(250);
-        let ie = multiplier.to_ie().unwrap();
+        let ie = multiplier.to_ie();
         assert_eq!(ie.ie_type, IeType::Multiplier);
         assert_eq!(ie.payload.len(), 4);
 
@@ -205,7 +204,7 @@ mod tests {
         let values = vec![1, 10, 100, 1000, 10000, 100000, 1000000, u32::MAX / 2];
         for value in values {
             let original = Multiplier::new(value);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = Multiplier::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for value {}", value);
         }
@@ -215,7 +214,7 @@ mod tests {
     fn test_multiplier_byte_order() {
         // Verify big-endian encoding
         let multiplier = Multiplier::new(0x12345678);
-        let bytes = multiplier.marshal().unwrap();
+        let bytes = multiplier.marshal();
         assert_eq!(bytes, vec![0x12, 0x34, 0x56, 0x78]);
     }
 
@@ -230,7 +229,7 @@ mod tests {
     fn test_multiplier_5g_usage_reporting() {
         // Scenario: Apply multiplier to usage quota
         let multiplier = Multiplier::new(1000);
-        let bytes = multiplier.marshal().unwrap();
+        let bytes = multiplier.marshal();
         let parsed = Multiplier::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.value(), 1000);
@@ -249,7 +248,7 @@ mod tests {
 
         for (value, _desc) in test_values {
             let multiplier = Multiplier::new(value);
-            let bytes = multiplier.marshal().unwrap();
+            let bytes = multiplier.marshal();
             let parsed = Multiplier::unmarshal(&bytes).unwrap();
             assert_eq!(parsed.value(), value);
         }

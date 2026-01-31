@@ -3,9 +3,8 @@
 //! The UR-SEQN IE contains the sequence number of a usage report.
 //! Per 3GPP TS 29.244 Section 8.2.71.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// UR-SEQN (Usage Report Sequence Number)
 ///
@@ -28,10 +27,10 @@ use std::io;
 /// assert_eq!(seqn.sequence_number(), 12345);
 ///
 /// // Marshal and unmarshal
-/// let bytes = seqn.marshal()?;
+/// let bytes = seqn.marshal();
 /// let parsed = UrSeqn::unmarshal(&bytes)?;
 /// assert_eq!(seqn, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UrSeqn {
@@ -73,13 +72,8 @@ impl UrSeqn {
     ///
     /// # Returns
     /// 4-byte vector containing sequence number (big-endian)
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(4);
-        buf.extend_from_slice(&self.sequence_number.to_be_bytes());
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.sequence_number.to_be_bytes().to_vec()
     }
 
     /// Unmarshal UR-SEQN from bytes
@@ -95,16 +89,18 @@ impl UrSeqn {
     /// use rs_pfcp::ie::ur_seqn::UrSeqn;
     ///
     /// let seqn = UrSeqn::new(54321);
-    /// let bytes = seqn.marshal()?;
+    /// let bytes = seqn.marshal();
     /// let parsed = UrSeqn::unmarshal(&bytes)?;
     /// assert_eq!(seqn, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                messages::requires_at_least_bytes("UR-SEQN", 4),
+            return Err(PfcpError::invalid_length(
+                "UR-SEQN",
+                IeType::UrSeqn,
+                4,
+                data.len(),
             ));
         }
 
@@ -122,13 +118,11 @@ impl UrSeqn {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let seqn = UrSeqn::new(1000);
-    /// let ie = seqn.to_ie()?;
+    /// let ie = seqn.to_ie();
     /// assert_eq!(ie.ie_type, IeType::UrSeqn);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::UrSeqn, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::UrSeqn, self.marshal())
     }
 }
 
@@ -145,7 +139,7 @@ mod tests {
     #[test]
     fn test_ur_seqn_marshal_unmarshal() {
         let original = UrSeqn::new(54321);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 4);
 
         let parsed = UrSeqn::unmarshal(&bytes).unwrap();
@@ -156,7 +150,7 @@ mod tests {
     #[test]
     fn test_ur_seqn_marshal_zero() {
         let seqn = UrSeqn::new(0);
-        let bytes = seqn.marshal().unwrap();
+        let bytes = seqn.marshal();
         let parsed = UrSeqn::unmarshal(&bytes).unwrap();
 
         assert_eq!(seqn, parsed);
@@ -166,7 +160,7 @@ mod tests {
     #[test]
     fn test_ur_seqn_marshal_max_value() {
         let seqn = UrSeqn::new(u32::MAX);
-        let bytes = seqn.marshal().unwrap();
+        let bytes = seqn.marshal();
         let parsed = UrSeqn::unmarshal(&bytes).unwrap();
 
         assert_eq!(seqn, parsed);
@@ -178,6 +172,8 @@ mod tests {
         let data = vec![0x00, 0x00, 0x00]; // Only 3 bytes
         let result = UrSeqn::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -185,12 +181,14 @@ mod tests {
         let data = vec![];
         let result = UrSeqn::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_ur_seqn_to_ie() {
         let seqn = UrSeqn::new(99999);
-        let ie = seqn.to_ie().unwrap();
+        let ie = seqn.to_ie();
         assert_eq!(ie.ie_type, IeType::UrSeqn);
         assert_eq!(ie.payload.len(), 4);
 
@@ -204,7 +202,7 @@ mod tests {
         let values = vec![1, 100, 1000, 100000, 1000000, 0xFFFFFFFF];
         for seqn_num in values {
             let original = UrSeqn::new(seqn_num);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = UrSeqn::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for sequence {}", seqn_num);
         }
@@ -214,7 +212,7 @@ mod tests {
     fn test_ur_seqn_byte_order() {
         // Verify big-endian encoding
         let seqn = UrSeqn::new(0x12345678);
-        let bytes = seqn.marshal().unwrap();
+        let bytes = seqn.marshal();
         assert_eq!(bytes, vec![0x12, 0x34, 0x56, 0x78]);
     }
 
@@ -229,7 +227,7 @@ mod tests {
     fn test_ur_seqn_5g_usage_report_sequence() {
         // Scenario: Track usage report sequence
         let seqn = UrSeqn::new(1000);
-        let bytes = seqn.marshal().unwrap();
+        let bytes = seqn.marshal();
         let parsed = UrSeqn::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.sequence_number(), 1000);
@@ -240,7 +238,7 @@ mod tests {
     fn test_ur_seqn_report_correlation() {
         // Scenario: Correlate usage reports
         let seqn = UrSeqn::new(42);
-        let bytes = seqn.marshal().unwrap();
+        let bytes = seqn.marshal();
         let parsed = UrSeqn::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.sequence_number(), 42);

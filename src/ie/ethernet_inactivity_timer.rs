@@ -3,8 +3,8 @@
 //! The Ethernet Inactivity Timer IE specifies the duration for Ethernet session inactivity timeout.
 //! Per 3GPP TS 29.244 Section 8.2.105, this IE is used to detect inactive Ethernet sessions.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::time::Duration;
 
 /// Ethernet Inactivity Timer
@@ -130,14 +130,13 @@ impl EthernetInactivityTimer {
     /// let parsed = EthernetInactivityTimer::unmarshal(&bytes).unwrap();
     /// assert_eq!(timer, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "Ethernet Inactivity Timer requires 4 bytes, got {}",
-                    data.len()
-                ),
+            return Err(PfcpError::invalid_length(
+                "Ethernet Inactivity Timer",
+                IeType::EthernetInactivityTimer,
+                4,
+                data.len(),
             ));
         }
 
@@ -206,7 +205,8 @@ mod tests {
         let data = [0x00, 0x00, 0x3C];
         let result = EthernetInactivityTimer::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -214,9 +214,10 @@ mod tests {
         let result = EthernetInactivityTimer::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Ethernet Inactivity Timer"));
+        assert!(err.to_string().contains("4"));
+        assert!(err.to_string().contains("0"));
     }
 
     #[test]

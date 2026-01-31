@@ -4,8 +4,8 @@
 //! associated with a QoS Flow.
 //! Per 3GPP TS 29.244 Section 8.2.116.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Paging Policy Indicator
 ///
@@ -31,7 +31,7 @@ use std::io;
 /// let bytes = ppi.marshal();
 /// let parsed = PagingPolicyIndicator::unmarshal(&bytes)?;
 /// assert_eq!(ppi, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PagingPolicyIndicator {
@@ -105,13 +105,15 @@ impl PagingPolicyIndicator {
     /// let bytes = ppi.marshal();
     /// let parsed = PagingPolicyIndicator::unmarshal(&bytes)?;
     /// assert_eq!(ppi, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Paging Policy Indicator requires 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Paging Policy Indicator",
+                IeType::PagingPolicyIndicator,
+                1,
+                0,
             ));
         }
 

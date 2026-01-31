@@ -12,7 +12,7 @@
 
 **🎉 This design document has been largely implemented!**
 
-**Implementation Status:** ~92% COMPLETE in v0.2.5
+**Implementation Status:** ~95% COMPLETE in v0.2.5
 
 ### ✅ What's Been Accomplished:
 
@@ -57,14 +57,15 @@
 | Phase 4: Builders | ✅ COMPLETE | 100% | All core and secondary builders migrated |
 | Phase 5: Tests/Examples | 🔄 PARTIAL | ~60% | 2,054 tests passing, examples need work |
 
-**Overall Completion: ~94%** (Updated 2026-01-30)
+**Overall Completion: ~95%** (Updated 2026-01-31)
 
-### 🎯 What's Remaining (~6%):
+### 🎯 What's Remaining (~5%):
 
 - ~~Complete message layer migration~~ ✅ DONE (2026-01-25)
 - ~~Migrate core grouped IE builders~~ ✅ DONE (2026-01-30 AM)
 - ~~Finish remaining 9 secondary builders~~ ✅ DONE (2026-01-30 PM)
-- Migrate 74 simple IE unmarshal methods (low priority)
+- ~~Migrate 8 simple IE unmarshal methods~~ ✅ DONE (2026-01-31)
+- Migrate remaining 63 simple IE unmarshal methods (low priority)
 - Add examples demonstrating PfcpError handling patterns
 - Final CHANGELOG entry
 
@@ -96,20 +97,34 @@ This feature was **accelerated from v0.3.0 to v0.2.5** due to its high value for
   - Fixed clippy warnings (needless borrow, useless conversion)
   - All 2,054 tests passing with zero warnings
 
+- **2026-01-31:** Simple IE unmarshal migration batch 1 (8 IEs migrated)
+  - qfi.rs: new() and unmarshal() now return PfcpError
+  - ethertype.rs: unmarshal() returns PfcpError
+  - ur_seqn.rs: marshal() returns Vec<u8> directly, unmarshal() returns PfcpError, to_ie() returns Ie directly
+  - time_quota.rs: Same pattern - simplified API
+  - group_id.rs: new_from_hex() and unmarshal() return PfcpError
+  - paging_policy_indicator.rs: unmarshal() returns PfcpError
+  - multiplier.rs: Same pattern as ur_seqn - simplified API
+  - ethernet_inactivity_timer.rs: unmarshal() returns PfcpError
+  - Fixed dependent usage in usage_report.rs (TimeQuota::to_ie())
+  - All 2,054 tests passing with zero warnings
+
 ### 📋 Detailed Breakdown of Remaining Work:
 
 **1. ~~Remaining Builders (9 files)~~:** ✅ COMPLETE (commit 63ec8de)
 - ~~IE Builders (7): pdi.rs, pfd_contents.rs, ethernet_context_information.rs, f_teid.rs, ethernet_packet_filter.rs, ethernet_traffic_information.rs, usage_report.rs~~
 - ~~Message Builders (2): session_set_modification_request.rs, session_set_modification_response.rs~~
 
-**2. Simple IE unmarshal methods (~74 IEs):**
-- Ethernet-related IEs (ethertype, ethernet filters, etc.)
+**2. Simple IE unmarshal methods (~63 IEs remaining):**
+- ~~8 IEs migrated in batch 1 (2026-01-31)~~
 - Network IEs (alternative SMF IP, CP IP address, etc.)
 - Application IEs (application detection, application instance ID)
+- Time-related IEs (start_time, time_of_first_packet, time_of_last_packet, etc.)
+- Volume/measurement IEs (volume_quota, volume_threshold, volume_measurement)
 - Miscellaneous simple IEs
 - **Priority:** Lower (doesn't affect builder APIs, can be batched)
 
-**Target for Final 6%:** v0.2.6 or v0.3.0
+**Target for Final 5%:** v0.2.6 or v0.3.0
 
 ---
 

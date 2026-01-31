@@ -5,8 +5,8 @@
 //!
 //! Common ethertypes include IPv4 (0x0800), IPv6 (0x86DD), ARP (0x0806), VLAN (0x8100).
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Ethertype
 ///
@@ -157,11 +157,13 @@ impl Ethertype {
     /// let parsed = Ethertype::unmarshal(&bytes).unwrap();
     /// assert_eq!(ethertype, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Ethertype requires 2 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "Ethertype",
+                IeType::Ethertype,
+                2,
+                data.len(),
             ));
         }
 
@@ -241,7 +243,8 @@ mod tests {
         let data = [0x08];
         let result = Ethertype::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -249,9 +252,10 @@ mod tests {
         let result = Ethertype::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 2 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Ethertype"));
+        assert!(err.to_string().contains("2"));
+        assert!(err.to_string().contains("0"));
     }
 
     #[test]

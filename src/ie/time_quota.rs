@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +15,21 @@ impl TimeQuota {
         4 // u32
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.quota_seconds.to_be_bytes().to_vec()
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.quota_seconds.to_be_bytes());
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Time quota requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Time Quota",
+                IeType::TimeQuota,
+                4,
+                data.len(),
             ));
         }
 
@@ -41,9 +39,8 @@ impl TimeQuota {
         Ok(Self { quota_seconds })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::TimeQuota, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::TimeQuota, self.marshal())
     }
 }
 
@@ -61,7 +58,7 @@ mod tests {
     fn test_time_quota_marshal_unmarshal() {
         let tq = TimeQuota::new(7200);
 
-        let data = tq.marshal().unwrap();
+        let data = tq.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = TimeQuota::unmarshal(&data).unwrap();
@@ -73,7 +70,7 @@ mod tests {
     fn test_time_quota_marshal_zero() {
         let tq = TimeQuota::new(0);
 
-        let data = tq.marshal().unwrap();
+        let data = tq.marshal();
         let unmarshaled = TimeQuota::unmarshal(&data).unwrap();
 
         assert_eq!(tq, unmarshaled);
@@ -84,7 +81,7 @@ mod tests {
     fn test_time_quota_marshal_max_value() {
         let tq = TimeQuota::new(u32::MAX);
 
-        let data = tq.marshal().unwrap();
+        let data = tq.marshal();
         let unmarshaled = TimeQuota::unmarshal(&data).unwrap();
 
         assert_eq!(tq, unmarshaled);
@@ -95,7 +92,7 @@ mod tests {
     fn test_time_quota_to_ie() {
         let tq = TimeQuota::new(1800);
 
-        let ie = tq.to_ie().unwrap();
+        let ie = tq.to_ie();
         assert_eq!(ie.ie_type, IeType::TimeQuota);
     }
 
@@ -105,7 +102,8 @@ mod tests {
         let result = TimeQuota::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -114,7 +112,8 @@ mod tests {
         let result = TimeQuota::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -129,7 +128,7 @@ mod tests {
 
         for &value in &test_values {
             let tq = TimeQuota::new(value);
-            let data = tq.marshal().unwrap();
+            let data = tq.marshal();
             let unmarshaled = TimeQuota::unmarshal(&data).unwrap();
             assert_eq!(tq, unmarshaled);
         }
@@ -138,7 +137,7 @@ mod tests {
     #[test]
     fn test_time_quota_byte_order() {
         let tq = TimeQuota::new(0x12345678);
-        let data = tq.marshal().unwrap();
+        let data = tq.marshal();
 
         // Verify big-endian byte order
         assert_eq!(data, vec![0x12, 0x34, 0x56, 0x78]);
@@ -153,7 +152,7 @@ mod tests {
         let one_week = TimeQuota::new(604800);
 
         for quota in [one_minute, one_hour, one_day, one_week] {
-            let data = quota.marshal().unwrap();
+            let data = quota.marshal();
             let unmarshaled = TimeQuota::unmarshal(&data).unwrap();
             assert_eq!(quota, unmarshaled);
         }

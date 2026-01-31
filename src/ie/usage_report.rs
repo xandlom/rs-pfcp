@@ -123,9 +123,8 @@ impl UsageReport {
             }
         }
         if let Some(ref tq) = self.time_quota {
-            if let Ok(ie) = tq.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = tq.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref qht) = self.quota_holding_time {
             if let Ok(ie) = qht.to_ie() {
