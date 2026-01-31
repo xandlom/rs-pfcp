@@ -65,7 +65,7 @@
 - ~~Migrate core grouped IE builders~~ ✅ DONE (2026-01-30 AM)
 - ~~Finish remaining 9 secondary builders~~ ✅ DONE (2026-01-30 PM)
 - ~~Migrate 8 simple IE unmarshal methods~~ ✅ DONE (2026-01-31)
-- Migrate remaining 58 simple IE unmarshal methods (low priority)
+- Migrate remaining 54 simple IE unmarshal methods (low priority)
 - Add examples demonstrating PfcpError handling patterns
 - Final CHANGELOG entry
 
@@ -105,6 +105,10 @@ This feature was **accelerated from v0.3.0 to v0.2.5** due to its high value for
   - query_urr_reference, quota_holding_time, recovery_time_stamp, start_time, end_time
   - Fixed usage_report.rs dependencies on QuotaHoldingTime, StartTime, EndTime, QueryURRReference
   - All IEs now use simplified API: marshal() -> Vec<u8>, to_ie() -> Ie
+
+- **2026-01-31:** Simple IE unmarshal migration batch 3 (4 IEs migrated)
+  - graceful_release_period, averaging_window, time_of_first_packet, time_of_last_packet
+  - Fixed usage_report.rs dependencies on TimeOfFirstPacket, TimeOfLastPacket
   - qfi.rs: new() and unmarshal() now return PfcpError
   - ethertype.rs: unmarshal() returns PfcpError
   - ur_seqn.rs: marshal() returns Vec<u8> directly, unmarshal() returns PfcpError, to_ie() returns Ie directly

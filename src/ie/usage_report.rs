@@ -101,14 +101,12 @@ impl UsageReport {
             buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref tofp) = self.time_of_first_packet {
-            if let Ok(ie) = tofp.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = tofp.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref tolp) = self.time_of_last_packet {
-            if let Ok(ie) = tolp.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = tolp.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref ui) = self.usage_information {
             if let Ok(ie) = ui.to_ie() {

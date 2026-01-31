@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +15,21 @@ impl TimeOfFirstPacket {
         4 // u32 for 3GPP NTP timestamp
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.timestamp.to_be_bytes().to_vec()
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.timestamp.to_be_bytes());
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Time of first packet requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Time Of First Packet",
+                IeType::TimeOfFirstPacket,
+                4,
+                data.len(),
             ));
         }
 
@@ -41,9 +39,8 @@ impl TimeOfFirstPacket {
         Ok(Self { timestamp })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::TimeOfFirstPacket, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::TimeOfFirstPacket, self.marshal())
     }
 }
 
@@ -63,7 +60,7 @@ mod tests {
         let timestamp = 0xABCDEF01;
         let tofp = TimeOfFirstPacket::new(timestamp);
 
-        let data = tofp.marshal().unwrap();
+        let data = tofp.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = TimeOfFirstPacket::unmarshal(&data).unwrap();
@@ -75,7 +72,7 @@ mod tests {
     fn test_time_of_first_packet_marshal_zero() {
         let tofp = TimeOfFirstPacket::new(0);
 
-        let data = tofp.marshal().unwrap();
+        let data = tofp.marshal();
         let unmarshaled = TimeOfFirstPacket::unmarshal(&data).unwrap();
 
         assert_eq!(tofp, unmarshaled);
@@ -86,7 +83,7 @@ mod tests {
     fn test_time_of_first_packet_marshal_max_value() {
         let tofp = TimeOfFirstPacket::new(u32::MAX);
 
-        let data = tofp.marshal().unwrap();
+        let data = tofp.marshal();
         let unmarshaled = TimeOfFirstPacket::unmarshal(&data).unwrap();
 
         assert_eq!(tofp, unmarshaled);
@@ -98,7 +95,7 @@ mod tests {
         let timestamp = 0x87654321;
         let tofp = TimeOfFirstPacket::new(timestamp);
 
-        let ie = tofp.to_ie().unwrap();
+        let ie = tofp.to_ie();
         assert_eq!(ie.ie_type, IeType::TimeOfFirstPacket);
     }
 
@@ -108,7 +105,8 @@ mod tests {
         let result = TimeOfFirstPacket::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -117,7 +115,8 @@ mod tests {
         let result = TimeOfFirstPacket::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -140,7 +139,7 @@ mod tests {
 
         for &value in &test_values {
             let tofp = TimeOfFirstPacket::new(value);
-            let data = tofp.marshal().unwrap();
+            let data = tofp.marshal();
             let unmarshaled = TimeOfFirstPacket::unmarshal(&data).unwrap();
             assert_eq!(tofp, unmarshaled);
         }
@@ -149,7 +148,7 @@ mod tests {
     #[test]
     fn test_time_of_first_packet_byte_order() {
         let tofp = TimeOfFirstPacket::new(0x12345678);
-        let data = tofp.marshal().unwrap();
+        let data = tofp.marshal();
 
         // Verify big-endian byte order
         assert_eq!(data, vec![0x12, 0x34, 0x56, 0x78]);

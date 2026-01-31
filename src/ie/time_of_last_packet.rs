@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +15,21 @@ impl TimeOfLastPacket {
         4 // u32 for 3GPP NTP timestamp
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.timestamp.to_be_bytes().to_vec()
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.timestamp.to_be_bytes());
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Time of last packet requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Time Of Last Packet",
+                IeType::TimeOfLastPacket,
+                4,
+                data.len(),
             ));
         }
 
@@ -41,9 +39,8 @@ impl TimeOfLastPacket {
         Ok(Self { timestamp })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::TimeOfLastPacket, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::TimeOfLastPacket, self.marshal())
     }
 }
 
@@ -63,7 +60,7 @@ mod tests {
         let timestamp = 0xABCDEF01;
         let tolp = TimeOfLastPacket::new(timestamp);
 
-        let data = tolp.marshal().unwrap();
+        let data = tolp.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = TimeOfLastPacket::unmarshal(&data).unwrap();
@@ -75,7 +72,7 @@ mod tests {
     fn test_time_of_last_packet_marshal_zero() {
         let tolp = TimeOfLastPacket::new(0);
 
-        let data = tolp.marshal().unwrap();
+        let data = tolp.marshal();
         let unmarshaled = TimeOfLastPacket::unmarshal(&data).unwrap();
 
         assert_eq!(tolp, unmarshaled);
@@ -86,11 +83,11 @@ mod tests {
     fn test_time_of_last_packet_marshal_max_value() {
         let tolp = TimeOfLastPacket::new(u32::MAX);
 
-        let data = tolp.marshal().unwrap();
+        let data = tolp.marshal();
         let unmarshaled = TimeOfLastPacket::unmarshal(&data).unwrap();
 
         assert_eq!(tolp, unmarshaled);
-        assert_eq!(unmarshaled.timestamp, u32::MAX);
+        assert_eq!(tolp.timestamp, u32::MAX);
     }
 
     #[test]
@@ -98,7 +95,7 @@ mod tests {
         let timestamp = 0x87654321;
         let tolp = TimeOfLastPacket::new(timestamp);
 
-        let ie = tolp.to_ie().unwrap();
+        let ie = tolp.to_ie();
         assert_eq!(ie.ie_type, IeType::TimeOfLastPacket);
     }
 
@@ -108,7 +105,8 @@ mod tests {
         let result = TimeOfLastPacket::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -117,7 +115,8 @@ mod tests {
         let result = TimeOfLastPacket::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -140,7 +139,7 @@ mod tests {
 
         for &value in &test_values {
             let tolp = TimeOfLastPacket::new(value);
-            let data = tolp.marshal().unwrap();
+            let data = tolp.marshal();
             let unmarshaled = TimeOfLastPacket::unmarshal(&data).unwrap();
             assert_eq!(tolp, unmarshaled);
         }
@@ -149,7 +148,7 @@ mod tests {
     #[test]
     fn test_time_of_last_packet_byte_order() {
         let tolp = TimeOfLastPacket::new(0x12345678);
-        let data = tolp.marshal().unwrap();
+        let data = tolp.marshal();
 
         // Verify big-endian byte order
         assert_eq!(data, vec![0x12, 0x34, 0x56, 0x78]);

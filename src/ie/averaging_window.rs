@@ -29,10 +29,10 @@ use crate::ie::{Ie, IeType};
 /// assert_eq!(window.milliseconds(), 60000);
 ///
 /// // Marshal and unmarshal
-/// let bytes = window.marshal()?;
+/// let bytes = window.marshal();
 /// let parsed = AveragingWindow::unmarshal(&bytes)?;
 /// assert_eq!(window, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AveragingWindow {
@@ -74,19 +74,13 @@ impl AveragingWindow {
     ///
     /// # Returns
     /// 4-byte vector containing window value in milliseconds (big-endian)
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
-        let mut buf = Vec::with_capacity(4);
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.milliseconds.to_be_bytes().to_vec()
     }
 
     /// Marshal to a buffer
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.milliseconds.to_be_bytes());
-        Ok(())
     }
 
     /// Unmarshal Averaging Window from bytes
@@ -102,10 +96,10 @@ impl AveragingWindow {
     /// use rs_pfcp::ie::averaging_window::AveragingWindow;
     ///
     /// let window = AveragingWindow::new(1800000); // 1800 seconds = 30 minutes
-    /// let bytes = window.marshal()?;
+    /// let bytes = window.marshal();
     /// let parsed = AveragingWindow::unmarshal(&bytes)?;
     /// assert_eq!(window, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
@@ -131,13 +125,11 @@ impl AveragingWindow {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let window = AveragingWindow::new(600000); // 600 seconds = 10 minutes
-    /// let ie = window.to_ie()?;
+    /// let ie = window.to_ie();
     /// assert_eq!(ie.ie_type, IeType::AveragingWindow);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::AveragingWindow, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::AveragingWindow, self.marshal())
     }
 
     // Convenience constructors for common averaging windows
@@ -213,7 +205,7 @@ mod tests {
     #[test]
     fn test_averaging_window_marshal_unmarshal() {
         let original = AveragingWindow::new(600000);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 4);
 
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
@@ -224,7 +216,7 @@ mod tests {
     #[test]
     fn test_averaging_window_marshal_zero() {
         let window = AveragingWindow::new(0);
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
 
         assert_eq!(window, parsed);
@@ -234,7 +226,7 @@ mod tests {
     #[test]
     fn test_averaging_window_marshal_max_value() {
         let window = AveragingWindow::new(u32::MAX);
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
 
         assert_eq!(window, parsed);
@@ -246,6 +238,8 @@ mod tests {
         let data = vec![0x00, 0x00, 0x00]; // Only 3 bytes
         let result = AveragingWindow::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -253,12 +247,14 @@ mod tests {
         let data = vec![];
         let result = AveragingWindow::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_averaging_window_to_ie() {
         let window = AveragingWindow::new(120000);
-        let ie = window.to_ie().unwrap();
+        let ie = window.to_ie();
         assert_eq!(ie.ie_type, IeType::AveragingWindow);
         assert_eq!(ie.payload.len(), 4);
 
@@ -274,7 +270,7 @@ mod tests {
         ];
         for milliseconds in values {
             let original = AveragingWindow::new(milliseconds);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for {} ms", milliseconds);
         }
@@ -345,7 +341,7 @@ mod tests {
     fn test_averaging_window_5g_qos_monitoring() {
         // Scenario: Monitor QoS metrics over 5-minute windows
         let window = AveragingWindow::five_minutes();
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.milliseconds(), 300000);
@@ -356,7 +352,7 @@ mod tests {
     fn test_averaging_window_real_world_short_burst() {
         // Scenario: Quick monitoring window for burst detection
         let window = AveragingWindow::new(100); // 100 ms
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.milliseconds(), 100);
@@ -366,7 +362,7 @@ mod tests {
     fn test_averaging_window_real_world_long_measurement() {
         // Scenario: Long-term monitoring for SLA analysis
         let window = AveragingWindow::one_hour();
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.milliseconds(), 3600000);
@@ -376,7 +372,7 @@ mod tests {
     fn test_averaging_window_byte_order() {
         // Verify big-endian encoding
         let window = AveragingWindow::new(0x12345678);
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         assert_eq!(bytes, vec![0x12, 0x34, 0x56, 0x78]);
     }
 
@@ -384,7 +380,7 @@ mod tests {
     fn test_averaging_window_millisecond_precision() {
         // Verify millisecond precision
         let window = AveragingWindow::new(1234);
-        let bytes = window.marshal().unwrap();
+        let bytes = window.marshal();
         let parsed = AveragingWindow::unmarshal(&bytes).unwrap();
         assert_eq!(parsed.milliseconds(), 1234);
     }

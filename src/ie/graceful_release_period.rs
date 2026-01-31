@@ -27,10 +27,10 @@ use crate::ie::{Ie, IeType};
 /// assert_eq!(period.period(), 60);
 ///
 /// // Marshal and unmarshal
-/// let bytes = period.marshal()?;
+/// let bytes = period.marshal();
 /// let parsed = GracefulReleasePeriod::unmarshal(&bytes)?;
 /// assert_eq!(period, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GracefulReleasePeriod {
@@ -72,13 +72,8 @@ impl GracefulReleasePeriod {
     ///
     /// # Returns
     /// 2-byte vector containing release period (big-endian)
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
-        let mut buf = Vec::with_capacity(2);
-        buf.extend_from_slice(&self.period.to_be_bytes());
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.period.to_be_bytes().to_vec()
     }
 
     /// Unmarshal Graceful Release Period from bytes
@@ -94,10 +89,10 @@ impl GracefulReleasePeriod {
     /// use rs_pfcp::ie::graceful_release_period::GracefulReleasePeriod;
     ///
     /// let period = GracefulReleasePeriod::new(180);
-    /// let bytes = period.marshal()?;
+    /// let bytes = period.marshal();
     /// let parsed = GracefulReleasePeriod::unmarshal(&bytes)?;
     /// assert_eq!(period, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
@@ -123,13 +118,11 @@ impl GracefulReleasePeriod {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let period = GracefulReleasePeriod::new(100);
-    /// let ie = period.to_ie()?;
+    /// let ie = period.to_ie();
     /// assert_eq!(ie.ie_type, IeType::GracefulReleasePeriod);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::GracefulReleasePeriod, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::GracefulReleasePeriod, self.marshal())
     }
 }
 
@@ -146,7 +139,7 @@ mod tests {
     #[test]
     fn test_graceful_release_period_marshal_unmarshal() {
         let original = GracefulReleasePeriod::new(300);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 2);
 
         let parsed = GracefulReleasePeriod::unmarshal(&bytes).unwrap();
@@ -157,7 +150,7 @@ mod tests {
     #[test]
     fn test_graceful_release_period_marshal_zero() {
         let period = GracefulReleasePeriod::new(0);
-        let bytes = period.marshal().unwrap();
+        let bytes = period.marshal();
         let parsed = GracefulReleasePeriod::unmarshal(&bytes).unwrap();
 
         assert_eq!(period, parsed);
@@ -167,7 +160,7 @@ mod tests {
     #[test]
     fn test_graceful_release_period_marshal_max_value() {
         let period = GracefulReleasePeriod::new(u16::MAX);
-        let bytes = period.marshal().unwrap();
+        let bytes = period.marshal();
         let parsed = GracefulReleasePeriod::unmarshal(&bytes).unwrap();
 
         assert_eq!(period, parsed);
@@ -179,6 +172,8 @@ mod tests {
         let data = vec![0x00]; // Only 1 byte
         let result = GracefulReleasePeriod::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -186,12 +181,14 @@ mod tests {
         let data = vec![];
         let result = GracefulReleasePeriod::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_graceful_release_period_to_ie() {
         let period = GracefulReleasePeriod::new(500);
-        let ie = period.to_ie().unwrap();
+        let ie = period.to_ie();
         assert_eq!(ie.ie_type, IeType::GracefulReleasePeriod);
         assert_eq!(ie.payload.len(), 2);
 
@@ -204,7 +201,7 @@ mod tests {
     fn test_graceful_release_period_byte_order() {
         // Verify big-endian encoding
         let period = GracefulReleasePeriod::new(0x1234);
-        let bytes = period.marshal().unwrap();
+        let bytes = period.marshal();
         assert_eq!(bytes, vec![0x12, 0x34]);
     }
 
@@ -213,7 +210,7 @@ mod tests {
         let values = vec![1, 10, 60, 300, 3600, 65535];
         for period_val in values {
             let original = GracefulReleasePeriod::new(period_val);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = GracefulReleasePeriod::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for period {}", period_val);
         }
@@ -223,7 +220,7 @@ mod tests {
     fn test_graceful_release_period_5g_graceful_shutdown() {
         // Scenario: PFCP association graceful shutdown
         let period = GracefulReleasePeriod::new(30);
-        let bytes = period.marshal().unwrap();
+        let bytes = period.marshal();
         let parsed = GracefulReleasePeriod::unmarshal(&bytes).unwrap();
 
         assert_eq!(parsed.period(), 30);
