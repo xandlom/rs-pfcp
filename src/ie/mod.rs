@@ -58,6 +58,7 @@ pub mod gate_status;
 pub mod gbr;
 pub mod graceful_release_period;
 pub mod group_id;
+pub mod gtpu_path_qos_control_information;
 pub mod header_enrichment;
 pub mod inactivity_detection_time;
 pub mod linked_urr_id;
@@ -87,6 +88,7 @@ pub mod pdn_type;
 pub mod pdr_id;
 pub mod pfcp_session_change_info;
 pub mod pfcp_session_retention_information;
+pub mod pfcpas_rsp_flags;
 pub mod pfcpsm_req_flags;
 pub mod pfcpsrrsp_flags;
 pub mod pfd_contents;
@@ -153,19 +155,23 @@ pub mod usage_report_srr;
 pub mod usage_report_trigger;
 pub mod user_id;
 pub mod user_plane_inactivity_timer;
+pub mod user_plane_path_recovery_report;
 pub mod volume_measurement;
 pub mod volume_quota;
 pub mod volume_threshold;
 
 // Re-export commonly used IE types for convenience
+pub use gtpu_path_qos_control_information::GtpuPathQosControlInformation;
 pub use node_id::NodeId;
 pub use pfcp_session_change_info::PfcpSessionChangeInfo;
 pub use pfcp_session_retention_information::PfcpSessionRetentionInformation;
+pub use pfcpas_rsp_flags::PfcpasRspFlags;
 pub use query_urr::QueryUrr;
 pub use recovery_time_stamp::RecoveryTimeStamp;
 pub use smf_set_id::SmfSetId;
 pub use traffic_endpoint_id::TrafficEndpointId;
 pub use update_duplicating_parameters::UpdateDuplicatingParameters;
+pub use user_plane_path_recovery_report::UserPlanePathRecoveryReport;
 
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
