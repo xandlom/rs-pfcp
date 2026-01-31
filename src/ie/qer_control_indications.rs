@@ -3,8 +3,8 @@
 //! The QER Control Indications IE contains control flags for QoS Enforcement Rules.
 //! Per 3GPP TS 29.244 Section 8.2.174.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// QER Control Indications
 ///
@@ -35,10 +35,10 @@ use std::io;
 /// assert_eq!(qci.flags(), 0x01);
 ///
 /// // Marshal and unmarshal
-/// let bytes = qci.marshal()?;
+/// let bytes = qci.marshal();
 /// let parsed = QerControlIndications::unmarshal(&bytes)?;
 /// assert_eq!(qci, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct QerControlIndications {
@@ -98,11 +98,8 @@ impl QerControlIndications {
     ///
     /// # Returns
     /// 1-byte vector containing control flags
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        Ok(vec![self.flags])
+    pub fn marshal(&self) -> Vec<u8> {
+        vec![self.flags]
     }
 
     /// Unmarshal QER Control Indications from bytes
@@ -118,16 +115,18 @@ impl QerControlIndications {
     /// use rs_pfcp::ie::qer_control_indications::QerControlIndications;
     ///
     /// let qci = QerControlIndications::new(0x01);
-    /// let bytes = qci.marshal()?;
+    /// let bytes = qci.marshal();
     /// let parsed = QerControlIndications::unmarshal(&bytes)?;
     /// assert_eq!(qci, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "QER Control Indications requires 1 byte",
+            return Err(PfcpError::invalid_length(
+                "QER Control Indications",
+                IeType::QerControlIndications,
+                1,
+                0,
             ));
         }
 
@@ -142,13 +141,11 @@ impl QerControlIndications {
     /// use rs_pfcp::ie::IeType;
     ///
     /// let qci = QerControlIndications::new(0x01);
-    /// let ie = qci.to_ie()?;
+    /// let ie = qci.to_ie();
     /// assert_eq!(ie.ie_type, IeType::QerControlIndications);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::QerControlIndications, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::QerControlIndications, self.marshal())
     }
 }
 
@@ -195,7 +192,7 @@ mod tests {
     #[test]
     fn test_qer_control_indications_marshal_unmarshal() {
         let original = QerControlIndications::new(0x01);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 1);
 
         let parsed = QerControlIndications::unmarshal(&bytes).unwrap();
@@ -206,7 +203,7 @@ mod tests {
     #[test]
     fn test_qer_control_indications_marshal_zero() {
         let qci = QerControlIndications::new(0x00);
-        let bytes = qci.marshal().unwrap();
+        let bytes = qci.marshal();
         let parsed = QerControlIndications::unmarshal(&bytes).unwrap();
 
         assert_eq!(qci, parsed);
@@ -216,7 +213,7 @@ mod tests {
     #[test]
     fn test_qer_control_indications_marshal_all_flags() {
         let qci = QerControlIndications::new(0xFF);
-        let bytes = qci.marshal().unwrap();
+        let bytes = qci.marshal();
         let parsed = QerControlIndications::unmarshal(&bytes).unwrap();
 
         assert_eq!(qci, parsed);
@@ -228,12 +225,14 @@ mod tests {
         let data = vec![];
         let result = QerControlIndications::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_qer_control_indications_to_ie() {
         let qci = QerControlIndications::new(0x01);
-        let ie = qci.to_ie().unwrap();
+        let ie = qci.to_ie();
         assert_eq!(ie.ie_type, IeType::QerControlIndications);
         assert_eq!(ie.payload.len(), 1);
 
@@ -247,7 +246,7 @@ mod tests {
         let values = vec![0x00, 0x01, 0x03, 0x55, 0xAA, 0xFF];
         for flags_val in values {
             let original = QerControlIndications::new(flags_val);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = QerControlIndications::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for flags 0x{:02x}", flags_val);
         }
@@ -257,7 +256,7 @@ mod tests {
     fn test_qer_control_indications_5g_qer_enforcement() {
         // Scenario: QER enforcement with GCSIR
         let qci = QerControlIndications::new(QerControlIndications::GCSIR);
-        let bytes = qci.marshal().unwrap();
+        let bytes = qci.marshal();
         let parsed = QerControlIndications::unmarshal(&bytes).unwrap();
 
         assert!(parsed.gcsir());

@@ -3,8 +3,8 @@
 //! The Measurement Information IE contains flags for measurement control in usage reporting.
 //! Per 3GPP TS 29.244 Section 8.2.68.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Measurement Information
 ///
@@ -36,10 +36,10 @@ use std::io;
 /// assert!(mi.mbqe());
 ///
 /// // Marshal and unmarshal
-/// let bytes = mi.marshal()?;
+/// let bytes = mi.marshal();
 /// let parsed = MeasurementInformation::unmarshal(&bytes)?;
 /// assert_eq!(mi, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeasurementInformation {
@@ -207,16 +207,18 @@ impl MeasurementInformation {
     }
 
     /// Marshal Measurement Information to bytes
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        Ok(vec![self.flags])
+    pub fn marshal(&self) -> Vec<u8> {
+        vec![self.flags]
     }
 
     /// Unmarshal Measurement Information from bytes
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Measurement Information requires 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Measurement Information",
+                IeType::MeasurementInformation,
+                1,
+                0,
             ));
         }
 
@@ -224,9 +226,8 @@ impl MeasurementInformation {
     }
 
     /// Convert to generic IE
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::MeasurementInformation, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::MeasurementInformation, self.marshal())
     }
 }
 
@@ -338,7 +339,7 @@ mod tests {
     #[test]
     fn test_measurement_information_marshal_unmarshal() {
         let original = MeasurementInformation::new(0x05); // MBQE and RADI
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 1);
 
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
@@ -349,7 +350,7 @@ mod tests {
     #[test]
     fn test_measurement_information_marshal_all_flags() {
         let mi = MeasurementInformation::new(0xFF);
-        let bytes = mi.marshal().unwrap();
+        let bytes = mi.marshal();
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
 
         assert_eq!(mi, parsed);
@@ -361,12 +362,14 @@ mod tests {
         let data = vec![];
         let result = MeasurementInformation::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_measurement_information_to_ie() {
         let mi = MeasurementInformation::new(0x03);
-        let ie = mi.to_ie().unwrap();
+        let ie = mi.to_ie();
         assert_eq!(ie.ie_type, IeType::MeasurementInformation);
         assert_eq!(ie.payload.len(), 1);
 
@@ -379,7 +382,7 @@ mod tests {
         let values = vec![0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0xFF, 0x15];
         for flags_val in values {
             let original = MeasurementInformation::new(flags_val);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for flags 0x{:02x}", flags_val);
         }
@@ -389,7 +392,7 @@ mod tests {
     fn test_measurement_information_5g_before_qos() {
         // Scenario: Measure before QoS enforcement
         let mi = MeasurementInformation::new(MeasurementInformation::MBQE);
-        let bytes = mi.marshal().unwrap();
+        let bytes = mi.marshal();
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
 
         assert!(parsed.mbqe());
@@ -400,7 +403,7 @@ mod tests {
     fn test_measurement_information_5g_pause_measurement() {
         // Scenario: Pause measurement (inactive measurement)
         let mi = MeasurementInformation::new(MeasurementInformation::INAM);
-        let bytes = mi.marshal().unwrap();
+        let bytes = mi.marshal();
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
 
         assert!(parsed.inam());
@@ -413,7 +416,7 @@ mod tests {
         let mi = MeasurementInformation::new(
             MeasurementInformation::MBQE | MeasurementInformation::MNOP,
         );
-        let bytes = mi.marshal().unwrap();
+        let bytes = mi.marshal();
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
 
         assert!(parsed.mbqe());
@@ -428,7 +431,7 @@ mod tests {
         let mi = MeasurementInformation::new(
             MeasurementInformation::SSPOC | MeasurementInformation::ASPOC,
         );
-        let bytes = mi.marshal().unwrap();
+        let bytes = mi.marshal();
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
 
         assert!(parsed.sspoc());
@@ -442,7 +445,7 @@ mod tests {
         let mi = MeasurementInformation::new(
             MeasurementInformation::ASPOC | MeasurementInformation::CIAM,
         );
-        let bytes = mi.marshal().unwrap();
+        let bytes = mi.marshal();
         let parsed = MeasurementInformation::unmarshal(&bytes).unwrap();
 
         assert!(parsed.aspoc());

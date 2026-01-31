@@ -109,9 +109,8 @@ impl UsageReport {
             buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref ui) = self.usage_information {
-            if let Ok(ie) = ui.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = ui.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
 
         // Marshal Phase 2 quota and time IEs

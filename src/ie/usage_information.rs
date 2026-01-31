@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,22 +64,21 @@ impl UsageInformation {
         1 // Single flags byte
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        vec![self.flags]
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.push(self.flags);
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Usage information requires 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Usage Information",
+                IeType::UsageInformation,
+                1,
+                0,
             ));
         }
 
@@ -88,9 +86,8 @@ impl UsageInformation {
         Ok(Self { flags })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::UsageInformation, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::UsageInformation, self.marshal())
     }
 }
 
@@ -152,7 +149,7 @@ mod tests {
     fn test_usage_information_marshal_unmarshal() {
         let ui = UsageInformation::new(0x0F);
 
-        let data = ui.marshal().unwrap();
+        let data = ui.marshal();
         assert_eq!(data.len(), 1);
         assert_eq!(data[0], 0x0F);
 
@@ -164,7 +161,7 @@ mod tests {
     fn test_usage_information_marshal_unmarshal_zero() {
         let ui = UsageInformation::new(0x00);
 
-        let data = ui.marshal().unwrap();
+        let data = ui.marshal();
         let unmarshaled = UsageInformation::unmarshal(&data).unwrap();
 
         assert_eq!(ui, unmarshaled);
@@ -175,7 +172,7 @@ mod tests {
     fn test_usage_information_to_ie() {
         let ui = UsageInformation::new(0x05);
 
-        let ie = ui.to_ie().unwrap();
+        let ie = ui.to_ie();
         assert_eq!(ie.ie_type, IeType::UsageInformation);
     }
 
@@ -185,7 +182,8 @@ mod tests {
         let result = UsageInformation::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -203,7 +201,7 @@ mod tests {
 
         for &value in &test_values {
             let ui = UsageInformation::new(value);
-            let data = ui.marshal().unwrap();
+            let data = ui.marshal();
             let unmarshaled = UsageInformation::unmarshal(&data).unwrap();
             assert_eq!(ui, unmarshaled);
         }

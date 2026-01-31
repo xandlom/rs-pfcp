@@ -3,8 +3,8 @@
 //! The Node Report Type IE indicates the type of node report in PFCP Node Report messages.
 //! Per 3GPP TS 29.244 Section 8.2.69.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Node Report Type
 ///
@@ -35,10 +35,10 @@ use std::io;
 /// assert!(nrt.upfr());
 ///
 /// // Marshal and unmarshal
-/// let bytes = nrt.marshal()?;
+/// let bytes = nrt.marshal();
 /// let parsed = NodeReportType::unmarshal(&bytes)?;
 /// assert_eq!(nrt, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NodeReportType {
@@ -172,16 +172,18 @@ impl NodeReportType {
     }
 
     /// Marshal Node Report Type to bytes
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        Ok(vec![self.flags])
+    pub fn marshal(&self) -> Vec<u8> {
+        vec![self.flags]
     }
 
     /// Unmarshal Node Report Type from bytes
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Node Report Type requires 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Node Report Type",
+                IeType::NodeReportType,
+                1,
+                0,
             ));
         }
 
@@ -189,9 +191,8 @@ impl NodeReportType {
     }
 
     /// Convert to generic IE
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::NodeReportType, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::NodeReportType, self.marshal())
     }
 }
 
@@ -293,7 +294,7 @@ mod tests {
     #[test]
     fn test_node_report_type_marshal_unmarshal() {
         let original = NodeReportType::new(0x01);
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         assert_eq!(bytes.len(), 1);
 
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
@@ -304,7 +305,7 @@ mod tests {
     #[test]
     fn test_node_report_type_marshal_all_flags() {
         let nrt = NodeReportType::new(0x3F);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert_eq!(nrt, parsed);
@@ -314,7 +315,7 @@ mod tests {
     #[test]
     fn test_node_report_type_marshal_zero() {
         let nrt = NodeReportType::new(0x00);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert_eq!(nrt, parsed);
@@ -326,12 +327,14 @@ mod tests {
         let data = vec![];
         let result = NodeReportType::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_node_report_type_to_ie() {
         let nrt = NodeReportType::new(0x3F);
-        let ie = nrt.to_ie().unwrap();
+        let ie = nrt.to_ie();
         assert_eq!(ie.ie_type, IeType::NodeReportType);
         assert_eq!(ie.payload.len(), 1);
 
@@ -344,7 +347,7 @@ mod tests {
         let values = vec![0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x3F, 0x15, 0x2A];
         for flags_val in values {
             let original = NodeReportType::new(flags_val);
-            let bytes = original.marshal().unwrap();
+            let bytes = original.marshal();
             let parsed = NodeReportType::unmarshal(&bytes).unwrap();
             assert_eq!(original, parsed, "Failed for flags 0x{:02x}", flags_val);
         }
@@ -354,7 +357,7 @@ mod tests {
     fn test_node_report_type_5g_path_failure() {
         // Scenario: Report user plane path failure
         let nrt = NodeReportType::new(NodeReportType::UPFR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.upfr());
@@ -365,7 +368,7 @@ mod tests {
     fn test_node_report_type_5g_path_recovery() {
         // Scenario: Report user plane path recovery
         let nrt = NodeReportType::new(NodeReportType::UPRR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.uprr());
@@ -376,7 +379,7 @@ mod tests {
     fn test_node_report_type_5g_clock_drift() {
         // Scenario: Report clock drift
         let nrt = NodeReportType::new(NodeReportType::CKDR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.ckdr());
@@ -387,7 +390,7 @@ mod tests {
     fn test_node_report_type_5g_qos_report() {
         // Scenario: Report GTP-U path QoS status
         let nrt = NodeReportType::new(NodeReportType::GPQR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.gpqr());
@@ -398,7 +401,7 @@ mod tests {
     fn test_node_report_type_5g_restart_report() {
         // Scenario: Report peer GTP-U restart
         let nrt = NodeReportType::new(NodeReportType::PURR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.purr());
@@ -409,7 +412,7 @@ mod tests {
     fn test_node_report_type_5g_vendor_report() {
         // Scenario: Vendor-specific report
         let nrt = NodeReportType::new(NodeReportType::VSR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.vsr());
@@ -421,7 +424,7 @@ mod tests {
         // Scenario: Multiple report types in one node report
         let nrt =
             NodeReportType::new(NodeReportType::UPFR | NodeReportType::UPRR | NodeReportType::CKDR);
-        let bytes = nrt.marshal().unwrap();
+        let bytes = nrt.marshal();
         let parsed = NodeReportType::unmarshal(&bytes).unwrap();
 
         assert!(parsed.upfr());
