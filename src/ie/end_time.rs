@@ -15,15 +15,12 @@ impl EndTime {
         4 // u32 for 3GPP NTP timestamp
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.timestamp.to_be_bytes().to_vec()
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.timestamp.to_be_bytes());
-        Ok(())
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
@@ -42,9 +39,8 @@ impl EndTime {
         Ok(Self { timestamp })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::EndTime, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::EndTime, self.marshal())
     }
 }
 
@@ -64,7 +60,7 @@ mod tests {
         let timestamp = 0xABCDEF01;
         let et = EndTime::new(timestamp);
 
-        let data = et.marshal().unwrap();
+        let data = et.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = EndTime::unmarshal(&data).unwrap();
@@ -76,7 +72,7 @@ mod tests {
     fn test_end_time_marshal_zero() {
         let et = EndTime::new(0);
 
-        let data = et.marshal().unwrap();
+        let data = et.marshal();
         let unmarshaled = EndTime::unmarshal(&data).unwrap();
 
         assert_eq!(et, unmarshaled);
@@ -87,7 +83,7 @@ mod tests {
     fn test_end_time_marshal_max_value() {
         let et = EndTime::new(u32::MAX);
 
-        let data = et.marshal().unwrap();
+        let data = et.marshal();
         let unmarshaled = EndTime::unmarshal(&data).unwrap();
 
         assert_eq!(et, unmarshaled);
@@ -99,7 +95,7 @@ mod tests {
         let timestamp = 0x87654321;
         let et = EndTime::new(timestamp);
 
-        let ie = et.to_ie().unwrap();
+        let ie = et.to_ie();
         assert_eq!(ie.ie_type, IeType::EndTime);
     }
 
@@ -109,13 +105,8 @@ mod tests {
         let result = EndTime::unmarshal(&data);
 
         assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("End Time"), "Error message: {}", err_msg);
-        assert!(
-            err_msg.contains("4") || err_msg.contains("length"),
-            "Error message: {}",
-            err_msg
-        );
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -124,12 +115,8 @@ mod tests {
         let result = EndTime::unmarshal(&data);
 
         assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(
-            err_msg.contains("End Time") || err_msg.contains("length"),
-            "Error message: {}",
-            err_msg
-        );
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -152,7 +139,7 @@ mod tests {
 
         for &value in &test_values {
             let et = EndTime::new(value);
-            let data = et.marshal().unwrap();
+            let data = et.marshal();
             let unmarshaled = EndTime::unmarshal(&data).unwrap();
             assert_eq!(et, unmarshaled);
         }
@@ -161,7 +148,7 @@ mod tests {
     #[test]
     fn test_end_time_byte_order() {
         let et = EndTime::new(0x12345678);
-        let data = et.marshal().unwrap();
+        let data = et.marshal();
 
         // Verify big-endian byte order
         assert_eq!(data, vec![0x12, 0x34, 0x56, 0x78]);
@@ -175,7 +162,7 @@ mod tests {
         let past_time = EndTime::new(0x50000000);
 
         for time in [current_time, future_time, past_time] {
-            let data = time.marshal().unwrap();
+            let data = time.marshal();
             let unmarshaled = EndTime::unmarshal(&data).unwrap();
             assert_eq!(time, unmarshaled);
         }
@@ -188,7 +175,7 @@ mod tests {
         let end_timestamp = 0x60000E10; // Start + 3600 seconds (1 hour)
 
         let end_time = EndTime::new(end_timestamp);
-        let data = end_time.marshal().unwrap();
+        let data = end_time.marshal();
         let unmarshaled = EndTime::unmarshal(&data).unwrap();
 
         assert_eq!(end_time, unmarshaled);

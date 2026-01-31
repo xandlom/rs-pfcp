@@ -127,26 +127,22 @@ impl UsageReport {
             buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref qht) = self.quota_holding_time {
-            if let Ok(ie) = qht.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = qht.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref st) = self.start_time {
-            if let Ok(ie) = st.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = st.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref et) = self.end_time {
-            if let Ok(ie) = et.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = et.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
 
         // Marshal Phase 3 extended IEs
         if let Some(ref qur) = self.query_urr_reference {
-            if let Ok(ie) = qur.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = qur.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
         if let Some(ref adi) = self.application_detection_information {
             if let Ok(ie) = adi.to_ie() {

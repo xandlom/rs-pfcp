@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +15,21 @@ impl QueryURRReference {
         4 // u32
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.reference.to_be_bytes().to_vec()
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.reference.to_be_bytes());
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Query URR reference requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Query URR Reference",
+                IeType::QueryUrrReference,
+                4,
+                data.len(),
             ));
         }
 
@@ -41,9 +39,8 @@ impl QueryURRReference {
         Ok(Self { reference })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::QueryUrrReference, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::QueryUrrReference, self.marshal())
     }
 }
 
@@ -63,7 +60,7 @@ mod tests {
         let reference = 0xABCDEF01;
         let qur = QueryURRReference::new(reference);
 
-        let data = qur.marshal().unwrap();
+        let data = qur.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = QueryURRReference::unmarshal(&data).unwrap();
@@ -75,7 +72,7 @@ mod tests {
     fn test_query_urr_reference_marshal_zero() {
         let qur = QueryURRReference::new(0);
 
-        let data = qur.marshal().unwrap();
+        let data = qur.marshal();
         let unmarshaled = QueryURRReference::unmarshal(&data).unwrap();
 
         assert_eq!(qur, unmarshaled);
@@ -86,7 +83,7 @@ mod tests {
     fn test_query_urr_reference_marshal_max_value() {
         let qur = QueryURRReference::new(u32::MAX);
 
-        let data = qur.marshal().unwrap();
+        let data = qur.marshal();
         let unmarshaled = QueryURRReference::unmarshal(&data).unwrap();
 
         assert_eq!(qur, unmarshaled);
@@ -98,7 +95,7 @@ mod tests {
         let reference = 0x87654321;
         let qur = QueryURRReference::new(reference);
 
-        let ie = qur.to_ie().unwrap();
+        let ie = qur.to_ie();
         assert_eq!(ie.ie_type, IeType::QueryUrrReference);
     }
 
@@ -108,7 +105,8 @@ mod tests {
         let result = QueryURRReference::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -117,7 +115,8 @@ mod tests {
         let result = QueryURRReference::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -140,7 +139,7 @@ mod tests {
 
         for &value in &test_values {
             let qur = QueryURRReference::new(value);
-            let data = qur.marshal().unwrap();
+            let data = qur.marshal();
             let unmarshaled = QueryURRReference::unmarshal(&data).unwrap();
             assert_eq!(qur, unmarshaled);
         }
@@ -149,7 +148,7 @@ mod tests {
     #[test]
     fn test_query_urr_reference_byte_order() {
         let qur = QueryURRReference::new(0x12345678);
-        let data = qur.marshal().unwrap();
+        let data = qur.marshal();
 
         // Verify big-endian byte order
         assert_eq!(data, vec![0x12, 0x34, 0x56, 0x78]);
@@ -163,7 +162,7 @@ mod tests {
         let threshold_ref = QueryURRReference::new(0x30000001); // Threshold query
 
         for reference in [session_ref, periodic_ref, threshold_ref] {
-            let data = reference.marshal().unwrap();
+            let data = reference.marshal();
             let unmarshaled = QueryURRReference::unmarshal(&data).unwrap();
             assert_eq!(reference, unmarshaled);
         }

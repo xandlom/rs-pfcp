@@ -1,4 +1,6 @@
 // src/ie/recovery_time_stamp.rs
+use crate::error::PfcpError;
+use crate::ie::IeType;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 // NTP epoch (1900-01-01T00:00:00Z) is 2208988800 seconds before the Unix epoch (1970-01-01T00:00:00Z).
@@ -30,17 +32,20 @@ impl RecoveryTimeStamp {
     /// Unmarshals a 4-byte slice into a RecoveryTimeStamp.
     ///
     /// Per 3GPP TS 29.244, Recovery Time Stamp requires exactly 4 bytes (NTP timestamp).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Recovery Time Stamp requires 4 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "Recovery Time Stamp",
+                IeType::RecoveryTimeStamp,
+                4,
+                data.len(),
             ));
         }
         let ntp_timestamp = u32::from_be_bytes(data[0..4].try_into().unwrap()) as u64;
         if ntp_timestamp < NTP_EPOCH_OFFSET {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            return Err(PfcpError::invalid_value(
+                "Recovery Time Stamp",
+                ntp_timestamp.to_string(),
                 "NTP timestamp is before Unix epoch",
             ));
         }
@@ -78,9 +83,8 @@ mod tests {
         let result = RecoveryTimeStamp::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
+        assert!(err.to_string().contains("Recovery Time Stamp"));
     }
 
     #[test]
@@ -88,7 +92,6 @@ mod tests {
         let result = RecoveryTimeStamp::unmarshal(&[0x01, 0x02]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("requires 4 bytes"));
-        assert!(err.to_string().contains("got 2"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

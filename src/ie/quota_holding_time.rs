@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,22 +17,21 @@ impl QuotaHoldingTime {
         4 // u32
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        self.holding_time_seconds.to_be_bytes().to_vec()
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.holding_time_seconds.to_be_bytes());
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Quota holding time requires 4 bytes",
+            return Err(PfcpError::invalid_length(
+                "Quota Holding Time",
+                IeType::QuotaHoldingTime,
+                4,
+                data.len(),
             ));
         }
 
@@ -45,9 +43,8 @@ impl QuotaHoldingTime {
         })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::QuotaHoldingTime, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::QuotaHoldingTime, self.marshal())
     }
 }
 
@@ -65,7 +62,7 @@ mod tests {
     fn test_quota_holding_time_marshal_unmarshal() {
         let qht = QuotaHoldingTime::new(600);
 
-        let data = qht.marshal().unwrap();
+        let data = qht.marshal();
         assert_eq!(data.len(), 4);
 
         let unmarshaled = QuotaHoldingTime::unmarshal(&data).unwrap();
@@ -77,7 +74,7 @@ mod tests {
     fn test_quota_holding_time_marshal_zero() {
         let qht = QuotaHoldingTime::new(0);
 
-        let data = qht.marshal().unwrap();
+        let data = qht.marshal();
         let unmarshaled = QuotaHoldingTime::unmarshal(&data).unwrap();
 
         assert_eq!(qht, unmarshaled);
@@ -88,7 +85,7 @@ mod tests {
     fn test_quota_holding_time_marshal_max_value() {
         let qht = QuotaHoldingTime::new(u32::MAX);
 
-        let data = qht.marshal().unwrap();
+        let data = qht.marshal();
         let unmarshaled = QuotaHoldingTime::unmarshal(&data).unwrap();
 
         assert_eq!(qht, unmarshaled);
@@ -99,7 +96,7 @@ mod tests {
     fn test_quota_holding_time_to_ie() {
         let qht = QuotaHoldingTime::new(900);
 
-        let ie = qht.to_ie().unwrap();
+        let ie = qht.to_ie();
         assert_eq!(ie.ie_type, IeType::QuotaHoldingTime);
     }
 
@@ -109,7 +106,8 @@ mod tests {
         let result = QuotaHoldingTime::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -118,7 +116,8 @@ mod tests {
         let result = QuotaHoldingTime::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -133,7 +132,7 @@ mod tests {
 
         for &value in &test_values {
             let qht = QuotaHoldingTime::new(value);
-            let data = qht.marshal().unwrap();
+            let data = qht.marshal();
             let unmarshaled = QuotaHoldingTime::unmarshal(&data).unwrap();
             assert_eq!(qht, unmarshaled);
         }
@@ -142,7 +141,7 @@ mod tests {
     #[test]
     fn test_quota_holding_time_byte_order() {
         let qht = QuotaHoldingTime::new(0x12345678);
-        let data = qht.marshal().unwrap();
+        let data = qht.marshal();
 
         // Verify big-endian byte order
         assert_eq!(data, vec![0x12, 0x34, 0x56, 0x78]);
@@ -164,7 +163,7 @@ mod tests {
             ten_minutes,
             one_hour,
         ] {
-            let data = holding_time.marshal().unwrap();
+            let data = holding_time.marshal();
             let unmarshaled = QuotaHoldingTime::unmarshal(&data).unwrap();
             assert_eq!(holding_time, unmarshaled);
         }
