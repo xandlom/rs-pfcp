@@ -60,6 +60,10 @@ name = "header-length-test"
 path = "examples/header-length-test/main.rs"
 
 [[example]]
+name = "advanced_5g_features"
+path = "examples/advanced_5g_features.rs"
+
+[[example]]
 name = "ethernet-session-demo"
 path = "examples/ethernet-session-demo.rs"
 
