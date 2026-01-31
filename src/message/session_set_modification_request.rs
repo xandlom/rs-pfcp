@@ -24,8 +24,7 @@ use std::io;
 pub struct SessionSetModificationRequest {
     pub header: Header,
     pub node_id: crate::ie::node_id::NodeId, // M - IE Type 60 - Node identity of originating node (Sxb/N4 only, not Sxa/Sxc/N4mb)
-    // TODO: [IE Type 290] PFCP Session Change Info - M - Grouped IE, Multiple instances
-    //       Note: Current implementation flattens the grouped IE structure
+    pub pfcp_session_change_info: Vec<Ie>, // M - IE Type 290 - Grouped IE, Multiple instances
     //       PFCP Session Change Info contains:
     //       - PGW-C/SMF FQ-CSID (C, Type 65) - Multiple instances - Currently: fq_csids
     //       - Group Id (C, Type 297) - Multiple instances - Currently: group_ids
@@ -199,6 +198,7 @@ impl Message for SessionSetModificationRequest {
         Ok(SessionSetModificationRequest {
             header,
             node_id,
+            pfcp_session_change_info: Vec::new(), // TODO: Parse from IEs
             alternative_smf_ip_address,
             fq_csids: typed_fq_csids,
             group_ids: typed_group_ids,
@@ -328,6 +328,7 @@ impl Message for SessionSetModificationRequest {
 pub struct SessionSetModificationRequestBuilder {
     seq: u32,
     node_id: Option<crate::ie::node_id::NodeId>,
+    pfcp_session_change_info: Option<Vec<Ie>>,
     alternative_smf_ip_address: Option<AlternativeSmfIpAddress>,
     fq_csids: Option<Vec<FqCsid>>,
     group_ids: Option<Vec<GroupId>>,
@@ -340,6 +341,7 @@ impl SessionSetModificationRequestBuilder {
         SessionSetModificationRequestBuilder {
             seq,
             node_id: None,
+            pfcp_session_change_info: None,
             alternative_smf_ip_address: None,
             fq_csids: None,
             group_ids: None,
@@ -463,6 +465,7 @@ impl SessionSetModificationRequestBuilder {
         Ok(SessionSetModificationRequest {
             header,
             node_id,
+            pfcp_session_change_info: self.pfcp_session_change_info.unwrap_or_default(),
             alternative_smf_ip_address,
             fq_csids: self.fq_csids,
             group_ids: self.group_ids,

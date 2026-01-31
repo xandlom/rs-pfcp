@@ -85,6 +85,8 @@ pub mod path_failure_report;
 pub mod pdi;
 pub mod pdn_type;
 pub mod pdr_id;
+pub mod pfcp_session_change_info;
+pub mod pfcp_session_retention_information;
 pub mod pfcpsm_req_flags;
 pub mod pfcpsrrsp_flags;
 pub mod pfd_contents;
@@ -112,6 +114,7 @@ pub mod rqi;
 pub mod s_tag;
 pub mod sdf_filter;
 pub mod sequence_number;
+pub mod smf_set_id;
 pub mod snssai;
 pub mod source_interface;
 pub mod source_ip_address;
@@ -133,6 +136,7 @@ pub mod ue_ip_address_usage_information;
 pub mod up_function_features;
 pub mod update_bar;
 pub mod update_bar_within_session_report_response;
+pub mod update_duplicating_parameters;
 pub mod update_far;
 pub mod update_forwarding_parameters;
 pub mod update_pdr;
@@ -155,9 +159,13 @@ pub mod volume_threshold;
 
 // Re-export commonly used IE types for convenience
 pub use node_id::NodeId;
+pub use pfcp_session_change_info::PfcpSessionChangeInfo;
+pub use pfcp_session_retention_information::PfcpSessionRetentionInformation;
 pub use query_urr::QueryUrr;
 pub use recovery_time_stamp::RecoveryTimeStamp;
+pub use smf_set_id::SmfSetId;
 pub use traffic_endpoint_id::TrafficEndpointId;
+pub use update_duplicating_parameters::UpdateDuplicatingParameters;
 
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
