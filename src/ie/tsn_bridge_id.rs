@@ -35,7 +35,12 @@ impl TsnBridgeId {
     /// Unmarshal from bytes
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() != 6 {
-            return Err(PfcpError::invalid_length("TSN Bridge ID", IeType::TsnBridgeIdAdvanced, 6, data.len()));
+            return Err(PfcpError::invalid_length(
+                "TSN Bridge ID",
+                IeType::TsnBridgeIdAdvanced,
+                6,
+                data.len(),
+            ));
         }
 
         let mut bridge_id = [0u8; 6];
@@ -59,11 +64,11 @@ mod tests {
     fn test_tsn_bridge_id_marshal_unmarshal() {
         let bridge_id = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
         let tsn_bridge = TsnBridgeId::new(bridge_id);
-        
+
         let marshaled = tsn_bridge.marshal();
         assert_eq!(marshaled.len(), 6);
         assert_eq!(marshaled, bridge_id);
-        
+
         let unmarshaled = TsnBridgeId::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, tsn_bridge);
     }
@@ -72,7 +77,7 @@ mod tests {
     fn test_tsn_bridge_id_from_mac() {
         let mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
         let tsn_bridge = TsnBridgeId::from_mac(mac);
-        
+
         assert_eq!(tsn_bridge.bridge_id, mac);
     }
 
@@ -80,7 +85,7 @@ mod tests {
     fn test_tsn_bridge_id_invalid_length() {
         let invalid_data = vec![0x00, 0x11, 0x22]; // Too short
         assert!(TsnBridgeId::unmarshal(&invalid_data).is_err());
-        
+
         let invalid_data = vec![0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]; // Too long
         assert!(TsnBridgeId::unmarshal(&invalid_data).is_err());
     }
@@ -90,7 +95,7 @@ mod tests {
         let bridge_id = [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC];
         let tsn_bridge = TsnBridgeId::new(bridge_id);
         let ie: Ie = tsn_bridge.into();
-        
+
         assert_eq!(ie.ie_type, IeType::TsnBridgeIdAdvanced);
         assert_eq!(ie.payload, bridge_id);
     }

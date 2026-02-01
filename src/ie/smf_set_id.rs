@@ -20,7 +20,11 @@ impl SmfSetId {
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let id = String::from_utf8(data.to_vec()).map_err(|_| {
-            PfcpError::invalid_value("SMF Set ID", "Invalid UTF-8 data", "Must be valid UTF-8 string")
+            PfcpError::invalid_value(
+                "SMF Set ID",
+                "Invalid UTF-8 data",
+                "Must be valid UTF-8 string",
+            )
         })?;
         Ok(Self::new(id))
     }

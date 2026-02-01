@@ -59,7 +59,12 @@ impl AtssslL {
     /// Unmarshal from bytes
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() != 4 {
-            return Err(PfcpError::invalid_length("ATSSS-LL", IeType::AtssslLAdvanced, 4, data.len()));
+            return Err(PfcpError::invalid_length(
+                "ATSSS-LL",
+                IeType::AtssslLAdvanced,
+                4,
+                data.len(),
+            ));
         }
 
         let parameters = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
@@ -80,11 +85,11 @@ mod tests {
     #[test]
     fn test_atsss_ll_marshal_unmarshal() {
         let atsss_ll = AtssslL::new(0x12345678);
-        
+
         let marshaled = atsss_ll.marshal();
         assert_eq!(marshaled.len(), 4);
         assert_eq!(marshaled, vec![0x12, 0x34, 0x56, 0x78]);
-        
+
         let unmarshaled = AtssslL::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, atsss_ll);
         assert_eq!(unmarshaled.parameters, 0x12345678);
@@ -95,11 +100,11 @@ mod tests {
         let low_latency = AtssslL::with_low_latency();
         assert!(low_latency.has_low_latency());
         assert!(!low_latency.has_steering_mode());
-        
+
         let steering = AtssslL::with_steering_mode();
         assert!(!steering.has_low_latency());
         assert!(steering.has_steering_mode());
-        
+
         let both = AtssslL::with_low_latency_steering();
         assert!(both.has_low_latency());
         assert!(both.has_steering_mode());
@@ -110,7 +115,7 @@ mod tests {
         let atsss_ll = AtssslL::new(0x03); // Both flags set
         assert!(atsss_ll.has_low_latency());
         assert!(atsss_ll.has_steering_mode());
-        
+
         let atsss_ll = AtssslL::new(0x00); // No flags set
         assert!(!atsss_ll.has_low_latency());
         assert!(!atsss_ll.has_steering_mode());
@@ -120,7 +125,7 @@ mod tests {
     fn test_atsss_ll_invalid_length() {
         let invalid_data = vec![0x12, 0x34]; // Too short
         assert!(AtssslL::unmarshal(&invalid_data).is_err());
-        
+
         let invalid_data = vec![0x12, 0x34, 0x56, 0x78, 0x9A]; // Too long
         assert!(AtssslL::unmarshal(&invalid_data).is_err());
     }
@@ -129,7 +134,7 @@ mod tests {
     fn test_atsss_ll_into_ie() {
         let atsss_ll = AtssslL::with_low_latency_steering();
         let ie: Ie = atsss_ll.into();
-        
+
         assert_eq!(ie.ie_type, IeType::AtssslLAdvanced);
         assert_eq!(ie.payload, vec![0x00, 0x00, 0x00, 0x03]);
     }

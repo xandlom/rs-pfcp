@@ -49,9 +49,10 @@ use rs_pfcp::ie::{
     update_far::UpdateFarBuilder,
     update_forwarding_parameters::UpdateForwardingParameters,
     update_qer::UpdateQerBuilder,
+    IeType,
+    IntoIe,
     // Phase 1-3 New IEs
     QueryUrr,
-    IeType, IntoIe,
 };
 use rs_pfcp::message::{
     association_setup_request::AssociationSetupRequestBuilder,
@@ -356,7 +357,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Send Session Modification Request using ergonomic builder API with Phase 1-3 features
         let query_urr1 = QueryUrr::new(1); // Request usage report from URR 1
         let query_urr2 = QueryUrr::new(2); // Request usage report from URR 2
-        
+
         let session_mod_bytes = SessionModificationRequestBuilder::new(seid, 3)
             .fseid(0x0102030405060708u64 + seid, interface_ipv4)
             .update_pdrs(vec![modified_pdr.to_ie()])

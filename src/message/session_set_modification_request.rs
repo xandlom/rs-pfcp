@@ -24,7 +24,7 @@ use std::io;
 pub struct SessionSetModificationRequest {
     pub header: Header,
     pub node_id: crate::ie::node_id::NodeId, // M - IE Type 60 - Node identity of originating node (Sxb/N4 only, not Sxa/Sxc/N4mb)
-    pub pfcp_session_change_info: Vec<Ie>, // M - IE Type 290 - Grouped IE, Multiple instances
+    pub pfcp_session_change_info: Vec<Ie>,   // M - IE Type 290 - Grouped IE, Multiple instances
     //       PFCP Session Change Info contains:
     //       - PGW-C/SMF FQ-CSID (C, Type 65) - Multiple instances - Currently: fq_csids
     //       - Group Id (C, Type 297) - Multiple instances - Currently: group_ids

@@ -25,7 +25,7 @@ impl UserPlanePathRecoveryReport {
     pub fn marshal(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         buf.push(self.remote_gtpu_peer.destination_interface);
-        
+
         let mut flags = 0u8;
         if self.remote_gtpu_peer.ipv4_address.is_some() {
             flags |= 0x01;
@@ -68,7 +68,12 @@ impl UserPlanePathRecoveryReport {
                     data.len(),
                 ));
             }
-            let addr = Ipv4Addr::new(data[offset], data[offset + 1], data[offset + 2], data[offset + 3]);
+            let addr = Ipv4Addr::new(
+                data[offset],
+                data[offset + 1],
+                data[offset + 2],
+                data[offset + 3],
+            );
             offset += 4;
             Some(addr)
         } else {

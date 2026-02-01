@@ -68,8 +68,8 @@ mod tests {
 
     #[test]
     fn test_update_duplicating_parameters_marshal_unmarshal() {
-        let params = UpdateDuplicatingParameters::new(1)
-            .with_outer_header_creation(vec![0x01, 0x02, 0x03]);
+        let params =
+            UpdateDuplicatingParameters::new(1).with_outer_header_creation(vec![0x01, 0x02, 0x03]);
         let marshaled = params.marshal();
         let unmarshaled = UpdateDuplicatingParameters::unmarshal(&marshaled).unwrap();
         assert_eq!(params, unmarshaled);

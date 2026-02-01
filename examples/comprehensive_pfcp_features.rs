@@ -4,20 +4,26 @@
 //! across Phase 1, 2, and 3, showing real-world 5G network scenarios.
 
 use rs_pfcp::ie::{
-    // Phase 1 - Critical Core Features
-    QueryUrr, TrafficEndpointId,
-    // Phase 2 - Core Features  
-    PfcpSessionChangeInfo, SmfSetId, PfcpSessionRetentionInformation, UpdateDuplicatingParameters,
-    // Phase 3 - Advanced Features
-    PfcpasRspFlags, UserPlanePathRecoveryReport, GtpuPathQosControlInformation,
     user_plane_path_recovery_report::RemoteGtpuPeer,
+    GtpuPathQosControlInformation,
     // Core IEs
     NodeId,
+    // Phase 2 - Core Features
+    PfcpSessionChangeInfo,
+    PfcpSessionRetentionInformation,
+    // Phase 3 - Advanced Features
+    PfcpasRspFlags,
+    // Phase 1 - Critical Core Features
+    QueryUrr,
+    SmfSetId,
+    TrafficEndpointId,
+    UpdateDuplicatingParameters,
+    UserPlanePathRecoveryReport,
 };
 use rs_pfcp::message::{
-    session_modification_request::SessionModificationRequestBuilder,
-    session_establishment_request::SessionEstablishmentRequestBuilder,
     association_setup_response::AssociationSetupResponseBuilder,
+    session_establishment_request::SessionEstablishmentRequestBuilder,
+    session_modification_request::SessionModificationRequestBuilder,
 };
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -27,20 +33,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Phase 1 Example: On-demand Usage Reporting
     phase1_usage_reporting_example()?;
-    
+
     // Phase 2 Example: High Availability Session Management
     phase2_high_availability_example()?;
-    
+
     // Phase 3 Example: Advanced Network Resilience
     phase3_network_resilience_example()?;
-    
+
     // Complete Integration Example
     complete_integration_example()?;
 
     println!("\n✅ All examples completed successfully!");
     println!("📊 Total IEs demonstrated: 9 new IEs across 3 phases");
     println!("🎯 Production-ready for enterprise 5G deployments");
-    
+
     Ok(())
 }
 
@@ -63,14 +69,20 @@ fn phase1_usage_reporting_example() -> Result<(), Box<dyn std::error::Error>> {
     )
     .query_urrs(vec![
         query_urr1.into(),
-        query_urr2.into(), 
+        query_urr2.into(),
         query_urr3.into(),
     ])
     .build();
 
     println!("✅ Session Modification Request built with Query URRs");
     println!("   SEID: 0x{:016x}", session_mod_request.header.seid);
-    println!("   Query URRs: {} IEs", session_mod_request.query_urrs.as_ref().map_or(0, |v| v.len()));
+    println!(
+        "   Query URRs: {} IEs",
+        session_mod_request
+            .query_urrs
+            .as_ref()
+            .map_or(0, |v| v.len())
+    );
 
     // Multi-access Traffic Endpoint
     let endpoint_id = TrafficEndpointId::new(5);
@@ -95,8 +107,10 @@ fn phase2_high_availability_example() -> Result<(), Box<dyn std::error::Error>> 
         3600, // 1 hour retention time
         0x01, // Retention flags
     );
-    println!("💾 Session Retention: {} seconds, flags: 0x{:02x}", 
-             retention_info.retention_time, retention_info.flags);
+    println!(
+        "💾 Session Retention: {} seconds, flags: 0x{:02x}",
+        retention_info.retention_time, retention_info.flags
+    );
 
     // Session Set Management
     let session_change_info = PfcpSessionChangeInfo::new(
@@ -111,8 +125,14 @@ fn phase2_high_availability_example() -> Result<(), Box<dyn std::error::Error>> 
     let dup_params = UpdateDuplicatingParameters::new(1) // Destination interface
         .with_outer_header_creation(vec![0x01, 0x02, 0x03, 0x04]);
     println!("🔄 Update Duplicating Parameters:");
-    println!("   Destination Interface: {}", dup_params.destination_interface);
-    println!("   Outer Header Creation: {:?}", dup_params.outer_header_creation);
+    println!(
+        "   Destination Interface: {}",
+        dup_params.destination_interface
+    );
+    println!(
+        "   Outer Header Creation: {:?}",
+        dup_params.outer_header_creation
+    );
 
     Ok(())
 }
@@ -126,34 +146,48 @@ fn phase3_network_resilience_example() -> Result<(), Box<dyn std::error::Error>>
     let association_flags = PfcpasRspFlags::new(0x00)
         .with_session_retained()
         .with_ip_up_selection();
-    
+
     println!("🏁 Association Setup Response Flags:");
-    println!("   Session Retained: {}", association_flags.has_session_retained());
-    println!("   IP-UP Selection: {}", association_flags.has_ip_up_selection());
+    println!(
+        "   Session Retained: {}",
+        association_flags.has_session_retained()
+    );
+    println!(
+        "   IP-UP Selection: {}",
+        association_flags.has_ip_up_selection()
+    );
 
     // Path recovery reporting
     let remote_peer = RemoteGtpuPeer {
         destination_interface: 1,
         ipv4_address: Some(Ipv4Addr::new(192, 168, 100, 1)),
-        ipv6_address: Some(Ipv6Addr::new(0x2001, 0xdb8, 0x85a3, 0, 0, 0x8a2e, 0x370, 0x7334)),
+        ipv6_address: Some(Ipv6Addr::new(
+            0x2001, 0xdb8, 0x85a3, 0, 0, 0x8a2e, 0x370, 0x7334,
+        )),
     };
     let path_recovery = UserPlanePathRecoveryReport::new(remote_peer);
-    
+
     println!("🔄 User Plane Path Recovery Report:");
-    println!("   Interface: {}", path_recovery.remote_gtpu_peer.destination_interface);
+    println!(
+        "   Interface: {}",
+        path_recovery.remote_gtpu_peer.destination_interface
+    );
     println!("   IPv4: {:?}", path_recovery.remote_gtpu_peer.ipv4_address);
     println!("   IPv6: {:?}", path_recovery.remote_gtpu_peer.ipv6_address);
 
     // Advanced QoS control
     let qos_control = GtpuPathQosControlInformation::new(
         1, // Remote GTP-U peer
-        2, // GTP-U path interface type  
+        2, // GTP-U path interface type
         4, // QoS report trigger
     );
-    
+
     println!("📊 GTP-U Path QoS Control:");
     println!("   Remote Peer: {}", qos_control.remote_gtpu_peer);
-    println!("   Interface Type: {}", qos_control.gtpu_path_interface_type);
+    println!(
+        "   Interface Type: {}",
+        qos_control.gtpu_path_interface_type
+    );
     println!("   Report Trigger: {}", qos_control.qos_report_trigger);
 
     Ok(())
@@ -191,7 +225,7 @@ fn complete_integration_example() -> Result<(), Box<dyn std::error::Error>> {
     // Demonstrate all phases working together
     println!("\n📋 Feature Summary:");
     println!("   ✅ Phase 1: Query URR + Traffic Endpoint ID");
-    println!("   ✅ Phase 2: Session Set Management + High Availability");  
+    println!("   ✅ Phase 2: Session Set Management + High Availability");
     println!("   ✅ Phase 3: Network Resilience + Advanced QoS");
     println!("   🎯 Total: 9 new IEs, 97% PFCP compliance");
 
