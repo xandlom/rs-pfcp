@@ -57,15 +57,16 @@
 | Phase 4: Builders | ✅ COMPLETE | 100% | All core and secondary builders migrated |
 | Phase 5: Tests/Examples | 🔄 PARTIAL | ~60% | 2,054 tests passing, examples need work |
 
-**Overall Completion: ~96%** (Updated 2026-01-31)
+**Overall Completion: ~97%** (Updated 2026-02-01)
 
-### 🎯 What's Remaining (~5%):
+### 🎯 What's Remaining (~3%):
 
 - ~~Complete message layer migration~~ ✅ DONE (2026-01-25)
 - ~~Migrate core grouped IE builders~~ ✅ DONE (2026-01-30 AM)
 - ~~Finish remaining 9 secondary builders~~ ✅ DONE (2026-01-30 PM)
 - ~~Migrate 8 simple IE unmarshal methods~~ ✅ DONE (2026-01-31)
-- Migrate remaining 50 simple IE unmarshal methods (low priority)
+- ~~Migrate 9 complex IEs with validation logic~~ ✅ DONE (2026-02-01 Batch 5)
+- Migrate remaining ~40 simple IE unmarshal methods (low priority)
 - Add examples demonstrating PfcpError handling patterns
 - Final CHANGELOG entry
 
@@ -124,18 +125,31 @@ This feature was **accelerated from v0.3.0 to v0.2.5** due to its high value for
   - Fixed dependent usage in usage_report.rs (TimeQuota::to_ie())
   - All 2,054 tests passing with zero warnings
 
+- **2026-02-01:** Complex IE unmarshal migration batch 5 (9 IEs migrated)
+  - additional_usage_reports_information.rs: Simplified API (marshal() -> Vec<u8>, to_ie() -> Ie)
+  - volume_measurement.rs: Kept Result in marshal (flag/value validation)
+  - volume_quota.rs: Kept Result in marshal (flag/value validation)
+  - packet_rate_status.rs: Kept Result in marshal (flag/value validation)
+  - ue_ip_address_usage_information.rs: Kept Result in marshal (flag/value validation)
+  - application_detection_information.rs: Kept Result in marshal (string length validation)
+  - packet_rate.rs: Simplified constructors (new_*() -> Self), simplified marshal() -> Vec<u8>
+  - flow_information.rs: new() kept Result (length check), simplified marshal() -> Vec<u8>
+  - usage_report.rs: Updated dependent code for simplified to_ie() calls
+  - All 2,054 unit tests + 330 doc tests passing
+
 ### 📋 Detailed Breakdown of Remaining Work:
 
 **1. ~~Remaining Builders (9 files)~~:** ✅ COMPLETE (commit 63ec8de)
 - ~~IE Builders (7): pdi.rs, pfd_contents.rs, ethernet_context_information.rs, f_teid.rs, ethernet_packet_filter.rs, ethernet_traffic_information.rs, usage_report.rs~~
 - ~~Message Builders (2): session_set_modification_request.rs, session_set_modification_response.rs~~
 
-**2. Simple IE unmarshal methods (~63 IEs remaining):**
-- ~~8 IEs migrated in batch 1 (2026-01-31)~~
+**2. Simple IE unmarshal methods (~40 IEs remaining):**
+- ~~21 IEs migrated in batches 1-4 (2026-01-31)~~
+- ~~9 complex IEs migrated in batch 5 (2026-02-01): volume_measurement, volume_quota, packet_rate_status, ue_ip_address_usage_information, application_detection_information, packet_rate, flow_information, additional_usage_reports_information~~
 - Network IEs (alternative SMF IP, CP IP address, etc.)
-- Application IEs (application detection, application instance ID)
-- Time-related IEs (start_time, time_of_first_packet, time_of_last_packet, etc.)
-- Volume/measurement IEs (volume_quota, volume_threshold, volume_measurement)
+- ~~Application IEs (application detection, application instance ID)~~ ✅ DONE in Batch 5
+- ~~Time-related IEs (start_time, time_of_first_packet, time_of_last_packet, etc.)~~ ✅ DONE in earlier batches
+- ~~Volume/measurement IEs (volume_quota, volume_threshold, volume_measurement)~~ ✅ DONE in Batch 5
 - Miscellaneous simple IEs
 - **Priority:** Lower (doesn't affect builder APIs, can be batched)
 
