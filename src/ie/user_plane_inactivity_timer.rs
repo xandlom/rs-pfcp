@@ -1,8 +1,7 @@
 //! User Plane Inactivity Timer IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::time::Duration;
 
 /// Represents the User Plane Inactivity Timer Information Element.
@@ -72,11 +71,13 @@ impl UserPlaneInactivityTimer {
     }
 
     /// Unmarshals a byte slice into a User Plane Inactivity Timer IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() != 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("User Plane Inactivity Timer", 4),
+            return Err(PfcpError::invalid_length(
+                "User Plane Inactivity Timer",
+                IeType::UserPlaneInactivityTimer,
+                4,
+                payload.len(),
             ));
         }
 
@@ -212,28 +213,22 @@ mod tests {
         // Test with too short payload
         let result = UserPlaneInactivityTimer::unmarshal(&[0x01, 0x02]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("requires at least 4 byte"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
 
         // Test with too long payload
         let result = UserPlaneInactivityTimer::unmarshal(&[0x01, 0x02, 0x03, 0x04, 0x05]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("requires at least 4 byte"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_user_plane_inactivity_timer_unmarshal_empty() {
         let result = UserPlaneInactivityTimer::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("requires at least 4 byte"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

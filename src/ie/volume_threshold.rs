@@ -2,7 +2,8 @@
 
 //! Volume Threshold Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct VolumeThreshold {
@@ -58,11 +59,13 @@ impl VolumeThreshold {
         data
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not enough data for VolumeThreshold",
+            return Err(PfcpError::invalid_length(
+                "Volume Threshold",
+                IeType::VolumeThreshold,
+                1,
+                0,
             ));
         }
         let flags = data[0];
@@ -73,9 +76,11 @@ impl VolumeThreshold {
         let mut offset = 1;
         let total_volume = if tovol {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for Total Volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Threshold (total volume)",
+                    IeType::VolumeThreshold,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
@@ -87,9 +92,11 @@ impl VolumeThreshold {
 
         let uplink_volume = if ulvol {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for Uplink Volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Threshold (uplink volume)",
+                    IeType::VolumeThreshold,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
@@ -101,9 +108,11 @@ impl VolumeThreshold {
 
         let downlink_volume = if dlvol {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for Downlink Volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Threshold (downlink volume)",
+                    IeType::VolumeThreshold,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());

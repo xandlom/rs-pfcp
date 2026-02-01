@@ -1,7 +1,7 @@
 //! APN/DNN IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::str::FromStr;
 
 /// Represents the APN/DNN (Access Point Name / Data Network Name) Information Element.
@@ -65,7 +65,7 @@ impl ApnDnn {
     }
 
     /// Decodes the APN/DNN name from DNS label format.
-    fn decode_name(encoded: &[u8]) -> Result<String, io::Error> {
+    fn decode_name(encoded: &[u8]) -> Result<String, PfcpError> {
         if encoded.is_empty() {
             return Ok(String::new());
         }
@@ -83,16 +83,15 @@ impl ApnDnn {
             }
 
             if offset + label_len > encoded.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid APN/DNN label length",
+                return Err(PfcpError::invalid_value(
+                    "APN/DNN",
+                    "label_length",
+                    "label length exceeds available data",
                 ));
             }
 
-            let label =
-                String::from_utf8(encoded[offset..offset + label_len].to_vec()).map_err(|_| {
-                    io::Error::new(io::ErrorKind::InvalidData, "Invalid APN/DNN label UTF-8")
-                })?;
+            let label = String::from_utf8(encoded[offset..offset + label_len].to_vec())
+                .map_err(|_| PfcpError::invalid_value("APN/DNN", "label", "invalid UTF-8"))?;
 
             labels.push(label);
             offset += label_len;
@@ -107,7 +106,7 @@ impl ApnDnn {
     }
 
     /// Unmarshals a byte slice into an APN/DNN IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let name = Self::decode_name(payload)?;
         Ok(ApnDnn { name })
     }
@@ -251,10 +250,8 @@ mod tests {
         let malformed = vec![10, b'a', b'b', b'c']; // Says 10 bytes but only 3 available
         let result = ApnDnn::unmarshal(&malformed);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid APN/DNN label length"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -263,10 +260,8 @@ mod tests {
         let invalid_utf8 = vec![3, 0xFF, 0xFE, 0xFD, 0]; // Invalid UTF-8 sequence
         let result = ApnDnn::unmarshal(&invalid_utf8);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid APN/DNN label UTF-8"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]

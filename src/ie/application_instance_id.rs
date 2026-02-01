@@ -4,8 +4,8 @@
 //! that provides application services for detected application traffic.
 //! Per 3GPP TS 29.244 Section 8.2.60, this is an OctetString type IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Application Instance ID
 ///
@@ -112,9 +112,10 @@ impl ApplicationInstanceId {
     /// let parsed = ApplicationInstanceId::unmarshal(&bytes).unwrap();
     /// assert_eq!(app_id, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
-        let instance_id = String::from_utf8(data.to_vec())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
+        let instance_id = String::from_utf8(data.to_vec()).map_err(|_| {
+            PfcpError::invalid_value("Application Instance ID", "instance_id", "invalid UTF-8")
+        })?;
         Ok(ApplicationInstanceId { instance_id })
     }
 
@@ -193,7 +194,8 @@ mod tests {
         let invalid_data = vec![0xFF, 0xFE, 0xFD]; // Invalid UTF-8
         let result = ApplicationInstanceId::unmarshal(&invalid_data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
