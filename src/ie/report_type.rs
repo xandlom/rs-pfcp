@@ -4,9 +4,8 @@
 //! Function to the Control Plane Function in PFCP messages.
 //! Per 3GPP TS 29.244 Section 8.2.21.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Report Type
 ///
@@ -190,11 +189,13 @@ impl ReportType {
     /// let parsed = ReportType::unmarshal(&bytes).unwrap();
     /// assert_eq!(report, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("Report Type", 1),
+            return Err(PfcpError::invalid_length(
+                "Report Type",
+                IeType::ReportType,
+                1,
+                0,
             ));
         }
 
@@ -491,7 +492,8 @@ mod tests {
         let data = vec![];
         let result = ReportType::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

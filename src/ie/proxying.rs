@@ -3,9 +3,8 @@
 //! Indicates whether proxying functionality is enabled (ARP proxying or ND proxying).
 //! Used in ForwardingParameters for IP address resolution proxying.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Proxying IE
 ///
@@ -78,11 +77,13 @@ impl Proxying {
     }
 
     /// Unmarshals bytes into a Proxying IE
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Proxying"),
+            return Err(PfcpError::invalid_length(
+                "Proxying",
+                IeType::Proxying,
+                1,
+                0,
             ));
         }
 

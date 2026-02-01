@@ -4,9 +4,8 @@
 //! is carrying Ethernet frames or untagged Ethernet frames. Per 3GPP TS 29.244 Section 8.2.102,
 //! this IE provides information about the Ethernet encapsulation used in the session.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Ethernet PDU Session Information
 ///
@@ -153,11 +152,13 @@ impl EthernetPduSessionInformation {
     /// let parsed = EthernetPduSessionInformation::unmarshal(&bytes).unwrap();
     /// assert_eq!(info, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("Ethernet PDU Session Information", 1),
+            return Err(PfcpError::invalid_length(
+                "Ethernet PDU Session Information",
+                IeType::EthernetPduSessionInformation,
+                1,
+                0,
             ));
         }
 
@@ -256,8 +257,7 @@ mod tests {
         let result = EthernetPduSessionInformation::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires at least 1 byte"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

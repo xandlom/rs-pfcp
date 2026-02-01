@@ -1,8 +1,7 @@
 //! PDN Type IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents the PDN Type Information Element.
 /// Used to indicate the type of PDN connection (IPv4, IPv6, IPv4v6, Non-IP, Ethernet).
@@ -111,12 +110,9 @@ impl PdnType {
     }
 
     /// Unmarshals a byte slice into a PDN Type IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("PDN Type"),
-            ));
+            return Err(PfcpError::invalid_length("PDN Type", IeType::PdnType, 1, 0));
         }
 
         let pdn_type = PdnTypeValue::from(payload[0]);
@@ -233,10 +229,8 @@ mod tests {
     fn test_pdn_type_unmarshal_empty() {
         let result = PdnType::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("payload too short"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

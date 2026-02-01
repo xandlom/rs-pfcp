@@ -71,7 +71,7 @@ impl SessionEstablishmentResponse {
     }
 
     /// Returns the PDN type if present.
-    pub fn pdn_type(&self) -> Option<Result<crate::ie::pdn_type::PdnType, io::Error>> {
+    pub fn pdn_type(&self) -> Option<Result<crate::ie::pdn_type::PdnType, PfcpError>> {
         self.pdn_type
             .as_ref()
             .map(|ie| crate::ie::pdn_type::PdnType::unmarshal(&ie.payload))
