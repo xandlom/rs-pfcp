@@ -4,8 +4,8 @@
 //! value for marking downlink packets to indicate QoS treatment.
 //! Per 3GPP TS 29.244 Section 8.2.66.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// DL Flow Level Marking
 ///
@@ -111,11 +111,13 @@ impl DlFlowLevelMarking {
     /// let parsed = DlFlowLevelMarking::unmarshal(&bytes).unwrap();
     /// assert_eq!(marking, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "DL Flow Level Marking payload too short: expected at least 2 bytes",
+            return Err(PfcpError::invalid_length(
+                "DL Flow Level Marking",
+                IeType::DlFlowLevelMarking,
+                2,
+                data.len(),
             ));
         }
 
@@ -217,7 +219,8 @@ mod tests {
         let data = vec![40]; // Only 1 byte
         let result = DlFlowLevelMarking::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

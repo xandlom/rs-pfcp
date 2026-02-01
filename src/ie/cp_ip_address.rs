@@ -1,7 +1,7 @@
 //! CP IP Address Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a Control Plane IP Address.
@@ -89,11 +89,13 @@ impl CpIpAddress {
     }
 
     /// Unmarshals a CP IP Address from a byte slice.
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "CP IP Address data is empty",
+            return Err(PfcpError::invalid_length(
+                "CP IP Address",
+                IeType::CpIpAddress,
+                1,
+                0,
             ));
         }
 
@@ -103,17 +105,19 @@ impl CpIpAddress {
 
         // Check spare bits are zero
         if (flags & 0xFC) != 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Spare bits in flags must be zero",
+            return Err(PfcpError::invalid_value(
+                "CP IP Address flags",
+                format!("0x{:02X}", flags),
+                "spare bits must be zero",
             ));
         }
 
         // At least one address must be present
         if !v4 && !v6 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "At least one IP address (IPv4 or IPv6) must be present",
+            return Err(PfcpError::invalid_value(
+                "CP IP Address flags",
+                format!("0x{:02X}", flags),
+                "at least one IP address must be present",
             ));
         }
 
@@ -124,9 +128,11 @@ impl CpIpAddress {
         // Parse IPv4 address if present
         if v4 {
             if data.len() < offset + 4 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for IPv4 address",
+                return Err(PfcpError::invalid_length(
+                    "CP IP Address (IPv4)",
+                    IeType::CpIpAddress,
+                    offset + 4,
+                    data.len(),
                 ));
             }
             let mut octets = [0u8; 4];
@@ -138,9 +144,11 @@ impl CpIpAddress {
         // Parse IPv6 address if present
         if v6 {
             if data.len() < offset + 16 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for IPv6 address",
+                return Err(PfcpError::invalid_length(
+                    "CP IP Address (IPv6)",
+                    IeType::CpIpAddress,
+                    offset + 16,
+                    data.len(),
                 ));
             }
             let mut octets = [0u8; 16];

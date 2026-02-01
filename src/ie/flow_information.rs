@@ -159,7 +159,7 @@ impl FlowInformation {
     ///     "permit out 6 from 10.0.0.0/8 to assigned".to_string()
     /// )?;
     /// assert_eq!(flow.value(), "permit out 6 from 10.0.0.0/8 to assigned");
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
     pub fn value(&self) -> &str {
         &self.value
