@@ -5,8 +5,8 @@
 //! and the specific Rule ID that failed.
 //! Per 3GPP TS 29.244 Section 8.2.80.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Rule Type enumeration
 ///
@@ -25,15 +25,16 @@ pub enum RuleIdType {
 
 impl RuleIdType {
     /// Convert from byte value
-    fn from_u8(value: u8) -> Result<Self, io::Error> {
+    fn from_u8(value: u8) -> Result<Self, PfcpError> {
         match value {
             0 => Ok(RuleIdType::Pdr),
             1 => Ok(RuleIdType::Far),
             2 => Ok(RuleIdType::Qer),
             3 => Ok(RuleIdType::Urr),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Invalid Rule ID Type: {}", value),
+            _ => Err(PfcpError::invalid_value(
+                "Rule ID Type",
+                value.to_string(),
+                "must be 0 (PDR), 1 (FAR), 2 (QER), or 3 (URR)",
             )),
         }
     }
@@ -234,11 +235,13 @@ impl FailedRuleId {
     /// let parsed = FailedRuleId::unmarshal(&bytes).unwrap();
     /// assert_eq!(original, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Failed Rule ID payload too short: expected at least 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Failed Rule ID",
+                IeType::FailedRuleId,
+                1,
+                0,
             ));
         }
 
@@ -250,9 +253,11 @@ impl FailedRuleId {
             RuleIdType::Pdr => {
                 // PDR requires 3 bytes total (1 type + 2 ID)
                 if data.len() < 3 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("Failed PDR ID requires 3 bytes, got {}", data.len()),
+                    return Err(PfcpError::invalid_length(
+                        "Failed PDR ID",
+                        IeType::FailedRuleId,
+                        3,
+                        data.len(),
                     ));
                 }
                 u16::from_be_bytes([data[1], data[2]]) as u32
@@ -260,13 +265,11 @@ impl FailedRuleId {
             RuleIdType::Far | RuleIdType::Qer | RuleIdType::Urr => {
                 // FAR/QER/URR require 5 bytes total (1 type + 4 ID)
                 if data.len() < 5 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!(
-                            "Failed {:#?} ID requires 5 bytes, got {}",
-                            rule_type,
-                            data.len()
-                        ),
+                    return Err(PfcpError::invalid_length(
+                        "Failed FAR/QER/URR ID",
+                        IeType::FailedRuleId,
+                        5,
+                        data.len(),
                     ));
                 }
                 u32::from_be_bytes([data[1], data[2], data[3], data[4]])
@@ -412,7 +415,8 @@ mod tests {
         let data = vec![];
         let result = FailedRuleId::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -420,7 +424,8 @@ mod tests {
         let data = vec![0x00, 0x12]; // Only 2 bytes for PDR (needs 3)
         let result = FailedRuleId::unmarshal(&data);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("requires 3 bytes"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -428,7 +433,8 @@ mod tests {
         let data = vec![0x01, 0x12, 0x34]; // Only 3 bytes for FAR (needs 5)
         let result = FailedRuleId::unmarshal(&data);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("requires 5 bytes"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -436,10 +442,8 @@ mod tests {
         let data = vec![0x0F, 0x00, 0x00, 0x00, 0x00]; // Invalid type
         let result = FailedRuleId::unmarshal(&data);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid Rule ID Type"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]

@@ -6,9 +6,9 @@
 //! MAC addresses are used to identify source or destination devices in Ethernet networks,
 //! enabling MAC-based traffic filtering and forwarding in 5G UPF.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use std::fmt;
-use std::io;
 
 /// MAC Address (48-bit / 6-byte address)
 ///
@@ -233,11 +233,13 @@ impl MacAddress {
     /// let parsed = MacAddress::unmarshal(&bytes).unwrap();
     /// assert_eq!(mac, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "MAC Address IE requires at least 1 byte for flags",
+            return Err(PfcpError::invalid_length(
+                "MAC Address",
+                IeType::MacAddress,
+                1,
+                0,
             ));
         }
 
@@ -250,9 +252,10 @@ impl MacAddress {
 
         // Check spare bits (bits 5-8 should be 0)
         if (flags & 0xF0) != 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("MAC Address IE has invalid spare bits: 0x{:02X}", flags),
+            return Err(PfcpError::invalid_value(
+                "MAC Address flags",
+                format!("0x{:02X}", flags),
+                "spare bits must be zero",
             ));
         }
 
@@ -265,9 +268,11 @@ impl MacAddress {
         // Parse Source MAC address
         if sour {
             if data.len() < offset + 6 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "MAC Address IE too short for source MAC",
+                return Err(PfcpError::invalid_length(
+                    "MAC Address (source)",
+                    IeType::MacAddress,
+                    offset + 6,
+                    data.len(),
                 ));
             }
             let mut mac = [0u8; 6];
@@ -279,9 +284,11 @@ impl MacAddress {
         // Parse Destination MAC address
         if dest {
             if data.len() < offset + 6 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "MAC Address IE too short for destination MAC",
+                return Err(PfcpError::invalid_length(
+                    "MAC Address (destination)",
+                    IeType::MacAddress,
+                    offset + 6,
+                    data.len(),
                 ));
             }
             let mut mac = [0u8; 6];
@@ -293,9 +300,11 @@ impl MacAddress {
         // Parse Upper Source MAC address (for range)
         if usou {
             if data.len() < offset + 6 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "MAC Address IE too short for upper source MAC",
+                return Err(PfcpError::invalid_length(
+                    "MAC Address (upper source)",
+                    IeType::MacAddress,
+                    offset + 6,
+                    data.len(),
                 ));
             }
             let mut mac = [0u8; 6];
@@ -307,9 +316,11 @@ impl MacAddress {
         // Parse Upper Destination MAC address (for range)
         if udes {
             if data.len() < offset + 6 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "MAC Address IE too short for upper destination MAC",
+                return Err(PfcpError::invalid_length(
+                    "MAC Address (upper destination)",
+                    IeType::MacAddress,
+                    offset + 6,
+                    data.len(),
                 ));
             }
             let mut mac = [0u8; 6];
@@ -416,7 +427,8 @@ mod tests {
         let data = [0x01, 0x11, 0x22];
         let result = MacAddress::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -424,10 +436,7 @@ mod tests {
         let result = MacAddress::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err
-            .to_string()
-            .contains("requires at least 1 byte for flags"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

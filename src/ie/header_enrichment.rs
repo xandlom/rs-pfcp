@@ -3,9 +3,8 @@
 //! Specifies HTTP header or URL/URI enrichment for traffic steering
 //! and service identification in 5G networks.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Header Type for Header Enrichment
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,13 +14,14 @@ pub enum HeaderType {
 }
 
 impl HeaderType {
-    fn from_u8(value: u8) -> Result<Self, io::Error> {
+    fn from_u8(value: u8) -> Result<Self, PfcpError> {
         match value {
             0 => Ok(HeaderType::HttpHeaderField),
             1 => Ok(HeaderType::HttpUrlUri),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Invalid Header Type value: {}", value),
+            _ => Err(PfcpError::invalid_value(
+                "Header Type",
+                value.to_string(),
+                "must be 0 (HttpHeaderField) or 1 (HttpUrlUri)",
             )),
         }
     }
@@ -125,11 +125,13 @@ impl HeaderEnrichment {
     }
 
     /// Unmarshals bytes into a Header Enrichment IE
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Header Enrichment"),
+            return Err(PfcpError::invalid_length(
+                "Header Enrichment",
+                IeType::HeaderEnrichment,
+                4,
+                payload.len(),
             ));
         }
 
@@ -147,26 +149,27 @@ impl HeaderEnrichment {
         offset += 1;
 
         if offset + name_len > payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Header Enrichment name length exceeds payload",
+            return Err(PfcpError::invalid_length(
+                "Header Enrichment (name)",
+                IeType::HeaderEnrichment,
+                offset + name_len,
+                payload.len(),
             ));
         }
 
         let name =
             String::from_utf8(payload[offset..offset + name_len].to_vec()).map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid UTF-8 in Header Enrichment name",
-                )
+                PfcpError::invalid_value("Header Enrichment name", "bytes", "not valid UTF-8")
             })?;
         offset += name_len;
 
         // Length of Value (1 byte)
         if offset >= payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing value length in Header Enrichment",
+            return Err(PfcpError::invalid_length(
+                "Header Enrichment (value length)",
+                IeType::HeaderEnrichment,
+                offset + 1,
+                payload.len(),
             ));
         }
 
@@ -174,18 +177,17 @@ impl HeaderEnrichment {
         offset += 1;
 
         if offset + value_len > payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Header Enrichment value length exceeds payload",
+            return Err(PfcpError::invalid_length(
+                "Header Enrichment (value)",
+                IeType::HeaderEnrichment,
+                offset + value_len,
+                payload.len(),
             ));
         }
 
         let value =
             String::from_utf8(payload[offset..offset + value_len].to_vec()).map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid UTF-8 in Header Enrichment value",
-                )
+                PfcpError::invalid_value("Header Enrichment value", "bytes", "not valid UTF-8")
             })?;
 
         Ok(HeaderEnrichment {

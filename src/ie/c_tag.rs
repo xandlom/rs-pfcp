@@ -5,8 +5,8 @@
 //!
 //! C-TAG consists of priority, DEI (Drop Eligible Indicator), and VID (VLAN ID).
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// C-TAG (Customer VLAN Tag)
 ///
@@ -76,17 +76,19 @@ impl CTag {
     /// assert_eq!(ctag.dei(), true);
     /// assert_eq!(ctag.vid(), 1000);
     /// ```
-    pub fn new(pcp: u8, dei: bool, vid: u16) -> Result<Self, io::Error> {
+    pub fn new(pcp: u8, dei: bool, vid: u16) -> Result<Self, PfcpError> {
         if pcp > Self::MAX_PRIORITY {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("C-TAG PCP {} exceeds maximum {}", pcp, Self::MAX_PRIORITY),
+            return Err(PfcpError::invalid_value(
+                "C-TAG PCP",
+                pcp.to_string(),
+                format!("exceeds maximum {}", Self::MAX_PRIORITY),
             ));
         }
         if vid > Self::MAX_VID {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("C-TAG VID {} exceeds maximum {}", vid, Self::MAX_VID),
+            return Err(PfcpError::invalid_value(
+                "C-TAG VID",
+                vid.to_string(),
+                format!("exceeds maximum {}", Self::MAX_VID),
             ));
         }
         Ok(CTag { pcp, dei, vid })
@@ -145,11 +147,13 @@ impl CTag {
     /// let parsed = CTag::unmarshal(&bytes).unwrap();
     /// assert_eq!(ctag, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 3 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("C-TAG requires 3 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "C-TAG",
+                IeType::CTag,
+                3,
+                data.len(),
             ));
         }
 
@@ -202,14 +206,16 @@ mod tests {
     fn test_ctag_new_invalid_pcp() {
         let result = CTag::new(8, false, 100);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("PCP"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
     fn test_ctag_new_invalid_vid() {
         let result = CTag::new(3, false, 4096);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("VID"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -252,8 +258,7 @@ mod tests {
         let result = CTag::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 3 bytes"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
