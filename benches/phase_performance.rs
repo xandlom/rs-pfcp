@@ -148,7 +148,7 @@ fn bench_memory_patterns(c: &mut Criterion) {
     });
     
     group.bench_function("ie_marshal_batch", |b| {
-        let ies: Vec<_> = (0..100).map(|i| QueryUrr::new(i)).collect();
+        let ies: Vec<_> = (0..100).map(QueryUrr::new).collect();
         b.iter(|| {
             for ie in &ies {
                 black_box(ie.marshal());

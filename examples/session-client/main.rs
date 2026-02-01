@@ -50,9 +50,7 @@ use rs_pfcp::ie::{
     update_forwarding_parameters::UpdateForwardingParameters,
     update_qer::UpdateQerBuilder,
     // Phase 1-3 New IEs
-    QueryUrr, TrafficEndpointId, PfcpSessionChangeInfo, SmfSetId,
-    PfcpSessionRetentionInformation, UpdateDuplicatingParameters,
-    PfcpasRspFlags, UserPlanePathRecoveryReport, GtpuPathQosControlInformation,
+    QueryUrr,
     IeType, IntoIe,
 };
 use rs_pfcp::message::{

@@ -14,9 +14,7 @@ use rs_pfcp::ie::{
     // Core IEs for context
     QueryUrr, TrafficEndpointId, PfcpSessionChangeInfo, SmfSetId,
 };
-use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
 use rs_pfcp::message::session_modification_request::SessionModificationRequestBuilder;
-use std::net::Ipv4Addr;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Advanced 5G Features Demo");

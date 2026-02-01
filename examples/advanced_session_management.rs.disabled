@@ -4,6 +4,8 @@
 //! from Phase 1 (Query URR), Phase 2 (Session Set Management), 
 //! and Phase 3 (Network Resilience) implementations.
 
+#![allow(unused_variables, dead_code, unused_imports)]
+
 use rs_pfcp::ie::{
     // New Phase 1-3 IEs
     QueryUrr, TrafficEndpointId, PfcpSessionChangeInfo, SmfSetId,
@@ -11,8 +13,9 @@ use rs_pfcp::ie::{
     PfcpasRspFlags, UserPlanePathRecoveryReport, GtpuPathQosControlInformation,
     user_plane_path_recovery_report::RemoteGtpuPeer,
     // Core IEs
-    NodeId, fseid::Fseid, cause::{Cause, CauseValue}, CreatePdr, CreateFar, Pdi, 
-    SourceInterface, DestinationInterface, ApplyAction, Precedence, PdrId, FarId,
+    NodeId, fseid::Fseid, 
+    create_pdr::CreatePdr, create_far::CreateFar, pdi::Pdi, 
+    precedence::Precedence, pdr_id::PdrId, far_id::FarId,
 };
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
@@ -56,7 +59,7 @@ fn association_setup_with_ha() -> Result<(), Box<dyn std::error::Error>> {
     let retention_info = PfcpSessionRetentionInformation::new(7200, 0x01); // 2 hours
 
     let association_request = AssociationSetupRequestBuilder::new(1)
-        .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 1, 0, 100)).into()) // SMF IP
+        .node_id(Ipv4Addr::new(10, 1, 0, 100)) // SMF IP
         .recovery_time_stamp(SystemTime::now())
         .build();
 
@@ -90,7 +93,7 @@ fn session_establishment_multi_access() -> Result<(), Box<dyn std::error::Error>
 
     let session_id = 0x123456789ABCDEF0u64;
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 1, 0, 100));
-    let fseid = Fseid::new(session_id, Ipv4Addr::new(10, 1, 0, 100));
+    let fseid = Fseid::new(session_id, Some(Ipv4Addr::new(10, 1, 0, 100)), None);
 
     // Create PDR for uplink traffic with traffic endpoint
     let uplink_pdi = Pdi::uplink_access()
@@ -123,7 +126,7 @@ fn session_establishment_multi_access() -> Result<(), Box<dyn std::error::Error>
 
     // UPF responds with session acceptance
     let session_response = SessionEstablishmentResponseBuilder::accepted(session_id, 10)
-        .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 1, 0, 200)).into())
+        .node_id(Ipv4Addr::new(10, 1, 0, 200))
         .fseid(0x987654321FEDCBA0, Ipv4Addr::new(10, 1, 0, 200))
         .build();
 
@@ -149,7 +152,7 @@ fn session_modification_usage_reporting() -> Result<(), Box<dyn std::error::Erro
     let dup_params = UpdateDuplicatingParameters::new(1) // Core interface
         .with_outer_header_creation(vec![0x40, 0x00, 0x00, 0x00]); // GTP-U header
 
-    let modification_request = SessionModificationRequestBuilder::new(session_id, 20)
+    let _modification_request = SessionModificationRequestBuilder::new(session_id, 20)
         .query_urrs(vec![
             query_urr_voice.into(),
             query_urr_data.into(),

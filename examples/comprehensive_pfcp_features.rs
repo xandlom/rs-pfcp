@@ -165,10 +165,10 @@ fn complete_integration_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("================================================");
 
     // Scenario: SMF establishing session with UPF in high-availability setup
-    let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+    let _node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
 
     // Session establishment with advanced features
-    let session_request = SessionEstablishmentRequestBuilder::new(
+    let _session_request = SessionEstablishmentRequestBuilder::new(
         0x123456789ABCDEF0, // Session ID
         100,                // Sequence number
     )
@@ -180,7 +180,7 @@ fn complete_integration_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("   SEID: 0x{:016x}", 0x123456789ABCDEF0u64);
 
     // Association setup response with advanced flags
-    let association_response = AssociationSetupResponseBuilder::new(101)
+    let _association_response = AssociationSetupResponseBuilder::new(101)
         .cause_accepted()
         .node_id(Ipv4Addr::new(10, 0, 0, 2))
         .build();
