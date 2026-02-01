@@ -20,6 +20,9 @@ target
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Kiro IDE config
+.kiro/
+
 # 3GPP specification documentation
 docs/ts_129244v181000p/
 *.pcap

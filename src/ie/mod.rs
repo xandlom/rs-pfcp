@@ -159,15 +159,6 @@ pub mod user_plane_path_recovery_report;
 pub mod volume_measurement;
 pub mod volume_quota;
 
-// Advanced 5G Features - TSN (Time-Sensitive Networking)
-pub mod tsn_bridge_id;
-pub mod tsn_port_id;
-
-// Advanced 5G Features - ATSSS (Access Traffic Steering, Switching and Splitting)
-pub mod atsss_ll;
-
-// Advanced 5G Features - MBS (Multicast/Broadcast Service)
-pub mod mbs_session_id;
 pub mod volume_threshold;
 
 // Re-export commonly used IE types for convenience
@@ -182,12 +173,6 @@ pub use smf_set_id::SmfSetId;
 pub use traffic_endpoint_id::TrafficEndpointId;
 pub use update_duplicating_parameters::UpdateDuplicatingParameters;
 pub use user_plane_path_recovery_report::UserPlanePathRecoveryReport;
-
-// Advanced 5G Features re-exports
-pub use atsss_ll::AtssslL;
-pub use mbs_session_id::MbsSessionId;
-pub use tsn_bridge_id::TsnBridgeId;
-pub use tsn_port_id::TsnPortId;
 
 // IE Type definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -528,13 +513,6 @@ pub enum IeType {
     Uri = 352,
     UeLevelMeasurementsConfiguration = 353,
     ReportingControlInformation = 389,
-    // Advanced 5G Features - TSN (Time-Sensitive Networking)
-    TsnBridgeIdAdvanced = 500,
-    TsnPortIdAdvanced = 501,
-    // Advanced 5G Features - ATSSS (Access Traffic Steering, Switching and Splitting)
-    AtssslLAdvanced = 510,
-    // Advanced 5G Features - MBS (Multicast/Broadcast Service)
-    MbsSessionIdAdvanced = 520,
     Unknown = 0,
 }
 
@@ -874,13 +852,6 @@ impl From<u16> for IeType {
             352 => IeType::Uri,
             353 => IeType::UeLevelMeasurementsConfiguration,
             389 => IeType::ReportingControlInformation,
-            // Advanced 5G Features - TSN
-            500 => IeType::TsnBridgeIdAdvanced,
-            501 => IeType::TsnPortIdAdvanced,
-            // Advanced 5G Features - ATSSS
-            510 => IeType::AtssslLAdvanced,
-            // Advanced 5G Features - MBS
-            520 => IeType::MbsSessionIdAdvanced,
             _ => IeType::Unknown,
         }
     }

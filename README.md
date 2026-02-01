@@ -5,7 +5,7 @@
 [![Documentation](https://docs.rs/rs-pfcp/badge.svg)](https://docs.rs/rs-pfcp)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-A **high-performance Rust implementation** of the PFCP (Packet Forwarding Control Protocol) for 5G networks, providing **98%+ compliance** with 3GPP TS 29.244 Release 18 specification and **next-generation 5G capabilities**.
+A **high-performance Rust implementation** of the PFCP (Packet Forwarding Control Protocol) for 5G networks, providing comprehensive compliance with 3GPP TS 29.244 Release 18 specification.
 
 ## 🚀 What is PFCP?
 
@@ -16,12 +16,11 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **98%+ 3GPP TS 29.244 Release 18 Compliance** - 160+ Information Elements implemented with complete core session management
-- 🔥 **High Performance** - Sub-microsecond binary protocol implementation (24-55ns IE operations)
-- 🧪 **Battle Tested** - 2,100+ comprehensive tests with full round-trip serialization validation
+- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 120+ Information Elements implemented with complete core session management
+- 🔥 **High Performance** - Sub-microsecond binary protocol implementation
+- 🧪 **Battle Tested** - 1,900+ comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
-- 🚀 **Advanced 5G Features** - TSN, ATSSS, MBS support for next-generation use cases
 
 ### Ergonomic Builder API
 
@@ -62,10 +61,9 @@ let pdr_count = msg.ies(IeType::CreatePdr).count();
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **160+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **120+ Information Elements** implemented (270+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting, Ethernet PDU sessions
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
-- ✅ **Next-Gen 5G** - TSN (Time-Sensitive Networking), ATSSS (Access Traffic Steering), MBS (Multicast/Broadcast Service)
 
 ## 🏃‍♂️ Quick Start
 
@@ -114,31 +112,6 @@ match parsed_msg.msg_type() {
     _ => {} // Handle other message types
 }
 ```
-
-### Advanced 5G Features
-
-The library includes comprehensive support for next-generation 5G use cases:
-
-```rust
-use rs_pfcp::ie::{TsnBridgeId, TsnPortId, AtssslL, MbsSessionId};
-
-// TSN (Time-Sensitive Networking) for Industrial IoT
-let tsn_bridge = TsnBridgeId::from_mac([0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E]);
-let tsn_port = TsnPortId::new(1001);
-
-// ATSSS (Access Traffic Steering) for Multi-Access
-let atsss_ll = AtssslL::with_low_latency_steering();
-assert!(atsss_ll.has_low_latency());
-assert!(atsss_ll.has_steering_mode());
-
-// MBS (Multicast/Broadcast Service) for Content Delivery
-let mbs_session = MbsSessionId::new(0x12345678);
-```
-
-**Use Cases:**
-- **Industrial IoT**: Factory automation with deterministic networking
-- **Multi-Access**: WiFi + 5G cellular aggregation and seamless handover
-- **Broadcast Services**: Live streaming, emergency alerts, content distribution
 
 ### Message Comparison & Validation
 
@@ -201,11 +174,8 @@ cargo run --example pcap-reader -- --pcap traffic.pcap --format yaml
 cargo run --example message-comparison          # All demos
 cargo run --example message-comparison semantic # Specific demo
 
-# Demo advanced 5G features
-cargo run --example advanced_5g_features
-
 # Run performance benchmarks
-cargo bench --bench phase_performance
+cargo bench
 ```
 
 ## 🏗️ Architecture
@@ -273,8 +243,7 @@ rs-pfcp is currently **pre-1.0** (version 0.2.x), meaning the API may change bet
 **Current Status:**
 - **Version**: 0.2.5
 - **MSRV**: Rust 1.90.0
-- **Spec Compliance**: 3GPP TS 29.244 Release 18 (98%+ coverage)
-- **Advanced Features**: TSN, ATSSS, MBS support
+- **Spec Compliance**: 3GPP TS 29.244 Release 18
 - **Stability**: Pre-1.0 (API evolving)
 
 ### Upgrade Guide
@@ -302,7 +271,7 @@ We provide migration guides for all breaking changes and deprecate features befo
 # Build the library
 cargo build
 
-# Run all tests (2,100+ tests)
+# Run all tests (1,900+ tests)
 cargo test
 
 # Run specific test category
@@ -310,7 +279,7 @@ cargo test ie::f_teid          # Test F-TEID implementation
 cargo test message::heartbeat  # Test heartbeat messages
 
 # Run performance benchmarks
-cargo bench --bench phase_performance
+cargo bench
 
 # Check code formatting and linting
 cargo fmt --all -- --check
