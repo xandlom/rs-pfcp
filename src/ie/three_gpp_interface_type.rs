@@ -3,9 +3,8 @@
 //! Identifies the type of interface in the 5G network architecture (N3, N6, N9, etc.).
 //! Used in ForwardingParameters to specify the interface type for packet forwarding.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// 3GPP Interface Type values
 ///
@@ -33,7 +32,7 @@ pub enum ThreeGppInterfaceType {
 
 impl ThreeGppInterfaceType {
     /// Creates from u8 value
-    pub fn from_u8(value: u8) -> Result<Self, io::Error> {
+    pub fn from_u8(value: u8) -> Result<Self, PfcpError> {
         match value {
             0 => Ok(ThreeGppInterfaceType::S1U),
             1 => Ok(ThreeGppInterfaceType::S5S8U),
@@ -51,9 +50,10 @@ impl ThreeGppInterfaceType {
             13 => Ok(ThreeGppInterfaceType::N9),
             14 => Ok(ThreeGppInterfaceType::N4U),
             15 => Ok(ThreeGppInterfaceType::N19),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Invalid 3GPP Interface Type value: {}", value),
+            _ => Err(PfcpError::invalid_value(
+                "3GPP Interface Type",
+                value.to_string(),
+                "must be 0-15",
             )),
         }
     }
@@ -108,11 +108,13 @@ impl ThreeGppInterfaceTypeIe {
     }
 
     /// Unmarshals bytes into the IE
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("3GPP Interface Type"),
+            return Err(PfcpError::invalid_length(
+                "3GPP Interface Type",
+                IeType::TgppInterfaceType,
+                1,
+                0,
             ));
         }
 

@@ -78,10 +78,9 @@ impl HeartbeatRequest {
     pub fn source_ip_address(
         &self,
     ) -> Option<Result<crate::ie::source_ip_address::SourceIpAddress, PfcpError>> {
-        self.source_ip_address.as_ref().map(|ie| {
-            crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload)
-                .map_err(Into::into)
-        })
+        self.source_ip_address
+            .as_ref()
+            .map(|ie| crate::ie::source_ip_address::SourceIpAddress::unmarshal(&ie.payload))
     }
 
     /// Returns a slice of additional IEs.

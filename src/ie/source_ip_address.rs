@@ -1,8 +1,7 @@
 //! Source IP Address IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a Source IP Address.
@@ -106,11 +105,13 @@ impl SourceIpAddress {
     /// Unmarshals a byte slice into a Source IP Address.
     ///
     /// Per 3GPP TS 29.244, Source IP Address requires minimum 1 byte (flags) plus address data.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::requires_at_least_bytes("Source IP Address", 1),
+            return Err(PfcpError::invalid_length(
+                "Source IP Address",
+                IeType::SourceIpAddress,
+                1,
+                0,
             ));
         }
 
@@ -122,9 +123,11 @@ impl SourceIpAddress {
 
         let ipv4 = if v4 {
             if payload.len() < offset + 4 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Source IP Address payload too short for IPv4",
+                return Err(PfcpError::invalid_length(
+                    "Source IP Address (IPv4)",
+                    IeType::SourceIpAddress,
+                    offset + 4,
+                    payload.len(),
                 ));
             }
             let addr = Ipv4Addr::new(
@@ -141,9 +144,11 @@ impl SourceIpAddress {
 
         let ipv6 = if v6 {
             if payload.len() < offset + 16 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Source IP Address payload too short for IPv6",
+                return Err(PfcpError::invalid_length(
+                    "Source IP Address (IPv6)",
+                    IeType::SourceIpAddress,
+                    offset + 16,
+                    payload.len(),
                 ));
             }
             let mut octets = [0; 16];
@@ -156,9 +161,11 @@ impl SourceIpAddress {
 
         let mask_prefix_length = if mpl {
             if payload.len() < offset + 1 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Source IP Address payload too short for mask/prefix length",
+                return Err(PfcpError::invalid_length(
+                    "Source IP Address (mask/prefix)",
+                    IeType::SourceIpAddress,
+                    offset + 1,
+                    payload.len(),
                 ));
             }
             Some(payload[offset])
@@ -292,7 +299,8 @@ mod tests {
     fn test_source_ip_address_unmarshal_empty() {
         let result = SourceIpAddress::unmarshal(&[]);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -300,10 +308,8 @@ mod tests {
         let payload = vec![0x02, 192, 168]; // V4 flag but only 2 bytes
         let result = SourceIpAddress::unmarshal(&payload);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("too short for IPv4"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -311,10 +317,8 @@ mod tests {
         let payload = vec![0x01, 0x20, 0x01]; // V6 flag but only 2 bytes
         let result = SourceIpAddress::unmarshal(&payload);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("too short for IPv6"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -445,10 +449,8 @@ mod tests {
         let result = SourceIpAddress::unmarshal(&payload);
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("too short for mask/prefix length"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

@@ -1,8 +1,7 @@
 //! S-NSSAI (Single Network Slice Selection Assistance Information) IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents the S-NSSAI (Single Network Slice Selection Assistance Information).
 /// Used for 5G network slicing support.
@@ -56,12 +55,9 @@ impl Snssai {
     }
 
     /// Unmarshals a byte slice into an S-NSSAI.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("S-NSSAI"),
-            ));
+            return Err(PfcpError::invalid_length("S-NSSAI", IeType::Snssai, 1, 0));
         }
 
         let sst = payload[0];
@@ -73,9 +69,10 @@ impl Snssai {
             // Only SST
             None
         } else {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid S-NSSAI payload length",
+            return Err(PfcpError::invalid_value(
+                "S-NSSAI",
+                payload.len().to_string(),
+                "must be 1 byte (SST only) or 4 bytes (SST + SD)",
             ));
         };
 
@@ -245,27 +242,21 @@ mod tests {
         // Invalid length (2 or 3 bytes)
         let result = Snssai::unmarshal(&[1, 2]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid S-NSSAI payload length"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
 
         let result = Snssai::unmarshal(&[1, 2, 3]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid S-NSSAI payload length"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
     fn test_snssai_unmarshal_empty() {
         let result = Snssai::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("S-NSSAI payload too short"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

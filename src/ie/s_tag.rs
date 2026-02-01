@@ -5,8 +5,8 @@
 //!
 //! S-TAG is used in provider bridging (IEEE 802.1ad) for service provider VLAN tagging.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// S-TAG (Service VLAN Tag)
 ///
@@ -76,17 +76,19 @@ impl STag {
     /// assert_eq!(stag.dei(), true);
     /// assert_eq!(stag.vid(), 1000);
     /// ```
-    pub fn new(pcp: u8, dei: bool, vid: u16) -> Result<Self, io::Error> {
+    pub fn new(pcp: u8, dei: bool, vid: u16) -> Result<Self, PfcpError> {
         if pcp > Self::MAX_PRIORITY {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("S-TAG PCP {} exceeds maximum {}", pcp, Self::MAX_PRIORITY),
+            return Err(PfcpError::invalid_value(
+                "S-TAG PCP",
+                pcp.to_string(),
+                format!("exceeds maximum {}", Self::MAX_PRIORITY),
             ));
         }
         if vid > Self::MAX_VID {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("S-TAG VID {} exceeds maximum {}", vid, Self::MAX_VID),
+            return Err(PfcpError::invalid_value(
+                "S-TAG VID",
+                vid.to_string(),
+                format!("exceeds maximum {}", Self::MAX_VID),
             ));
         }
         Ok(STag { pcp, dei, vid })
@@ -143,11 +145,13 @@ impl STag {
     /// let parsed = STag::unmarshal(&bytes).unwrap();
     /// assert_eq!(stag, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 3 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("S-TAG requires 3 bytes, got {}", data.len()),
+            return Err(PfcpError::invalid_length(
+                "S-TAG",
+                IeType::STag,
+                3,
+                data.len(),
             ));
         }
 
@@ -200,14 +204,16 @@ mod tests {
     fn test_stag_new_invalid_pcp() {
         let result = STag::new(8, false, 100);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("PCP"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
     fn test_stag_new_invalid_vid() {
         let result = STag::new(3, false, 4096);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("VID"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -247,8 +253,7 @@ mod tests {
         let result = STag::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires 3 bytes"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
