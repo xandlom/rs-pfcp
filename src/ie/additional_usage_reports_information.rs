@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,22 +37,21 @@ impl AdditionalUsageReportsInformation {
         1 // u8 for flags
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-        let mut buf = Vec::with_capacity(self.marshal_len());
-        self.marshal_to(&mut buf)?;
-        Ok(buf)
+    pub fn marshal(&self) -> Vec<u8> {
+        vec![self.flags]
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) {
         buf.push(self.flags);
-        Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Additional usage reports information requires 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Additional Usage Reports Information",
+                IeType::AdditionalUsageReportsInformation,
+                1,
+                0,
             ));
         }
 
@@ -61,9 +59,8 @@ impl AdditionalUsageReportsInformation {
         Ok(Self { flags })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::AdditionalUsageReportsInformation, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::AdditionalUsageReportsInformation, self.marshal())
     }
 }
 
@@ -98,7 +95,7 @@ mod tests {
         let flags = 0x03;
         let auri = AdditionalUsageReportsInformation::new(flags);
 
-        let data = auri.marshal().unwrap();
+        let data = auri.marshal();
         assert_eq!(data.len(), 1);
         assert_eq!(data[0], flags);
 
@@ -111,7 +108,7 @@ mod tests {
     fn test_additional_usage_reports_information_marshal_zero() {
         let auri = AdditionalUsageReportsInformation::new(0);
 
-        let data = auri.marshal().unwrap();
+        let data = auri.marshal();
         let unmarshaled = AdditionalUsageReportsInformation::unmarshal(&data).unwrap();
 
         assert_eq!(auri, unmarshaled);
@@ -122,7 +119,7 @@ mod tests {
     fn test_additional_usage_reports_information_marshal_max_value() {
         let auri = AdditionalUsageReportsInformation::new(u8::MAX);
 
-        let data = auri.marshal().unwrap();
+        let data = auri.marshal();
         let unmarshaled = AdditionalUsageReportsInformation::unmarshal(&data).unwrap();
 
         assert_eq!(auri, unmarshaled);
@@ -134,7 +131,7 @@ mod tests {
         let flags = 0x01;
         let auri = AdditionalUsageReportsInformation::new(flags);
 
-        let ie = auri.to_ie().unwrap();
+        let ie = auri.to_ie();
         assert_eq!(ie.ie_type, IeType::AdditionalUsageReportsInformation);
     }
 
@@ -144,7 +141,8 @@ mod tests {
         let result = AdditionalUsageReportsInformation::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -159,7 +157,7 @@ mod tests {
 
         for &value in &test_values {
             let auri = AdditionalUsageReportsInformation::new(value);
-            let data = auri.marshal().unwrap();
+            let data = auri.marshal();
             let unmarshaled = AdditionalUsageReportsInformation::unmarshal(&data).unwrap();
             assert_eq!(auri, unmarshaled);
         }
@@ -197,7 +195,7 @@ mod tests {
             no_interim,
             complex_scenario,
         ] {
-            let data = scenario.marshal().unwrap();
+            let data = scenario.marshal();
             let unmarshaled = AdditionalUsageReportsInformation::unmarshal(&data).unwrap();
             assert_eq!(scenario, unmarshaled);
         }

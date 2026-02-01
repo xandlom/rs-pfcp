@@ -1,7 +1,6 @@
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,22 +82,23 @@ impl UEIPAddressUsageInformation {
         len
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(self.marshal_len());
         self.marshal_to(&mut buf)?;
         Ok(buf)
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
         buf.push(self.flags);
 
         if self.has_ipv4() {
             if let Some(ipv4) = self.ipv4_address {
                 buf.extend_from_slice(&ipv4.octets());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "IPv4 flag set but no IPv4 address provided",
+                return Err(PfcpError::invalid_value(
+                    "UE IP Address Usage Information",
+                    "IPv4 flag",
+                    "flag set but no IPv4 address provided",
                 ));
             }
         }
@@ -107,9 +107,10 @@ impl UEIPAddressUsageInformation {
             if let Some(ipv6) = self.ipv6_address {
                 buf.extend_from_slice(&ipv6.octets());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "IPv6 flag set but no IPv6 address provided",
+                return Err(PfcpError::invalid_value(
+                    "UE IP Address Usage Information",
+                    "IPv6 flag",
+                    "flag set but no IPv6 address provided",
                 ));
             }
         }
@@ -118,9 +119,10 @@ impl UEIPAddressUsageInformation {
             if let Some(count) = self.number_of_ue_ip_addresses {
                 buf.extend_from_slice(&count.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Number of addresses flag set but no count provided",
+                return Err(PfcpError::invalid_value(
+                    "UE IP Address Usage Information",
+                    "number of addresses flag",
+                    "flag set but no count provided",
                 ));
             }
         }
@@ -129,9 +131,10 @@ impl UEIPAddressUsageInformation {
             if let Some(timer) = self.validity_timer {
                 buf.extend_from_slice(&timer.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Validity timer flag set but no timer provided",
+                return Err(PfcpError::invalid_value(
+                    "UE IP Address Usage Information",
+                    "validity timer flag",
+                    "flag set but no timer provided",
                 ));
             }
         }
@@ -139,11 +142,13 @@ impl UEIPAddressUsageInformation {
         Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                messages::requires_at_least_bytes("UE IP address usage information", 1),
+            return Err(PfcpError::invalid_length(
+                "UE IP Address Usage Information",
+                IeType::UeIpAddressUsageInformation,
+                1,
+                0,
             ));
         }
 
@@ -158,9 +163,11 @@ impl UEIPAddressUsageInformation {
         // Parse IPv4 address if present
         if (flags & 0x01) != 0 {
             if cursor + 4 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Insufficient data for IPv4 address",
+                return Err(PfcpError::invalid_length(
+                    "UE IP Address Usage Information (IPv4)",
+                    IeType::UeIpAddressUsageInformation,
+                    cursor + 4,
+                    data.len(),
                 ));
             }
             let octets: [u8; 4] = data[cursor..cursor + 4].try_into().unwrap();
@@ -171,9 +178,11 @@ impl UEIPAddressUsageInformation {
         // Parse IPv6 address if present
         if (flags & 0x02) != 0 {
             if cursor + 16 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Insufficient data for IPv6 address",
+                return Err(PfcpError::invalid_length(
+                    "UE IP Address Usage Information (IPv6)",
+                    IeType::UeIpAddressUsageInformation,
+                    cursor + 16,
+                    data.len(),
                 ));
             }
             let octets: [u8; 16] = data[cursor..cursor + 16].try_into().unwrap();
@@ -184,9 +193,11 @@ impl UEIPAddressUsageInformation {
         // Parse number of UE IP addresses if present
         if (flags & 0x04) != 0 {
             if cursor + 4 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Insufficient data for number of UE IP addresses",
+                return Err(PfcpError::invalid_length(
+                    "UE IP Address Usage Information (count)",
+                    IeType::UeIpAddressUsageInformation,
+                    cursor + 4,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 4] = data[cursor..cursor + 4].try_into().unwrap();
@@ -197,9 +208,11 @@ impl UEIPAddressUsageInformation {
         // Parse validity timer if present
         if (flags & 0x08) != 0 {
             if cursor + 4 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Insufficient data for validity timer",
+                return Err(PfcpError::invalid_length(
+                    "UE IP Address Usage Information (timer)",
+                    IeType::UeIpAddressUsageInformation,
+                    cursor + 4,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 4] = data[cursor..cursor + 4].try_into().unwrap();
@@ -215,7 +228,7 @@ impl UEIPAddressUsageInformation {
         })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::UeIpAddressUsageInformation, data))
     }
@@ -336,7 +349,8 @@ mod tests {
         let result = UEIPAddressUsageInformation::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

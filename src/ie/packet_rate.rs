@@ -3,9 +3,8 @@
 //! The Packet Rate IE specifies rate limits for uplink and/or downlink traffic.
 //! Per 3GPP TS 29.244 Section 8.2.63.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Time Unit for Packet Rate
 ///
@@ -69,15 +68,15 @@ impl TimeUnit {
 /// use rs_pfcp::ie::packet_rate::TimeUnit;
 ///
 /// // Create packet rate with downlink limit only
-/// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000)?;
+/// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000);
 /// assert_eq!(rate.downlink_max_rate(), Some((TimeUnit::Minute, 10000)));
 /// assert_eq!(rate.uplink_max_rate(), None);
 ///
 /// // Marshal and unmarshal
-/// let bytes = rate.marshal()?;
+/// let bytes = rate.marshal();
 /// let parsed = PacketRate::unmarshal(&bytes)?;
 /// assert_eq!(rate, parsed);
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<(), rs_pfcp::error::PfcpError>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PacketRate {
@@ -103,17 +102,16 @@ impl PacketRate {
     /// use rs_pfcp::ie::packet_rate::PacketRate;
     /// use rs_pfcp::ie::packet_rate::TimeUnit;
     ///
-    /// let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000)?;
+    /// let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000);
     /// assert_eq!(rate.uplink_max_rate(), Some((TimeUnit::Minute, 5000)));
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn new_uplink(time_unit: TimeUnit, max_packets: u16) -> Result<Self, io::Error> {
-        Ok(PacketRate {
+    pub fn new_uplink(time_unit: TimeUnit, max_packets: u16) -> Self {
+        PacketRate {
             uplink_max_rate: Some((time_unit, max_packets)),
             downlink_max_rate: None,
             additional_uplink_max_rate: None,
             additional_downlink_max_rate: None,
-        })
+        }
     }
 
     /// Create a new Packet Rate with only downlink limit
@@ -127,17 +125,16 @@ impl PacketRate {
     /// use rs_pfcp::ie::packet_rate::PacketRate;
     /// use rs_pfcp::ie::packet_rate::TimeUnit;
     ///
-    /// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000)?;
+    /// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000);
     /// assert_eq!(rate.downlink_max_rate(), Some((TimeUnit::Minute, 10000)));
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn new_downlink(time_unit: TimeUnit, max_packets: u16) -> Result<Self, io::Error> {
-        Ok(PacketRate {
+    pub fn new_downlink(time_unit: TimeUnit, max_packets: u16) -> Self {
+        PacketRate {
             uplink_max_rate: None,
             downlink_max_rate: Some((time_unit, max_packets)),
             additional_uplink_max_rate: None,
             additional_downlink_max_rate: None,
-        })
+        }
     }
 
     /// Create a new Packet Rate with both uplink and downlink limits
@@ -156,23 +153,22 @@ impl PacketRate {
     /// let rate = PacketRate::new_both(
     ///     TimeUnit::Minute, 5000,
     ///     TimeUnit::Minute, 10000
-    /// )?;
+    /// );
     /// assert_eq!(rate.uplink_max_rate(), Some((TimeUnit::Minute, 5000)));
     /// assert_eq!(rate.downlink_max_rate(), Some((TimeUnit::Minute, 10000)));
-    /// # Ok::<(), std::io::Error>(())
     /// ```
     pub fn new_both(
         ul_unit: TimeUnit,
         ul_packets: u16,
         dl_unit: TimeUnit,
         dl_packets: u16,
-    ) -> Result<Self, io::Error> {
-        Ok(PacketRate {
+    ) -> Self {
+        PacketRate {
             uplink_max_rate: Some((ul_unit, ul_packets)),
             downlink_max_rate: Some((dl_unit, dl_packets)),
             additional_uplink_max_rate: None,
             additional_downlink_max_rate: None,
-        })
+        }
     }
 
     /// Set additional uplink packet rate (enables APRC bit)
@@ -180,15 +176,19 @@ impl PacketRate {
     /// # Arguments
     /// * `time_unit` - Time unit for additional rate
     /// * `max_packets` - Additional maximum packets
+    ///
+    /// # Errors
+    /// Returns error if base uplink rate is not set
     pub fn with_additional_uplink(
         mut self,
         time_unit: TimeUnit,
         max_packets: u16,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if self.uplink_max_rate.is_none() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Cannot set additional uplink rate without base uplink rate",
+            return Err(PfcpError::invalid_value(
+                "Packet Rate",
+                "additional_uplink",
+                "cannot set additional uplink rate without base uplink rate",
             ));
         }
         self.additional_uplink_max_rate = Some((time_unit, max_packets));
@@ -200,15 +200,19 @@ impl PacketRate {
     /// # Arguments
     /// * `time_unit` - Time unit for additional rate
     /// * `max_packets` - Additional maximum packets
+    ///
+    /// # Errors
+    /// Returns error if base downlink rate is not set
     pub fn with_additional_downlink(
         mut self,
         time_unit: TimeUnit,
         max_packets: u16,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if self.downlink_max_rate.is_none() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Cannot set additional downlink rate without base downlink rate",
+            return Err(PfcpError::invalid_value(
+                "Packet Rate",
+                "additional_downlink",
+                "cannot set additional downlink rate without base downlink rate",
             ));
         }
         self.additional_downlink_max_rate = Some((time_unit, max_packets));
@@ -239,10 +243,7 @@ impl PacketRate {
     ///
     /// # Returns
     /// Vector containing encoded packet rate data
-    ///
-    /// # Errors
-    /// Returns error if serialization fails
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Vec<u8> {
         let mut buf = vec![];
 
         // Flags byte
@@ -287,7 +288,7 @@ impl PacketRate {
             buf.extend_from_slice(&packets.to_be_bytes());
         }
 
-        Ok(buf)
+        buf
     }
 
     /// Unmarshal Packet Rate from bytes
@@ -306,17 +307,19 @@ impl PacketRate {
     /// let rate = PacketRate::new_both(
     ///     TimeUnit::Minute, 5000,
     ///     TimeUnit::Minute, 10000
-    /// )?;
-    /// let bytes = rate.marshal()?;
+    /// );
+    /// let bytes = rate.marshal();
     /// let parsed = PacketRate::unmarshal(&bytes)?;
     /// assert_eq!(rate, parsed);
-    /// # Ok::<(), std::io::Error>(())
+    /// # Ok::<(), rs_pfcp::error::PfcpError>(())
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                messages::requires_at_least_bytes("Packet Rate", 1),
+            return Err(PfcpError::invalid_length(
+                "Packet Rate",
+                IeType::PacketRate,
+                1,
+                0,
             ));
         }
 
@@ -334,9 +337,11 @@ impl PacketRate {
         // Parse Uplink Time Unit and Max Rate (if ULPR)
         if has_ulpr {
             if offset + 3 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Packet Rate: insufficient data for uplink rate",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate (uplink)",
+                    IeType::PacketRate,
+                    offset + 3,
+                    data.len(),
                 ));
             }
             let unit = TimeUnit::from_bits(data[offset]);
@@ -348,9 +353,11 @@ impl PacketRate {
         // Parse Downlink Time Unit and Max Rate (if DLPR)
         if has_dlpr {
             if offset + 3 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Packet Rate: insufficient data for downlink rate",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate (downlink)",
+                    IeType::PacketRate,
+                    offset + 3,
+                    data.len(),
                 ));
             }
             let unit = TimeUnit::from_bits(data[offset]);
@@ -364,9 +371,11 @@ impl PacketRate {
             // Additional Uplink (if ULPR was set)
             if has_ulpr {
                 if offset + 3 > data.len() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::UnexpectedEof,
-                        "Packet Rate: insufficient data for additional uplink rate",
+                    return Err(PfcpError::invalid_length(
+                        "Packet Rate (additional uplink)",
+                        IeType::PacketRate,
+                        offset + 3,
+                        data.len(),
                     ));
                 }
                 let unit = TimeUnit::from_bits(data[offset]);
@@ -378,9 +387,11 @@ impl PacketRate {
             // Additional Downlink (if DLPR was set)
             if has_dlpr {
                 if offset + 3 > data.len() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::UnexpectedEof,
-                        "Packet Rate: insufficient data for additional downlink rate",
+                    return Err(PfcpError::invalid_length(
+                        "Packet Rate (additional downlink)",
+                        IeType::PacketRate,
+                        offset + 3,
+                        data.len(),
                     ));
                 }
                 let unit = TimeUnit::from_bits(data[offset]);
@@ -405,14 +416,12 @@ impl PacketRate {
     /// use rs_pfcp::ie::packet_rate::TimeUnit;
     /// use rs_pfcp::ie::IeType;
     ///
-    /// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000)?;
-    /// let ie = rate.to_ie()?;
+    /// let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000);
+    /// let ie = rate.to_ie();
     /// assert_eq!(ie.ie_type, IeType::PacketRate);
-    /// # Ok::<(), std::io::Error>(())
     /// ```
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
-        let data = self.marshal()?;
-        Ok(Ie::new(IeType::PacketRate, data))
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::PacketRate, self.marshal())
     }
 }
 
@@ -437,29 +446,29 @@ mod tests {
 
     #[test]
     fn test_packet_rate_new_uplink() {
-        let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000).unwrap();
+        let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000);
         assert_eq!(rate.uplink_max_rate(), Some((TimeUnit::Minute, 5000)));
         assert_eq!(rate.downlink_max_rate(), None);
     }
 
     #[test]
     fn test_packet_rate_new_downlink() {
-        let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000).unwrap();
+        let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000);
         assert_eq!(rate.uplink_max_rate(), None);
         assert_eq!(rate.downlink_max_rate(), Some((TimeUnit::Minute, 10000)));
     }
 
     #[test]
     fn test_packet_rate_new_both() {
-        let rate = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Minute, 10000).unwrap();
+        let rate = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Minute, 10000);
         assert_eq!(rate.uplink_max_rate(), Some((TimeUnit::Minute, 5000)));
         assert_eq!(rate.downlink_max_rate(), Some((TimeUnit::Minute, 10000)));
     }
 
     #[test]
     fn test_packet_rate_marshal_uplink_only() {
-        let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000).unwrap();
-        let bytes = rate.marshal().unwrap();
+        let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000);
+        let bytes = rate.marshal();
         assert_eq!(bytes[0], 0x01); // ULPR flag set
         assert_eq!(bytes[1], 0); // Minute time unit
         assert_eq!(u16::from_be_bytes([bytes[2], bytes[3]]), 5000);
@@ -467,8 +476,8 @@ mod tests {
 
     #[test]
     fn test_packet_rate_marshal_downlink_only() {
-        let rate = PacketRate::new_downlink(TimeUnit::SixMinutes, 10000).unwrap();
-        let bytes = rate.marshal().unwrap();
+        let rate = PacketRate::new_downlink(TimeUnit::SixMinutes, 10000);
+        let bytes = rate.marshal();
         assert_eq!(bytes[0], 0x02); // DLPR flag set
         assert_eq!(bytes[1], 1); // 6-minutes time unit
         assert_eq!(u16::from_be_bytes([bytes[2], bytes[3]]), 10000);
@@ -476,8 +485,8 @@ mod tests {
 
     #[test]
     fn test_packet_rate_marshal_both() {
-        let rate = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Hour, 60000).unwrap();
-        let bytes = rate.marshal().unwrap();
+        let rate = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Hour, 60000);
+        let bytes = rate.marshal();
         assert_eq!(bytes[0], 0x03); // Both ULPR and DLPR flags
         assert_eq!(bytes[1], 0); // Minute
         assert_eq!(u16::from_be_bytes([bytes[2], bytes[3]]), 5000);
@@ -488,10 +497,9 @@ mod tests {
     #[test]
     fn test_packet_rate_with_additional_uplink() {
         let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000)
-            .unwrap()
             .with_additional_uplink(TimeUnit::Hour, 50000)
             .unwrap();
-        let bytes = rate.marshal().unwrap();
+        let bytes = rate.marshal();
         assert_eq!(bytes[0], 0x05); // ULPR and APRC flags
         assert_eq!(bytes[1], 0); // Minute
         assert_eq!(u16::from_be_bytes([bytes[2], bytes[3]]), 5000);
@@ -502,10 +510,9 @@ mod tests {
     #[test]
     fn test_packet_rate_with_additional_downlink() {
         let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000)
-            .unwrap()
             .with_additional_downlink(TimeUnit::Day, 50000)
             .unwrap();
-        let bytes = rate.marshal().unwrap();
+        let bytes = rate.marshal();
         assert_eq!(bytes[0], 0x06); // DLPR and APRC flags
         assert_eq!(bytes[1], 0); // Minute
         assert_eq!(u16::from_be_bytes([bytes[2], bytes[3]]), 10000);
@@ -516,26 +523,25 @@ mod tests {
     #[test]
     fn test_packet_rate_with_both_additional() {
         let rate = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Minute, 10000)
-            .unwrap()
             .with_additional_uplink(TimeUnit::Hour, 50000)
             .unwrap()
             .with_additional_downlink(TimeUnit::Hour, 50000)
             .unwrap();
-        let bytes = rate.marshal().unwrap();
+        let bytes = rate.marshal();
         assert_eq!(bytes[0], 0x07); // All flags set
         assert_eq!(bytes.len(), 13); // 1 flag + 3 ul + 3 dl + 3 add_ul + 3 add_dl
     }
 
     #[test]
     fn test_packet_rate_additional_without_base_uplink() {
-        let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000).unwrap();
+        let rate = PacketRate::new_downlink(TimeUnit::Minute, 10000);
         let result = rate.with_additional_uplink(TimeUnit::Hour, 50000);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_packet_rate_additional_without_base_downlink() {
-        let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000).unwrap();
+        let rate = PacketRate::new_uplink(TimeUnit::Minute, 5000);
         let result = rate.with_additional_downlink(TimeUnit::Hour, 50000);
         assert!(result.is_err());
     }
@@ -561,25 +567,24 @@ mod tests {
 
     #[test]
     fn test_packet_rate_round_trip_uplink() {
-        let original = PacketRate::new_uplink(TimeUnit::Hour, 12345).unwrap();
-        let bytes = original.marshal().unwrap();
+        let original = PacketRate::new_uplink(TimeUnit::Hour, 12345);
+        let bytes = original.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(original, parsed);
     }
 
     #[test]
     fn test_packet_rate_round_trip_downlink() {
-        let original = PacketRate::new_downlink(TimeUnit::Day, 54321).unwrap();
-        let bytes = original.marshal().unwrap();
+        let original = PacketRate::new_downlink(TimeUnit::Day, 54321);
+        let bytes = original.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(original, parsed);
     }
 
     #[test]
     fn test_packet_rate_round_trip_both() {
-        let original =
-            PacketRate::new_both(TimeUnit::Minute, 12345, TimeUnit::Week, 54321).unwrap();
-        let bytes = original.marshal().unwrap();
+        let original = PacketRate::new_both(TimeUnit::Minute, 12345, TimeUnit::Week, 54321);
+        let bytes = original.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(original, parsed);
     }
@@ -587,12 +592,11 @@ mod tests {
     #[test]
     fn test_packet_rate_round_trip_with_additional() {
         let original = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Minute, 10000)
-            .unwrap()
             .with_additional_uplink(TimeUnit::Hour, 50000)
             .unwrap()
             .with_additional_downlink(TimeUnit::Day, 50000)
             .unwrap();
-        let bytes = original.marshal().unwrap();
+        let bytes = original.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(original, parsed);
     }
@@ -602,6 +606,8 @@ mod tests {
         let data = vec![];
         let result = PacketRate::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -609,12 +615,14 @@ mod tests {
         let data = vec![0x01, 0]; // Missing rate
         let result = PacketRate::unmarshal(&data);
         assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_packet_rate_to_ie() {
-        let rate = PacketRate::new_both(TimeUnit::Minute, 1000, TimeUnit::Hour, 2000).unwrap();
-        let ie = rate.to_ie().unwrap();
+        let rate = PacketRate::new_both(TimeUnit::Minute, 1000, TimeUnit::Hour, 2000);
+        let ie = rate.to_ie();
         assert_eq!(ie.ie_type, IeType::PacketRate);
 
         // Verify IE can be unmarshaled
@@ -624,17 +632,16 @@ mod tests {
 
     #[test]
     fn test_packet_rate_zero_packets() {
-        let rate = PacketRate::new_both(TimeUnit::Minute, 0, TimeUnit::Minute, 0).unwrap();
-        let bytes = rate.marshal().unwrap();
+        let rate = PacketRate::new_both(TimeUnit::Minute, 0, TimeUnit::Minute, 0);
+        let bytes = rate.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(rate, parsed);
     }
 
     #[test]
     fn test_packet_rate_max_packets() {
-        let rate =
-            PacketRate::new_both(TimeUnit::Week, u16::MAX, TimeUnit::Week, u16::MAX).unwrap();
-        let bytes = rate.marshal().unwrap();
+        let rate = PacketRate::new_both(TimeUnit::Week, u16::MAX, TimeUnit::Week, u16::MAX);
+        let bytes = rate.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(rate, parsed);
     }
@@ -650,8 +657,8 @@ mod tests {
         ];
 
         for unit in time_units {
-            let rate = PacketRate::new_both(unit, 1000, unit, 2000).unwrap();
-            let bytes = rate.marshal().unwrap();
+            let rate = PacketRate::new_both(unit, 1000, unit, 2000);
+            let bytes = rate.marshal();
             let parsed = PacketRate::unmarshal(&bytes).unwrap();
             assert_eq!(rate, parsed);
         }
@@ -660,8 +667,8 @@ mod tests {
     #[test]
     fn test_packet_rate_5g_standard_rate_control() {
         // Scenario: Standard rate control per minute
-        let rate = PacketRate::new_both(TimeUnit::Minute, 10, TimeUnit::SixMinutes, 60).unwrap();
-        let bytes = rate.marshal().unwrap();
+        let rate = PacketRate::new_both(TimeUnit::Minute, 10, TimeUnit::SixMinutes, 60);
+        let bytes = rate.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(parsed.downlink_max_rate(), Some((TimeUnit::SixMinutes, 60)));
         assert_eq!(rate, parsed);
@@ -671,10 +678,9 @@ mod tests {
     fn test_packet_rate_5g_additional_rate_control() {
         // Scenario: Additional rate control for APN/PLMN
         let rate = PacketRate::new_downlink(TimeUnit::SixMinutes, 60)
-            .unwrap()
             .with_additional_downlink(TimeUnit::Hour, 600)
             .unwrap();
-        let bytes = rate.marshal().unwrap();
+        let bytes = rate.marshal();
         let parsed = PacketRate::unmarshal(&bytes).unwrap();
         assert_eq!(parsed.downlink_max_rate(), Some((TimeUnit::SixMinutes, 60)));
         assert_eq!(
@@ -686,7 +692,7 @@ mod tests {
 
     #[test]
     fn test_packet_rate_clone() {
-        let rate1 = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Hour, 10000).unwrap();
+        let rate1 = PacketRate::new_both(TimeUnit::Minute, 5000, TimeUnit::Hour, 10000);
         let rate2 = rate1;
         assert_eq!(rate1, rate2);
     }

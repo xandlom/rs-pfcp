@@ -3,9 +3,8 @@
 //! The Packet Rate Status IE reports the packet rate enforcement status and remaining packet counts.
 //! Per 3GPP TS 29.244 Section 8.2.139.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Packet Rate Status
 ///
@@ -177,7 +176,7 @@ impl PacketRateStatus {
     }
 
     /// Marshal Packet Rate Status to bytes
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(32);
 
         // Octet 5: Flags
@@ -188,9 +187,10 @@ impl PacketRateStatus {
             if let Some(packets) = self.remaining_uplink_packets {
                 buf.extend_from_slice(&packets.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "UL flag set but remaining_uplink_packets not set",
+                return Err(PfcpError::invalid_value(
+                    "Packet Rate Status",
+                    "UL flag",
+                    "flag set but remaining_uplink_packets not set",
                 ));
             }
         }
@@ -199,9 +199,10 @@ impl PacketRateStatus {
             if let Some(packets) = self.remaining_additional_uplink_packets {
                 buf.extend_from_slice(&packets.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "APR flag set with UL but remaining_additional_uplink_packets not set",
+                return Err(PfcpError::invalid_value(
+                    "Packet Rate Status",
+                    "APR flag",
+                    "flag set with UL but remaining_additional_uplink_packets not set",
                 ));
             }
         }
@@ -210,9 +211,10 @@ impl PacketRateStatus {
             if let Some(packets) = self.remaining_downlink_packets {
                 buf.extend_from_slice(&packets.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "DL flag set but remaining_downlink_packets not set",
+                return Err(PfcpError::invalid_value(
+                    "Packet Rate Status",
+                    "DL flag",
+                    "flag set but remaining_downlink_packets not set",
                 ));
             }
         }
@@ -221,9 +223,10 @@ impl PacketRateStatus {
             if let Some(packets) = self.remaining_additional_downlink_packets {
                 buf.extend_from_slice(&packets.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "APR flag set with DL but remaining_additional_downlink_packets not set",
+                return Err(PfcpError::invalid_value(
+                    "Packet Rate Status",
+                    "APR flag",
+                    "flag set with DL but remaining_additional_downlink_packets not set",
                 ));
             }
         }
@@ -232,8 +235,9 @@ impl PacketRateStatus {
             if let Some(time) = self.validity_time {
                 buf.extend_from_slice(&time);
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
+                return Err(PfcpError::invalid_value(
+                    "Packet Rate Status",
+                    "validity_time",
                     "UL or DL flag set but validity_time not set",
                 ));
             }
@@ -243,11 +247,13 @@ impl PacketRateStatus {
     }
 
     /// Unmarshal Packet Rate Status from bytes
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                messages::requires_at_least_bytes("Packet Rate Status", 1),
+            return Err(PfcpError::invalid_length(
+                "Packet Rate Status",
+                IeType::PacketRateStatus,
+                1,
+                0,
             ));
         }
 
@@ -268,9 +274,11 @@ impl PacketRateStatus {
         // Parse UL packets if present
         if ul_present {
             if offset + 2 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Incomplete remaining uplink packets",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate Status (uplink packets)",
+                    IeType::PacketRateStatus,
+                    offset + 2,
+                    data.len(),
                 ));
             }
             let packets = u16::from_be_bytes([data[offset], data[offset + 1]]);
@@ -281,9 +289,11 @@ impl PacketRateStatus {
         // Parse additional UL packets if present (requires both UL and APR flags)
         if ul_present && apr_present {
             if offset + 2 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Incomplete remaining additional uplink packets",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate Status (additional uplink packets)",
+                    IeType::PacketRateStatus,
+                    offset + 2,
+                    data.len(),
                 ));
             }
             let packets = u16::from_be_bytes([data[offset], data[offset + 1]]);
@@ -294,9 +304,11 @@ impl PacketRateStatus {
         // Parse DL packets if present
         if dl_present {
             if offset + 2 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Incomplete remaining downlink packets",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate Status (downlink packets)",
+                    IeType::PacketRateStatus,
+                    offset + 2,
+                    data.len(),
                 ));
             }
             let packets = u16::from_be_bytes([data[offset], data[offset + 1]]);
@@ -307,9 +319,11 @@ impl PacketRateStatus {
         // Parse additional DL packets if present (requires both DL and APR flags)
         if dl_present && apr_present {
             if offset + 2 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Incomplete remaining additional downlink packets",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate Status (additional downlink packets)",
+                    IeType::PacketRateStatus,
+                    offset + 2,
+                    data.len(),
                 ));
             }
             let packets = u16::from_be_bytes([data[offset], data[offset + 1]]);
@@ -320,9 +334,11 @@ impl PacketRateStatus {
         // Parse validity time if UL or DL present
         if ul_present || dl_present {
             if offset + 8 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Incomplete validity time",
+                return Err(PfcpError::invalid_length(
+                    "Packet Rate Status (validity time)",
+                    IeType::PacketRateStatus,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let mut time = [0u8; 8];
@@ -343,7 +359,7 @@ impl PacketRateStatus {
     }
 
     /// Convert to generic IE
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::PacketRateStatus, data))
     }

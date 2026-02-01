@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,13 +61,13 @@ impl ApplicationDetectionInformation {
         len
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(self.marshal_len());
         self.marshal_to(&mut buf)?;
         Ok(buf)
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
         // Marshal flags byte to indicate which optional fields are present
         let mut flags = 0u8;
         if self.application_instance_id.is_some() {
@@ -81,9 +80,10 @@ impl ApplicationDetectionInformation {
 
         // Marshal Application ID (required)
         if self.application_id.len() > 255 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Application ID too long (max 255 bytes)",
+            return Err(PfcpError::invalid_value(
+                "Application Detection Information",
+                "application_id",
+                "too long (max 255 bytes)",
             ));
         }
         buf.push(self.application_id.len() as u8);
@@ -92,9 +92,10 @@ impl ApplicationDetectionInformation {
         // Marshal Application Instance ID (optional)
         if let Some(ref instance_id) = self.application_instance_id {
             if instance_id.len() > 255 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Application Instance ID too long (max 255 bytes)",
+                return Err(PfcpError::invalid_value(
+                    "Application Detection Information",
+                    "application_instance_id",
+                    "too long (max 255 bytes)",
                 ));
             }
             buf.push(instance_id.len() as u8);
@@ -104,9 +105,10 @@ impl ApplicationDetectionInformation {
         // Marshal Flow Information (optional)
         if let Some(ref flow_info) = self.flow_information {
             if flow_info.len() > 255 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Flow Information too long (max 255 bytes)",
+                return Err(PfcpError::invalid_value(
+                    "Application Detection Information",
+                    "flow_information",
+                    "too long (max 255 bytes)",
                 ));
             }
             buf.push(flow_info.len() as u8);
@@ -116,11 +118,13 @@ impl ApplicationDetectionInformation {
         Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Application detection information requires at least 2 bytes",
+            return Err(PfcpError::invalid_length(
+                "Application Detection Information",
+                IeType::ApplicationDetectionInformation,
+                2,
+                data.len(),
             ));
         }
 
@@ -132,25 +136,30 @@ impl ApplicationDetectionInformation {
 
         // Parse Application ID (required)
         if cursor >= data.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Missing application ID length",
+            return Err(PfcpError::invalid_length(
+                "Application Detection Information (app ID length)",
+                IeType::ApplicationDetectionInformation,
+                cursor + 1,
+                data.len(),
             ));
         }
         let app_id_len = data[cursor] as usize;
         cursor += 1;
 
         if cursor + app_id_len > data.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Insufficient data for application ID",
+            return Err(PfcpError::invalid_length(
+                "Application Detection Information (app ID)",
+                IeType::ApplicationDetectionInformation,
+                cursor + app_id_len,
+                data.len(),
             ));
         }
         let application_id = String::from_utf8(data[cursor..cursor + app_id_len].to_vec())
             .map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid UTF-8 in application ID",
+                PfcpError::invalid_value(
+                    "Application Detection Information",
+                    "application_id",
+                    "invalid UTF-8",
                 )
             })?;
         cursor += app_id_len;
@@ -159,25 +168,30 @@ impl ApplicationDetectionInformation {
         let mut application_instance_id = None;
         if (flags & 0x01) != 0 {
             if cursor >= data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Missing application instance ID length",
+                return Err(PfcpError::invalid_length(
+                    "Application Detection Information (instance ID length)",
+                    IeType::ApplicationDetectionInformation,
+                    cursor + 1,
+                    data.len(),
                 ));
             }
             let instance_id_len = data[cursor] as usize;
             cursor += 1;
 
             if cursor + instance_id_len > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Insufficient data for application instance ID",
+                return Err(PfcpError::invalid_length(
+                    "Application Detection Information (instance ID)",
+                    IeType::ApplicationDetectionInformation,
+                    cursor + instance_id_len,
+                    data.len(),
                 ));
             }
             let instance_id = String::from_utf8(data[cursor..cursor + instance_id_len].to_vec())
                 .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid UTF-8 in application instance ID",
+                    PfcpError::invalid_value(
+                        "Application Detection Information",
+                        "application_instance_id",
+                        "invalid UTF-8",
                     )
                 })?;
             application_instance_id = Some(instance_id);
@@ -188,25 +202,30 @@ impl ApplicationDetectionInformation {
         let mut flow_information = None;
         if (flags & 0x02) != 0 {
             if cursor >= data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Missing flow information length",
+                return Err(PfcpError::invalid_length(
+                    "Application Detection Information (flow info length)",
+                    IeType::ApplicationDetectionInformation,
+                    cursor + 1,
+                    data.len(),
                 ));
             }
             let flow_info_len = data[cursor] as usize;
             cursor += 1;
 
             if cursor + flow_info_len > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Insufficient data for flow information",
+                return Err(PfcpError::invalid_length(
+                    "Application Detection Information (flow info)",
+                    IeType::ApplicationDetectionInformation,
+                    cursor + flow_info_len,
+                    data.len(),
                 ));
             }
             let flow_info = String::from_utf8(data[cursor..cursor + flow_info_len].to_vec())
                 .map_err(|_| {
-                    io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid UTF-8 in flow information",
+                    PfcpError::invalid_value(
+                        "Application Detection Information",
+                        "flow_information",
+                        "invalid UTF-8",
                     )
                 })?;
             flow_information = Some(flow_info);
@@ -219,7 +238,7 @@ impl ApplicationDetectionInformation {
         })
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::ApplicationDetectionInformation, data))
     }
@@ -356,14 +375,16 @@ mod tests {
         let result = ApplicationDetectionInformation::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
 
         // Test with only 1 byte (should also fail)
         let data = [0x00];
         let result = ApplicationDetectionInformation::unmarshal(&data);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

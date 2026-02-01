@@ -152,9 +152,8 @@ impl UsageReport {
             }
         }
         if let Some(ref auri) = self.additional_usage_reports_information {
-            if let Ok(ie) = auri.to_ie() {
-                buffer.extend_from_slice(&ie.marshal());
-            }
+            let ie = auri.to_ie();
+            buffer.extend_from_slice(&ie.marshal());
         }
 
         // Marshal Ethernet PDU Session IEs

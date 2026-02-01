@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,22 +106,23 @@ impl VolumeMeasurement {
         len
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(self.marshal_len());
         self.marshal_to(&mut buf)?;
         Ok(buf)
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
         buf.push(self.flags);
 
         if self.has_total_volume() {
             if let Some(val) = self.total_volume {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "TOVOL flag set but total_volume is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Measurement",
+                    "TOVOL flag",
+                    "flag set but total_volume is None",
                 ));
             }
         }
@@ -131,9 +131,10 @@ impl VolumeMeasurement {
             if let Some(val) = self.uplink_volume {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "ULVOL flag set but uplink_volume is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Measurement",
+                    "ULVOL flag",
+                    "flag set but uplink_volume is None",
                 ));
             }
         }
@@ -142,9 +143,10 @@ impl VolumeMeasurement {
             if let Some(val) = self.downlink_volume {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "DLVOL flag set but downlink_volume is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Measurement",
+                    "DLVOL flag",
+                    "flag set but downlink_volume is None",
                 ));
             }
         }
@@ -153,9 +155,10 @@ impl VolumeMeasurement {
             if let Some(val) = self.total_packets {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "TONOP flag set but total_packets is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Measurement",
+                    "TONOP flag",
+                    "flag set but total_packets is None",
                 ));
             }
         }
@@ -164,9 +167,10 @@ impl VolumeMeasurement {
             if let Some(val) = self.uplink_packets {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "ULNOP flag set but uplink_packets is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Measurement",
+                    "ULNOP flag",
+                    "flag set but uplink_packets is None",
                 ));
             }
         }
@@ -175,9 +179,10 @@ impl VolumeMeasurement {
             if let Some(val) = self.downlink_packets {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "DLNOP flag set but downlink_packets is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Measurement",
+                    "DLNOP flag",
+                    "flag set but downlink_packets is None",
                 ));
             }
         }
@@ -185,11 +190,13 @@ impl VolumeMeasurement {
         Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Volume measurement data is empty",
+            return Err(PfcpError::invalid_length(
+                "Volume Measurement",
+                IeType::VolumeMeasurement,
+                1,
+                0,
             ));
         }
 
@@ -208,9 +215,11 @@ impl VolumeMeasurement {
 
         if volume_measurement.has_total_volume() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for total volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Measurement (total volume)",
+                    IeType::VolumeMeasurement,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -220,9 +229,11 @@ impl VolumeMeasurement {
 
         if volume_measurement.has_uplink_volume() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for uplink volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Measurement (uplink volume)",
+                    IeType::VolumeMeasurement,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -232,9 +243,11 @@ impl VolumeMeasurement {
 
         if volume_measurement.has_downlink_volume() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for downlink volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Measurement (downlink volume)",
+                    IeType::VolumeMeasurement,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -244,9 +257,11 @@ impl VolumeMeasurement {
 
         if volume_measurement.has_total_packets() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for total packets",
+                return Err(PfcpError::invalid_length(
+                    "Volume Measurement (total packets)",
+                    IeType::VolumeMeasurement,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -256,9 +271,11 @@ impl VolumeMeasurement {
 
         if volume_measurement.has_uplink_packets() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for uplink packets",
+                return Err(PfcpError::invalid_length(
+                    "Volume Measurement (uplink packets)",
+                    IeType::VolumeMeasurement,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -268,9 +285,11 @@ impl VolumeMeasurement {
 
         if volume_measurement.has_downlink_packets() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for downlink packets",
+                return Err(PfcpError::invalid_length(
+                    "Volume Measurement (downlink packets)",
+                    IeType::VolumeMeasurement,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -280,7 +299,7 @@ impl VolumeMeasurement {
         Ok(volume_measurement)
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::VolumeMeasurement, data))
     }
@@ -388,14 +407,16 @@ mod tests {
 
         let result = vm.marshal();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
     fn test_volume_measurement_unmarshal_empty_data() {
         let result = VolumeMeasurement::unmarshal(&[]);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -403,7 +424,8 @@ mod tests {
         let data = [0x01]; // TOVOL flag but no volume data
         let result = VolumeMeasurement::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -650,8 +672,8 @@ mod tests {
         let vm = VolumeMeasurement::new(0x02, None, None, None, None, None, None);
         let result = vm.marshal();
         assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("ULVOL") || error_msg.contains("uplink_volume"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -659,8 +681,8 @@ mod tests {
         let vm = VolumeMeasurement::new(0x04, None, None, None, None, None, None);
         let result = vm.marshal();
         assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("DLVOL") || error_msg.contains("downlink_volume"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -668,8 +690,8 @@ mod tests {
         let vm = VolumeMeasurement::new(0x08, None, None, None, None, None, None);
         let result = vm.marshal();
         assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("TONOP") || error_msg.contains("total_packets"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -677,8 +699,8 @@ mod tests {
         let vm = VolumeMeasurement::new(0x10, None, None, None, None, None, None);
         let result = vm.marshal();
         assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("ULNOP") || error_msg.contains("uplink_packets"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -686,8 +708,8 @@ mod tests {
         let vm = VolumeMeasurement::new(0x20, None, None, None, None, None, None);
         let result = vm.marshal();
         assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("DLNOP") || error_msg.contains("downlink_packets"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -695,7 +717,8 @@ mod tests {
         let data = [0x02, 0x00, 0x00, 0x00]; // ULVOL flag but only 3 bytes (needs 8)
         let result = VolumeMeasurement::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -703,7 +726,8 @@ mod tests {
         let data = [0x08, 0x00, 0x00, 0x00]; // TONOP flag but only 3 bytes (needs 8)
         let result = VolumeMeasurement::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     // Round-trip tests

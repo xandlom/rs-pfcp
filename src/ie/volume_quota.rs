@@ -1,5 +1,4 @@
-use std::io;
-
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,22 +64,23 @@ impl VolumeQuota {
         len
     }
 
-    pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(&self) -> Result<Vec<u8>, PfcpError> {
         let mut buf = Vec::with_capacity(self.marshal_len());
         self.marshal_to(&mut buf)?;
         Ok(buf)
     }
 
-    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
+    pub fn marshal_to(&self, buf: &mut Vec<u8>) -> Result<(), PfcpError> {
         buf.push(self.flags);
 
         if self.has_total_volume() {
             if let Some(val) = self.total_volume {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "TOVOL flag set but total_volume is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Quota",
+                    "TOVOL flag",
+                    "flag set but total_volume is None",
                 ));
             }
         }
@@ -89,9 +89,10 @@ impl VolumeQuota {
             if let Some(val) = self.uplink_volume {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "ULVOL flag set but uplink_volume is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Quota",
+                    "ULVOL flag",
+                    "flag set but uplink_volume is None",
                 ));
             }
         }
@@ -100,9 +101,10 @@ impl VolumeQuota {
             if let Some(val) = self.downlink_volume {
                 buf.extend_from_slice(&val.to_be_bytes());
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "DLVOL flag set but downlink_volume is None",
+                return Err(PfcpError::invalid_value(
+                    "Volume Quota",
+                    "DLVOL flag",
+                    "flag set but downlink_volume is None",
                 ));
             }
         }
@@ -110,11 +112,13 @@ impl VolumeQuota {
         Ok(())
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Volume quota data is empty",
+            return Err(PfcpError::invalid_length(
+                "Volume Quota",
+                IeType::VolumeQuota,
+                1,
+                0,
             ));
         }
 
@@ -130,9 +134,11 @@ impl VolumeQuota {
 
         if volume_quota.has_total_volume() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for total volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Quota (total volume)",
+                    IeType::VolumeQuota,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -142,9 +148,11 @@ impl VolumeQuota {
 
         if volume_quota.has_uplink_volume() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for uplink volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Quota (uplink volume)",
+                    IeType::VolumeQuota,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -154,9 +162,11 @@ impl VolumeQuota {
 
         if volume_quota.has_downlink_volume() {
             if data.len() < offset + 8 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "Not enough data for downlink volume",
+                return Err(PfcpError::invalid_length(
+                    "Volume Quota (downlink volume)",
+                    IeType::VolumeQuota,
+                    offset + 8,
+                    data.len(),
                 ));
             }
             let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
@@ -166,7 +176,7 @@ impl VolumeQuota {
         Ok(volume_quota)
     }
 
-    pub fn to_ie(&self) -> Result<Ie, io::Error> {
+    pub fn to_ie(&self) -> Result<Ie, PfcpError> {
         let data = self.marshal()?;
         Ok(Ie::new(IeType::VolumeQuota, data))
     }
@@ -257,14 +267,16 @@ mod tests {
 
         let result = vq.marshal();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
     fn test_volume_quota_unmarshal_empty_data() {
         let result = VolumeQuota::unmarshal(&[]);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -272,7 +284,8 @@ mod tests {
         let data = [0x01]; // TOVOL flag but no volume data
         let result = VolumeQuota::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
