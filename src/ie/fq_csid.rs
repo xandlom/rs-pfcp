@@ -1,7 +1,7 @@
 //! FQ-CSID (Fully Qualified Control and Service Instance Identifier) Information Element.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a Fully Qualified Control and Service Instance Identifier.
@@ -83,7 +83,7 @@ impl FqCsid {
     }
 
     /// Decodes FQDN from DNS message format.
-    fn decode_fqdn(data: &[u8]) -> Result<String, io::Error> {
+    fn decode_fqdn(data: &[u8]) -> Result<String, PfcpError> {
         let mut result = String::new();
         let mut offset = 0;
 
@@ -96,9 +96,10 @@ impl FqCsid {
             }
 
             if offset + label_len > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid FQDN label length",
+                return Err(PfcpError::invalid_value(
+                    "FQ-CSID FQDN",
+                    label_len.to_string(),
+                    "label length exceeds available data",
                 ));
             }
 
@@ -108,7 +109,7 @@ impl FqCsid {
 
             let label_bytes = &data[offset..offset + label_len];
             let label = String::from_utf8(label_bytes.to_vec()).map_err(|_| {
-                io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 in FQDN label")
+                PfcpError::invalid_value("FQ-CSID FQDN", "non-UTF8", "invalid UTF-8 in FQDN label")
             })?;
             result.push_str(&label);
             offset += label_len;
@@ -150,12 +151,9 @@ impl FqCsid {
     }
 
     /// Unmarshals an FQ-CSID from a byte slice.
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "FQ-CSID data is empty",
-            ));
+            return Err(PfcpError::invalid_length("FQ-CSID", IeType::FqCsid, 1, 0));
         }
 
         let first_byte = data[0];
@@ -167,9 +165,10 @@ impl FqCsid {
             1 => NodeIdType::Ipv6,
             2 => NodeIdType::Fqdn,
             _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Invalid Node ID type: {}", node_id_type_val),
+                return Err(PfcpError::invalid_value(
+                    "FQ-CSID Node ID type",
+                    node_id_type_val.to_string(),
+                    "must be 0 (IPv4), 1 (IPv6), or 2 (FQDN)",
                 ))
             }
         };
@@ -178,9 +177,11 @@ impl FqCsid {
         let (node_id, node_id_len) = match node_id_type {
             NodeIdType::Ipv4 => {
                 if data.len() < offset + 4 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Not enough data for IPv4 node ID",
+                    return Err(PfcpError::invalid_length(
+                        "FQ-CSID IPv4 Node ID",
+                        IeType::FqCsid,
+                        offset + 4,
+                        data.len(),
                     ));
                 }
                 let mut octets = [0u8; 4];
@@ -189,9 +190,11 @@ impl FqCsid {
             }
             NodeIdType::Ipv6 => {
                 if data.len() < offset + 16 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Not enough data for IPv6 node ID",
+                    return Err(PfcpError::invalid_length(
+                        "FQ-CSID IPv6 Node ID",
+                        IeType::FqCsid,
+                        offset + 16,
+                        data.len(),
                     ));
                 }
                 let mut octets = [0u8; 16];
@@ -202,9 +205,11 @@ impl FqCsid {
                 // Calculate FQDN length by finding where CSIDs start
                 let csids_start_offset = data.len() - (num_csids * 2);
                 if csids_start_offset <= offset {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Not enough data for FQDN",
+                    return Err(PfcpError::invalid_length(
+                        "FQ-CSID FQDN",
+                        IeType::FqCsid,
+                        offset + 1,
+                        csids_start_offset,
                     ));
                 }
                 let fqdn_len = csids_start_offset - offset;
@@ -219,9 +224,11 @@ impl FqCsid {
         let mut csids = Vec::new();
         for _ in 0..num_csids {
             if data.len() < offset + 2 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for CSID",
+                return Err(PfcpError::invalid_length(
+                    "FQ-CSID CSID",
+                    IeType::FqCsid,
+                    offset + 2,
+                    data.len(),
                 ));
             }
             let mut csid_bytes = [0u8; 2];

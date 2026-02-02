@@ -4,10 +4,10 @@
 //! on an Ethernet PDU session. Per 3GPP TS 29.244 Section 8.2.103, this IE contains raw
 //! 6-byte MAC address values plus optional VLAN tags.
 
+use crate::error::PfcpError;
 use crate::ie::c_tag::CTag;
 use crate::ie::s_tag::STag;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// MAC Addresses Detected
 ///
@@ -88,7 +88,7 @@ impl MacAddressesDetected {
     /// let detected = MacAddressesDetected::new(vec![mac]).unwrap();
     /// assert_eq!(detected.addresses().len(), 1);
     /// ```
-    pub fn new(addresses: Vec<[u8; 6]>) -> Result<Self, io::Error> {
+    pub fn new(addresses: Vec<[u8; 6]>) -> Result<Self, PfcpError> {
         Self::new_with_vlan(addresses, None, None)
     }
 
@@ -120,15 +120,12 @@ impl MacAddressesDetected {
         addresses: Vec<[u8; 6]>,
         c_tag: Option<CTag>,
         s_tag: Option<STag>,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if addresses.len() > Self::MAX_ADDRESSES {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!(
-                    "MAC Addresses Detected cannot contain more than {} addresses, got {}",
-                    Self::MAX_ADDRESSES,
-                    addresses.len()
-                ),
+            return Err(PfcpError::invalid_value(
+                "MAC Addresses Detected count",
+                addresses.len().to_string(),
+                format!("cannot contain more than {} addresses", Self::MAX_ADDRESSES),
             ));
         }
         Ok(MacAddressesDetected {
@@ -231,11 +228,13 @@ impl MacAddressesDetected {
     /// let parsed = MacAddressesDetected::unmarshal(&bytes).unwrap();
     /// assert_eq!(detected, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "MAC Addresses Detected requires at least 1 byte for count",
+            return Err(PfcpError::invalid_length(
+                "MAC Addresses Detected",
+                IeType::MacAddressesDetected,
+                1,
+                0,
             ));
         }
 
@@ -244,14 +243,13 @@ impl MacAddressesDetected {
 
         // Parse MAC addresses
         let mut addresses = Vec::with_capacity(count);
-        for i in 0..count {
+        for _ in 0..count {
             if offset + 6 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!(
-                        "MAC Addresses Detected: incomplete MAC address {} at offset {}",
-                        i, offset
-                    ),
+                return Err(PfcpError::invalid_length(
+                    "MAC Addresses Detected MAC address",
+                    IeType::MacAddressesDetected,
+                    offset + 6,
+                    data.len(),
                 ));
             }
 
@@ -268,15 +266,18 @@ impl MacAddressesDetected {
 
             if ctag_len > 0 {
                 if ctag_len != 3 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("C-TAG length must be 0 or 3, got {}", ctag_len),
+                    return Err(PfcpError::invalid_value(
+                        "MAC Addresses Detected C-TAG length",
+                        ctag_len.to_string(),
+                        "must be 0 or 3",
                     ));
                 }
                 if offset + 3 > data.len() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "MAC Addresses Detected: incomplete C-TAG data",
+                    return Err(PfcpError::invalid_length(
+                        "MAC Addresses Detected C-TAG",
+                        IeType::MacAddressesDetected,
+                        offset + 3,
+                        data.len(),
                     ));
                 }
                 let ctag = CTag::unmarshal(&data[offset..offset + 3])?;
@@ -296,15 +297,18 @@ impl MacAddressesDetected {
 
             if stag_len > 0 {
                 if stag_len != 3 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("S-TAG length must be 0 or 3, got {}", stag_len),
+                    return Err(PfcpError::invalid_value(
+                        "MAC Addresses Detected S-TAG length",
+                        stag_len.to_string(),
+                        "must be 0 or 3",
                     ));
                 }
                 if offset + 3 > data.len() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "MAC Addresses Detected: incomplete S-TAG data",
+                    return Err(PfcpError::invalid_length(
+                        "MAC Addresses Detected S-TAG",
+                        IeType::MacAddressesDetected,
+                        offset + 3,
+                        data.len(),
                     ));
                 }
                 let stag = STag::unmarshal(&data[offset..offset + 3])?;
@@ -374,14 +378,14 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_too_many() {
+        use crate::error::PfcpError;
+
         let addresses: Vec<[u8; 6]> = (0..=255).map(|i| [i as u8, 0, 0, 0, 0, 0]).collect();
 
         let result = MacAddressesDetected::new(addresses);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("cannot contain more than 255"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -464,9 +468,12 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_detected_unmarshal_no_data() {
+        use crate::error::PfcpError;
+
         let result = MacAddressesDetected::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("at least 1 byte"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

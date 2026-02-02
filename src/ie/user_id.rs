@@ -1,8 +1,7 @@
 //! User ID IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents the User ID Information Element.
 /// Used for enhanced user identification in 5G networks.
@@ -139,12 +138,9 @@ impl UserId {
     }
 
     /// Unmarshals a byte slice into a User ID IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("User ID"),
-            ));
+            return Err(PfcpError::invalid_length("User ID", IeType::UserId, 1, 0));
         }
 
         let user_id_type = UserIdType::from(payload[0]);
@@ -278,12 +274,12 @@ mod tests {
 
     #[test]
     fn test_user_id_unmarshal_empty() {
+        use crate::error::PfcpError;
+
         let result = UserId::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("User ID payload too short"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

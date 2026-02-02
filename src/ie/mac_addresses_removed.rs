@@ -4,10 +4,10 @@
 //! on an Ethernet PDU session. Per 3GPP TS 29.244 Section 8.2.104, this IE contains raw
 //! 6-byte MAC address values with optional C-TAG and S-TAG VLAN identifiers.
 
+use crate::error::PfcpError;
 use crate::ie::c_tag::CTag;
 use crate::ie::s_tag::STag;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// MAC Addresses Removed
 ///
@@ -74,22 +74,8 @@ impl MacAddressesRemoved {
     /// let removed = MacAddressesRemoved::new(vec![mac]).unwrap();
     /// assert_eq!(removed.addresses().len(), 1);
     /// ```
-    pub fn new(addresses: Vec<[u8; 6]>) -> Result<Self, io::Error> {
-        if addresses.len() > Self::MAX_ADDRESSES {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!(
-                    "MAC Addresses Removed cannot contain more than {} addresses, got {}",
-                    Self::MAX_ADDRESSES,
-                    addresses.len()
-                ),
-            ));
-        }
-        Ok(MacAddressesRemoved {
-            addresses,
-            c_tag: None,
-            s_tag: None,
-        })
+    pub fn new(addresses: Vec<[u8; 6]>) -> Result<Self, PfcpError> {
+        Self::new_with_vlan(addresses, None, None)
     }
 
     /// Create new MAC Addresses Removed IE with VLAN tags
@@ -128,15 +114,12 @@ impl MacAddressesRemoved {
         addresses: Vec<[u8; 6]>,
         c_tag: Option<CTag>,
         s_tag: Option<STag>,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, PfcpError> {
         if addresses.len() > Self::MAX_ADDRESSES {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!(
-                    "MAC Addresses Removed cannot contain more than {} addresses, got {}",
-                    Self::MAX_ADDRESSES,
-                    addresses.len()
-                ),
+            return Err(PfcpError::invalid_value(
+                "MAC Addresses Removed count",
+                addresses.len().to_string(),
+                format!("cannot contain more than {} addresses", Self::MAX_ADDRESSES),
             ));
         }
         Ok(MacAddressesRemoved {
@@ -282,11 +265,13 @@ impl MacAddressesRemoved {
     /// let parsed = MacAddressesRemoved::unmarshal(&bytes).unwrap();
     /// assert_eq!(removed, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "MAC Addresses Removed requires at least 1 byte for count (per 3GPP TS 29.244 §8.2.104)",
+            return Err(PfcpError::invalid_length(
+                "MAC Addresses Removed",
+                IeType::MacAddressesRemoved,
+                1,
+                0,
             ));
         }
 
@@ -295,14 +280,13 @@ impl MacAddressesRemoved {
 
         // Parse MAC addresses
         let mut addresses = Vec::with_capacity(count);
-        for i in 0..count {
+        for _ in 0..count {
             if offset + 6 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!(
-                        "MAC Addresses Removed: incomplete MAC address {} at offset {}",
-                        i, offset
-                    ),
+                return Err(PfcpError::invalid_length(
+                    "MAC Addresses Removed MAC address",
+                    IeType::MacAddressesRemoved,
+                    offset + 6,
+                    data.len(),
                 ));
             }
 
@@ -314,31 +298,24 @@ impl MacAddressesRemoved {
 
         // Parse C-TAG length and data (if present)
         let c_tag = if offset < data.len() {
-            if offset + 1 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "MAC Addresses Removed: missing C-TAG length field",
-                ));
-            }
-
             let c_tag_len = data[offset] as usize;
             offset += 1;
 
             if c_tag_len > 0 {
                 if c_tag_len != 3 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!(
-                            "MAC Addresses Removed: C-TAG length must be 0 or 3, got {}",
-                            c_tag_len
-                        ),
+                    return Err(PfcpError::invalid_value(
+                        "MAC Addresses Removed C-TAG length",
+                        c_tag_len.to_string(),
+                        "must be 0 or 3",
                     ));
                 }
 
                 if offset + c_tag_len > data.len() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "MAC Addresses Removed: incomplete C-TAG data",
+                    return Err(PfcpError::invalid_length(
+                        "MAC Addresses Removed C-TAG",
+                        IeType::MacAddressesRemoved,
+                        offset + c_tag_len,
+                        data.len(),
                     ));
                 }
 
@@ -354,31 +331,24 @@ impl MacAddressesRemoved {
 
         // Parse S-TAG length and data (if present)
         let s_tag = if offset < data.len() {
-            if offset + 1 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "MAC Addresses Removed: missing S-TAG length field",
-                ));
-            }
-
             let s_tag_len = data[offset] as usize;
             offset += 1;
 
             if s_tag_len > 0 {
                 if s_tag_len != 3 {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!(
-                            "MAC Addresses Removed: S-TAG length must be 0 or 3, got {}",
-                            s_tag_len
-                        ),
+                    return Err(PfcpError::invalid_value(
+                        "MAC Addresses Removed S-TAG length",
+                        s_tag_len.to_string(),
+                        "must be 0 or 3",
                     ));
                 }
 
                 if offset + s_tag_len > data.len() {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "MAC Addresses Removed: incomplete S-TAG data",
+                    return Err(PfcpError::invalid_length(
+                        "MAC Addresses Removed S-TAG",
+                        IeType::MacAddressesRemoved,
+                        offset + s_tag_len,
+                        data.len(),
                     ));
                 }
 
@@ -449,14 +419,14 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_removed_too_many() {
+        use crate::error::PfcpError;
+
         let addresses: Vec<[u8; 6]> = (0..=255).map(|i| [i as u8, 0, 0, 0, 0, 0]).collect();
 
         let result = MacAddressesRemoved::new(addresses);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("cannot contain more than 255"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
     }
 
     #[test]
@@ -531,9 +501,12 @@ mod tests {
 
     #[test]
     fn test_mac_addresses_removed_unmarshal_no_data() {
+        use crate::error::PfcpError;
+
         let result = MacAddressesRemoved::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("at least 1 byte"));
+        let err = result.unwrap_err();
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
