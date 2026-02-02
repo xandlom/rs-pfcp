@@ -2,7 +2,6 @@
 
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a F-TEID.
@@ -100,14 +99,13 @@ impl Fteid {
     /// Unmarshals a byte slice into an F-TEID.
     ///
     /// Per 3GPP TS 29.244, F-TEID requires minimum 5 bytes (1 byte flags + 4 bytes TEID).
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 5 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "F-TEID requires at least 5 bytes (flags + TEID), got {}",
-                    payload.len()
-                ),
+            return Err(PfcpError::invalid_length(
+                "F-TEID",
+                IeType::Fteid,
+                5,
+                payload.len(),
             ));
         }
         let flags = payload[0];
@@ -120,9 +118,11 @@ impl Fteid {
         let ipv4_address = if v4 && !ch {
             // IPv4 address is present only if V4 flag is set and CHOOSE flag is NOT set
             if payload.len() < offset + 4 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "F-TEID payload too short for IPv4",
+                return Err(PfcpError::invalid_length(
+                    "F-TEID IPv4",
+                    IeType::Fteid,
+                    offset + 4,
+                    payload.len(),
                 ));
             }
             let addr = Ipv4Addr::new(
@@ -155,9 +155,11 @@ impl Fteid {
         let ipv6_address = if v6 && !ch {
             // IPv6 address is present only if V6 flag is set and CHOOSE flag is NOT set
             if payload.len() < offset + 16 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "F-TEID payload too short for IPv6",
+                return Err(PfcpError::invalid_length(
+                    "F-TEID IPv6",
+                    IeType::Fteid,
+                    offset + 16,
+                    payload.len(),
                 ));
             }
             let mut octets = [0; 16];
@@ -182,9 +184,11 @@ impl Fteid {
         // Only read choose_id if CHID flag is set
         let choose_id = if chid {
             if payload.len() < offset + 1 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "F-TEID payload too short for choose ID",
+                return Err(PfcpError::invalid_length(
+                    "F-TEID choose ID",
+                    IeType::Fteid,
+                    offset + 1,
+                    payload.len(),
                 ));
             }
             payload[offset]

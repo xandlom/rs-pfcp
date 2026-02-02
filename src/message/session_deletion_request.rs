@@ -208,7 +208,7 @@ impl SessionDeletionRequest {
     pub fn cp_fseid(&self) -> Option<Result<Fseid, PfcpError>> {
         self.cp_fseid
             .as_ref()
-            .map(|ie| Fseid::unmarshal(&ie.payload).map_err(Into::into))
+            .map(|ie| Fseid::unmarshal(&ie.payload))
     }
 }
 

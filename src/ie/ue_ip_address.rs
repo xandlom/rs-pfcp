@@ -1,7 +1,7 @@
 //! UE IP Address IE.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a UE IP Address.
@@ -47,11 +47,13 @@ impl UeIpAddress {
     /// Unmarshals a byte slice into a UE IP Address.
     ///
     /// Per 3GPP TS 29.244, UE IP Address requires minimum 1 byte (flags) plus address data.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "UE IP Address requires at least 1 byte, got 0",
+            return Err(PfcpError::invalid_length(
+                "UE IP Address",
+                IeType::UeIpAddress,
+                1,
+                0,
             ));
         }
         let flags = payload[0];
@@ -60,9 +62,11 @@ impl UeIpAddress {
         let mut offset = 1;
         let ipv4_address = if v4 {
             if payload.len() < offset + 4 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "UE IP Address payload too short for IPv4",
+                return Err(PfcpError::invalid_length(
+                    "UE IP Address IPv4",
+                    IeType::UeIpAddress,
+                    offset + 4,
+                    payload.len(),
                 ));
             }
             let addr = Ipv4Addr::new(
@@ -78,9 +82,11 @@ impl UeIpAddress {
         };
         let ipv6_address = if v6 {
             if payload.len() < offset + 16 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "UE IP Address payload too short for IPv6",
+                return Err(PfcpError::invalid_length(
+                    "UE IP Address IPv6",
+                    IeType::UeIpAddress,
+                    offset + 16,
+                    payload.len(),
                 ));
             }
             let mut octets = [0; 16];
@@ -254,28 +260,32 @@ mod tests {
 
     #[test]
     fn test_ue_ip_address_unmarshal_empty_buffer() {
+        use crate::error::PfcpError;
+
         let data = vec![];
         let result = UeIpAddress::unmarshal(&data);
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("at least 1 byte"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_ue_ip_address_unmarshal_short_ipv4() {
+        use crate::error::PfcpError;
+
         let data = vec![0x02, 192, 168, 1]; // V4 flag but only 3 bytes
         let result = UeIpAddress::unmarshal(&data);
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("too short for IPv4"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
     fn test_ue_ip_address_unmarshal_short_ipv6() {
+        use crate::error::PfcpError;
+
         let data = vec![
             0x01, 0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ]; // V6 flag but only 10 bytes
@@ -283,8 +293,7 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("too short for IPv6"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]

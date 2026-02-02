@@ -2,7 +2,8 @@
 
 //! F-SEID Information Element.
 
-use std::io;
+use crate::error::PfcpError;
+use crate::ie::IeType;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,14 +49,13 @@ impl Fseid {
     /// Unmarshals a byte slice into an F-SEID.
     ///
     /// Per 3GPP TS 29.244, F-SEID requires minimum 9 bytes (1 byte flags + 8 bytes SEID).
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.len() < 9 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "F-SEID requires at least 9 bytes (flags + SEID), got {}",
-                    data.len()
-                ),
+            return Err(PfcpError::invalid_length(
+                "F-SEID",
+                IeType::Fseid,
+                9,
+                data.len(),
             ));
         }
         let flags = data[0];
@@ -66,9 +66,11 @@ impl Fseid {
         let mut offset = 9;
         let ipv4_address = if v4 {
             if data.len() < offset + 4 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for IPv4 in F-SEID",
+                return Err(PfcpError::invalid_length(
+                    "F-SEID IPv4",
+                    IeType::Fseid,
+                    offset + 4,
+                    data.len(),
                 ));
             }
             let addr = Ipv4Addr::from([
@@ -85,9 +87,11 @@ impl Fseid {
 
         let ipv6_address = if v6 {
             if data.len() < offset + 16 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for IPv6 in F-SEID",
+                return Err(PfcpError::invalid_length(
+                    "F-SEID IPv6",
+                    IeType::Fseid,
+                    offset + 16,
+                    data.len(),
                 ));
             }
             let mut octets = [0u8; 16];
@@ -157,11 +161,11 @@ mod tests {
 
     #[test]
     fn test_fseid_unmarshal_empty() {
+        use crate::error::PfcpError;
+
         let result = Fseid::unmarshal(&[]);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires at least 9 bytes"));
-        assert!(err.to_string().contains("got 0"));
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 }

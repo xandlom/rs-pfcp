@@ -52,7 +52,7 @@ impl SessionEstablishmentResponse {
     }
 
     /// Returns the F-SEID.
-    pub fn fseid(&self) -> Result<crate::ie::fseid::Fseid, io::Error> {
+    pub fn fseid(&self) -> Result<crate::ie::fseid::Fseid, PfcpError> {
         crate::ie::fseid::Fseid::unmarshal(&self.fseid.payload)
     }
 

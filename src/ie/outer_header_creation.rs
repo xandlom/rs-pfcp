@@ -3,9 +3,8 @@
 //! This IE specifies the creation of GTP-U, UDP/IPv4, or UDP/IPv6 outer headers
 //! for forwarding packets. Used in ForwardingParameters to configure tunnel endpoints.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Outer Header Creation Description flags
@@ -257,11 +256,13 @@ impl OuterHeaderCreation {
     }
 
     /// Unmarshals bytes into an Outer Header Creation IE
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Outer Header Creation"),
+            return Err(PfcpError::invalid_length(
+                "Outer Header Creation",
+                IeType::OuterHeaderCreation,
+                2,
+                payload.len(),
             ));
         }
 
@@ -275,9 +276,11 @@ impl OuterHeaderCreation {
         // TEID (4 bytes) - if GTP-U
         let teid = if description.gtpu_udp_ipv4 || description.gtpu_udp_ipv6 {
             if offset + 4 > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing TEID in Outer Header Creation",
+                return Err(PfcpError::invalid_length(
+                    "Outer Header Creation TEID",
+                    IeType::OuterHeaderCreation,
+                    offset + 4,
+                    payload.len(),
                 ));
             }
             let teid_val = u32::from_be_bytes([
@@ -296,9 +299,11 @@ impl OuterHeaderCreation {
         let ipv4_address = if description.gtpu_udp_ipv4 || description.udp_ipv4 || description.ipv4
         {
             if offset + 4 > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing IPv4 address in Outer Header Creation",
+                return Err(PfcpError::invalid_length(
+                    "Outer Header Creation IPv4",
+                    IeType::OuterHeaderCreation,
+                    offset + 4,
+                    payload.len(),
                 ));
             }
             let ipv4 = Ipv4Addr::new(
@@ -317,9 +322,11 @@ impl OuterHeaderCreation {
         let ipv6_address = if description.gtpu_udp_ipv6 || description.udp_ipv6 || description.ipv6
         {
             if offset + 16 > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing IPv6 address in Outer Header Creation",
+                return Err(PfcpError::invalid_length(
+                    "Outer Header Creation IPv6",
+                    IeType::OuterHeaderCreation,
+                    offset + 16,
+                    payload.len(),
                 ));
             }
             let mut ipv6_bytes = [0u8; 16];
@@ -333,9 +340,11 @@ impl OuterHeaderCreation {
         // Port Number (2 bytes) - for UDP
         let port_number = if description.udp_ipv4 || description.udp_ipv6 {
             if offset + 2 > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing port number in Outer Header Creation",
+                return Err(PfcpError::invalid_length(
+                    "Outer Header Creation port",
+                    IeType::OuterHeaderCreation,
+                    offset + 2,
+                    payload.len(),
                 ));
             }
             let port = u16::from_be_bytes([payload[offset], payload[offset + 1]]);
@@ -348,9 +357,11 @@ impl OuterHeaderCreation {
         // C-TAG (3 bytes)
         let ctag = if description.ctag {
             if offset + 3 > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing C-TAG in Outer Header Creation",
+                return Err(PfcpError::invalid_length(
+                    "Outer Header Creation C-TAG",
+                    IeType::OuterHeaderCreation,
+                    offset + 3,
+                    payload.len(),
                 ));
             }
             let ctag_val = ((payload[offset] as u32) << 16)
@@ -365,9 +376,11 @@ impl OuterHeaderCreation {
         // S-TAG (3 bytes)
         let stag = if description.stag {
             if offset + 3 > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing S-TAG in Outer Header Creation",
+                return Err(PfcpError::invalid_length(
+                    "Outer Header Creation S-TAG",
+                    IeType::OuterHeaderCreation,
+                    offset + 3,
+                    payload.len(),
                 ));
             }
             let stag_val = ((payload[offset] as u32) << 16)
