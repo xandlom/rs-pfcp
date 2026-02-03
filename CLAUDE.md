@@ -176,7 +176,7 @@ rs-pfcp/
 **Message Trait:**
 All PFCP messages implement the `Message` trait with:
 - `marshal() -> Vec<u8>` - Serialize to binary
-- `unmarshal(data: &[u8]) -> Result<Box<dyn Message>, io::Error>` - Parse from binary
+- `unmarshal(data: &[u8]) -> Result<Box<dyn Message>, PfcpError>` - Parse from binary
 - `msg_type() -> MsgType` - Get message type
 - `sequence() -> u32` - Get sequence number
 - `seid() -> Option<u64>` - Get session endpoint ID (if applicable)
@@ -206,18 +206,24 @@ All IEs follow Type-Length-Value structure per 3GPP TS 29.244:
 - Value: variable length data
 
 **Error Handling:**
-- Use `std::io::Error` for all marshal/unmarshal operations
-- `io::ErrorKind::InvalidData` for protocol violations
-- Descriptive error messages with context
+- Use `PfcpError` enum for all marshal/unmarshal operations (defined in `src/error.rs`)
+- Key error variants:
+  - `PfcpError::InvalidLength` - Payload too short
+  - `PfcpError::InvalidValue` - Invalid field value
+  - `PfcpError::MissingMandatoryIe` - Required IE not present
+  - `PfcpError::ValidationError` - Builder validation failure
+- Pattern match on error variants for specific handling
+- Use `err.to_cause_code()` to map errors to 3GPP Cause values for responses
 - NO panics on invalid input - always return `Result`
+- See [docs/architecture/error-handling.md](docs/architecture/error-handling.md) for detailed patterns
 
 **Zero-Length IE Validation:**
 Only 3 IEs are allowed to have zero-length values per 3GPP spec:
-1. `ApplyAction` (IE Type 44)
-2. `ActivatePredefinedRules` (IE Type 106)
-3. `DeactivatePredefinedRules` (IE Type 107)
+1. `NetworkInstance` (IE Type 22) - clears network routing context
+2. `ApnDnn` (IE Type 159) - default APN
+3. `ForwardingPolicy` (IE Type 41) - clears policy
 
-All other zero-length IEs MUST be rejected with `InvalidData` error.
+All other zero-length IEs MUST be rejected with `PfcpError::InvalidValue`.
 
 **Security Considerations:**
 - Zero-length IE validation protects against DoS attacks at protocol level
@@ -271,6 +277,7 @@ Example test structure:
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::PfcpError;
 
     #[test]
     fn test_marshal_unmarshal_round_trip() {
@@ -284,6 +291,11 @@ mod tests {
     fn test_unmarshal_short_buffer() {
         let result = MyIe::unmarshal(&[]);
         assert!(result.is_err());
+        // Pattern match on specific error type
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 }
 ```
