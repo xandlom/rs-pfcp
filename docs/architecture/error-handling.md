@@ -2,161 +2,295 @@
 
 ## Overview
 
-rs-pfcp implements a comprehensive error handling strategy that balances strict protocol compliance, security, and user experience. The error handling system provides clear, actionable error messages while preventing exploitation through malformed input.
+rs-pfcp implements a comprehensive error handling strategy using the custom `PfcpError` type. This provides structured, semantic error information while maintaining strict protocol compliance and security. The error handling system enables pattern matching on specific error types, maps errors to 3GPP Cause codes, and provides clear, actionable error messages.
 
 ## Error Design Philosophy
 
 ### Core Principles
 
-1. **Fail Fast**: Detect and reject invalid input as early as possible
-2. **Clear Messages**: Provide specific, actionable error information
-3. **Security First**: Never expose internal state or enable DoS attacks
-4. **Type Safety**: Leverage Rust's type system to prevent errors at compile time
-5. **Graceful Degradation**: Handle unknown/optional IEs without failing
+1. **Structured Errors**: Rich error types with context (IE type, field name, expected vs actual values)
+2. **Fail Fast**: Detect and reject invalid input as early as possible
+3. **Pattern Matching**: Enable callers to handle specific error cases programmatically
+4. **3GPP Compliance**: Map errors to PFCP Cause codes for response messages
+5. **Security First**: Never expose internal state or enable DoS attacks
+6. **Type Safety**: Leverage Rust's type system to prevent errors at compile time
 
 ### Error Categories
 
-rs-pfcp errors fall into four main categories:
-
 ```rust
-┌──────────────────────────────────────────────────┐
-│            Error Categories                      │
-├──────────────────────────────────────────────────┤
-│ 1. Parse Errors      │ Invalid wire format       │
-│ 2. Validation Errors │ Spec non-compliance       │
-│ 3. Protocol Errors   │ PFCP protocol violations  │
-│ 4. User Errors       │ Incorrect API usage       │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    PfcpError Variants                        │
+├──────────────────────────────────────────────────────────────┤
+│ MissingMandatoryIe   │ Required IE not present               │
+│ InvalidLength        │ Buffer/payload too short              │
+│ InvalidValue         │ Field has invalid/out-of-range value  │
+│ ValidationError      │ Builder validation failure            │
+│ IeParseError         │ IE-specific parsing failure           │
+│ EncodingError        │ UTF-8/string encoding issues          │
+│ ZeroLengthNotAllowed │ Security: zero-length IE rejected     │
+│ MessageParseError    │ Message-level parsing failure         │
+│ IoError              │ Wrapped std::io::Error                │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## Error Types
+## The PfcpError Type
 
-### Primary Error Type
+### Definition
 
-rs-pfcp uses `std::io::Error` as the primary error type for simplicity and stdlib compatibility:
+The `PfcpError` enum is defined in `src/error.rs`:
 
 ```rust
-use std::io;
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::MsgType;
 
-// All marshal/unmarshal operations return io::Error
-pub fn unmarshal(buf: &[u8]) -> Result<Self, io::Error> {
-    // ...
+pub enum PfcpError {
+    /// Required IE is missing from message or grouped IE
+    MissingMandatoryIe {
+        ie_type: IeType,
+        message_type: Option<MsgType>,
+        parent_ie: Option<IeType>,
+    },
+
+    /// Payload is too short for the expected IE format
+    InvalidLength {
+        ie_name: String,
+        ie_type: IeType,
+        expected: usize,
+        actual: usize,
+    },
+
+    /// Field contains an invalid value
+    InvalidValue {
+        field: String,
+        value: String,
+        reason: String,
+    },
+
+    /// Builder validation failed
+    ValidationError {
+        builder: String,
+        field: String,
+        reason: String,
+    },
+
+    /// IE-specific parsing error
+    IeParseError {
+        ie_type: IeType,
+        reason: String,
+        offset: Option<usize>,
+    },
+
+    /// UTF-8 encoding error
+    EncodingError {
+        ie_name: String,
+        ie_type: IeType,
+        source: std::str::Utf8Error,
+    },
+
+    /// Zero-length IE security violation
+    ZeroLengthNotAllowed {
+        ie_name: String,
+        ie_type: u16,
+    },
+
+    /// Message parsing error
+    MessageParseError {
+        message_type: Option<MsgType>,
+        reason: String,
+    },
+
+    /// Wrapped I/O error
+    IoError {
+        kind: std::io::ErrorKind,
+        message: String,
+    },
+}
+```
+
+### Constructor Helpers
+
+`PfcpError` provides convenient constructors:
+
+```rust
+// Create an InvalidLength error
+let err = PfcpError::invalid_length("PDR ID", IeType::PdrId, 2, 0);
+
+// Create an InvalidValue error
+let err = PfcpError::invalid_value("gate_status", "5", "must be 0-2");
+
+// Create a ValidationError
+let err = PfcpError::validation_error("CreatePdrBuilder", "pdr_id", "is required");
+```
+
+### Error to Cause Code Mapping
+
+`PfcpError` can be mapped to 3GPP TS 29.244 Cause codes:
+
+```rust
+impl PfcpError {
+    pub fn to_cause_code(&self) -> CauseValue {
+        match self {
+            PfcpError::MissingMandatoryIe { .. } => CauseValue::MandatoryIeMissing,
+            PfcpError::InvalidLength { .. } => CauseValue::InvalidLength,
+            PfcpError::InvalidValue { .. } => CauseValue::RequestRejected,
+            // ... other mappings
+        }
+    }
+}
+```
+
+## Usage Patterns
+
+### Basic Error Handling
+
+```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::message::HeartbeatRequest;
+
+fn handle_message(data: &[u8]) {
+    match HeartbeatRequest::unmarshal(data) {
+        Ok(request) => {
+            println!("Received heartbeat, seq={}", request.sequence());
+        }
+        Err(e) => {
+            eprintln!("Failed to parse heartbeat: {}", e);
+        }
+    }
+}
+```
+
+### Pattern Matching on Error Types
+
+```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::SessionEstablishmentRequest;
+
+fn handle_session_request(data: &[u8]) -> Result<(), PfcpError> {
+    match SessionEstablishmentRequest::unmarshal(data) {
+        Ok(request) => {
+            process_request(request);
+            Ok(())
+        }
+        Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
+            eprintln!("Missing required IE: {:?}", ie_type);
+            // Send rejection response with Cause = MandatoryIeMissing
+            Err(PfcpError::MissingMandatoryIe { ie_type, message_type: None, parent_ie: None })
+        }
+        Err(PfcpError::InvalidLength { ie_name, expected, actual, .. }) => {
+            eprintln!("{} too short: expected {} bytes, got {}", ie_name, expected, actual);
+            Err(PfcpError::InvalidLength { ie_name, ie_type: IeType::Unknown, expected, actual })
+        }
+        Err(e) => {
+            eprintln!("Parse error: {}", e);
+            Err(e)
+        }
+    }
+}
+```
+
+### Creating Error Responses
+
+```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::cause::{Cause, CauseValue};
+use rs_pfcp::message::SessionEstablishmentResponseBuilder;
+
+fn create_error_response(err: &PfcpError, seid: u64, seq: u32) -> Vec<u8> {
+    let cause_value = err.to_cause_code();
+
+    SessionEstablishmentResponseBuilder::new(seid, seq)
+        .cause(cause_value)
+        .marshal()
+        .expect("response marshaling should not fail")
+}
+```
+
+### Builder Validation Errors
+
+```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+
+fn build_pdr() -> Result<(), PfcpError> {
+    let pdr = CreatePdrBuilder::new()
+        // Missing pdr_id - will fail validation
+        .precedence(100)
+        .build()?;  // Returns Err(PfcpError::ValidationError { ... })
+
+    Ok(())
 }
 
-pub fn marshal(&self) -> Result<Vec<u8>, io::Error> {
-    // ...
+// Handle validation errors
+match build_pdr() {
+    Ok(()) => println!("PDR created"),
+    Err(PfcpError::ValidationError { builder, field, reason }) => {
+        eprintln!("{} validation failed: {} - {}", builder, field, reason);
+    }
+    Err(e) => eprintln!("Unexpected error: {}", e),
 }
 ```
 
-**Rationale:**
-- Standard library type, no custom error dependencies
-- Works seamlessly with I/O operations
-- Familiar to Rust developers
-- Supports custom error messages via `io::Error::new()`
+### IE Unmarshal Errors
 
-### Error Kind Mapping
-
-rs-pfcp maps protocol errors to `io::ErrorKind`:
+All IE `unmarshal` methods return `Result<Self, PfcpError>`:
 
 ```rust
-use std::io::ErrorKind;
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::pdr_id::PdrId;
 
-// Parse errors: Input data is malformed
-ErrorKind::InvalidData => "Buffer too short, invalid format, etc."
-
-// Validation errors: Data doesn't meet spec requirements
-ErrorKind::InvalidInput => "Value out of range, missing mandatory fields"
-
-// Protocol errors: PFCP protocol violations
-ErrorKind::Other => "Unknown message type, version mismatch"
-
-// User errors: API misuse
-ErrorKind::InvalidInput => "Missing required fields in builder"
-```
-
-### Error Construction Patterns
-
-#### Simple Errors
-
-For straightforward cases:
-
-```rust
-if payload.is_empty() {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Node ID requires at least 1 byte (type field), got 0",
-    ));
+fn parse_pdr_id(payload: &[u8]) {
+    match PdrId::unmarshal(payload) {
+        Ok(pdr_id) => {
+            println!("PDR ID: {}", pdr_id.value());
+        }
+        Err(PfcpError::InvalidLength { expected, actual, .. }) => {
+            eprintln!("PDR ID payload too short: need {} bytes, got {}", expected, actual);
+        }
+        Err(e) => {
+            eprintln!("Failed to parse PDR ID: {}", e);
+        }
+    }
 }
 ```
 
-#### Formatted Errors
+### IeIterator Error Handling
 
-For dynamic error messages:
-
-```rust
-if payload.len() < expected_len {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("F-SEID requires at least {} bytes, got {}",
-                expected_len, payload.len()),
-    ));
-}
-```
-
-#### Contextual Errors
-
-Adding context to nested errors:
+The `IeIterator` returns `Result<Ie, PfcpError>`:
 
 ```rust
-pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-    let pdi = Pdi::unmarshal(pdi_payload).map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Failed to parse PDI in Create PDR: {}", e),
-        )
-    })?;
-    // ...
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::{IeIterator, IeType};
+
+fn parse_grouped_ie(payload: &[u8]) -> Result<(), PfcpError> {
+    for ie_result in IeIterator::new(payload) {
+        let ie = ie_result?;  // Propagates PfcpError on parse failure
+
+        match ie.ie_type {
+            IeType::PdrId => { /* handle PDR ID */ }
+            IeType::Precedence => { /* handle Precedence */ }
+            _ => { /* ignore unknown IEs */ }
+        }
+    }
+    Ok(())
 }
 ```
 
 ## Parse Error Handling
 
-### Buffer Validation
+### Buffer Length Validation
 
-All unmarshal operations validate buffer length first:
-
-```rust
-pub fn unmarshal(buf: &[u8]) -> Result<PfcpHeader, io::Error> {
-    // Minimum PFCP header is 8 bytes (without SEID)
-    if buf.len() < 8 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("PFCP header requires at least 8 bytes, got {}", buf.len()),
-        ));
-    }
-
-    let version = (buf[0] >> 5) & 0x07;
-    if version != 1 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Invalid PFCP version: expected 1, got {}", version),
-        ));
-    }
-
-    // ... continue parsing
-}
-```
-
-### IE Length Validation
-
-Every IE validates its payload length:
+All unmarshal operations validate buffer length:
 
 ```rust
-pub fn unmarshal(payload: &[u8]) -> Result<PdrId, io::Error> {
+pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
     if payload.len() < 2 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("PDR ID requires 2 bytes, got {}", payload.len()),
+        return Err(PfcpError::invalid_length(
+            "PDR ID",
+            IeType::PdrId,
+            2,
+            payload.len(),
         ));
     }
 
@@ -165,618 +299,135 @@ pub fn unmarshal(payload: &[u8]) -> Result<PdrId, io::Error> {
 }
 ```
 
-### TLV Parsing Errors
+### Grouped IE Mandatory Field Validation
 
-Type-Length-Value parsing handles malformed data:
-
-```rust
-pub fn unmarshal(buf: &[u8]) -> Result<Ie, io::Error> {
-    if buf.len() < 4 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "IE header requires at least 4 bytes (type + length)",
-        ));
-    }
-
-    let ie_type = u16::from_be_bytes([buf[0], buf[1]]);
-    let ie_len = u16::from_be_bytes([buf[2], buf[3]]) as usize;
-
-    // Check if buffer contains full IE
-    if buf.len() < 4 + ie_len {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("IE payload too short: type={}, expected length={}, buffer has {} bytes",
-                    ie_type, ie_len, buf.len() - 4),
-        ));
-    }
-
-    let payload = buf[4..4+ie_len].to_vec();
-    Ok(Ie::new(IeType::from_u16(ie_type), payload))
-}
-```
-
-## Validation Error Handling
-
-### Value Range Validation
-
-IEs validate that values are within specification ranges:
+Grouped IEs validate mandatory child IEs:
 
 ```rust
-pub fn unmarshal(payload: &[u8]) -> Result<Precedence, io::Error> {
-    if payload.len() < 4 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Precedence requires 4 bytes, got {}", payload.len()),
-        ));
-    }
-
-    let value = u32::from_be_bytes([payload[0], payload[1], payload[2], payload[3]]);
-
-    // Per 3GPP TS 29.244: Precedence shall not be zero
-    if value == 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Precedence value cannot be zero (per 3GPP TS 29.244)",
-        ));
-    }
-
-    Ok(Precedence::new(value))
-}
-```
-
-### Enum Validation
-
-Enum IEs reject unknown values:
-
-```rust
-pub fn unmarshal(payload: &[u8]) -> Result<SourceInterface, io::Error> {
-    if payload.is_empty() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Source Interface requires at least 1 byte",
-        ));
-    }
-
-    match payload[0] {
-        0 => Ok(SourceInterface::Access),
-        1 => Ok(SourceInterface::Core),
-        2 => Ok(SourceInterface::SgiLanN6Lan),
-        3 => Ok(SourceInterface::CpFunction),
-        v => Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("Invalid Source Interface value: {} (valid: 0-3)", v),
-        )),
-    }
-}
-```
-
-### Mandatory IE Validation
-
-Grouped IEs validate that mandatory child IEs are present:
-
-```rust
-pub fn unmarshal(payload: &[u8]) -> Result<CreatePdr, io::Error> {
-    // Parse all IEs
+pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
     let mut pdr_id = None;
     let mut precedence = None;
-    let mut pdi = None;
 
-    let mut offset = 0;
-    while offset < payload.len() {
-        let ie = Ie::unmarshal(&payload[offset..])?;
-
+    for ie_result in IeIterator::new(payload) {
+        let ie = ie_result?;
         match ie.ie_type {
             IeType::PdrId => pdr_id = Some(PdrId::unmarshal(&ie.payload)?),
             IeType::Precedence => precedence = Some(Precedence::unmarshal(&ie.payload)?),
-            IeType::Pdi => pdi = Some(Pdi::unmarshal(&ie.payload)?),
-            _ => {} // Optional IEs
+            _ => {}
         }
-
-        offset += ie.total_length();
     }
 
-    // Validate mandatory IEs
-    let pdr_id = pdr_id.ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Create PDR missing mandatory IE: PDR ID",
-        )
+    let pdr_id = pdr_id.ok_or(PfcpError::MissingMandatoryIe {
+        ie_type: IeType::PdrId,
+        message_type: None,
+        parent_ie: Some(IeType::CreatePdr),
     })?;
 
-    let precedence = precedence.ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Create PDR missing mandatory IE: Precedence",
-        )
+    let precedence = precedence.ok_or(PfcpError::MissingMandatoryIe {
+        ie_type: IeType::Precedence,
+        message_type: None,
+        parent_ie: Some(IeType::CreatePdr),
     })?;
 
-    let pdi = pdi.ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Create PDR missing mandatory IE: PDI",
-        )
-    })?;
-
-    Ok(CreatePdr {
-        pdr_id,
-        precedence,
-        pdi,
-        // ... optional fields
-    })
-}
-```
-
-### Semantic Validation
-
-Validate relationships between IEs:
-
-```rust
-impl CreatePdr {
-    /// Validates semantic correctness of the PDR
-    pub fn validate(&self) -> Result<(), io::Error> {
-        // PDR with forwarding action must reference a FAR
-        if self.has_forward_action() && self.far_id.is_none() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Create PDR: PDR with forwarding action must include FAR ID",
-            ));
-        }
-
-        // Outer header removal only valid for certain source interfaces
-        if let Some(_ohr) = &self.outer_header_removal {
-            match self.pdi.source_interface {
-                SourceInterface::Access => {} // OK
-                SourceInterface::Core => {} // OK
-                _ => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        format!(
-                            "Outer Header Removal not valid for source interface {:?}",
-                            self.pdi.source_interface
-                        ),
-                    ));
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-```
-
-## Protocol Error Handling
-
-### Version Mismatch
-
-PFCP version must be 1 (current spec):
-
-```rust
-pub fn unmarshal_header(buf: &[u8]) -> Result<PfcpHeader, io::Error> {
-    let version = (buf[0] >> 5) & 0x07;
-
-    if version != 1 {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!(
-                "Unsupported PFCP version: {} (only version 1 supported, per 3GPP TS 29.244 Rel-18)",
-                version
-            ),
-        ));
-    }
-
-    // ... continue parsing
-}
-```
-
-### Unknown Message Types
-
-Handle unknown message types gracefully:
-
-```rust
-pub fn route_message(buf: &[u8]) -> Result<Message, io::Error> {
-    let msg_type = peek_message_type(buf)?;
-
-    match msg_type {
-        1 => Ok(Message::HeartbeatRequest(HeartbeatRequest::unmarshal(buf)?)),
-        2 => Ok(Message::HeartbeatResponse(HeartbeatResponse::unmarshal(buf)?)),
-        // ... known message types
-        unknown => Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("Unknown PFCP message type: {}", unknown),
-        )),
-    }
-}
-```
-
-### Unknown IE Handling
-
-Per 3GPP TS 29.244, unknown IEs are handled based on their type code:
-
-```rust
-pub fn unmarshal_message(payload: &[u8]) -> Result<Self, io::Error> {
-    let mut offset = 0;
-
-    while offset < payload.len() {
-        let ie = Ie::unmarshal(&payload[offset..])?;
-
-        // Check if IE is known
-        if ie.ie_type.is_unknown() {
-            // Bit 15: 0 = mandatory to understand, 1 = optional/forward compatible
-            if ie.ie_type.is_mandatory() {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!(
-                        "Unknown mandatory IE type: {} (cannot skip)",
-                        ie.ie_type as u16
-                    ),
-                ));
-            } else {
-                // Optional/vendor IE: skip and continue
-                log::warn!("Skipping unknown optional IE type: {}", ie.ie_type as u16);
-            }
-        } else {
-            // Process known IE
-            self.process_ie(ie)?;
-        }
-
-        offset += ie.total_length();
-    }
-
-    Ok(())
-}
-```
-
-## User Error Handling
-
-### Builder Validation
-
-Builders validate at build time:
-
-```rust
-pub struct SessionEstablishmentRequestBuilder {
-    node_id: Option<NodeId>,
-    cp_f_seid: Option<Fseid>,
-    create_pdr: Vec<CreatePdr>,
-    create_far: Vec<CreateFAR>,
-}
-
-impl SessionEstablishmentRequestBuilder {
-    pub fn build(self) -> Result<SessionEstablishmentRequest, io::Error> {
-        // Validate mandatory fields
-        let node_id = self.node_id.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "SessionEstablishmentRequest missing required field: node_id",
-            )
-        })?;
-
-        // Validate business logic
-        if self.create_pdr.is_empty() && self.create_far.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "SessionEstablishmentRequest must have at least one PDR or FAR",
-            ));
-        }
-
-        // Validate PDR/FAR relationships
-        for pdr in &self.create_pdr {
-            if let Some(far_id) = &pdr.far_id {
-                if !self.create_far.iter().any(|far| far.far_id.value() == far_id.value()) {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        format!("PDR {} references non-existent FAR {}",
-                                pdr.pdr_id.value(), far_id.value()),
-                    ));
-                }
-            }
-        }
-
-        Ok(SessionEstablishmentRequest {
-            node_id,
-            cp_f_seid: self.cp_f_seid,
-            create_pdr: self.create_pdr,
-            create_far: self.create_far,
-        })
-    }
-}
-```
-
-### Type-Level Enforcement
-
-Mandatory fields are non-`Option`:
-
-```rust
-// Good: Mandatory field is not Option
-pub struct SessionEstablishmentRequest {
-    pub node_id: NodeId,  // Cannot be None
-    pub cp_f_seid: Option<Fseid>,  // Optional
-}
-
-// Compiler prevents:
-let req = SessionEstablishmentRequest {
-    node_id: None,  // ❌ Compile error!
-    cp_f_seid: Some(seid),
-};
-```
-
-## Error Recovery Strategies
-
-### Partial Parse Recovery
-
-For batch operations, collect errors without failing immediately:
-
-```rust
-pub fn unmarshal_multiple_pdrs(payload: &[u8]) -> (Vec<CreatePdr>, Vec<io::Error>) {
-    let mut pdrs = Vec::new();
-    let mut errors = Vec::new();
-
-    let mut offset = 0;
-    while offset < payload.len() {
-        match Ie::unmarshal(&payload[offset..]) {
-            Ok(ie) => {
-                match CreatePdr::unmarshal(&ie.payload) {
-                    Ok(pdr) => pdrs.push(pdr),
-                    Err(e) => errors.push(e),
-                }
-                offset += ie.total_length();
-            }
-            Err(e) => {
-                errors.push(e);
-                break;  // Cannot continue if IE parsing fails
-            }
-        }
-    }
-
-    (pdrs, errors)
-}
-```
-
-### Fallback Values
-
-For non-critical fields, use defaults:
-
-```rust
-pub fn unmarshal_with_defaults(payload: &[u8]) -> Result<Self, io::Error> {
-    // Parse critical fields (fail on error)
-    let node_id = parse_node_id(payload)?;
-    let seid = parse_seid(payload)?;
-
-    // Parse optional fields (use defaults on error)
-    let cp_features = parse_cp_features(payload).unwrap_or_default();
-
-    Ok(AssociationSetupRequest {
-        node_id,
-        recovery_time_stamp: /* ... */,
-        cp_function_features: cp_features,
-    })
-}
-```
-
-### Error Logging
-
-Log errors for debugging without exposing to users:
-
-```rust
-pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
-    match Self::unmarshal_internal(payload) {
-        Ok(msg) => Ok(msg),
-        Err(e) => {
-            // Log detailed error for debugging
-            log::error!(
-                "Failed to unmarshal SessionEstablishmentRequest: {}\nPayload (first 64 bytes): {:02x?}",
-                e,
-                &payload[..payload.len().min(64)]
-            );
-
-            // Return sanitized error to user
-            Err(io::Error::new(
-                e.kind(),
-                "Failed to parse Session Establishment Request",
-            ))
-        }
-    }
+    Ok(CreatePdr { pdr_id, precedence, /* ... */ })
 }
 ```
 
 ## Security Considerations
 
-### DoS Prevention
+### Zero-Length IE Protection
 
-Limit resource consumption on malformed input:
+Per 3GPP TS 29.244, most IEs cannot have zero length. rs-pfcp rejects these:
 
 ```rust
-pub fn unmarshal(payload: &[u8]) -> Result<Vec<CreatePdr>, io::Error> {
-    const MAX_PDRS: usize = 1000;  // Prevent memory exhaustion
+// In Ie::unmarshal
+if length == 0 && !Self::allows_zero_length(ie_type) {
+    return Err(PfcpError::invalid_value(
+        "IE",
+        format!("{:?} (type {})", ie_type, raw_type),
+        "Zero-length IE not allowed",
+    ));
+}
+```
+
+Only these IEs allow zero-length (per spec):
+- `NetworkInstance` (Type 22) - clears network routing context
+- `ApnDnn` (Type 159) - default APN
+- `ForwardingPolicy` (Type 41) - clears policy
+
+### DoS Prevention
+
+Resource limits prevent memory exhaustion:
+
+```rust
+pub fn unmarshal(payload: &[u8]) -> Result<Vec<CreatePdr>, PfcpError> {
+    const MAX_PDRS: usize = 1000;
 
     let mut pdrs = Vec::new();
-    let mut offset = 0;
 
-    while offset < payload.len() {
+    for ie_result in IeIterator::new(payload) {
         if pdrs.len() >= MAX_PDRS {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Too many PDRs in message: limit is {}", MAX_PDRS),
+            return Err(PfcpError::invalid_value(
+                "PDR count",
+                pdrs.len().to_string(),
+                format!("exceeds maximum of {}", MAX_PDRS),
             ));
         }
-
-        let ie = Ie::unmarshal(&payload[offset..])?;
-        pdrs.push(CreatePdr::unmarshal(&ie.payload)?);
-        offset += ie.total_length();
+        // ... parse PDR
     }
 
     Ok(pdrs)
 }
 ```
 
-### No Information Leakage
-
-Never expose internal implementation details:
-
-```rust
-// Bad: Exposes memory addresses, internal structure
-Err(io::Error::new(
-    io::ErrorKind::Other,
-    format!("Parse failed at address {:p}", buf.as_ptr()),
-))
-
-// Good: Generic, safe error
-Err(io::Error::new(
-    io::ErrorKind::InvalidData,
-    "Failed to parse IE at offset 42",
-))
-```
-
-### Input Sanitization
-
-Sanitize user-controlled strings:
-
-```rust
-pub fn new_fqdn(fqdn: &str) -> Result<NodeId, io::Error> {
-    // Limit length to prevent resource exhaustion
-    if fqdn.len() > 255 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "FQDN exceeds maximum length of 255 bytes",
-        ));
-    }
-
-    // Validate characters
-    if !fqdn.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "FQDN contains invalid characters (only alphanumeric, '.', '-' allowed)",
-        ));
-    }
-
-    Ok(NodeId::FQDN(fqdn.to_string()))
-}
-```
-
-## Error Propagation Patterns
-
-### Early Return
-
-Use `?` operator for simple propagation:
-
-```rust
-pub fn unmarshal(buf: &[u8]) -> Result<Self, io::Error> {
-    let header = PfcpHeader::unmarshal(buf)?;  // Propagate immediately
-    let node_id = NodeId::unmarshal(&buf[header.len()..])?;
-    // ...
-    Ok(message)
-}
-```
-
-### Contextual Wrapping
-
-Add context when propagating:
-
-```rust
-pub fn unmarshal(buf: &[u8]) -> Result<Self, io::Error> {
-    let pdr = CreatePdr::unmarshal(buf).map_err(|e| {
-        io::Error::new(
-            e.kind(),
-            format!("Failed to unmarshal Create PDR: {}", e),
-        )
-    })?;
-
-    Ok(pdr)
-}
-```
-
-### Error Collection
-
-Collect multiple errors:
-
-```rust
-pub fn validate_all(&self) -> Result<(), Vec<io::Error>> {
-    let mut errors = Vec::new();
-
-    for (i, pdr) in self.create_pdr.iter().enumerate() {
-        if let Err(e) = pdr.validate() {
-            errors.push(io::Error::new(
-                e.kind(),
-                format!("PDR #{}: {}", i, e),
-            ));
-        }
-    }
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
-}
-```
-
 ## Testing Error Paths
 
-### Positive and Negative Tests
-
-Every unmarshal function has both:
+### Testing Specific Error Types
 
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[test]
+fn test_unmarshal_too_short() {
+    let result = PdrId::unmarshal(&[0x00]);  // Need 2 bytes
 
-    #[test]
-    fn test_unmarshal_valid() {
-        // Valid input succeeds
-        let buf = vec![0x00, 0x01, 0x02, 0x03];
-        let result = PdrId::unmarshal(&buf);
-        assert!(result.is_ok());
-    }
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        PfcpError::InvalidLength { expected: 2, actual: 1, .. }
+    ));
+}
 
-    #[test]
-    fn test_unmarshal_too_short() {
-        // Too short input fails with correct error
-        let buf = vec![0x00];
-        let result = PdrId::unmarshal(&buf);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
-    }
+#[test]
+fn test_missing_mandatory_ie() {
+    let empty_payload = vec![];
+    let result = CreatePdr::unmarshal(&empty_payload);
 
-    #[test]
-    fn test_unmarshal_empty() {
-        // Empty input fails
-        let buf = vec![];
-        let result = PdrId::unmarshal(&buf);
-        assert!(result.is_err());
-    }
+    assert!(matches!(
+        result.unwrap_err(),
+        PfcpError::MissingMandatoryIe { ie_type: IeType::PdrId, .. }
+    ));
+}
 
-    #[test]
-    fn test_unmarshal_invalid_value() {
-        // Invalid value fails
-        let buf = vec![0x00, 0x00, 0x00, 0x00];  // Precedence cannot be 0
-        let result = Precedence::unmarshal(&buf);
-        assert!(result.is_err());
-    }
+#[test]
+fn test_builder_validation() {
+    let result = CreatePdrBuilder::new().build();  // Missing pdr_id
+
+    assert!(matches!(
+        result.unwrap_err(),
+        PfcpError::ValidationError { field, .. } if field == "pdr_id"
+    ));
 }
 ```
 
-### Fuzz Testing
-
-Fuzz tests validate error handling robustness:
+### Round-Trip Testing
 
 ```rust
-#[cfg(test)]
-mod fuzz_tests {
-    use super::*;
+#[test]
+fn test_marshal_unmarshal_round_trip() {
+    let original = PdrId::new(42);
+    let marshaled = original.marshal();
+    let unmarshaled = PdrId::unmarshal(&marshaled).unwrap();
 
-    #[test]
-    fn fuzz_unmarshal() {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-
-        for _ in 0..10000 {
-            let len = rng.gen_range(0..1000);
-            let buf: Vec<u8> = (0..len).map(|_| rng.gen()).collect();
-
-            // Should never panic, only return Err
-            let _ = CreatePdr::unmarshal(&buf);
-        }
-    }
+    assert_eq!(original, unmarshaled);
 }
 ```
 
@@ -785,81 +436,54 @@ mod fuzz_tests {
 ### Clear and Specific
 
 ```rust
+// Good: Specific with context
+Err(PfcpError::invalid_length(
+    "F-SEID",
+    IeType::Fseid,
+    9,  // expected
+    5,  // actual
+))
+// Displays: "F-SEID (Fseid) requires at least 9 bytes, got 5"
+
 // Bad: Vague
-Err(io::Error::new(io::ErrorKind::InvalidData, "Parse error"))
+Err(PfcpError::invalid_value("field", "value", "invalid"))
+```
 
-// Good: Specific
-Err(io::Error::new(
-    io::ErrorKind::InvalidData,
-    "F-SEID payload too short: expected at least 9 bytes (flags + SEID), got 5"
+### Include 3GPP References
+
+```rust
+Err(PfcpError::invalid_value(
+    "Precedence",
+    "0",
+    "cannot be zero per 3GPP TS 29.244 Section 8.2.11",
 ))
 ```
 
-### Include Context
+## Backward Compatibility
+
+### Conversion to io::Error
+
+`PfcpError` implements `From<PfcpError> for io::Error`:
 
 ```rust
-// Bad: No context
-Err(io::Error::new(io::ErrorKind::InvalidInput, "Value is zero"))
+use std::io;
+use rs_pfcp::error::PfcpError;
 
-// Good: With context
-Err(io::Error::new(
-    io::ErrorKind::InvalidInput,
-    "Precedence IE: value cannot be zero (per 3GPP TS 29.244 Section 8.2.11)"
-))
-```
-
-### Actionable
-
-```rust
-// Bad: No guidance
-Err(io::Error::new(io::ErrorKind::Other, "Unknown type"))
-
-// Good: Suggests action
-Err(io::Error::new(
-    io::ErrorKind::Other,
-    "Unknown message type 99. Supported types: 1-57 (per 3GPP TS 29.244 Release 18)"
-))
-```
-
-## Future Enhancements
-
-### Custom Error Type
-
-Planned for v0.2.0:
-
-```rust
-#[derive(Debug)]
-pub enum PfcpError {
-    /// Buffer too short to parse
-    BufferTooShort {
-        expected: usize,
-        actual: usize,
-    },
-
-    /// Invalid IE value
-    InvalidIeValue {
-        ie_name: &'static str,
-        reason: String,
-    },
-
-    /// Mandatory IE missing
-    MandatoryIeMissing {
-        message_type: &'static str,
-        ie_name: &'static str,
-    },
-
-    /// Protocol violation
-    ProtocolViolation(String),
-
-    /// I/O error (wraps std::io::Error)
-    Io(io::Error),
+fn legacy_api() -> Result<(), io::Error> {
+    let result: Result<(), PfcpError> = some_pfcp_operation();
+    result.map_err(|e| e.into())  // Converts PfcpError to io::Error
 }
+```
 
-impl From<io::Error> for PfcpError {
-    fn from(e: io::Error) -> Self {
-        PfcpError::Io(e)
-    }
-}
+### Conversion from io::Error
+
+`PfcpError` also implements `From<io::Error>`:
+
+```rust
+let io_err = io::Error::new(io::ErrorKind::Other, "network error");
+let pfcp_err: PfcpError = io_err.into();
+
+assert!(matches!(pfcp_err, PfcpError::IoError { .. }));
 ```
 
 ## Related Documentation
@@ -867,9 +491,10 @@ impl From<io::Error> for PfcpError {
 - **[Security Architecture](security.md)** - DoS prevention and input validation
 - **[Testing Strategy](testing-strategy.md)** - Error path testing
 - **[Binary Protocol](binary-protocol.md)** - Wire format that must be validated
+- **[Builder Patterns](builder-patterns.md)** - Builder validation errors
 
 ---
 
-**Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.3
+**Last Updated**: 2026-02-03
+**Architecture Version**: 0.2.5
 **Specification**: 3GPP TS 29.244 Release 18

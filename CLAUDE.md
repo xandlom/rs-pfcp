@@ -101,6 +101,9 @@ cargo run --example usage_report_phase2_demo
 cargo run --example pdn-type-demo
 cargo run --example pdn-type-simple
 
+# Demo PfcpError handling patterns
+cargo run --example error-handling-demo
+
 # Test with real messages
 cargo run --example test_real_messages
 
