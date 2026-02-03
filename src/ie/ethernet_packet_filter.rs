@@ -13,7 +13,6 @@ use crate::ie::ethertype::Ethertype;
 use crate::ie::mac_address::MacAddress;
 use crate::ie::s_tag::STag;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Ethernet Packet Filter (Grouped IE)
 ///
@@ -128,7 +127,7 @@ impl EthernetPacketFilter {
     ///
     /// # Errors
     /// Returns error if mandatory Ethernet Filter ID is missing
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut ethernet_filter_id = None;
         let mut ethernet_filter_properties = None;
         let mut mac_addresses = Vec::new();
@@ -168,11 +167,10 @@ impl EthernetPacketFilter {
         }
 
         Ok(EthernetPacketFilter {
-            ethernet_filter_id: ethernet_filter_id.ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory Ethernet Filter ID IE",
-                )
+            ethernet_filter_id: ethernet_filter_id.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::EthernetFilterId,
+                message_type: None,
+                parent_ie: Some(IeType::EthernetPacketFilter),
             })?,
             ethernet_filter_properties,
             mac_addresses,
@@ -496,10 +494,10 @@ mod tests {
 
         let result = EthernetPacketFilter::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Missing mandatory Ethernet Filter ID"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::MissingMandatoryIe { .. }
+        ));
     }
 
     #[test]

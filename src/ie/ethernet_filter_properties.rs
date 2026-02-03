@@ -3,8 +3,8 @@
 //! The Ethernet Filter Properties IE contains properties for Ethernet packet filtering.
 //! Per 3GPP TS 29.244 Section 8.2.99, this IE specifies bidirectional filtering behavior.
 
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Ethernet Filter Properties
 ///
@@ -135,11 +135,13 @@ impl EthernetFilterProperties {
     /// let parsed = EthernetFilterProperties::unmarshal(&bytes).unwrap();
     /// assert_eq!(props, parsed);
     /// ```
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Ethernet Filter Properties requires at least 1 byte, got 0",
+            return Err(PfcpError::invalid_length(
+                "Ethernet Filter Properties",
+                IeType::EthernetFilterProperties,
+                1,
+                0,
             ));
         }
 
@@ -222,9 +224,10 @@ mod tests {
     fn test_ethernet_filter_properties_unmarshal_empty() {
         let result = EthernetFilterProperties::unmarshal(&[]);
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(err.to_string().contains("requires at least 1 byte"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]

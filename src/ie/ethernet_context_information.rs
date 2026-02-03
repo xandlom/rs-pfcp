@@ -10,7 +10,6 @@
 use crate::error::PfcpError;
 use crate::ie::mac_addresses_detected::MacAddressesDetected;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Ethernet Context Information (Grouped IE)
 ///
@@ -104,7 +103,7 @@ impl EthernetContextInformation {
     ///
     /// # Errors
     /// Returns error if no MAC Addresses Detected IE is present (mandatory per spec)
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut mac_addresses_detected = Vec::new();
 
         let mut offset = 0;
@@ -123,10 +122,11 @@ impl EthernetContextInformation {
 
         // Validate that at least one MAC Addresses Detected IE is present (mandatory per spec)
         if mac_addresses_detected.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Ethernet Context Information requires at least one MAC Addresses Detected IE per 3GPP TS 29.244 Table 7.5.4.21-1",
-            ));
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::MacAddressesDetected,
+                message_type: None,
+                parent_ie: Some(IeType::EthernetContextInformation),
+            });
         }
 
         Ok(EthernetContextInformation {
@@ -276,7 +276,10 @@ mod tests {
         // Empty payload should fail (mandatory MAC Addresses Detected per spec)
         let result = EthernetContextInformation::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("at least one"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::MissingMandatoryIe { .. }
+        ));
     }
 
     #[test]

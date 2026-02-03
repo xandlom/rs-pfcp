@@ -9,7 +9,6 @@ use crate::ie::{
     mac_addresses_detected::MacAddressesDetected, mac_addresses_removed::MacAddressesRemoved, Ie,
     IeType,
 };
-use std::io;
 
 /// Ethernet Traffic Information
 ///
@@ -140,7 +139,7 @@ impl EthernetTrafficInformation {
     /// - Data is malformed
     /// - No MAC Addresses Detected or Removed IEs found
     /// - Child IEs cannot be parsed
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let mut mac_addresses_detected = Vec::new();
         let mut mac_addresses_removed = Vec::new();
         let mut offset = 0;
@@ -148,12 +147,11 @@ impl EthernetTrafficInformation {
         while offset < data.len() {
             // Parse IE header (Type: u16, Length: u16)
             if offset + 4 > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!(
-                        "Ethernet Traffic Information: insufficient data for IE header at offset {}",
-                        offset
-                    ),
+                return Err(PfcpError::invalid_length(
+                    "Ethernet Traffic Information IE header",
+                    IeType::EthernetTrafficInformation,
+                    offset + 4,
+                    data.len(),
                 ));
             }
 
@@ -162,12 +160,11 @@ impl EthernetTrafficInformation {
             offset += 4;
 
             if offset + ie_len > data.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!(
-                        "Ethernet Traffic Information: IE length {} exceeds remaining data",
-                        ie_len
-                    ),
+                return Err(PfcpError::invalid_length(
+                    "Ethernet Traffic Information child IE",
+                    IeType::EthernetTrafficInformation,
+                    offset + ie_len,
+                    data.len(),
                 ));
             }
 
@@ -194,8 +191,9 @@ impl EthernetTrafficInformation {
 
         // Validate at least one IE present
         if mac_addresses_detected.is_empty() && mac_addresses_removed.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::validation_error(
+                "EthernetTrafficInformation",
+                "mac_addresses",
                 "Ethernet Traffic Information requires at least one MAC Addresses Detected or Removed IE",
             ));
         }
