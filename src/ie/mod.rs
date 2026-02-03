@@ -1,7 +1,6 @@
 //! Information Elements for PFCP messages.
 
-use crate::error::messages;
-use std::io;
+use crate::error::PfcpError;
 
 pub mod activate_predefined_rules;
 pub mod activation_time;
@@ -1053,12 +1052,9 @@ impl Ie {
     }
 
     /// Deserializes a byte slice into an IE.
-    pub fn unmarshal(b: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(b: &[u8]) -> Result<Self, PfcpError> {
         if b.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::too_short("IE"),
-            ));
+            return Err(PfcpError::invalid_length("IE", IeType::Unknown, 4, b.len()));
         }
 
         // Read raw type value to preserve vendor bit (0x8000)
@@ -1071,13 +1067,10 @@ impl Ie {
         // to indicate "clear/reset" semantics in update operations.
         // All other zero-length IEs are rejected to prevent DoS attacks.
         if length == 0 && !Self::allows_zero_length(ie_type) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                // messages::zero_length_ie_not_allowed(ie_name, ie_type),
-                format!(
-                    "Zero-length IE not allowed for {:?} (IE type: {})",
-                    ie_type, raw_type
-                ),
+            return Err(PfcpError::invalid_value(
+                "IE",
+                format!("{:?} (type {})", ie_type, raw_type),
+                "Zero-length IE not allowed",
             ));
         }
 
@@ -1085,9 +1078,11 @@ impl Ie {
         // Check vendor bit in RAW type value, not converted IeType
         let enterprise_id = if raw_type & 0x8000 != 0 {
             if b.len() < 6 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    messages::too_short("Vendor-specific IE"),
+                return Err(PfcpError::invalid_length(
+                    "Vendor-specific IE",
+                    ie_type,
+                    6,
+                    b.len(),
                 ));
             }
             offset += 2;
@@ -1108,9 +1103,11 @@ impl Ie {
 
         let end = offset + payload_length as usize;
         if b.len() < end {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "IE payload length mismatch",
+            return Err(PfcpError::invalid_length(
+                "IE payload",
+                ie_type,
+                end,
+                b.len(),
             ));
         }
         let payload = b[offset..end].to_vec();
@@ -1125,31 +1122,32 @@ impl Ie {
 
     // --- Value Accessors ---
 
-    pub fn as_u8(&self) -> Result<u8, io::Error> {
+    pub fn as_u8(&self) -> Result<u8, PfcpError> {
         if self.payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Payload too short for u8",
-            ));
+            return Err(PfcpError::invalid_length("IE payload", self.ie_type, 1, 0));
         }
         Ok(self.payload[0])
     }
 
-    pub fn as_u16(&self) -> Result<u16, io::Error> {
+    pub fn as_u16(&self) -> Result<u16, PfcpError> {
         if self.payload.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Payload too short for u16",
+            return Err(PfcpError::invalid_length(
+                "IE payload",
+                self.ie_type,
+                2,
+                self.payload.len(),
             ));
         }
         Ok(u16::from_be_bytes([self.payload[0], self.payload[1]]))
     }
 
-    pub fn as_u32(&self) -> Result<u32, io::Error> {
+    pub fn as_u32(&self) -> Result<u32, PfcpError> {
         if self.payload.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Payload too short for u32",
+            return Err(PfcpError::invalid_length(
+                "IE payload",
+                self.ie_type,
+                4,
+                self.payload.len(),
             ));
         }
         Ok(u32::from_be_bytes([
@@ -1160,11 +1158,13 @@ impl Ie {
         ]))
     }
 
-    pub fn as_u64(&self) -> Result<u64, io::Error> {
+    pub fn as_u64(&self) -> Result<u64, PfcpError> {
         if self.payload.len() < 8 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Payload too short for u64",
+            return Err(PfcpError::invalid_length(
+                "IE payload",
+                self.ie_type,
+                8,
+                self.payload.len(),
             ));
         }
         Ok(u64::from_be_bytes([
@@ -1179,12 +1179,17 @@ impl Ie {
         ]))
     }
 
-    pub fn as_string(&self) -> Result<String, io::Error> {
-        String::from_utf8(self.payload.clone())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    pub fn as_string(&self) -> Result<String, PfcpError> {
+        String::from_utf8(self.payload.clone()).map_err(|e| {
+            PfcpError::invalid_value(
+                "IE payload",
+                format!("{:?}", self.ie_type),
+                format!("Invalid UTF-8: {}", e),
+            )
+        })
     }
 
-    pub fn as_ies(&mut self) -> Result<&[Ie], io::Error> {
+    pub fn as_ies(&mut self) -> Result<&[Ie], PfcpError> {
         if !self.child_ies.is_empty() {
             return Ok(&self.child_ies);
         }
@@ -1243,8 +1248,9 @@ pub fn marshal_ies(ies: &[Ie]) -> Vec<u8> {
 ///
 /// ```
 /// use rs_pfcp::ie::{IeIterator, IeType, pdr_id::PdrId, far_id::FarId};
+/// use rs_pfcp::error::PfcpError;
 ///
-/// # fn example(payload: &[u8]) -> Result<(), std::io::Error> {
+/// # fn example(payload: &[u8]) -> Result<(), PfcpError> {
 /// let mut pdr_id = None;
 /// let mut far_id = None;
 ///
@@ -1293,7 +1299,7 @@ impl<'a> IeIterator<'a> {
 }
 
 impl<'a> Iterator for IeIterator<'a> {
-    type Item = Result<Ie, io::Error>;
+    type Item = Result<Ie, PfcpError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.offset >= self.payload.len() {
@@ -1589,7 +1595,7 @@ mod tests {
         let result = Ie::unmarshal(&malformed);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
         assert!(err.to_string().contains("Zero-length"));
         assert!(err.to_string().contains("96"));
     }
@@ -1606,7 +1612,7 @@ mod tests {
         let result = Ie::unmarshal(&malformed);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
         assert!(err.to_string().contains("Zero-length"));
     }
 
@@ -2043,7 +2049,10 @@ mod tests {
         let result = Ie::unmarshal(&short_buffer);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2056,7 +2065,10 @@ mod tests {
         let result = Ie::unmarshal(&malformed);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2071,10 +2083,7 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
-        assert!(
-            err.to_string().contains("Vendor-specific") || err.to_string().contains("too short")
-        );
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     // ========================================================================
@@ -2093,7 +2102,10 @@ mod tests {
         let result = ie.as_u8();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2108,7 +2120,10 @@ mod tests {
         let result = ie.as_u16();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2123,7 +2138,10 @@ mod tests {
         let result = ie.as_u32();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2141,7 +2159,10 @@ mod tests {
         let result = ie.as_u64();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2159,7 +2180,10 @@ mod tests {
         let result = ie.as_string();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidValue { .. }
+        ));
     }
 
     // ========================================================================
@@ -2210,7 +2234,10 @@ mod tests {
         let result = ie.as_ies();
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -2594,7 +2621,7 @@ mod tests {
         #[test]
         fn test_ie_iterator_with_question_mark_operator() {
             // Test that the iterator works well with ? operator
-            fn parse_ies(payload: &[u8]) -> Result<Vec<IeType>, io::Error> {
+            fn parse_ies(payload: &[u8]) -> Result<Vec<IeType>, PfcpError> {
                 let mut types = vec![];
                 for ie_result in IeIterator::new(payload) {
                     let ie = ie_result?; // ← Test ? operator

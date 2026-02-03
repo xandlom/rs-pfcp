@@ -35,11 +35,13 @@ impl UPFunctionFeatures {
         self.bits().to_be_bytes()
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, crate::error::PfcpError> {
         if data.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Not enough data for UPFunctionFeatures",
+            return Err(crate::error::PfcpError::invalid_length(
+                "UP Function Features",
+                crate::ie::IeType::UpFunctionFeatures,
+                1,
+                0,
             ));
         }
         let bits = if data.len() == 1 {

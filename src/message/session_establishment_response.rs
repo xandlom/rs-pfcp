@@ -3,7 +3,6 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Establishment Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,13 +34,13 @@ impl SessionEstablishmentResponse {
     // Typed accessors (recommended API)
 
     /// Returns the Node ID.
-    pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, io::Error> {
-        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload).map_err(Into::into)
+    pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, PfcpError> {
+        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload)
     }
 
     /// Returns the cause value.
-    pub fn cause(&self) -> Result<crate::ie::cause::Cause, io::Error> {
-        crate::ie::cause::Cause::unmarshal(&self.cause.payload).map_err(Into::into)
+    pub fn cause(&self) -> Result<crate::ie::cause::Cause, PfcpError> {
+        crate::ie::cause::Cause::unmarshal(&self.cause.payload)
     }
 
     /// Returns the offending IE if present.
@@ -64,10 +63,10 @@ impl SessionEstablishmentResponse {
     /// Returns an iterator over created PDRs with typed access.
     pub fn created_pdrs_typed(
         &self,
-    ) -> impl Iterator<Item = Result<crate::ie::created_pdr::CreatedPdr, io::Error>> + '_ {
-        self.created_pdrs.iter().map(|ie| {
-            crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload).map_err(Into::into)
-        })
+    ) -> impl Iterator<Item = Result<crate::ie::created_pdr::CreatedPdr, PfcpError>> + '_ {
+        self.created_pdrs
+            .iter()
+            .map(|ie| crate::ie::created_pdr::CreatedPdr::unmarshal(&ie.payload))
     }
 
     /// Returns the PDN type if present.
@@ -80,11 +79,10 @@ impl SessionEstablishmentResponse {
     /// Returns the load control information if present.
     pub fn load_control_information(
         &self,
-    ) -> Option<Result<crate::ie::load_control_information::LoadControlInformation, io::Error>>
+    ) -> Option<Result<crate::ie::load_control_information::LoadControlInformation, PfcpError>>
     {
         self.load_control_information.as_ref().map(|ie| {
             crate::ie::load_control_information::LoadControlInformation::unmarshal(&ie.payload)
-                .map_err(Into::into)
         })
     }
 
@@ -92,7 +90,7 @@ impl SessionEstablishmentResponse {
     pub fn overload_control_information(
         &self,
     ) -> Option<
-        Result<crate::ie::overload_control_information::OverloadControlInformation, io::Error>,
+        Result<crate::ie::overload_control_information::OverloadControlInformation, PfcpError>,
     > {
         self.overload_control_information.as_ref().map(|ie| {
             crate::ie::overload_control_information::OverloadControlInformation::unmarshal(
@@ -533,7 +531,7 @@ impl SessionEstablishmentResponseBuilder {
     }
 
     /// Builds and marshals the SessionEstablishmentResponse in one step.
-    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(self) -> Result<Vec<u8>, PfcpError> {
         Ok(self.build()?.marshal())
     }
 }

@@ -1,10 +1,10 @@
 //! Update BAR within Session Report Response IE.
 
+use crate::error::PfcpError;
 use crate::ie::bar_id::BarId;
 use crate::ie::downlink_data_notification_delay::DownlinkDataNotificationDelay;
 use crate::ie::suggested_buffering_packets_count::SuggestedBufferingPacketsCount;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 /// Represents the Update BAR within Session Report Response.
 /// This IE is used specifically within Session Report Response messages
@@ -68,7 +68,7 @@ impl UpdateBarWithinSessionReportResponse {
     }
 
     /// Unmarshals a byte slice into an Update BAR within Session Report Response IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut bar_id = None;
         let mut downlink_data_notification_delay = None;
         let mut suggested_buffering_packets_count = None;
@@ -89,8 +89,10 @@ impl UpdateBarWithinSessionReportResponse {
             }
         }
 
-        let bar_id = bar_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory BAR ID IE")
+        let bar_id = bar_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::BarId,
+            message_type: None,
+            parent_ie: Some(IeType::UpdateBarWithinSessionReportResponse),
         })?;
 
         Ok(UpdateBarWithinSessionReportResponse {
@@ -160,10 +162,10 @@ mod tests {
         // Empty payload missing mandatory BAR ID
         let result = UpdateBarWithinSessionReportResponse::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Missing mandatory BAR ID IE"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::MissingMandatoryIe { .. }
+        ));
     }
 
     #[test]

@@ -3,9 +3,9 @@
 //! Per 3GPP TS 29.244 Section 8.2.89, the Remove BAR IE is used to remove
 //! a Buffering Action Rule from a PFCP session.
 
+use crate::error::PfcpError;
 use crate::ie::bar_id::BarId;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Remove BAR Information Element.
 ///
@@ -77,10 +77,10 @@ impl RemoveBar {
     /// A `RemoveBar` instance or an error if unmarshaling fails.
     ///
     /// # Errors
-    /// Returns `io::Error` if:
+    /// Returns `PfcpError` if:
     /// - The buffer is too short (< 1 byte)
     /// - The BAR ID cannot be parsed
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         Ok(RemoveBar {
             bar_id: BarId::unmarshal(data)?,
         })

@@ -1,10 +1,10 @@
 //! Update Traffic Endpoint IE.
 
+use crate::error::PfcpError;
 use crate::ie::create_traffic_endpoint::TrafficEndpointId;
 use crate::ie::f_teid::Fteid;
 use crate::ie::ue_ip_address::UeIpAddress;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
-use std::io;
 
 /// Represents the Update Traffic Endpoint.
 /// Used to modify existing traffic endpoints in multi-access scenarios.
@@ -59,7 +59,7 @@ impl UpdateTrafficEndpoint {
     }
 
     /// Unmarshals a byte slice into an Update Traffic Endpoint IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut traffic_endpoint_id = None;
         let mut local_f_teid = None;
         let mut ue_ip_address = None;
@@ -83,8 +83,10 @@ impl UpdateTrafficEndpoint {
             }
         }
 
-        let traffic_endpoint_id = traffic_endpoint_id.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Missing Traffic Endpoint ID")
+        let traffic_endpoint_id = traffic_endpoint_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::TrafficEndpointId,
+            message_type: None,
+            parent_ie: Some(IeType::UpdateTrafficEndpoint),
         })?;
 
         Ok(UpdateTrafficEndpoint {

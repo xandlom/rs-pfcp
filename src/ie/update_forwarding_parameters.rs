@@ -1,5 +1,6 @@
 //! Update Forwarding Parameters IE and its sub-IEs.
 
+use crate::error::PfcpError;
 use crate::ie::{
     create_traffic_endpoint::TrafficEndpointId, destination_interface::DestinationInterface,
     header_enrichment::HeaderEnrichment, marshal_ies, network_instance::NetworkInstance,
@@ -7,7 +8,6 @@ use crate::ie::{
     three_gpp_interface_type::ThreeGppInterfaceTypeIe,
     transport_level_marking::TransportLevelMarking, Ie, IeIterator, IeType,
 };
-use std::io;
 
 /// Represents the Update Forwarding Parameters.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -151,7 +151,7 @@ impl UpdateForwardingParameters {
     }
 
     /// Unmarshals a byte slice into an Update Forwarding Parameters IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut destination_interface = None;
         let mut network_instance = None;
         let mut transport_level_marking = None;

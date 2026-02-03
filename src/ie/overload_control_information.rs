@@ -1,7 +1,7 @@
 //! Overload Control Information IE.
 
+use crate::error::PfcpError;
 use crate::ie::{metric::Metric, sequence_number::SequenceNumber, timer::Timer, Ie, IeType};
-use std::io;
 
 /// Represents the Overload Control Information.
 /// Used to convey overload control information between PFCP entities.
@@ -52,7 +52,7 @@ impl OverloadControlInformation {
     }
 
     /// Unmarshals a byte slice into an Overload Control Information IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut ies = Vec::new();
         let mut offset = 0;
         while offset < payload.len() {
@@ -66,11 +66,10 @@ impl OverloadControlInformation {
             .find(|ie| ie.ie_type == IeType::SequenceNumber)
             .map(|ie| SequenceNumber::unmarshal(&ie.payload))
             .transpose()?
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Missing mandatory Sequence Number IE",
-                )
+            .ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::SequenceNumber,
+                message_type: None,
+                parent_ie: Some(IeType::OverloadControlInformation),
             })?;
 
         let metric = ies
@@ -78,8 +77,10 @@ impl OverloadControlInformation {
             .find(|ie| ie.ie_type == IeType::Metric)
             .map(|ie| Metric::unmarshal(&ie.payload))
             .transpose()?
-            .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "Missing mandatory Metric IE")
+            .ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::Metric,
+                message_type: None,
+                parent_ie: Some(IeType::OverloadControlInformation),
             })?;
 
         let timer = ies
@@ -160,10 +161,10 @@ mod tests {
 
         let result = OverloadControlInformation::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Missing mandatory Sequence Number IE"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::MissingMandatoryIe { .. }
+        ));
     }
 
     #[test]
@@ -175,10 +176,10 @@ mod tests {
 
         let result = OverloadControlInformation::unmarshal(&marshaled);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Missing mandatory Metric IE"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::MissingMandatoryIe { .. }
+        ));
     }
 
     #[test]

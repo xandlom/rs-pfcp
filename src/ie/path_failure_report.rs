@@ -1,8 +1,7 @@
 //! Path Failure Report IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents the Path Failure Report Information Element.
 /// Used to report path failures in multi-path scenarios for network resilience.
@@ -123,11 +122,13 @@ impl RemotePeerAddress {
     }
 
     /// Unmarshals a remote peer address.
-    pub fn unmarshal(payload: &[u8], offset: &mut usize) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8], offset: &mut usize) -> Result<Self, PfcpError> {
         if *offset + 2 > payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::too_short("Remote peer address"),
+            return Err(PfcpError::invalid_length(
+                "Remote peer address",
+                IeType::UserPlanePathFailureReport,
+                *offset + 2,
+                payload.len(),
             ));
         }
 
@@ -138,9 +139,11 @@ impl RemotePeerAddress {
         *offset += 1;
 
         if *offset + address_len > payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Remote peer address"),
+            return Err(PfcpError::invalid_length(
+                "Remote peer address data",
+                IeType::UserPlanePathFailureReport,
+                *offset + address_len,
+                payload.len(),
             ));
         }
 
@@ -229,11 +232,13 @@ impl PathFailureReport {
     }
 
     /// Unmarshals a byte slice into a Path Failure Report IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Path Failure Report"),
+            return Err(PfcpError::invalid_length(
+                "Path Failure Report",
+                IeType::UserPlanePathFailureReport,
+                1,
+                0,
             ));
         }
 
@@ -407,10 +412,10 @@ mod tests {
     fn test_path_failure_report_unmarshal_empty_payload() {
         let result = PathFailureReport::unmarshal(&[]);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Path Failure Report payload too short"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -418,10 +423,10 @@ mod tests {
         let mut offset = 0;
         let result = RemotePeerAddress::unmarshal(&[0], &mut offset);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Remote peer address too short"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -430,10 +435,10 @@ mod tests {
         // Type=0, Length=4, but only 2 bytes of data
         let result = RemotePeerAddress::unmarshal(&[0, 4, 0x01, 0x02], &mut offset);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Remote peer address payload too short"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]

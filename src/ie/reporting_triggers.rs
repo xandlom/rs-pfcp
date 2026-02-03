@@ -1,8 +1,7 @@
 //! ReportingTriggers IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents Reporting Triggers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -103,11 +102,13 @@ impl ReportingTriggers {
     }
 
     /// Unmarshals a byte slice into a Reporting Triggers.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Reporting Triggers"),
+            return Err(PfcpError::invalid_length(
+                "Reporting Triggers",
+                IeType::ReportingTriggers,
+                2,
+                payload.len(),
             ));
         }
         Ok(ReportingTriggers {
@@ -397,7 +398,10 @@ mod tests {
         let data = vec![0x01];
         let result = ReportingTriggers::unmarshal(&data);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]

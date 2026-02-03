@@ -1,8 +1,7 @@
 //! Trace Information IE.
 
-use crate::error::messages;
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents the Trace Information Element.
 /// Used for network debugging and tracing support in 5G networks.
@@ -140,11 +139,13 @@ impl TraceInformation {
     }
 
     /// Unmarshals a byte slice into a Trace Information IE.
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 9 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("Trace Information"),
+            return Err(PfcpError::invalid_length(
+                "Trace Information",
+                IeType::TraceInformation,
+                9,
+                payload.len(),
             ));
         }
 
@@ -165,9 +166,10 @@ impl TraceInformation {
         offset += 1;
 
         if offset + triggering_events_len > payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid triggering events length",
+            return Err(PfcpError::invalid_value(
+                "triggering_events_len",
+                triggering_events_len.to_string(),
+                "length exceeds remaining payload",
             ));
         }
 
@@ -176,9 +178,11 @@ impl TraceInformation {
         offset += triggering_events_len;
 
         if offset >= payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing trace depth",
+            return Err(PfcpError::invalid_length(
+                "Trace Information (trace_depth)",
+                IeType::TraceInformation,
+                offset + 1,
+                payload.len(),
             ));
         }
 
@@ -187,9 +191,11 @@ impl TraceInformation {
         offset += 1;
 
         if offset >= payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing list of interfaces length",
+            return Err(PfcpError::invalid_length(
+                "Trace Information (interfaces_len)",
+                IeType::TraceInformation,
+                offset + 1,
+                payload.len(),
             ));
         }
 
@@ -198,9 +204,10 @@ impl TraceInformation {
         offset += 1;
 
         if offset + interfaces_len > payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid list of interfaces length",
+            return Err(PfcpError::invalid_value(
+                "interfaces_len",
+                interfaces_len.to_string(),
+                "length exceeds remaining payload",
             ));
         }
 
@@ -209,9 +216,11 @@ impl TraceInformation {
         offset += interfaces_len;
 
         if offset >= payload.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing IP address length",
+            return Err(PfcpError::invalid_length(
+                "Trace Information (ip_len)",
+                IeType::TraceInformation,
+                offset + 1,
+                payload.len(),
             ));
         }
 
@@ -221,9 +230,10 @@ impl TraceInformation {
 
         let ip_address_of_trace_collection_entity = if ip_len > 0 {
             if offset + ip_len > payload.len() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid IP address length",
+                return Err(PfcpError::invalid_value(
+                    "ip_len",
+                    ip_len.to_string(),
+                    "length exceeds remaining payload",
                 ));
             }
             Some(payload[offset..offset + ip_len].to_vec())
@@ -394,10 +404,10 @@ mod tests {
     fn test_trace_information_unmarshal_too_short() {
         let result = TraceInformation::unmarshal(&[0x01, 0x02]); // Too short
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Trace Information payload too short"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
@@ -408,10 +418,10 @@ mod tests {
 
         let result = TraceInformation::unmarshal(&payload);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid triggering events length"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidValue { .. }
+        ));
     }
 
     #[test]
@@ -423,10 +433,10 @@ mod tests {
 
         let result = TraceInformation::unmarshal(&payload);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Missing trace depth"));
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::InvalidLength { .. }
+        ));
     }
 
     #[test]
