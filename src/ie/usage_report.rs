@@ -164,7 +164,7 @@ impl UsageReport {
         buffer
     }
 
-    pub fn unmarshal(data: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let mut cursor = 0;
         let mut urr_id = None;
         let mut ur_seqn = None;
@@ -240,17 +240,20 @@ impl UsageReport {
         }
 
         Ok(UsageReport {
-            urr_id: urr_id.ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "URR ID not found")
+            urr_id: urr_id.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::UrrId,
+                message_type: None,
+                parent_ie: Some(IeType::UsageReportWithinSessionReportRequest),
             })?,
-            ur_seqn: ur_seqn.ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "UR-SEQN not found")
+            ur_seqn: ur_seqn.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::UrSeqn,
+                message_type: None,
+                parent_ie: Some(IeType::UsageReportWithinSessionReportRequest),
             })?,
-            usage_report_trigger: usage_report_trigger.ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Usage Report Trigger not found",
-                )
+            usage_report_trigger: usage_report_trigger.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::UsageReportTrigger,
+                message_type: None,
+                parent_ie: Some(IeType::UsageReportWithinSessionReportRequest),
             })?,
             volume_measurement,
             duration_measurement,

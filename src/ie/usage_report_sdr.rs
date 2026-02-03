@@ -7,9 +7,9 @@
 //! This IE has the same structure as Usage Report (IE 144) but uses IE type 79
 //! to indicate it appears within a Session Deletion Response message.
 
+use crate::error::PfcpError;
 use crate::ie::usage_report::UsageReport;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Usage Report Within Session Deletion Response Information Element.
 ///
@@ -88,10 +88,10 @@ impl UsageReportSdr {
     /// A `UsageReportSdr` instance or an error if unmarshaling fails.
     ///
     /// # Errors
-    /// Returns `io::Error` if:
+    /// Returns `PfcpError` if:
     /// - Required fields (URR ID, UR-SEQN, Usage Report Trigger) are missing
     /// - Any child IE cannot be parsed
-    pub fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         Ok(UsageReportSdr {
             report: UsageReport::unmarshal(data)?,
         })
