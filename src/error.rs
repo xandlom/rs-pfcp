@@ -1,39 +1,51 @@
 //! PFCP Error Handling
 //!
-//! This module provides centralized error message templates for consistent error reporting
-//! across the rs-pfcp library.
+//! This module provides the `PfcpError` enum for structured error handling across the rs-pfcp
+//! library, along with error message templates for consistent error reporting.
 //!
-//! ## Version Strategy
+//! ## PfcpError (v0.2.5+)
 //!
-//! - **v0.2.4 (Current)**: Error message constants (this module)
-//!   - Centralizes error strings for consistency
-//!   - Non-breaking change
-//!   - All functions continue to return `std::io::Error`
+//! The `PfcpError` enum provides structured error handling with 8 variants:
+//! - `MissingMandatoryIe` - Required IE not present
+//! - `InvalidLength` - Payload too short or incorrect size
+//! - `InvalidValue` - Invalid field value
+//! - `ValidationError` - Builder validation failure
+//! - `ZeroLengthNotAllowed` - Zero-length IE rejected per 3GPP TS 29.244
+//! - `IeParseError` - IE-specific parsing error
+//! - `EncodingError` - UTF-8 or other encoding error
+//! - `MessageParseError` - Message-level parsing error
+//! - `IoError` - Underlying I/O error wrapper
 //!
-//! - **v0.3.0 (Future)**: Custom `PfcpError` enum
-//!   - Structured error type with variants
-//!   - Breaking change (changes error types in signatures)
-//!   - Will leverage these message templates in Display implementations
-//!   - See `docs/analysis/ongoing/custom-error-type.md` for design
+//! All unmarshal methods in the library return `Result<T, PfcpError>`.
 //!
 //! ## Usage
 //!
 //! ```rust
-//! use std::io;
-//! use rs_pfcp::error::messages;
+//! use rs_pfcp::error::PfcpError;
+//! use rs_pfcp::ie::IeType;
 //!
-//! # fn example() -> Result<(), io::Error> {
-//! // Before: Hard-coded error strings
-//! // return Err(io::Error::new(io::ErrorKind::InvalidData, "Missing PDR ID"));
+//! # fn example() -> Result<(), PfcpError> {
+//! // Pattern match on specific error variants
+//! let result: Result<(), PfcpError> = Err(PfcpError::missing_ie(IeType::PdrId));
 //!
-//! // After: Centralized constants
-//! let ie_name = "PDR ID";
-//! return Err(io::Error::new(
-//!     io::ErrorKind::InvalidData,
-//!     format!("{}", messages::missing_mandatory_ie_short(ie_name))
-//! ));
+//! match result {
+//!     Ok(_) => println!("Success"),
+//!     Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
+//!         println!("Missing required IE: {:?}", ie_type);
+//!     }
+//!     Err(e) => println!("Other error: {}", e),
+//! }
+//! # Ok(())
 //! # }
 //! ```
+//!
+//! ## 3GPP Cause Code Mapping
+//!
+//! Use `err.to_cause_code()` to map errors to 3GPP TS 29.244 Cause values for responses.
+//!
+//! ## Design Documentation
+//!
+//! See `docs/analysis/completed/custom-error-type.md` for the full design and implementation history.
 
 /// Error message templates for consistent error reporting
 pub mod messages {

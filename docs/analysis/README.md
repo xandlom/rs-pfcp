@@ -102,6 +102,20 @@ Active task tracking and work-in-progress planning:
 **Status**: ✅ COMPLETE (2025-11-04)
 **Outcome**: 15/15 Ethernet IEs fully compliant, VLAN tag support added, 100% R16 compliance
 
+### Error Handling (v0.2.x)
+
+#### [Custom Error Type (PfcpError)](completed/custom-error-type.md)
+**Status**: ✅ COMPLETE (2026-02-04)
+**Outcome**: Full migration from `io::Error` to `PfcpError`:
+- 8 error variants with rich context
+- 100% IE, message, and builder coverage
+- 3GPP Cause code mapping (to_cause_code())
+- 2,081 tests passing
+
+#### [Message Layer PfcpError Migration](completed/message-layer-pfcp-error-migration.md)
+**Status**: ✅ COMPLETE (2026-01-25)
+**Outcome**: All 25 message types migrated to PfcpError in 5 phases
+
 ### Version-Specific Implementation
 
 #### [v0.2.1 IntoIe Implementation](completed/v0.2.1-into-ie-implementation.md)
@@ -116,20 +130,9 @@ Active task tracking and work-in-progress planning:
 
 ### API Improvements for v0.3.0 (Breaking Changes)
 
-#### [Custom Error Type](ongoing/custom-error-type.md)
-**Status**: ⏳ PLANNED (v0.3.0)
-**Effort**: 3-4 days
-
-Replace `io::Error` with structured `PfcpError` for:
-- Better error context and debugging
-- Separation of recoverable vs non-recoverable errors
-- Structured error handling across the codebase
-
-**Blocker**: Breaking change - deferred until v0.3.0
-
 #### [Newtype Wrappers](ongoing/newtype-wrappers.md)
 **Status**: ⏳ PLANNED (v0.3.0)
-**Effort**: 1-2 days
+**Effort**: 2-3 days
 
 Strong typing for primitives:
 - `Seid(u64)`, `SequenceNumber(u32)`, `Teid(u32)`
@@ -137,6 +140,15 @@ Strong typing for primitives:
 - Type-safe message construction
 
 **Blocker**: Breaking change - deferred until v0.3.0
+
+#### [v0.3.0 Release Plan](ongoing/v0.3.0-plan.md)
+**Status**: 🎯 READY FOR IMPLEMENTATION
+**Effort**: 4-6 days
+
+Breaking change release focused on type safety:
+- ✅ PfcpError migration (COMPLETE - done in v0.2.x)
+- 🎯 Newtype wrappers (Seid, SequenceNumber, Teid)
+- 🎯 Remove deprecated methods (find_ie, find_all_ies)
 
 ### Code Quality & Refactoring
 
@@ -256,17 +268,18 @@ When starting new research or planning:
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Completed Analyses | 19 | ✅ Archived |
-| Ongoing Tasks | 7 | 🔄 Active |
-| Version | 0.2.2 | Released |
-| Total Tests | 1,979 | ✅ Passing |
+| Completed Analyses | 21 | ✅ Archived |
+| Ongoing Tasks | 6 | 🔄 Active |
+| Version | 0.2.5 | Released |
+| Total Tests | 2,081 | ✅ Passing |
 | Test Coverage | ~89% | 🎯 Target: 95% |
-| API Improvements | 7/9 (78%) | v0.2.x complete |
+| API Improvements | 8/9 (89%) | PfcpError complete |
 | Builder Coverage | 100% | ✅ Complete |
 | IE Count | 139+ | ✅ R16 compliant |
+| Error Handling | 100% | ✅ PfcpError migration complete |
 
 ---
 
-**Last Updated**: 2025-12-05
-**Current Focus**: v0.2.3 development, refactoring review
+**Last Updated**: 2026-02-04
+**Current Focus**: v0.3.0 preparation (newtype wrappers)
 **Maintenance**: Update when moving documents between ongoing/completed

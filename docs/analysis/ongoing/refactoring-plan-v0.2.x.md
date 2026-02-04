@@ -22,25 +22,25 @@ Analysis of the rs-pfcp codebase (186 source files, ~84,000 lines of IE code, 1,
 
 **This refactoring plan coordinates with:**
 - **[API-IMPROVEMENTS-INDEX.md](./API-IMPROVEMENTS-INDEX.md)**: Public API improvements (v0.2.0-v0.2.2, mostly complete)
-- **[API-IMPROVEMENTS-STATUS.md](./API-IMPROVEMENTS-STATUS.md)**: Implementation status (7/9 done, 78% complete)
-- **[custom-error-type.md](./custom-error-type.md)**: Custom PfcpError enum (deferred to v0.3.0)
+- **[API-IMPROVEMENTS-STATUS.md](./API-IMPROVEMENTS-STATUS.md)**: Implementation status (8/9 done, 89% complete)
+- **[custom-error-type.md](../completed/custom-error-type.md)**: Custom PfcpError enum - **✅ COMPLETE** (v0.2.5)
 
 **Key Coordination Points:**
 1. **Error Handling (Task 1.2 ↔ API-IMPROVEMENTS #2)**:
-   - v0.2.4: Error message constants (this plan) - non-breaking foundation
-   - v0.3.0: Custom PfcpError enum (API improvements) - breaking change
-   - **Strategy**: Two-phase approach avoids conflict, v0.2.4 work feeds v0.3.0
+   - v0.2.4: Error message constants (this plan) - non-breaking foundation ✅
+   - v0.2.5: Custom PfcpError enum - **✅ COMPLETE** (100% migration)
+   - **Result**: Two-phase approach successful, all error handling now uses PfcpError
 
-2. **Breaking Changes Deferred to v0.3.0**:
-   - Custom Error Type (API #2)
-   - Newtype Wrappers (API #5)
+2. **Breaking Changes for v0.3.0**:
+   - ~~Custom Error Type (API #2)~~ - **✅ DONE in v0.2.5**
+   - Newtype Wrappers (API #5) - **🎯 PRIMARY v0.3.0 FEATURE**
    - Optional: Message Marshal Macro (Task 3.1)
    - Optional: Builder Derive Macro (Task 3.2)
 
 3. **Version Targets**:
-   - v0.2.4: Phase 1 quick wins (this plan)
-   - v0.2.5: Phase 2 structural improvements (this plan)
-   - v0.3.0: All breaking changes bundled together
+   - v0.2.4: Phase 1 quick wins (this plan) ✅
+   - v0.2.5: PfcpError migration ✅ + Phase 2 structural improvements
+   - v0.3.0: Newtype wrappers + deprecated method removal
 
 **Last Alignment Review**: 2025-12-07
 
@@ -563,7 +563,7 @@ mod test_fixtures {
 - **Impact**: Consistency, prepares for v0.3.0 custom error type → **Actual: 100% coverage of simple error patterns**
 - **Alignment**: **Coordinates with API-IMPROVEMENTS-INDEX.md #2** (Custom Error Type)
   - v0.2.4: Error message constants (this task) - non-breaking ✅
-  - v0.3.0: Full PfcpError enum (see `docs/analysis/ongoing/custom-error-type.md`)
+  - v0.2.5: Full PfcpError enum - **✅ COMPLETE** (see `docs/analysis/completed/custom-error-type.md`)
 - **Steps**:
   1. Create `src/error.rs` with `messages` module for constants ✅
   2. Add TODO comment referencing custom-error-type.md for v0.3.0 ✅
