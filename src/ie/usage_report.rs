@@ -450,7 +450,7 @@ impl UsageReportBuilder {
     ///
     /// # Returns
     ///
-    /// Returns a `Result<UsageReport, io::Error>`. The operation will fail if:
+    /// Returns a `Result<UsageReport, PfcpError>`. The operation will fail if:
     /// - URR ID is not set (required field)
     /// - Sequence number is not set (required field)
     /// - Usage report trigger is not set (required field)

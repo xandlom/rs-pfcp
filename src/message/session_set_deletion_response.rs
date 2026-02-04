@@ -5,7 +5,6 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Set Deletion Response message.
 /// Sent by UPF in response to Session Set Deletion Request from CP function.
@@ -141,13 +140,21 @@ impl SessionSetDeletionResponseBuilder {
 
     /// Tries to build the Session Set Deletion Response message.
     /// Returns an error if required fields are missing.
-    pub fn try_build(self) -> Result<SessionSetDeletionResponse, io::Error> {
-        let node_id = self
-            .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID is required"))?;
-        let cause = self
-            .cause
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Cause is required"))?;
+    pub fn try_build(self) -> Result<SessionSetDeletionResponse, PfcpError> {
+        let node_id = self.node_id.ok_or_else(|| {
+            PfcpError::validation_error(
+                "SessionSetDeletionResponseBuilder",
+                "node_id",
+                "Node ID is required",
+            )
+        })?;
+        let cause = self.cause.ok_or_else(|| {
+            PfcpError::validation_error(
+                "SessionSetDeletionResponseBuilder",
+                "cause",
+                "Cause is required",
+            )
+        })?;
         Ok(SessionSetDeletionResponse::new(
             self.sequence,
             node_id,
@@ -711,7 +718,10 @@ mod tests {
             .cause_ie(cause_ie)
             .try_build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::ValidationError { .. }
+        ));
     }
 
     #[test]
@@ -724,7 +734,10 @@ mod tests {
             .node_id(node_id_ie)
             .try_build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::ValidationError { .. }
+        ));
     }
 
     #[test]

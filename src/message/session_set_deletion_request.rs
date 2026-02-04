@@ -5,7 +5,6 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Set Deletion Request message.
 /// Used by CP function to request deletion of multiple PFCP sessions as a set.
@@ -99,10 +98,14 @@ impl SessionSetDeletionRequestBuilder {
 
     /// Tries to build the Session Set Deletion Request message.
     /// Returns an error if required fields are missing.
-    pub fn try_build(self) -> Result<SessionSetDeletionRequest, io::Error> {
-        let node_id = self
-            .node_id
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Node ID is required"))?;
+    pub fn try_build(self) -> Result<SessionSetDeletionRequest, PfcpError> {
+        let node_id = self.node_id.ok_or_else(|| {
+            PfcpError::validation_error(
+                "SessionSetDeletionRequestBuilder",
+                "node_id",
+                "Node ID is required",
+            )
+        })?;
         Ok(SessionSetDeletionRequest::new(
             self.sequence,
             node_id,
@@ -507,7 +510,10 @@ mod tests {
     fn test_session_set_deletion_request_builder_try_build_missing_node_id() {
         let result = SessionSetDeletionRequestBuilder::new(123).try_build();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(
+            result.unwrap_err(),
+            PfcpError::ValidationError { .. }
+        ));
     }
 
     #[test]

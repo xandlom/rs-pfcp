@@ -4,10 +4,10 @@ use crate::comparison::{
     ComparisonOptions, ComparisonResult, ComparisonStats, HeaderMatch, IeMatch, IeMatchType,
     IeMismatch, MessageDiff, MismatchReason, OptionalIeMode,
 };
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::Message;
 use std::collections::{HashMap, HashSet};
-use std::io;
 
 /// Check if an IE type is a grouped IE (contains child IEs).
 ///
@@ -58,7 +58,7 @@ fn is_grouped_ie(ie_type: IeType) -> bool {
 ///
 /// # Returns
 /// Vector of child IEs in the order they appear in the payload.
-fn parse_child_ies(payload: &[u8]) -> Result<Vec<Ie>, io::Error> {
+fn parse_child_ies(payload: &[u8]) -> Result<Vec<Ie>, PfcpError> {
     let mut child_ies = Vec::new();
     let mut offset = 0;
 
@@ -79,7 +79,7 @@ pub fn execute_comparison(
     left: &dyn Message,
     right: &dyn Message,
     options: &ComparisonOptions,
-) -> Result<ComparisonResult, io::Error> {
+) -> Result<ComparisonResult, PfcpError> {
     let mut stats = ComparisonStats::new();
 
     // Compare headers
@@ -197,7 +197,7 @@ fn compare_ies(
     right_ies: &HashMap<IeType, Vec<&Ie>>,
     options: &ComparisonOptions,
     stats: &mut ComparisonStats,
-) -> Result<(Vec<IeMatch>, Vec<IeMismatch>, Vec<IeType>, Vec<IeType>), io::Error> {
+) -> Result<(Vec<IeMatch>, Vec<IeMismatch>, Vec<IeType>, Vec<IeType>), PfcpError> {
     let mut ie_matches = Vec::new();
     let mut ie_mismatches = Vec::new();
     let mut left_only_ies = Vec::new();
@@ -289,7 +289,7 @@ fn compare_ie_instances(
     right: &[&Ie],
     ie_type: IeType,
     options: &ComparisonOptions,
-) -> Result<IeComparisonResult, io::Error> {
+) -> Result<IeComparisonResult, PfcpError> {
     // Check count
     if left.len() != right.len() {
         return Ok(IeComparisonResult::Mismatch(
@@ -372,7 +372,7 @@ fn compare_grouped_ie_deep(
     right: &Ie,
     _ie_type: IeType,
     options: &ComparisonOptions,
-) -> Result<IeComparisonResult, io::Error> {
+) -> Result<IeComparisonResult, PfcpError> {
     // Parse child IEs from both payloads
     let left_children = parse_child_ies(&left.payload)?;
     let right_children = parse_child_ies(&right.payload)?;
@@ -424,7 +424,7 @@ fn compare_single_ie(
     right: &Ie,
     ie_type: IeType,
     options: &ComparisonOptions,
-) -> Result<IeComparisonResult, io::Error> {
+) -> Result<IeComparisonResult, PfcpError> {
     // Check if this is a grouped IE and deep comparison is enabled
     if options.deep_compare_grouped && is_grouped_ie(ie_type) {
         return compare_grouped_ie_deep(left, right, ie_type, options);

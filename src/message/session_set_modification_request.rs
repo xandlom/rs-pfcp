@@ -11,7 +11,6 @@ use crate::ie::fq_csid::FqCsid;
 use crate::ie::group_id::GroupId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Set Modification Request message.
 ///
@@ -116,8 +115,7 @@ impl Message for SessionSetModificationRequest {
             match ie.ie_type {
                 IeType::NodeId => {
                     if node_id.is_none() {
-                        let typed_ie = crate::ie::node_id::NodeId::unmarshal(&ie.payload)
-                            .map_err(io::Error::from)?;
+                        let typed_ie = crate::ie::node_id::NodeId::unmarshal(&ie.payload)?;
                         node_id = Some((typed_ie, ie));
                     } else {
                         return Err(PfcpError::MessageParseError {

@@ -5,7 +5,6 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationReleaseRequest {
@@ -23,8 +22,8 @@ impl AssociationReleaseRequest {
     // Typed accessor (recommended API)
 
     /// Returns the node ID.
-    pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, io::Error> {
-        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload).map_err(Into::into)
+    pub fn node_id(&self) -> Result<crate::ie::node_id::NodeId, PfcpError> {
+        crate::ie::node_id::NodeId::unmarshal(&self.node_id.payload)
     }
 
     // Raw IE accessor (compatibility layer)

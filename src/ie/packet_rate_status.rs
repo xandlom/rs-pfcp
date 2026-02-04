@@ -31,7 +31,7 @@ use crate::ie::{Ie, IeType};
 /// ```
 /// use rs_pfcp::ie::packet_rate_status::PacketRateStatus;
 ///
-/// # fn example() -> Result<(), std::io::Error> {
+/// # fn example() -> Result<(), rs_pfcp::error::PfcpError> {
 /// // Create with uplink remaining packets
 /// let prs = PacketRateStatus::new(true, false, false);
 /// let prs = prs.with_remaining_uplink_packets(1000);

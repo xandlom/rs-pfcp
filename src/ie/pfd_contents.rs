@@ -13,9 +13,8 @@
 //! - `"deny in udp from 192.168.1.0/24 to any"`
 //! - `"permit out ip from any to 10.0.0.0/8"`
 
-use crate::error::{messages, PfcpError};
+use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use std::io;
 
 /// Represents PFD Contents Information Element.
 ///
@@ -327,29 +326,32 @@ impl PfdContents {
     /// Unmarshals a byte slice into PFD Contents.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                messages::payload_too_short("PFD Contents"),
-            )
-            .into());
+            return Err(PfcpError::invalid_length(
+                "PFD Contents",
+                IeType::PfdContents,
+                2,
+                payload.len(),
+            ));
         }
         let flags = payload[0];
         let mut offset = 2;
 
-        let read_field = |offset: &mut usize| -> Result<Option<String>, io::Error> {
+        let read_field = |offset: &mut usize| -> Result<Option<String>, PfcpError> {
             if payload.len() < *offset + 2 {
                 return Ok(None);
             }
             let len = u16::from_be_bytes([payload[*offset], payload[*offset + 1]]) as usize;
             *offset += 2;
             if payload.len() < *offset + len {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Not enough data for field",
+                return Err(PfcpError::invalid_length(
+                    "PFD Contents field",
+                    IeType::PfdContents,
+                    *offset + len,
+                    payload.len(),
                 ));
             }
             let val = String::from_utf8(payload[*offset..*offset + len].to_vec()).map_err(|e| {
-                Into::<PfcpError>::into(io::Error::new(io::ErrorKind::InvalidData, e))
+                PfcpError::invalid_value("PFD Contents", "field", format!("invalid UTF-8: {}", e))
             })?;
             *offset += len;
             Ok(Some(val))

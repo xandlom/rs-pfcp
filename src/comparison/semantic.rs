@@ -5,11 +5,11 @@
 //! fields that determine the IE's function, ignoring implementation-specific
 //! encoding details.
 
+use crate::error::PfcpError;
 use crate::ie::f_teid::Fteid;
 use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
 use crate::ie::ue_ip_address::UeIpAddress;
 use crate::ie::IeType;
-use std::io;
 use std::time::Duration;
 
 /// Result of semantic comparison.
@@ -47,7 +47,7 @@ pub fn compare_semantically(
     ie_type: IeType,
     left_payload: &[u8],
     right_payload: &[u8],
-) -> Result<Option<SemanticMatch>, io::Error> {
+) -> Result<Option<SemanticMatch>, PfcpError> {
     compare_semantically_with_tolerance(ie_type, left_payload, right_payload, None)
 }
 
@@ -60,7 +60,7 @@ pub fn compare_semantically_with_tolerance(
     left_payload: &[u8],
     right_payload: &[u8],
     timestamp_tolerance_secs: Option<u32>,
-) -> Result<Option<SemanticMatch>, io::Error> {
+) -> Result<Option<SemanticMatch>, PfcpError> {
     match ie_type {
         IeType::Fteid => {
             let left = Fteid::unmarshal(left_payload)?;

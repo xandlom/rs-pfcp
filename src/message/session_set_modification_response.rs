@@ -8,7 +8,6 @@ use crate::ie::cause::CauseValue;
 use crate::ie::offending_ie::OffendingIe;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a Session Set Modification Response message.
 ///
@@ -259,7 +258,7 @@ impl SessionSetModificationResponseBuilder {
     ///     .marshal()
     ///     .unwrap();
     /// ```
-    pub fn marshal(self) -> Result<Vec<u8>, io::Error> {
+    pub fn marshal(self) -> Result<Vec<u8>, PfcpError> {
         Ok(self.build()?.marshal())
     }
 }

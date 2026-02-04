@@ -1,9 +1,9 @@
 //! Message comparison builder.
 
 use super::{ComparisonOptions, ComparisonResult, IeMultiplicityMode, MessageDiff, OptionalIeMode};
+use crate::error::PfcpError;
 use crate::ie::IeType;
 use crate::message::Message;
-use std::io;
 
 mod compare;
 
@@ -479,7 +479,7 @@ impl<'a> MessageComparator<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn compare(self) -> Result<ComparisonResult, io::Error> {
+    pub fn compare(self) -> Result<ComparisonResult, PfcpError> {
         compare::execute_comparison(self.left, self.right, &self.options)
     }
 
@@ -500,7 +500,7 @@ impl<'a> MessageComparator<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn diff(mut self) -> Result<MessageDiff, io::Error> {
+    pub fn diff(mut self) -> Result<MessageDiff, PfcpError> {
         self.options.generate_diff = true;
         let result = compare::execute_comparison(self.left, self.right, &self.options)?;
         Ok(result.into_diff())
@@ -522,7 +522,7 @@ impl<'a> MessageComparator<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn matches(self) -> Result<bool, io::Error> {
+    pub fn matches(self) -> Result<bool, PfcpError> {
         let result = compare::execute_comparison(self.left, self.right, &self.options)?;
         Ok(result.is_match())
     }

@@ -5,7 +5,6 @@ use crate::ie::application_ids_pfds::ApplicationIdsPfds;
 use crate::ie::node_id::NodeId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
-use std::io;
 
 /// Represents a PFD Management Request message.
 ///
@@ -113,7 +112,7 @@ impl Message for PfdManagementRequest {
                             reason: "Duplicate Node ID IE".to_string(),
                         });
                     }
-                    node_id = Some(NodeId::unmarshal(&ie.payload).map_err(io::Error::from)?);
+                    node_id = Some(NodeId::unmarshal(&ie.payload)?);
                 }
                 IeType::ApplicationIdsPfds => {
                     let typed_ie = ApplicationIdsPfds::unmarshal(&ie.payload)?;
