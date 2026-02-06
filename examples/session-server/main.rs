@@ -219,7 +219,7 @@ fn handle_session_establishment_request(
     msg: &dyn Message,
     data: &[u8],
 ) -> Result<(), Box<dyn Error>> {
-    let seid = msg.seid().unwrap();
+    let seid = *msg.seid().unwrap();
     println!("  Session ID: 0x{seid:016x}");
 
     // Parse the full SessionEstablishmentRequest to access create_pdrs
@@ -345,7 +345,7 @@ fn handle_session_modification_request(
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Session Modification Request");
-    let res = SessionModificationResponseBuilder::new(msg.seid().unwrap(), msg.sequence())
+    let res = SessionModificationResponseBuilder::new(*msg.seid().unwrap(), msg.sequence())
         .cause_accepted()
         .marshal();
     ctx.socket.send_to(&res, ctx.src)?;
@@ -357,7 +357,7 @@ fn handle_session_deletion_request(
     ctx: &mut HandlerContext,
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
-    let seid = msg.seid().unwrap();
+    let seid = *msg.seid().unwrap();
     println!("  Deleting session 0x{seid:016x}");
 
     // Demonstrate additional builder patterns for session cleanup
@@ -410,7 +410,7 @@ fn handle_session_report_request(
     println!("  ERROR: Received Session Report Request (UPF role should not receive this)");
     println!("  This message should be sent BY the UPF, not TO the UPF");
 
-    let seid = msg.seid().unwrap_or(0);
+    let seid = msg.seid().map(|s| *s).unwrap_or(0);
 
     // Send rejection response
     use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;

@@ -279,7 +279,7 @@ fn bench_batch_marshaling(c: &mut Criterion) {
     let messages: Vec<_> = (0..100)
         .map(|i| {
             let mut msg = create_heartbeat();
-            msg.set_sequence(i);
+            msg.set_sequence(i.into());
             msg
         })
         .collect();

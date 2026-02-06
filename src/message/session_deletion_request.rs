@@ -5,6 +5,7 @@ use crate::ie::fseid::Fseid;
 use crate::ie::node_id::NodeId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// PFCP Session Deletion Request message per 3GPP TS 29.244 Section 7.5.6.
 ///
@@ -96,7 +97,7 @@ impl Message for SessionDeletionRequest {
         MsgType::SessionDeletionRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -104,11 +105,11 @@ impl Message for SessionDeletionRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -167,7 +168,7 @@ impl SessionDeletionRequest {
     /// * `ies` - Additional/unknown IEs
     pub fn new(
         seid: u64,
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         tl_container: Vec<Ie>,
         node_id: Option<Ie>,
         cp_fseid: Option<Ie>,
@@ -219,7 +220,7 @@ impl SessionDeletionRequest {
 #[derive(Debug, Default)]
 pub struct SessionDeletionRequestBuilder {
     seid: u64,
-    sequence: u32,
+    sequence: SequenceNumber,
     tl_container: Vec<Ie>,
     node_id: Option<Ie>,
     cp_fseid: Option<Ie>,
@@ -233,10 +234,10 @@ impl SessionDeletionRequestBuilder {
     ///
     /// * `seid` - Session endpoint ID identifying the PFCP session (carried in header)
     /// * `sequence` - Sequence number for the message
-    pub fn new(seid: u64, sequence: u32) -> Self {
+    pub fn new(seid: u64, sequence: impl Into<SequenceNumber>) -> Self {
         Self {
             seid,
-            sequence,
+            sequence: sequence.into(),
             tl_container: Vec::new(),
             node_id: None,
             cp_fseid: None,
@@ -402,8 +403,8 @@ mod tests {
         // Minimal request with only SEID in header (no body IEs)
         let request = SessionDeletionRequestBuilder::new(12345, 67890).build();
 
-        assert_eq!(request.sequence(), 67890);
-        assert_eq!(request.seid(), Some(12345));
+        assert_eq!(*request.sequence(), 67890);
+        assert_eq!(request.seid(), Some(Seid(12345)));
         assert_eq!(request.msg_type(), MsgType::SessionDeletionRequest);
         assert!(request.tl_container.is_empty());
         assert!(request.node_id.is_none());
@@ -420,8 +421,8 @@ mod tests {
             .node_id_ie(node_id_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 22222);
-        assert_eq!(request.seid(), Some(11111));
+        assert_eq!(*request.sequence(), 22222);
+        assert_eq!(request.seid(), Some(Seid(11111)));
         assert_eq!(request.node_id, Some(node_id_ie));
         assert!(request.cp_fseid.is_none());
         assert!(request.tl_container.is_empty());
@@ -436,8 +437,8 @@ mod tests {
             .cp_fseid_ie(cp_fseid_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 44444);
-        assert_eq!(request.seid(), Some(33333));
+        assert_eq!(*request.sequence(), 44444);
+        assert_eq!(request.seid(), Some(Seid(33333)));
         assert_eq!(request.cp_fseid, Some(cp_fseid_ie));
         assert!(request.node_id.is_none());
         assert!(request.tl_container.is_empty());
@@ -455,8 +456,8 @@ mod tests {
             .tl_containers(vec![tl_container2.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 66666);
-        assert_eq!(request.seid(), Some(55555));
+        assert_eq!(*request.sequence(), 66666);
+        assert_eq!(request.seid(), Some(Seid(55555)));
         assert_eq!(request.tl_container.len(), 2);
         assert_eq!(request.tl_container[0], tl_container1);
         assert_eq!(request.tl_container[1], tl_container2);
@@ -474,8 +475,8 @@ mod tests {
             .ies(vec![ie2.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 34343);
-        assert_eq!(request.seid(), Some(12121));
+        assert_eq!(*request.sequence(), 34343);
+        assert_eq!(request.seid(), Some(Seid(12121)));
         assert_eq!(request.ies.len(), 2);
         assert_eq!(request.ies[0], ie1);
         assert_eq!(request.ies[1], ie2);
@@ -500,8 +501,8 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 0x1234);
-        assert_eq!(request.seid(), Some(0xABCD));
+        assert_eq!(*request.sequence(), 0x1234);
+        assert_eq!(request.seid(), Some(Seid(0xABCD)));
         assert_eq!(request.tl_container.len(), 1);
         assert_eq!(request.tl_container[0], tl_container);
         assert_eq!(request.node_id, Some(node_id_ie));
@@ -538,8 +539,8 @@ mod tests {
 
         // Parse it back
         let parsed = SessionDeletionRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(parsed.seid(), Some(0x123456));
-        assert_eq!(parsed.sequence(), 42);
+        assert_eq!(parsed.seid(), Some(Seid(0x123456)));
+        assert_eq!(*parsed.sequence(), 42);
         assert!(parsed.tl_container.is_empty());
         assert!(parsed.node_id.is_none());
         assert!(parsed.cp_fseid.is_none());

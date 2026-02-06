@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationSetupRequest {
@@ -112,7 +113,7 @@ impl Message for AssociationSetupRequest {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -120,11 +121,11 @@ impl Message for AssociationSetupRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -170,7 +171,7 @@ impl Message for AssociationSetupRequest {
 
 impl AssociationSetupRequest {
     pub fn new(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         node_id: Ie,
         recovery_time_stamp: Ie,
         up_function_features: Option<Ie>,
@@ -203,7 +204,7 @@ impl AssociationSetupRequest {
 /// Builder for AssociationSetupRequest message.
 #[derive(Debug, Default)]
 pub struct AssociationSetupRequestBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<Ie>,
     recovery_time_stamp: Option<Ie>,
     up_function_features: Option<Ie>,
@@ -213,9 +214,9 @@ pub struct AssociationSetupRequestBuilder {
 
 impl AssociationSetupRequestBuilder {
     /// Creates a new AssociationSetupRequest builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
             recovery_time_stamp: None,
             up_function_features: None,
@@ -439,7 +440,7 @@ mod tests {
             .recovery_time_stamp_ie(recovery_time_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.seid(), None); // Association messages have no SEID
         assert_eq!(request.msg_type(), MsgType::AssociationSetupRequest);
         assert_eq!(request.node_id, node_id_ie);
@@ -465,7 +466,7 @@ mod tests {
             .up_function_features(up_features_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 67890);
+        assert_eq!(*request.sequence(), 67890);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.recovery_time_stamp, recovery_time_ie);
         assert_eq!(request.up_function_features, Some(up_features_ie));
@@ -488,7 +489,7 @@ mod tests {
             .cp_function_features(cp_features_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 11111);
+        assert_eq!(*request.sequence(), 11111);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.recovery_time_stamp, recovery_time_ie);
         assert!(request.up_function_features.is_none());
@@ -514,7 +515,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 22222);
+        assert_eq!(*request.sequence(), 22222);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.recovery_time_stamp, recovery_time_ie);
         assert_eq!(request.ies.len(), 3);
@@ -543,7 +544,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 33333);
+        assert_eq!(*request.sequence(), 33333);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.recovery_time_stamp, recovery_time_ie);
         assert_eq!(request.up_function_features, Some(up_features_ie));
@@ -567,7 +568,7 @@ mod tests {
 
         assert!(result.is_ok());
         let request = result.unwrap();
-        assert_eq!(request.sequence(), 44444);
+        assert_eq!(*request.sequence(), 44444);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.recovery_time_stamp, recovery_time_ie);
     }
@@ -655,7 +656,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(request.sequence(), 1000);
+        assert_eq!(*request.sequence(), 1000);
         assert!(!request.node_id.payload.is_empty());
     }
 
@@ -666,7 +667,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(request.sequence(), 2000);
+        assert_eq!(*request.sequence(), 2000);
         assert!(!request.node_id.payload.is_empty());
     }
 
@@ -677,7 +678,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(request.sequence(), 3000);
+        assert_eq!(*request.sequence(), 3000);
         assert!(!request.node_id.payload.is_empty());
     }
 
@@ -689,7 +690,7 @@ mod tests {
             .recovery_time_stamp(timestamp)
             .build();
 
-        assert_eq!(request.sequence(), 4000);
+        assert_eq!(*request.sequence(), 4000);
         assert!(!request.recovery_time_stamp.payload.is_empty());
     }
 
@@ -703,7 +704,7 @@ mod tests {
         assert!(!bytes.is_empty());
         // Should be able to unmarshal the bytes
         let unmarshaled = AssociationSetupRequest::unmarshal(&bytes).unwrap();
-        assert_eq!(unmarshaled.sequence(), 5000);
+        assert_eq!(*unmarshaled.sequence(), 5000);
     }
 
     #[test]
@@ -790,9 +791,9 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(request.sequence(), 12000);
-        request.set_sequence(54321);
-        assert_eq!(request.sequence(), 54321);
+        assert_eq!(*request.sequence(), 12000);
+        request.set_sequence(54321.into());
+        assert_eq!(*request.sequence(), 54321);
     }
 
     #[test]
@@ -805,7 +806,7 @@ mod tests {
 
         let marshaled = request.marshal();
         let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 13000);
+        assert_eq!(*unmarshaled.sequence(), 13000);
     }
 
     #[test]
@@ -819,7 +820,7 @@ mod tests {
 
         let marshaled = request.marshal();
         let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 14000);
+        assert_eq!(*unmarshaled.sequence(), 14000);
     }
 
     #[test]
@@ -858,7 +859,7 @@ mod tests {
             .ie(custom_ie2.clone())
             .build();
 
-        assert_eq!(request.sequence(), 16000);
+        assert_eq!(*request.sequence(), 16000);
         assert_eq!(request.up_function_features, Some(up_features));
         assert_eq!(request.cp_function_features, Some(cp_features));
         assert_eq!(request.ies.len(), 2);
@@ -927,7 +928,7 @@ mod tests {
         let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
-        assert_eq!(unmarshaled.sequence(), 17000);
+        assert_eq!(*unmarshaled.sequence(), 17000);
         assert!(unmarshaled.up_function_features.is_some());
         assert!(unmarshaled.cp_function_features.is_some());
         assert_eq!(unmarshaled.ies.len(), 1);

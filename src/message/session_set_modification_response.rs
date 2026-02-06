@@ -8,6 +8,7 @@ use crate::ie::cause::CauseValue;
 use crate::ie::offending_ie::OffendingIe;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Set Modification Response message.
 ///
@@ -99,15 +100,15 @@ impl Message for SessionSetModificationResponse {
         MsgType::SessionSetModificationResponse
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         None // Session Set messages don't use SEID
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -142,16 +143,16 @@ impl Message for SessionSetModificationResponse {
 
 #[derive(Debug, Default)]
 pub struct SessionSetModificationResponseBuilder {
-    seq: u32,
+    seq: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     ies: Vec<Ie>,
 }
 
 impl SessionSetModificationResponseBuilder {
-    pub fn new(seq: u32) -> Self {
+    pub fn new(seq: impl Into<SequenceNumber>) -> Self {
         SessionSetModificationResponseBuilder {
-            seq,
+            seq: seq.into(),
             cause: None,
             offending_ie: None,
             ies: Vec::new(),
@@ -266,14 +267,17 @@ impl SessionSetModificationResponseBuilder {
 /// Convenience constructors for common response scenarios
 impl SessionSetModificationResponse {
     /// Create a successful response
-    pub fn success(seq: u32) -> Result<Self, PfcpError> {
+    pub fn success(seq: impl Into<SequenceNumber>) -> Result<Self, PfcpError> {
         SessionSetModificationResponseBuilder::new(seq)
             .cause(CauseValue::RequestAccepted)
             .build()
     }
 
     /// Create a rejection response with cause
-    pub fn reject(seq: u32, cause_value: CauseValue) -> Result<Self, PfcpError> {
+    pub fn reject(
+        seq: impl Into<SequenceNumber>,
+        cause_value: CauseValue,
+    ) -> Result<Self, PfcpError> {
         if cause_value == CauseValue::RequestAccepted {
             return Err(PfcpError::validation_error(
                 "SessionSetModificationResponse",
@@ -288,7 +292,7 @@ impl SessionSetModificationResponse {
 
     /// Create a rejection response with cause and offending IE
     pub fn reject_with_offending_ie(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         cause_value: CauseValue,
         offending_ie_type: IeType,
     ) -> Result<Self, PfcpError> {
@@ -325,7 +329,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.msg_type(), MsgType::SessionSetModificationResponse);
-        assert_eq!(response.sequence(), 123);
+        assert_eq!(*response.sequence(), 123);
         assert_eq!(response.seid(), None);
         assert!(response.find_ie(IeType::Cause).is_some());
         assert_eq!(response.find_ie(IeType::Cause).unwrap().payload, vec![1]);
@@ -369,7 +373,7 @@ mod tests {
     fn test_session_set_modification_response_convenience_constructors() {
         // Test success response
         let success_response = SessionSetModificationResponse::success(100).unwrap();
-        assert_eq!(success_response.sequence(), 100);
+        assert_eq!(*success_response.sequence(), 100);
         assert_eq!(
             success_response.cause.payload,
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec()
@@ -378,7 +382,7 @@ mod tests {
         // Test reject response
         let reject_response =
             SessionSetModificationResponse::reject(200, CauseValue::MandatoryIeIncorrect).unwrap();
-        assert_eq!(reject_response.sequence(), 200);
+        assert_eq!(*reject_response.sequence(), 200);
         assert_eq!(
             reject_response.cause.payload,
             Cause::new(CauseValue::MandatoryIeIncorrect)
@@ -393,7 +397,7 @@ mod tests {
             IeType::GroupId,
         )
         .unwrap();
-        assert_eq!(reject_with_offending.sequence(), 300);
+        assert_eq!(*reject_with_offending.sequence(), 300);
         assert_eq!(
             reject_with_offending.cause.payload,
             Cause::new(CauseValue::ConditionalIeMissing)
@@ -420,7 +424,7 @@ mod tests {
         let unmarshaled = SessionSetModificationResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
-        assert_eq!(unmarshaled.sequence(), 999);
+        assert_eq!(*unmarshaled.sequence(), 999);
         assert!(unmarshaled.offending_ie.is_some());
     }
 

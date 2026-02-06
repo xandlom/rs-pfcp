@@ -4,23 +4,28 @@
 
 use crate::error::PfcpError;
 use crate::ie::IeType;
+use crate::types::Seid;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Fseid {
     pub v4: bool,
     pub v6: bool,
-    pub seid: u64,
+    pub seid: Seid,
     pub ipv4_address: Option<Ipv4Addr>,
     pub ipv6_address: Option<Ipv6Addr>,
 }
 
 impl Fseid {
-    pub fn new(seid: u64, ipv4_address: Option<Ipv4Addr>, ipv6_address: Option<Ipv6Addr>) -> Self {
+    pub fn new(
+        seid: impl Into<Seid>,
+        ipv4_address: Option<Ipv4Addr>,
+        ipv6_address: Option<Ipv6Addr>,
+    ) -> Self {
         Fseid {
             v4: ipv4_address.is_some(),
             v6: ipv6_address.is_some(),
-            seid,
+            seid: seid.into(),
             ipv4_address,
             ipv6_address,
         }
@@ -36,7 +41,7 @@ impl Fseid {
             flags |= 0b10;
         }
         data.push(flags);
-        data.extend_from_slice(&self.seid.to_be_bytes());
+        data.extend_from_slice(&self.seid.0.to_be_bytes());
         if let Some(addr) = self.ipv4_address {
             data.extend_from_slice(&addr.octets());
         }
@@ -104,7 +109,7 @@ impl Fseid {
         Ok(Fseid {
             v4,
             v6,
-            seid,
+            seid: Seid(seid),
             ipv4_address,
             ipv6_address,
         })

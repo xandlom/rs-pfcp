@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Establishment Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -278,7 +279,7 @@ impl Message for SessionEstablishmentRequest {
         MsgType::SessionEstablishmentRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -286,11 +287,11 @@ impl Message for SessionEstablishmentRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -417,7 +418,7 @@ impl Message for SessionEstablishmentRequest {
 #[derive(Debug, Default)]
 pub struct SessionEstablishmentRequestBuilder {
     seid: u64,
-    seq: u32,
+    seq: SequenceNumber,
     node_id: Option<Ie>,
     fseid: Option<Ie>,
     create_pdrs: Vec<Ie>,
@@ -440,10 +441,10 @@ pub struct SessionEstablishmentRequestBuilder {
 }
 
 impl SessionEstablishmentRequestBuilder {
-    pub fn new(seid: u64, seq: u32) -> Self {
+    pub fn new(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
         SessionEstablishmentRequestBuilder {
             seid,
-            seq,
+            seq: seq.into(),
             node_id: None,
             fseid: None,
             create_pdrs: Vec::new(),
@@ -820,6 +821,7 @@ mod tests {
     use crate::ie::{
         fseid::Fseid, node_id::NodeId, recovery_time_stamp::RecoveryTimeStamp, IeType,
     };
+    use crate::types::Seid;
     use std::net::{Ipv4Addr, Ipv6Addr};
     use std::time::SystemTime;
 
@@ -881,8 +883,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(request.sequence(), 1);
-        assert_eq!(request.seid(), Some(0x1234));
+        assert_eq!(*request.sequence(), 1);
+        assert_eq!(request.seid(), Some(Seid(0x1234)));
         assert_eq!(request.node_id.ie_type, IeType::NodeId);
 
         // Verify the node ID unmarshals correctly
@@ -942,7 +944,7 @@ mod tests {
 
         // Verify the F-SEID unmarshals correctly
         let fseid = Fseid::unmarshal(&request.fseid.payload).unwrap();
-        assert_eq!(fseid.seid, seid);
+        assert_eq!(fseid.seid, Seid(seid));
         assert_eq!(fseid.ipv4_address, Some(ipv4));
         assert_eq!(fseid.ipv6_address, None);
     }
@@ -962,7 +964,7 @@ mod tests {
             .unwrap();
 
         let fseid = Fseid::unmarshal(&request.fseid.payload).unwrap();
-        assert_eq!(fseid.seid, seid);
+        assert_eq!(fseid.seid, Seid(seid));
         assert_eq!(fseid.ipv4_address, None);
         assert_eq!(fseid.ipv6_address, Some(ipv6));
     }
@@ -1006,15 +1008,15 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(request.sequence(), 1);
-        assert_eq!(request.seid(), Some(0x1234));
+        assert_eq!(*request.sequence(), 1);
+        assert_eq!(request.seid(), Some(Seid(0x1234)));
         assert!(request.recovery_time_stamp.is_some());
 
         // Verify it marshals and unmarshals correctly
         let bytes = request.marshal();
         let unmarshaled = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
-        assert_eq!(unmarshaled.sequence(), 1);
-        assert_eq!(unmarshaled.seid(), Some(0x1234));
+        assert_eq!(*unmarshaled.sequence(), 1);
+        assert_eq!(unmarshaled.seid(), Some(Seid(0x1234)));
     }
 
     #[test]
@@ -1032,8 +1034,8 @@ mod tests {
 
         // Should produce valid bytes
         let request = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
-        assert_eq!(request.sequence(), 1);
-        assert_eq!(request.seid(), Some(0x1234));
+        assert_eq!(*request.sequence(), 1);
+        assert_eq!(request.seid(), Some(Seid(0x1234)));
     }
 
     #[test]
@@ -1222,8 +1224,8 @@ mod tests {
         let parsed = crate::message::parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionEstablishmentRequest);
-        assert_eq!(parsed.sequence(), 500);
-        assert_eq!(parsed.seid(), Some(0x5555));
+        assert_eq!(*parsed.sequence(), 500);
+        assert_eq!(parsed.seid(), Some(Seid(0x5555)));
     }
 
     #[test]
@@ -1248,8 +1250,8 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = SessionEstablishmentRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(unmarshaled.header.seid, 0x7777);
-        assert_eq!(unmarshaled.header.sequence_number, 600);
+        assert_eq!(*unmarshaled.header.seid, 0x7777);
+        assert_eq!(*unmarshaled.header.sequence_number, 600);
         assert!(unmarshaled.pdn_type.is_some());
         assert!(unmarshaled.apn_dnn.is_some());
     }
@@ -1298,8 +1300,8 @@ mod tests {
 
         assert_eq!(msg.msg_type(), MsgType::SessionEstablishmentRequest);
         assert_eq!(msg.msg_name(), "SessionEstablishmentRequest");
-        assert_eq!(msg.sequence(), 800);
-        assert_eq!(msg.seid(), Some(0xBBBB));
+        assert_eq!(*msg.sequence(), 800);
+        assert_eq!(msg.seid(), Some(Seid(0xBBBB)));
         assert_eq!(msg.version(), 1);
     }
 
@@ -1315,9 +1317,9 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.sequence(), 900);
-        msg.set_sequence(1000);
-        assert_eq!(msg.sequence(), 1000);
+        assert_eq!(*msg.sequence(), 900);
+        msg.set_sequence(1000.into());
+        assert_eq!(*msg.sequence(), 1000);
     }
 
     #[test]
@@ -1366,7 +1368,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.header.seid, 0x12345678);
+        assert_eq!(*msg.header.seid, 0x12345678);
         assert!(msg.pdn_type.is_some());
     }
 
@@ -1386,7 +1388,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(msg.header.seid, 0xABCDEF01);
+        assert_eq!(*msg.header.seid, 0xABCDEF01);
     }
 
     #[test]

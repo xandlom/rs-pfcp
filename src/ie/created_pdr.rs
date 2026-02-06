@@ -62,6 +62,7 @@ impl CreatedPdr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Teid;
     use std::net::Ipv4Addr;
 
     #[test]
@@ -95,7 +96,7 @@ mod tests {
 
         assert_eq!(created_pdr, unmarshaled);
         assert_eq!(unmarshaled.pdr_id.value, 42);
-        assert_eq!(unmarshaled.f_teid.teid, 0x12345678);
+        assert_eq!(unmarshaled.f_teid.teid, Teid(0x12345678));
         assert_eq!(
             unmarshaled.f_teid.ipv4_address,
             Some(Ipv4Addr::new(192, 168, 1, 100))
@@ -127,7 +128,7 @@ mod tests {
 
         assert_eq!(created_pdr, unmarshaled);
         assert_eq!(unmarshaled.pdr_id.value, 100);
-        assert_eq!(unmarshaled.f_teid.teid, 0x87654321);
+        assert_eq!(unmarshaled.f_teid.teid, Teid(0x87654321));
         assert_eq!(unmarshaled.f_teid.choose_id, 200);
         assert!(unmarshaled.f_teid.chid);
     }

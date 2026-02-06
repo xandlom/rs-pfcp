@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Heartbeat Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,7 +16,7 @@ pub struct HeartbeatRequest {
 
 impl HeartbeatRequest {
     /// Creates a new Heartbeat Request message.
-    pub fn new(seq: u32, ts: Ie, ip: Option<Ie>, ies: Vec<Ie>) -> Self {
+    pub fn new(seq: impl Into<SequenceNumber>, ts: Ie, ip: Option<Ie>, ies: Vec<Ie>) -> Self {
         let mut payload_len = ts.len();
         if let Some(ref ie) = ip {
             payload_len += ie.len();
@@ -169,7 +170,7 @@ impl Message for HeartbeatRequest {
         MsgType::HeartbeatRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -177,11 +178,11 @@ impl Message for HeartbeatRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -224,7 +225,7 @@ impl Message for HeartbeatRequest {
 /// Builder for HeartbeatRequest message.
 #[derive(Debug, Default)]
 pub struct HeartbeatRequestBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     recovery_time_stamp: Option<Ie>,
     source_ip_address: Option<Ie>,
     ies: Vec<Ie>,
@@ -232,9 +233,9 @@ pub struct HeartbeatRequestBuilder {
 
 impl HeartbeatRequestBuilder {
     /// Creates a new HeartbeatRequest builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             recovery_time_stamp: None,
             source_ip_address: None,
             ies: Vec::new(),
@@ -383,7 +384,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::HeartbeatRequest);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
@@ -403,7 +404,7 @@ mod tests {
             .recovery_time_stamp_ie(recovery_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.recovery_time_stamp_ie(), &recovery_ie);
         assert!(request.source_ip_address_ie().is_none());
     }
@@ -418,7 +419,7 @@ mod tests {
             .source_ip_address_ie(ip_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -443,7 +444,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.recovery_time_stamp, recovery_ie);
         assert_eq!(request.source_ip_address_ie(), Some(&ip_ie));
         assert_eq!(request.additional_ies().len(), 1);
@@ -493,7 +494,7 @@ mod tests {
             .recovery_time_stamp(timestamp)
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -567,7 +568,7 @@ mod tests {
 
         // Should be able to unmarshal
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -584,7 +585,7 @@ mod tests {
 
         // Should produce valid bytes
         let request = HeartbeatRequest::unmarshal(&bytes).unwrap();
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -655,9 +656,9 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(request.sequence(), 5000);
-        request.set_sequence(9999);
-        assert_eq!(request.sequence(), 9999);
+        assert_eq!(*request.sequence(), 5000);
+        request.set_sequence(9999.into());
+        assert_eq!(*request.sequence(), 9999);
     }
 
     #[test]
@@ -678,7 +679,7 @@ mod tests {
 
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 7000);
+        assert_eq!(*unmarshaled.sequence(), 7000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -695,7 +696,7 @@ mod tests {
 
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 8000);
+        assert_eq!(*unmarshaled.sequence(), 8000);
     }
 
     #[test]
@@ -709,7 +710,7 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(unmarshaled.sequence(), 9000);
+        assert_eq!(*unmarshaled.sequence(), 9000);
         assert!(unmarshaled.source_ip_address_ie().is_some());
 
         let ie = unmarshaled.source_ip_address_ie().unwrap();
@@ -728,7 +729,7 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(unmarshaled.sequence(), 10000);
+        assert_eq!(*unmarshaled.sequence(), 10000);
         assert!(unmarshaled.source_ip_address_ie().is_some());
 
         let ie = unmarshaled.source_ip_address_ie().unwrap();
@@ -745,7 +746,7 @@ mod tests {
             .ie(Ie::new(IeType::UserPlaneIpResourceInformation, vec![0x02]))
             .build();
 
-        assert_eq!(request.sequence(), 11000);
+        assert_eq!(*request.sequence(), 11000);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -756,7 +757,7 @@ mod tests {
         // Round trip
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 11000);
+        assert_eq!(*unmarshaled.sequence(), 11000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -774,7 +775,7 @@ mod tests {
         let marshaled = request.marshal();
         let unmarshaled = HeartbeatRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(unmarshaled.sequence(), 12000);
+        assert_eq!(*unmarshaled.sequence(), 12000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -818,7 +819,7 @@ mod tests {
             ])
             .build();
 
-        assert_eq!(request.sequence(), 15000);
+        assert_eq!(*request.sequence(), 15000);
         assert_eq!(
             request.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp

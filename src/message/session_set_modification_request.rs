@@ -11,6 +11,7 @@ use crate::ie::fq_csid::FqCsid;
 use crate::ie::group_id::GroupId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Set Modification Request message.
 ///
@@ -214,15 +215,15 @@ impl Message for SessionSetModificationRequest {
         MsgType::SessionSetModificationRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         None // Session Set messages don't use SEID
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -324,7 +325,7 @@ impl Message for SessionSetModificationRequest {
 
 #[derive(Debug, Default)]
 pub struct SessionSetModificationRequestBuilder {
-    seq: u32,
+    seq: SequenceNumber,
     node_id: Option<crate::ie::node_id::NodeId>,
     pfcp_session_change_info: Option<Vec<Ie>>,
     alternative_smf_ip_address: Option<AlternativeSmfIpAddress>,
@@ -335,9 +336,9 @@ pub struct SessionSetModificationRequestBuilder {
 }
 
 impl SessionSetModificationRequestBuilder {
-    pub fn new(seq: u32) -> Self {
+    pub fn new(seq: impl Into<SequenceNumber>) -> Self {
         SessionSetModificationRequestBuilder {
-            seq,
+            seq: seq.into(),
             node_id: None,
             pfcp_session_change_info: None,
             alternative_smf_ip_address: None,
@@ -498,7 +499,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(request.msg_type(), MsgType::SessionSetModificationRequest);
-        assert_eq!(request.sequence(), 123);
+        assert_eq!(*request.sequence(), 123);
         assert_eq!(request.seid(), None);
         assert!(request.find_ie(IeType::NodeId).is_some());
         assert!(request.find_ie(IeType::AlternativeSmfIpAddress).is_some());
@@ -572,7 +573,7 @@ mod tests {
         let unmarshaled = SessionSetModificationRequest::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
-        assert_eq!(unmarshaled.sequence(), 999);
+        assert_eq!(*unmarshaled.sequence(), 999);
         assert!(unmarshaled.fq_csids.is_some());
     }
 

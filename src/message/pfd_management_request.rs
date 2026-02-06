@@ -5,6 +5,7 @@ use crate::ie::application_ids_pfds::ApplicationIdsPfds;
 use crate::ie::node_id::NodeId;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a PFD Management Request message.
 ///
@@ -22,7 +23,7 @@ pub struct PfdManagementRequest {
 impl PfdManagementRequest {
     /// Creates a new PFD Management Request message.
     pub fn new(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         node_id: Option<NodeId>,
         application_ids_pfds: Option<Vec<ApplicationIdsPfds>>,
         ies: Vec<Ie>,
@@ -137,7 +138,7 @@ impl Message for PfdManagementRequest {
         MsgType::PfdManagementRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -145,11 +146,11 @@ impl Message for PfdManagementRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -204,7 +205,7 @@ impl Message for PfdManagementRequest {
 /// Builder for PfdManagementRequest message.
 #[derive(Debug, Default)]
 pub struct PfdManagementRequestBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<NodeId>,
     application_ids_pfds: Option<Vec<ApplicationIdsPfds>>,
     ies: Vec<Ie>,
@@ -212,9 +213,9 @@ pub struct PfdManagementRequestBuilder {
 
 impl PfdManagementRequestBuilder {
     /// Creates a new PfdManagementRequest builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
             application_ids_pfds: None,
             ies: Vec::new(),
@@ -284,7 +285,7 @@ mod tests {
     fn test_pfd_management_request_builder_minimal() {
         let request = PfdManagementRequestBuilder::new(12345).build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::PfdManagementRequest);
         assert!(request.node_id.is_none());
         assert!(request.application_ids_pfds.is_none());
@@ -309,7 +310,7 @@ mod tests {
             .application_ids_pfds(app_ids_pfds.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert!(request.node_id.is_none());
         assert!(request.application_ids_pfds.is_some());
         let app_pfds = request.application_ids_pfds.as_ref().unwrap();
@@ -358,7 +359,7 @@ mod tests {
             .application_ids_pfds_vec(vec![app_pfds2.clone(), app_pfds3.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 98765);
+        assert_eq!(*request.sequence(), 98765);
         assert!(request.node_id.is_none());
         assert!(request.application_ids_pfds.is_some());
         let app_pfds = request.application_ids_pfds.as_ref().unwrap();
@@ -380,7 +381,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 55555);
+        assert_eq!(*request.sequence(), 55555);
         assert!(request.node_id.is_none());
         assert!(request.application_ids_pfds.is_none());
         assert_eq!(request.ies.len(), 3);
@@ -424,7 +425,7 @@ mod tests {
             .ie(other_ie2.clone())
             .build();
 
-        assert_eq!(request.sequence(), 77777);
+        assert_eq!(*request.sequence(), 77777);
         assert_eq!(request.node_id, Some(node_id));
         assert!(request.application_ids_pfds.is_some());
         let app_pfds = request.application_ids_pfds.as_ref().unwrap();
@@ -482,7 +483,7 @@ mod tests {
             .node_id(node_id.clone())
             .build();
 
-        assert_eq!(request.sequence(), 11111);
+        assert_eq!(*request.sequence(), 11111);
         assert_eq!(request.node_id, Some(node_id));
         assert!(request.application_ids_pfds.is_none());
         assert!(request.ies.is_empty());

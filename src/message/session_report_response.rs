@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Report Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,7 +150,7 @@ impl Message for SessionReportResponse {
         MsgType::SessionReportResponse
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -157,11 +158,11 @@ impl Message for SessionReportResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -244,7 +245,7 @@ impl SessionReportResponse {
     /// Creates a new Session Report Response.
     pub fn new(
         seid: u64,
-        sequence: u32,
+        sequence: impl Into<SequenceNumber>,
         cause: Ie,
         offending_ie: Option<Ie>,
         usage_reports: Vec<Ie>,
@@ -283,7 +284,7 @@ impl SessionReportResponse {
 #[derive(Debug, Default)]
 pub struct SessionReportResponseBuilder {
     seid: u64,
-    seq: u32,
+    seq: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     update_bar_within_session_report_response: Option<Ie>,
@@ -305,13 +306,17 @@ impl SessionReportResponseBuilder {
     /// [`accepted()`]: #method.accepted
     /// [`rejected()`]: #method.rejected
     /// [`new_with_ie()`]: #method.new_with_ie
-    pub fn new(seid: u64, seq: u32, cause: crate::ie::cause::CauseValue) -> Self {
+    pub fn new(
+        seid: u64,
+        seq: impl Into<SequenceNumber>,
+        cause: crate::ie::cause::CauseValue,
+    ) -> Self {
         use crate::ie::cause::Cause;
         use crate::ie::{Ie, IeType};
         let cause_ie = Ie::new(IeType::Cause, Cause::new(cause).marshal().to_vec());
         SessionReportResponseBuilder {
             seid,
-            seq,
+            seq: seq.into(),
             cause: Some(cause_ie),
             offending_ie: None,
             update_bar_within_session_report_response: None,
@@ -328,15 +333,23 @@ impl SessionReportResponseBuilder {
     /// Convenience constructor for an accepted response.
     ///
     /// Equivalent to `new(seid, seq, CauseValue::RequestAccepted)`.
-    pub fn accepted(seid: u64, seq: u32) -> Self {
-        Self::new(seid, seq, crate::ie::cause::CauseValue::RequestAccepted)
+    pub fn accepted(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+        Self::new(
+            seid,
+            seq.into(),
+            crate::ie::cause::CauseValue::RequestAccepted,
+        )
     }
 
     /// Convenience constructor for a rejected response.
     ///
     /// Equivalent to `new(seid, seq, CauseValue::RequestRejected)`.
-    pub fn rejected(seid: u64, seq: u32) -> Self {
-        Self::new(seid, seq, crate::ie::cause::CauseValue::RequestRejected)
+    pub fn rejected(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+        Self::new(
+            seid,
+            seq.into(),
+            crate::ie::cause::CauseValue::RequestRejected,
+        )
     }
 
     /// Creates a new SessionReportResponse builder with a cause IE.
@@ -346,10 +359,10 @@ impl SessionReportResponseBuilder {
     /// [`new()`]: #method.new
     /// [`accepted()`]: #method.accepted
     /// [`rejected()`]: #method.rejected
-    pub fn new_with_ie(seid: u64, seq: u32, cause: Ie) -> Self {
+    pub fn new_with_ie(seid: u64, seq: impl Into<SequenceNumber>, cause: Ie) -> Self {
         SessionReportResponseBuilder {
             seid,
-            seq,
+            seq: seq.into(),
             cause: Some(cause),
             offending_ie: None,
             update_bar_within_session_report_response: None,

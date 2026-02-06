@@ -2,6 +2,7 @@
 
 use crate::error::PfcpError;
 use crate::message::MsgType;
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a PFCP message header.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,14 +13,19 @@ pub struct Header {
     pub has_seid: bool,
     pub message_type: MsgType,
     pub length: u16,
-    pub seid: u64,
-    pub sequence_number: u32,
+    pub seid: Seid,
+    pub sequence_number: SequenceNumber,
     pub message_priority: u8,
 }
 
 impl Header {
     /// Creates a new Header.
-    pub fn new(message_type: MsgType, has_seid: bool, seid: u64, sequence_number: u32) -> Self {
+    pub fn new(
+        message_type: MsgType,
+        has_seid: bool,
+        seid: impl Into<Seid>,
+        sequence_number: impl Into<SequenceNumber>,
+    ) -> Self {
         Header {
             version: 1,
             has_fo: false,
@@ -27,8 +33,8 @@ impl Header {
             has_seid,
             message_type,
             length: 0, // Will be set later
-            seid,
-            sequence_number,
+            seid: seid.into(),
+            sequence_number: sequence_number.into(),
             message_priority: 0,
         }
     }
@@ -91,11 +97,11 @@ impl Header {
 
         let mut offset = 4;
         if self.has_seid {
-            b[offset..offset + 8].copy_from_slice(&self.seid.to_be_bytes());
+            b[offset..offset + 8].copy_from_slice(&self.seid.0.to_be_bytes());
             offset += 8;
         }
 
-        let seq_bytes = self.sequence_number.to_be_bytes();
+        let seq_bytes = self.sequence_number.0.to_be_bytes();
         b[offset..offset + 3].copy_from_slice(&seq_bytes[1..]);
         b[offset + 3] = self.message_priority;
     }
@@ -158,7 +164,12 @@ impl Header {
                 ),
             });
         }
-        let sequence_number = u32::from_be_bytes([0, b[offset], b[offset + 1], b[offset + 2]]);
+        let sequence_number = SequenceNumber::new(u32::from_be_bytes([
+            0,
+            b[offset],
+            b[offset + 1],
+            b[offset + 2],
+        ]));
         let message_priority = b[offset + 3];
 
         Ok(Header {
@@ -168,7 +179,7 @@ impl Header {
             has_seid,
             message_type,
             length,
-            seid,
+            seid: Seid(seid),
             sequence_number,
             message_priority,
         })

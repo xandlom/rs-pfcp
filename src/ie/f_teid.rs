@@ -2,6 +2,7 @@
 
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
+use crate::types::Teid;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Represents a F-TEID.
@@ -11,7 +12,7 @@ pub struct Fteid {
     pub v6: bool,
     pub ch: bool,
     pub chid: bool,
-    pub teid: u32,
+    pub teid: Teid,
     pub ipv4_address: Option<Ipv4Addr>,
     pub ipv6_address: Option<Ipv6Addr>,
     pub choose_id: u8,
@@ -22,7 +23,7 @@ impl Fteid {
     pub fn new(
         v4: bool,
         v6: bool,
-        teid: u32,
+        teid: impl Into<Teid>,
         ipv4_address: Option<Ipv4Addr>,
         ipv6_address: Option<Ipv6Addr>,
         choose_id: u8,
@@ -32,7 +33,7 @@ impl Fteid {
             v6,
             ch: false,
             chid: false,
-            teid,
+            teid: teid.into(),
             ipv4_address,
             ipv6_address,
             choose_id,
@@ -48,7 +49,7 @@ impl Fteid {
         v6: bool,
         ch: bool,
         chid: bool,
-        teid: u32,
+        teid: impl Into<Teid>,
         ipv4_address: Option<Ipv4Addr>,
         ipv6_address: Option<Ipv6Addr>,
         choose_id: u8,
@@ -58,7 +59,7 @@ impl Fteid {
             v6,
             ch,
             chid,
-            teid,
+            teid: teid.into(),
             ipv4_address,
             ipv6_address,
             choose_id,
@@ -82,7 +83,7 @@ impl Fteid {
             flags |= 0x08; // CHID flag (bit 3)
         }
         data.push(flags);
-        data.extend_from_slice(&self.teid.to_be_bytes());
+        data.extend_from_slice(&self.teid.0.to_be_bytes());
         if let Some(addr) = self.ipv4_address {
             data.extend_from_slice(&addr.octets());
         }
@@ -200,7 +201,7 @@ impl Fteid {
             v6,
             ch,
             chid,
-            teid,
+            teid: Teid(teid),
             ipv4_address,
             ipv6_address,
             choose_id,
@@ -249,7 +250,7 @@ impl Fteid {
 /// ```
 #[derive(Debug, Default)]
 pub struct FteidBuilder {
-    teid: Option<u32>,
+    teid: Option<Teid>,
     ipv4_address: Option<Ipv4Addr>,
     ipv6_address: Option<Ipv6Addr>,
     choose_ipv4: bool,
@@ -266,8 +267,8 @@ impl FteidBuilder {
     /// Sets the TEID (Tunnel Endpoint Identifier).
     ///
     /// This is a required field for all F-TEID instances.
-    pub fn teid(mut self, teid: u32) -> Self {
-        self.teid = Some(teid);
+    pub fn teid(mut self, teid: impl Into<Teid>) -> Self {
+        self.teid = Some(teid.into());
         self
     }
 
@@ -408,7 +409,7 @@ impl Fteid {
     }
 
     /// Creates a simple IPv4 F-TEID.
-    pub fn ipv4(teid: u32, addr: Ipv4Addr) -> Self {
+    pub fn ipv4(teid: impl Into<Teid>, addr: Ipv4Addr) -> Self {
         FteidBuilder::new()
             .teid(teid)
             .ipv4(addr)
@@ -417,7 +418,7 @@ impl Fteid {
     }
 
     /// Creates a simple IPv6 F-TEID.
-    pub fn ipv6(teid: u32, addr: Ipv6Addr) -> Self {
+    pub fn ipv6(teid: impl Into<Teid>, addr: Ipv6Addr) -> Self {
         FteidBuilder::new()
             .teid(teid)
             .ipv6(addr)
@@ -426,7 +427,7 @@ impl Fteid {
     }
 
     /// Creates a dual-stack F-TEID with both IPv4 and IPv6 addresses.
-    pub fn dual_stack(teid: u32, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> Self {
+    pub fn dual_stack(teid: impl Into<Teid>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> Self {
         FteidBuilder::new()
             .teid(teid)
             .dual_stack(ipv4, ipv6)
@@ -435,7 +436,7 @@ impl Fteid {
     }
 
     /// Creates an F-TEID with CHOOSE IPv4 flag.
-    pub fn choose_ipv4(teid: u32) -> Self {
+    pub fn choose_ipv4(teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
             .teid(teid)
             .choose_ipv4()
@@ -444,7 +445,7 @@ impl Fteid {
     }
 
     /// Creates an F-TEID with CHOOSE IPv6 flag.
-    pub fn choose_ipv6(teid: u32) -> Self {
+    pub fn choose_ipv6(teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
             .teid(teid)
             .choose_ipv6()
@@ -453,7 +454,7 @@ impl Fteid {
     }
 
     /// Creates an F-TEID with CHOOSE flags for both IPv4 and IPv6.
-    pub fn choose_dual_stack(teid: u32) -> Self {
+    pub fn choose_dual_stack(teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
             .teid(teid)
             .choose_dual_stack()
@@ -645,7 +646,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(!fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x12345678);
+        assert_eq!(fteid.teid, Teid(0x12345678));
         assert_eq!(fteid.ipv4_address, Some(Ipv4Addr::new(192, 168, 1, 1)));
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -669,7 +670,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(!fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x87654321);
+        assert_eq!(fteid.teid, Teid(0x87654321));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, Some(ipv6_addr));
         assert_eq!(fteid.choose_id, 0);
@@ -694,7 +695,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(!fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0xABCDEF00);
+        assert_eq!(fteid.teid, Teid(0xABCDEF00));
         assert_eq!(fteid.ipv4_address, Some(ipv4_addr));
         assert_eq!(fteid.ipv6_address, Some(ipv6_addr));
         assert_eq!(fteid.choose_id, 0);
@@ -717,7 +718,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x11111111);
+        assert_eq!(fteid.teid, Teid(0x11111111));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -740,7 +741,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x22222222);
+        assert_eq!(fteid.teid, Teid(0x22222222));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -763,7 +764,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x33333333);
+        assert_eq!(fteid.teid, Teid(0x33333333));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -787,7 +788,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(fteid.ch);
         assert!(fteid.chid);
-        assert_eq!(fteid.teid, 0x44444444);
+        assert_eq!(fteid.teid, Teid(0x44444444));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 42);
@@ -811,7 +812,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(fteid.chid);
-        assert_eq!(fteid.teid, 0x55555555);
+        assert_eq!(fteid.teid, Teid(0x55555555));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 100);
@@ -901,7 +902,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(!fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x12345678);
+        assert_eq!(fteid.teid, Teid(0x12345678));
         assert_eq!(fteid.ipv4_address, Some(addr));
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -915,7 +916,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(!fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x87654321);
+        assert_eq!(fteid.teid, Teid(0x87654321));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, Some(addr));
     }
@@ -930,7 +931,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(!fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0xABCDEF00);
+        assert_eq!(fteid.teid, Teid(0xABCDEF00));
         assert_eq!(fteid.ipv4_address, Some(ipv4));
         assert_eq!(fteid.ipv6_address, Some(ipv6));
     }
@@ -943,7 +944,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x11111111);
+        assert_eq!(fteid.teid, Teid(0x11111111));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -956,7 +957,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x22222222);
+        assert_eq!(fteid.teid, Teid(0x22222222));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -969,7 +970,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, 0x33333333);
+        assert_eq!(fteid.teid, Teid(0x33333333));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -982,7 +983,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(fteid.teid, 0x99999999);
+        assert_eq!(fteid.teid, Teid(0x99999999));
         assert_eq!(fteid.ipv4_address, Some(Ipv4Addr::new(172, 16, 0, 1)));
     }
 
@@ -999,7 +1000,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(fteid.chid);
-        assert_eq!(fteid.teid, 0xDEADBEEF);
+        assert_eq!(fteid.teid, Teid(0xDEADBEEF));
         assert_eq!(fteid.choose_id, 50);
     }
 }

@@ -50,7 +50,7 @@ impl<T: Message> MessageDisplay for T {
         );
         map.insert(
             "sequence".to_string(),
-            YamlValue::Number(self.sequence().into()),
+            YamlValue::Number((*self.sequence()).into()),
         );
         map.insert(
             "version".to_string(),
@@ -58,7 +58,7 @@ impl<T: Message> MessageDisplay for T {
         );
 
         if let Some(seid) = self.seid() {
-            map.insert("seid".to_string(), YamlValue::Number(seid.into()));
+            map.insert("seid".to_string(), YamlValue::Number((*seid).into()));
         }
 
         // Information Elements
@@ -130,7 +130,7 @@ impl<T: Message> MessageDisplay for T {
         );
         map.insert(
             "sequence".to_string(),
-            JsonValue::Number(self.sequence().into()),
+            JsonValue::Number((*self.sequence()).into()),
         );
         map.insert(
             "version".to_string(),
@@ -138,7 +138,7 @@ impl<T: Message> MessageDisplay for T {
         );
 
         if let Some(seid) = self.seid() {
-            map.insert("seid".to_string(), JsonValue::Number(seid.into()));
+            map.insert("seid".to_string(), JsonValue::Number((*seid).into()));
         }
 
         // Information Elements
@@ -822,7 +822,7 @@ fn created_pdr_to_structured_data(
     );
     fteid_map.insert(
         "teid_decimal".to_string(),
-        YamlValue::Number(created_pdr.f_teid.teid.into()),
+        YamlValue::Number(created_pdr.f_teid.teid.0.into()),
     );
 
     if let Some(ipv4) = created_pdr.f_teid.ipv4_address {
@@ -886,7 +886,7 @@ fn fseid_to_structured_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String,
     );
     map.insert(
         "seid_decimal".to_string(),
-        YamlValue::Number(fseid.seid.into()),
+        YamlValue::Number(fseid.seid.0.into()),
     );
 
     let mut addr_info = Vec::new();
@@ -1270,7 +1270,7 @@ fn fseid_to_json_data(fseid: &crate::ie::fseid::Fseid) -> BTreeMap<String, JsonV
     );
     map.insert(
         "seid_decimal".to_string(),
-        JsonValue::Number(fseid.seid.into()),
+        JsonValue::Number(fseid.seid.0.into()),
     );
 
     let mut addr_info = Vec::new();
@@ -1369,7 +1369,7 @@ fn created_pdr_to_json_data(
     );
     fteid_map.insert(
         "teid_decimal".to_string(),
-        JsonValue::Number(created_pdr.f_teid.teid.into()),
+        JsonValue::Number(created_pdr.f_teid.teid.0.into()),
     );
 
     if let Some(ipv4) = created_pdr.f_teid.ipv4_address {
@@ -1446,7 +1446,7 @@ impl MessageDisplay for Box<dyn Message> {
         );
         map.insert(
             "sequence".to_string(),
-            YamlValue::Number(self.sequence().into()),
+            YamlValue::Number((*self.sequence()).into()),
         );
         map.insert(
             "version".to_string(),
@@ -1454,7 +1454,7 @@ impl MessageDisplay for Box<dyn Message> {
         );
 
         if let Some(seid) = self.seid() {
-            map.insert("seid".to_string(), YamlValue::Number(seid.into()));
+            map.insert("seid".to_string(), YamlValue::Number((*seid).into()));
         }
 
         // Information Elements
@@ -1526,7 +1526,7 @@ impl MessageDisplay for Box<dyn Message> {
         );
         map.insert(
             "sequence".to_string(),
-            JsonValue::Number(self.sequence().into()),
+            JsonValue::Number((*self.sequence()).into()),
         );
         map.insert(
             "version".to_string(),
@@ -1534,7 +1534,7 @@ impl MessageDisplay for Box<dyn Message> {
         );
 
         if let Some(seid) = self.seid() {
-            map.insert("seid".to_string(), JsonValue::Number(seid.into()));
+            map.insert("seid".to_string(), JsonValue::Number((*seid).into()));
         }
 
         // Information Elements

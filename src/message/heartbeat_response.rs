@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Heartbeat Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,7 +15,7 @@ pub struct HeartbeatResponse {
 
 impl HeartbeatResponse {
     /// Creates a new Heartbeat Response message.
-    pub fn new(seq: u32, ts: Ie, ies: Vec<Ie>) -> Self {
+    pub fn new(seq: impl Into<SequenceNumber>, ts: Ie, ies: Vec<Ie>) -> Self {
         let mut payload_len = ts.len();
         for ie in &ies {
             payload_len += ie.len();
@@ -126,7 +127,7 @@ impl Message for HeartbeatResponse {
         MsgType::HeartbeatResponse
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -134,11 +135,11 @@ impl Message for HeartbeatResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -170,16 +171,16 @@ impl Message for HeartbeatResponse {
 /// Builder for HeartbeatResponse message.
 #[derive(Debug, Default)]
 pub struct HeartbeatResponseBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     recovery_time_stamp: Option<Ie>,
     ies: Vec<Ie>,
 }
 
 impl HeartbeatResponseBuilder {
     /// Creates a new HeartbeatResponse builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             recovery_time_stamp: None,
             ies: Vec::new(),
         }
@@ -277,7 +278,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::HeartbeatResponse);
         assert_eq!(
             response.recovery_time_stamp_ie().ie_type,
@@ -296,7 +297,7 @@ mod tests {
             .recovery_time_stamp_ie(recovery_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.recovery_time_stamp_ie(), &recovery_ie);
     }
 
@@ -331,7 +332,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.recovery_time_stamp_ie(), &recovery_ie);
         assert_eq!(response.additional_ies().len(), 1);
         assert_eq!(response.ies[0], additional_ie);
@@ -360,7 +361,7 @@ mod tests {
             .recovery_time_stamp(timestamp)
             .build();
 
-        assert_eq!(response.sequence(), 1000);
+        assert_eq!(*response.sequence(), 1000);
         assert_eq!(
             response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -389,7 +390,7 @@ mod tests {
         assert!(!bytes.is_empty());
         // Should be able to unmarshal the bytes
         let unmarshaled = HeartbeatResponse::unmarshal(&bytes).unwrap();
-        assert_eq!(unmarshaled.sequence(), 2000);
+        assert_eq!(*unmarshaled.sequence(), 2000);
     }
 
     #[test]
@@ -433,9 +434,9 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(response.sequence(), 6000);
-        response.set_sequence(9999);
-        assert_eq!(response.sequence(), 9999);
+        assert_eq!(*response.sequence(), 6000);
+        response.set_sequence(9999.into());
+        assert_eq!(*response.sequence(), 9999);
     }
 
     #[test]
@@ -456,7 +457,7 @@ mod tests {
 
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 8000);
+        assert_eq!(*unmarshaled.sequence(), 8000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -473,7 +474,7 @@ mod tests {
 
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 9000);
+        assert_eq!(*unmarshaled.sequence(), 9000);
     }
 
     #[test]
@@ -489,7 +490,7 @@ mod tests {
             .ie(ie3.clone())
             .build();
 
-        assert_eq!(response.sequence(), 10000);
+        assert_eq!(*response.sequence(), 10000);
         assert_eq!(
             response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -499,7 +500,7 @@ mod tests {
         // Round trip
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 10000);
+        assert_eq!(*unmarshaled.sequence(), 10000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -516,7 +517,7 @@ mod tests {
         let marshaled = response.marshal();
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(unmarshaled.sequence(), 11000);
+        assert_eq!(*unmarshaled.sequence(), 11000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -561,7 +562,7 @@ mod tests {
             ])
             .build();
 
-        assert_eq!(response.sequence(), 14000);
+        assert_eq!(*response.sequence(), 14000);
         assert_eq!(
             response.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp
@@ -625,7 +626,7 @@ mod tests {
         let unmarshaled = HeartbeatResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
-        assert_eq!(unmarshaled.sequence(), 17000);
+        assert_eq!(*unmarshaled.sequence(), 17000);
         assert_eq!(
             unmarshaled.recovery_time_stamp_ie().ie_type,
             IeType::RecoveryTimeStamp

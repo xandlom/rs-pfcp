@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationUpdateRequest {
@@ -101,7 +102,7 @@ impl Message for AssociationUpdateRequest {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -109,11 +110,11 @@ impl Message for AssociationUpdateRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -158,7 +159,7 @@ impl Message for AssociationUpdateRequest {
 impl AssociationUpdateRequest {
     /// Creates a new AssociationUpdateRequest message.
     pub fn new(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         node_id: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
@@ -191,7 +192,7 @@ impl AssociationUpdateRequest {
 /// Builder for AssociationUpdateRequest message.
 #[derive(Debug, Default)]
 pub struct AssociationUpdateRequestBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<Ie>,
     up_function_features: Option<Ie>,
     cp_function_features: Option<Ie>,
@@ -200,9 +201,9 @@ pub struct AssociationUpdateRequestBuilder {
 
 impl AssociationUpdateRequestBuilder {
     /// Creates a new AssociationUpdateRequest builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
             up_function_features: None,
             cp_function_features: None,
@@ -293,7 +294,7 @@ mod tests {
             .node_id(node_id_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.seid(), None); // Association messages have no SEID
         assert_eq!(request.msg_type(), MsgType::AssociationUpdateRequest);
         assert_eq!(request.node_id, node_id_ie);
@@ -314,7 +315,7 @@ mod tests {
             .up_function_features(up_features_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 67890);
+        assert_eq!(*request.sequence(), 67890);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.up_function_features, Some(up_features_ie));
         assert!(request.cp_function_features.is_none());
@@ -332,7 +333,7 @@ mod tests {
             .cp_function_features(cp_features_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 11111);
+        assert_eq!(*request.sequence(), 11111);
         assert_eq!(request.node_id, node_id_ie);
         assert!(request.up_function_features.is_none());
         assert_eq!(request.cp_function_features, Some(cp_features_ie));
@@ -353,7 +354,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 22222);
+        assert_eq!(*request.sequence(), 22222);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.ies.len(), 3);
         assert_eq!(request.ies[0], ie1);
@@ -377,7 +378,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 33333);
+        assert_eq!(*request.sequence(), 33333);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.up_function_features, Some(up_features_ie));
         assert_eq!(request.cp_function_features, Some(cp_features_ie));
@@ -396,7 +397,7 @@ mod tests {
 
         assert!(result.is_ok());
         let request = result.unwrap();
-        assert_eq!(request.sequence(), 44444);
+        assert_eq!(*request.sequence(), 44444);
         assert_eq!(request.node_id, node_id_ie);
     }
 

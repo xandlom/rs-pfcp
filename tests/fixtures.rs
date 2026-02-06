@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn test_basic_fteid() {
         let fteid = basic_fteid_ipv4();
-        assert_eq!(fteid.teid, values::TEST_TEID);
+        assert_eq!(fteid.teid, rs_pfcp::Teid(values::TEST_TEID));
         assert_eq!(fteid.ipv4_address, Some(values::TEST_IPV4));
         assert!(fteid.v4);
         assert!(!fteid.v6);

@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Modification Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,7 +138,7 @@ impl Message for SessionModificationResponse {
         MsgType::SessionModificationResponse
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -145,11 +146,11 @@ impl Message for SessionModificationResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -215,7 +216,7 @@ impl SessionModificationResponse {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         seid: u64,
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         cause_ie: Ie,
         offending_ie: Option<Ie>,
         created_pdr: Option<Ie>,
@@ -267,7 +268,7 @@ impl SessionModificationResponse {
 #[derive(Debug, Default)]
 pub struct SessionModificationResponseBuilder {
     seid: u64,
-    sequence: u32,
+    sequence: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     created_pdr: Option<Ie>,
@@ -280,10 +281,10 @@ pub struct SessionModificationResponseBuilder {
 
 impl SessionModificationResponseBuilder {
     /// Creates a new SessionModificationResponse builder.
-    pub fn new(seid: u64, sequence: u32) -> Self {
+    pub fn new(seid: u64, sequence: impl Into<SequenceNumber>) -> Self {
         Self {
             seid,
-            sequence,
+            sequence: sequence.into(),
             cause: None,
             offending_ie: None,
             created_pdr: None,
@@ -460,8 +461,8 @@ mod tests {
             .cause_ie(cause_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 67890);
-        assert_eq!(response.seid(), Some(12345));
+        assert_eq!(*response.sequence(), 67890);
+        assert_eq!(response.seid(), Some(Seid(12345)));
         assert_eq!(response.msg_type(), MsgType::SessionModificationResponse);
         assert_eq!(response.cause, cause_ie);
         assert!(response.offending_ie.is_none());
@@ -482,8 +483,8 @@ mod tests {
             .offending_ie(offending_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 22222);
-        assert_eq!(response.seid(), Some(11111));
+        assert_eq!(*response.sequence(), 22222);
+        assert_eq!(response.seid(), Some(Seid(11111)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
         assert!(response.created_pdr.is_none());
@@ -502,8 +503,8 @@ mod tests {
             .created_pdr(created_pdr_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 44444);
-        assert_eq!(response.seid(), Some(33333));
+        assert_eq!(*response.sequence(), 44444);
+        assert_eq!(response.seid(), Some(Seid(33333)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.created_pdr, Some(created_pdr_ie));
         assert!(response.offending_ie.is_none());
@@ -522,8 +523,8 @@ mod tests {
             .pdn_type(pdn_type_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 66666);
-        assert_eq!(response.seid(), Some(55555));
+        assert_eq!(*response.sequence(), 66666);
+        assert_eq!(response.seid(), Some(Seid(55555)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.pdn_type, Some(pdn_type_ie));
         assert!(response.offending_ie.is_none());
@@ -545,8 +546,8 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.sequence(), 88888);
-        assert_eq!(response.seid(), Some(77777));
+        assert_eq!(*response.sequence(), 88888);
+        assert_eq!(response.seid(), Some(Seid(77777)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.ies.len(), 3);
         assert_eq!(response.ies[0], ie1);
@@ -570,8 +571,8 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 11110);
-        assert_eq!(response.seid(), Some(99999));
+        assert_eq!(*response.sequence(), 11110);
+        assert_eq!(response.seid(), Some(Seid(99999)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.created_pdr, Some(created_pdr_ie));
         assert_eq!(response.pdn_type, Some(pdn_type_ie));
@@ -590,8 +591,8 @@ mod tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.sequence(), 67890);
-        assert_eq!(response.seid(), Some(12345));
+        assert_eq!(*response.sequence(), 67890);
+        assert_eq!(response.seid(), Some(Seid(12345)));
         assert_eq!(response.cause, cause_ie);
     }
 

@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Version Not Supported Response message.
 /// This message is sent when a PFCP peer receives a message with an unsupported version.
@@ -19,7 +20,7 @@ pub struct VersionNotSupportedResponse {
 
 impl VersionNotSupportedResponse {
     /// Creates a new Version Not Supported Response message.
-    pub fn new(seq: u32) -> Self {
+    pub fn new(seq: impl Into<SequenceNumber>) -> Self {
         let mut header = Header::new(MsgType::VersionNotSupportedResponse, false, 0, seq);
         header.length = 4; // Minimum header length
 
@@ -30,7 +31,7 @@ impl VersionNotSupportedResponse {
     }
 
     /// Creates a new Version Not Supported Response with additional IEs.
-    pub fn new_with_ies(seq: u32, ies: Vec<Ie>) -> Self {
+    pub fn new_with_ies(seq: impl Into<SequenceNumber>, ies: Vec<Ie>) -> Self {
         let mut payload_len = 0;
         for ie in &ies {
             payload_len += ie.len();
@@ -88,7 +89,7 @@ impl Message for VersionNotSupportedResponse {
         Ok(VersionNotSupportedResponse { header, ies })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -96,11 +97,11 @@ impl Message for VersionNotSupportedResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -123,15 +124,15 @@ impl Message for VersionNotSupportedResponse {
 /// Builder for VersionNotSupportedResponse message.
 #[derive(Debug, Default)]
 pub struct VersionNotSupportedResponseBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     ies: Vec<Ie>,
 }
 
 impl VersionNotSupportedResponseBuilder {
     /// Creates a new VersionNotSupportedResponse builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             ies: Vec::new(),
         }
     }
@@ -219,7 +220,7 @@ mod tests {
         let message = VersionNotSupportedResponse::new(789);
 
         assert_eq!(message.msg_type(), MsgType::VersionNotSupportedResponse);
-        assert_eq!(message.sequence(), 789);
+        assert_eq!(*message.sequence(), 789);
         assert_eq!(message.seid(), None); // No SEID for this message type
         assert_eq!(message.version(), 1); // PFCP version 1
     }
@@ -238,7 +239,7 @@ mod tests {
     fn test_version_not_supported_response_builder_minimal() {
         let response = VersionNotSupportedResponseBuilder::new(12345).build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::VersionNotSupportedResponse);
         assert!(response.ies.is_empty());
         assert_eq!(response.seid(), None);
@@ -252,7 +253,7 @@ mod tests {
             .ie(offending_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], offending_ie);
     }
@@ -268,7 +269,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.sequence(), 98765);
+        assert_eq!(*response.sequence(), 98765);
         assert_eq!(response.ies.len(), 3);
         assert_eq!(response.ies[0], ie1);
         assert_eq!(response.ies[1], ie2);

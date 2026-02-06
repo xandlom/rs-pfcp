@@ -31,6 +31,7 @@ pub mod version_not_supported_response;
 
 use crate::error::PfcpError;
 use crate::ie::Ie;
+use crate::types::{Seid, SequenceNumber};
 
 // Re-export IE iterator types for public API
 pub use ie_iter::IeIter;
@@ -223,9 +224,9 @@ pub trait Message {
     fn version(&self) -> u8 {
         1
     }
-    fn seid(&self) -> Option<u64>;
-    fn sequence(&self) -> u32;
-    fn set_sequence(&mut self, seq: u32);
+    fn seid(&self) -> Option<Seid>;
+    fn sequence(&self) -> SequenceNumber;
+    fn set_sequence(&mut self, seq: SequenceNumber);
 
     /// Get all IEs of a specific type as an iterator.
     ///
@@ -402,7 +403,7 @@ impl Message for Generic {
         self.header.message_type
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -410,11 +411,11 @@ impl Message for Generic {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -499,6 +500,7 @@ mod tests {
     use super::*;
     use crate::ie::{Ie, IeType};
     use crate::message::header::Header;
+    use crate::types::{Seid, SequenceNumber};
 
     // ========================================================================
     // MsgType Conversion Tests
@@ -601,8 +603,8 @@ mod tests {
             has_mp: false,
             message_type: MsgType::Unknown,
             length: 8, // Will be recalculated
-            seid: 0,
-            sequence_number: 12345,
+            seid: Seid(0),
+            sequence_number: SequenceNumber::new(12345),
             message_priority: 0,
             has_seid: false,
         };
@@ -633,8 +635,8 @@ mod tests {
             has_mp: false,
             message_type: MsgType::Unknown,
             length: 16,
-            seid: 0x1234567890ABCDEF,
-            sequence_number: 54321,
+            seid: Seid(0x1234567890ABCDEF),
+            sequence_number: SequenceNumber::new(54321),
             message_priority: 0,
             has_seid: true,
         };
@@ -644,7 +646,7 @@ mod tests {
             ies: vec![],
         };
 
-        assert_eq!(msg.seid(), Some(0x1234567890ABCDEF));
+        assert_eq!(msg.seid(), Some(Seid(0x1234567890ABCDEF)));
     }
 
     #[test]
@@ -655,8 +657,8 @@ mod tests {
             has_mp: false,
             message_type: MsgType::HeartbeatRequest,
             length: 8,
-            seid: 0,
-            sequence_number: 111,
+            seid: Seid(0),
+            sequence_number: SequenceNumber::new(111),
             message_priority: 0,
             has_seid: false,
         };
@@ -678,17 +680,17 @@ mod tests {
                 has_mp: false,
                 message_type: MsgType::Unknown,
                 length: 8,
-                seid: 0,
-                sequence_number: 100,
+                seid: Seid(0),
+                sequence_number: SequenceNumber::new(100),
                 message_priority: 0,
                 has_seid: false,
             },
             ies: vec![],
         };
 
-        assert_eq!(msg.sequence(), 100);
-        msg.set_sequence(200);
-        assert_eq!(msg.sequence(), 200);
+        assert_eq!(msg.sequence(), SequenceNumber::new(100));
+        msg.set_sequence(SequenceNumber::new(200));
+        assert_eq!(msg.sequence(), SequenceNumber::new(200));
     }
 
     #[test]
@@ -706,8 +708,8 @@ mod tests {
                 has_mp: false,
                 message_type: MsgType::Unknown,
                 length: 8,
-                seid: 0,
-                sequence_number: 1,
+                seid: Seid(0),
+                sequence_number: SequenceNumber::new(1),
                 message_priority: 0,
                 has_seid: false,
             },
@@ -740,8 +742,8 @@ mod tests {
                 has_mp: false,
                 message_type: MsgType::Unknown,
                 length: 8,
-                seid: 0,
-                sequence_number: 1,
+                seid: Seid(0),
+                sequence_number: SequenceNumber::new(1),
                 message_priority: 0,
                 has_seid: false,
             },
@@ -766,8 +768,8 @@ mod tests {
                 has_mp: false,
                 message_type: MsgType::HeartbeatRequest,
                 length: 8,
-                seid: 0,
-                sequence_number: 1,
+                seid: Seid(0),
+                sequence_number: SequenceNumber::new(1),
                 message_priority: 0,
                 has_seid: false,
             },
@@ -786,8 +788,8 @@ mod tests {
                 has_mp: false,
                 message_type: MsgType::Unknown,
                 length: 8,
-                seid: 0,
-                sequence_number: 1,
+                seid: Seid(0),
+                sequence_number: SequenceNumber::new(1),
                 message_priority: 0,
                 has_seid: false,
             },
@@ -813,8 +815,8 @@ mod tests {
             has_mp: false,
             message_type: MsgType::Unknown,
             length: 8,
-            seid: 0,
-            sequence_number: 999,
+            seid: Seid(0),
+            sequence_number: SequenceNumber::new(999),
             message_priority: 0,
             has_seid: false,
         };
@@ -857,7 +859,7 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::HeartbeatRequest);
-        assert_eq!(parsed.sequence(), 12345);
+        assert_eq!(parsed.sequence(), SequenceNumber::new(12345));
     }
 
     #[test]
@@ -877,7 +879,7 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::HeartbeatResponse);
-        assert_eq!(parsed.sequence(), 54321);
+        assert_eq!(parsed.sequence(), SequenceNumber::new(54321));
     }
 
     #[test]
@@ -895,7 +897,7 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::AssociationSetupRequest);
-        assert_eq!(parsed.sequence(), 11111);
+        assert_eq!(parsed.sequence(), SequenceNumber::new(11111));
     }
 
     #[test]
@@ -932,8 +934,8 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionEstablishmentRequest);
-        assert_eq!(parsed.sequence(), 99999);
-        assert_eq!(parsed.seid(), Some(0x1234567890ABCDEF));
+        assert_eq!(parsed.sequence(), SequenceNumber::new(99999));
+        assert_eq!(parsed.seid(), Some(Seid(0x1234567890ABCDEF)));
     }
 
     #[test]
@@ -951,8 +953,8 @@ mod tests {
         let parsed = parse(&msg).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionEstablishmentResponse);
-        assert_eq!(parsed.sequence(), 77777);
-        assert_eq!(parsed.seid(), Some(0xABCDEF));
+        assert_eq!(parsed.sequence(), SequenceNumber::new(77777));
+        assert_eq!(parsed.seid(), Some(Seid(0xABCDEF)));
     }
 
     #[test]
@@ -965,8 +967,8 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionModificationRequest);
-        assert_eq!(parsed.sequence(), 88888);
-        assert_eq!(parsed.seid(), Some(0x123456));
+        assert_eq!(parsed.sequence(), SequenceNumber::new(88888));
+        assert_eq!(parsed.seid(), Some(Seid(0x123456)));
     }
 
     #[test]
@@ -980,8 +982,8 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionDeletionRequest);
-        assert_eq!(parsed.sequence(), 66666);
-        assert_eq!(parsed.seid(), Some(0x999999));
+        assert_eq!(parsed.sequence(), SequenceNumber::new(66666));
+        assert_eq!(parsed.seid(), Some(Seid(0x999999)));
     }
 
     #[test]
@@ -994,8 +996,8 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionReportRequest);
-        assert_eq!(parsed.sequence(), 55555);
-        assert_eq!(parsed.seid(), Some(0xFEDCBA));
+        assert_eq!(parsed.sequence(), SequenceNumber::new(55555));
+        assert_eq!(parsed.seid(), Some(Seid(0xFEDCBA)));
     }
 
     #[test]
@@ -1007,8 +1009,8 @@ mod tests {
             has_mp: false,
             message_type: MsgType::Unknown,
             length: 8,
-            seid: 0,
-            sequence_number: 33333,
+            seid: Seid(0),
+            sequence_number: SequenceNumber::new(33333),
             message_priority: 0,
             has_seid: false,
         };
@@ -1022,7 +1024,7 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::Unknown);
-        assert_eq!(parsed.sequence(), 33333);
+        assert_eq!(parsed.sequence(), SequenceNumber::new(33333));
     }
 
     #[test]

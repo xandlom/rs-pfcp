@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationReleaseRequest {
@@ -13,7 +14,7 @@ pub struct AssociationReleaseRequest {
 }
 
 impl AssociationReleaseRequest {
-    pub fn new(seq: u32, node_id: Ie) -> Self {
+    pub fn new(seq: impl Into<SequenceNumber>, node_id: Ie) -> Self {
         let mut header = Header::new(MsgType::AssociationReleaseRequest, false, 0, seq);
         header.length = node_id.len() + (header.len() - 4);
         AssociationReleaseRequest { header, node_id }
@@ -84,7 +85,7 @@ impl Message for AssociationReleaseRequest {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -92,11 +93,11 @@ impl Message for AssociationReleaseRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -125,15 +126,15 @@ impl Message for AssociationReleaseRequest {
 /// Builder for AssociationReleaseRequest message.
 #[derive(Debug, Default)]
 pub struct AssociationReleaseRequestBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<Ie>,
 }
 
 impl AssociationReleaseRequestBuilder {
     /// Creates a new AssociationReleaseRequest builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
         }
     }
@@ -185,7 +186,7 @@ mod tests {
             .node_id(node_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.msg_type(), MsgType::AssociationReleaseRequest);
         assert_eq!(request.node_id_ie(), &node_ie);
     }
@@ -201,7 +202,7 @@ mod tests {
 
         assert!(result.is_ok());
         let request = result.unwrap();
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.node_id_ie(), &node_ie);
     }
 

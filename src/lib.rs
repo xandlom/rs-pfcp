@@ -125,3 +125,7 @@ pub mod comparison;
 pub mod error;
 pub mod ie;
 pub mod message;
+pub mod types;
+
+// Re-export commonly used types at crate root
+pub use types::{Seid, SequenceNumber, Teid};

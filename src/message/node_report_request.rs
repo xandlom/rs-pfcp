@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Node Report Request message.
 /// Used by UPF to report node-level events and information to the CP function.
@@ -25,7 +26,7 @@ pub struct NodeReportRequest {
 impl NodeReportRequest {
     /// Creates a new Node Report Request message.
     pub fn new(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         node_id: Ie,
         node_report_type: Option<Ie>,
         user_plane_path_failure_report: Option<Ie>,
@@ -134,7 +135,7 @@ impl Message for NodeReportRequest {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -142,11 +143,11 @@ impl Message for NodeReportRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -189,7 +190,7 @@ impl Message for NodeReportRequest {
 /// Builder for NodeReportRequest message.
 #[derive(Debug, Default)]
 pub struct NodeReportRequestBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<Ie>,
     node_report_type: Option<Ie>,
     user_plane_path_failure_report: Option<Ie>,
@@ -198,9 +199,9 @@ pub struct NodeReportRequestBuilder {
 
 impl NodeReportRequestBuilder {
     /// Creates a new NodeReportRequest builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
             node_report_type: None,
             user_plane_path_failure_report: None,
@@ -392,7 +393,7 @@ mod tests {
         let message = NodeReportRequest::new(999, node_id_ie, None, None, Vec::new());
 
         assert_eq!(message.msg_type(), MsgType::NodeReportRequest);
-        assert_eq!(message.sequence(), 999);
+        assert_eq!(*message.sequence(), 999);
         assert_eq!(message.seid(), None); // Node reports don't have SEID
         assert_eq!(message.version(), 1);
     }
@@ -406,7 +407,7 @@ mod tests {
             .node_id(node_id_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 12345);
+        assert_eq!(*request.sequence(), 12345);
         assert_eq!(request.seid(), None); // Node reports have no SEID
         assert_eq!(request.msg_type(), MsgType::NodeReportRequest);
         assert_eq!(request.node_id, node_id_ie);
@@ -427,7 +428,7 @@ mod tests {
             .node_report_type(report_type_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 67890);
+        assert_eq!(*request.sequence(), 67890);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.node_report_type, Some(report_type_ie));
         assert!(request.user_plane_path_failure_report.is_none());
@@ -445,7 +446,7 @@ mod tests {
             .user_plane_path_failure_report(path_failure_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 11111);
+        assert_eq!(*request.sequence(), 11111);
         assert_eq!(request.node_id, node_id_ie);
         assert!(request.node_report_type.is_none());
         assert_eq!(
@@ -469,7 +470,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(request.sequence(), 22222);
+        assert_eq!(*request.sequence(), 22222);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.ies.len(), 3);
         assert_eq!(request.ies[0], ie1);
@@ -493,7 +494,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(request.sequence(), 33333);
+        assert_eq!(*request.sequence(), 33333);
         assert_eq!(request.node_id, node_id_ie);
         assert_eq!(request.node_report_type, Some(report_type_ie));
         assert_eq!(
@@ -515,7 +516,7 @@ mod tests {
 
         assert!(result.is_ok());
         let request = result.unwrap();
-        assert_eq!(request.sequence(), 44444);
+        assert_eq!(*request.sequence(), 44444);
         assert_eq!(request.node_id, node_id_ie);
     }
 

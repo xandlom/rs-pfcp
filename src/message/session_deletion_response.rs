@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// PFCP Session Deletion Response message per 3GPP TS 29.244 Section 7.5.7.
 ///
@@ -163,7 +164,7 @@ impl Message for SessionDeletionResponse {
         MsgType::SessionDeletionResponse
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -171,11 +172,11 @@ impl Message for SessionDeletionResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -274,7 +275,7 @@ impl SessionDeletionResponse {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         seid: u64,
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         cause_ie: Ie,
         offending_ie: Option<Ie>,
         load_control_information: Option<Ie>,
@@ -341,7 +342,7 @@ impl SessionDeletionResponse {
 #[derive(Debug, Default)]
 pub struct SessionDeletionResponseBuilder {
     seid: u64,
-    sequence: u32,
+    sequence: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     load_control_information: Option<Ie>,
@@ -357,10 +358,10 @@ pub struct SessionDeletionResponseBuilder {
 
 impl SessionDeletionResponseBuilder {
     /// Creates a new SessionDeletionResponse builder.
-    pub fn new(seid: u64, sequence: u32) -> Self {
+    pub fn new(seid: u64, sequence: impl Into<SequenceNumber>) -> Self {
         Self {
             seid,
-            sequence,
+            sequence: sequence.into(),
             cause: None,
             offending_ie: None,
             load_control_information: None,
@@ -601,8 +602,8 @@ mod tests {
             .cause_ie(cause_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 67890);
-        assert_eq!(response.seid(), Some(12345));
+        assert_eq!(*response.sequence(), 67890);
+        assert_eq!(response.seid(), Some(Seid(12345)));
         assert_eq!(response.msg_type(), MsgType::SessionDeletionResponse);
         assert_eq!(response.cause, cause_ie);
         assert!(response.offending_ie.is_none());
@@ -621,8 +622,8 @@ mod tests {
             .offending_ie(offending_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 22222);
-        assert_eq!(response.seid(), Some(11111));
+        assert_eq!(*response.sequence(), 22222);
+        assert_eq!(response.seid(), Some(Seid(11111)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
         assert!(response.ies.is_empty());
@@ -643,8 +644,8 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.sequence(), 44444);
-        assert_eq!(response.seid(), Some(33333));
+        assert_eq!(*response.sequence(), 44444);
+        assert_eq!(response.seid(), Some(Seid(33333)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.ies.len(), 3);
         assert_eq!(response.ies[0], ie1);
@@ -666,8 +667,8 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 66666);
-        assert_eq!(response.seid(), Some(55555));
+        assert_eq!(*response.sequence(), 66666);
+        assert_eq!(response.seid(), Some(Seid(55555)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
         assert_eq!(response.ies.len(), 1);
@@ -685,8 +686,8 @@ mod tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.sequence(), 67890);
-        assert_eq!(response.seid(), Some(12345));
+        assert_eq!(*response.sequence(), 67890);
+        assert_eq!(response.seid(), Some(Seid(12345)));
         assert_eq!(response.cause, cause_ie);
     }
 

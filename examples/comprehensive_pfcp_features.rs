@@ -75,7 +75,7 @@ fn phase1_usage_reporting_example() -> Result<(), Box<dyn std::error::Error>> {
     .build();
 
     println!("✅ Session Modification Request built with Query URRs");
-    println!("   SEID: 0x{:016x}", session_mod_request.header.seid);
+    println!("   SEID: 0x{:016x}", *session_mod_request.header.seid);
     println!(
         "   Query URRs: {} IEs",
         session_mod_request

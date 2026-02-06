@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Node Report Response message.
 /// Sent by CP function in response to Node Report Request from UPF.
@@ -19,7 +20,13 @@ pub struct NodeReportResponse {
 
 impl NodeReportResponse {
     /// Creates a new Node Report Response message.
-    pub fn new(seq: u32, node_id: Ie, cause: Ie, offending_ie: Option<Ie>, ies: Vec<Ie>) -> Self {
+    pub fn new(
+        seq: impl Into<SequenceNumber>,
+        node_id: Ie,
+        cause: Ie,
+        offending_ie: Option<Ie>,
+        ies: Vec<Ie>,
+    ) -> Self {
         let mut payload_len = node_id.len() + cause.len();
         if let Some(ref ie) = offending_ie {
             payload_len += ie.len();
@@ -121,7 +128,7 @@ impl Message for NodeReportResponse {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -129,11 +136,11 @@ impl Message for NodeReportResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -308,7 +315,7 @@ mod tests {
         let message = NodeReportResponse::new(999, node_id_ie, cause_ie, None, Vec::new());
 
         assert_eq!(message.msg_type(), MsgType::NodeReportResponse);
-        assert_eq!(message.sequence(), 999);
+        assert_eq!(*message.sequence(), 999);
         assert_eq!(message.seid(), None); // Node reports don't have SEID
         assert_eq!(message.version(), 1);
     }
@@ -337,7 +344,7 @@ mod tests {
 /// Builder for NodeReportResponse message.
 #[derive(Debug, Default)]
 pub struct NodeReportResponseBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<Ie>,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
@@ -346,9 +353,9 @@ pub struct NodeReportResponseBuilder {
 
 impl NodeReportResponseBuilder {
     /// Creates a new NodeReportResponse builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
             cause: None,
             offending_ie: None,
@@ -501,7 +508,7 @@ mod builder_tests {
             .cause_ie(cause_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.seid(), None); // Node reports have no SEID
         assert_eq!(response.msg_type(), MsgType::NodeReportResponse);
         assert_eq!(response.node_id, node_id_ie);
@@ -526,7 +533,7 @@ mod builder_tests {
             .offending_ie(offending_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 67890);
+        assert_eq!(*response.sequence(), 67890);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
@@ -551,7 +558,7 @@ mod builder_tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.sequence(), 11111);
+        assert_eq!(*response.sequence(), 11111);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.ies.len(), 3);
@@ -578,7 +585,7 @@ mod builder_tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 22222);
+        assert_eq!(*response.sequence(), 22222);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
@@ -601,7 +608,7 @@ mod builder_tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.sequence(), 33333);
+        assert_eq!(*response.sequence(), 33333);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
     }

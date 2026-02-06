@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationSetupResponse {
@@ -119,7 +120,7 @@ impl Message for AssociationSetupResponse {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -127,11 +128,11 @@ impl Message for AssociationSetupResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -182,7 +183,7 @@ impl Message for AssociationSetupResponse {
 
 impl AssociationSetupResponse {
     pub fn new(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         cause: Ie,
         node_id: Ie,
         up_function_features: Option<Ie>,
@@ -220,7 +221,7 @@ impl AssociationSetupResponse {
 /// Builder for AssociationSetupResponse message.
 #[derive(Debug, Default)]
 pub struct AssociationSetupResponseBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     cause: Option<Ie>,
     node_id: Option<Ie>,
     up_function_features: Option<Ie>,
@@ -231,9 +232,9 @@ pub struct AssociationSetupResponseBuilder {
 
 impl AssociationSetupResponseBuilder {
     /// Creates a new AssociationSetupResponse builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             cause: None,
             node_id: None,
             up_function_features: None,
@@ -486,7 +487,7 @@ mod tests {
             .node_id_ie(node_id_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.seid(), None); // Association messages have no SEID
         assert_eq!(response.msg_type(), MsgType::AssociationSetupResponse);
         assert_eq!(response.cause, cause_ie);
@@ -513,7 +514,7 @@ mod tests {
             .up_function_features(up_features_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 67890);
+        assert_eq!(*response.sequence(), 67890);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.up_function_features, Some(up_features_ie));
@@ -537,7 +538,7 @@ mod tests {
             .cp_function_features(cp_features_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 11111);
+        assert_eq!(*response.sequence(), 11111);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
         assert!(response.up_function_features.is_none());
@@ -562,7 +563,7 @@ mod tests {
             .recovery_time_stamp_ie(recovery_time_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 22222);
+        assert_eq!(*response.sequence(), 22222);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
         assert!(response.up_function_features.is_none());
@@ -589,7 +590,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.sequence(), 33333);
+        assert_eq!(*response.sequence(), 33333);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.ies.len(), 3);
@@ -623,7 +624,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 44444);
+        assert_eq!(*response.sequence(), 44444);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.up_function_features, Some(up_features_ie));
@@ -648,7 +649,7 @@ mod tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.sequence(), 55555);
+        assert_eq!(*response.sequence(), 55555);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
     }
@@ -736,7 +737,7 @@ mod tests {
             .node_id(Ipv4Addr::new(192, 168, 1, 1))
             .build();
 
-        assert_eq!(response.sequence(), 1000);
+        assert_eq!(*response.sequence(), 1000);
         assert!(!response.cause.payload.is_empty());
     }
 
@@ -747,7 +748,7 @@ mod tests {
             .node_id(Ipv4Addr::new(192, 168, 1, 2))
             .build();
 
-        assert_eq!(response.sequence(), 2000);
+        assert_eq!(*response.sequence(), 2000);
         assert!(!response.cause.payload.is_empty());
     }
 
@@ -758,7 +759,7 @@ mod tests {
             .node_id(Ipv4Addr::new(192, 168, 1, 3))
             .build();
 
-        assert_eq!(response.sequence(), 3000);
+        assert_eq!(*response.sequence(), 3000);
         assert!(!response.cause.payload.is_empty());
     }
 
@@ -769,7 +770,7 @@ mod tests {
             .node_id(Ipv4Addr::new(10, 0, 0, 1))
             .build();
 
-        assert_eq!(response.sequence(), 4000);
+        assert_eq!(*response.sequence(), 4000);
         assert!(!response.node_id.payload.is_empty());
     }
 
@@ -780,7 +781,7 @@ mod tests {
             .node_id(std::net::Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1))
             .build();
 
-        assert_eq!(response.sequence(), 5000);
+        assert_eq!(*response.sequence(), 5000);
         assert!(!response.node_id.payload.is_empty());
     }
 
@@ -791,7 +792,7 @@ mod tests {
             .node_id_fqdn("upf.example.com")
             .build();
 
-        assert_eq!(response.sequence(), 6000);
+        assert_eq!(*response.sequence(), 6000);
         assert!(!response.node_id.payload.is_empty());
     }
 
@@ -803,7 +804,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(response.sequence(), 7000);
+        assert_eq!(*response.sequence(), 7000);
         assert!(response.recovery_time_stamp.is_some());
     }
 
@@ -817,7 +818,7 @@ mod tests {
         assert!(!bytes.is_empty());
         // Should be able to unmarshal the bytes
         let unmarshaled = AssociationSetupResponse::unmarshal(&bytes).unwrap();
-        assert_eq!(unmarshaled.sequence(), 8000);
+        assert_eq!(*unmarshaled.sequence(), 8000);
     }
 
     #[test]
@@ -917,9 +918,9 @@ mod tests {
             .node_id(Ipv4Addr::new(10, 9, 9, 9))
             .build();
 
-        assert_eq!(response.sequence(), 16000);
-        response.set_sequence(54321);
-        assert_eq!(response.sequence(), 54321);
+        assert_eq!(*response.sequence(), 16000);
+        response.set_sequence(54321.into());
+        assert_eq!(*response.sequence(), 54321);
     }
 
     #[test]
@@ -933,7 +934,7 @@ mod tests {
 
         let marshaled = response.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 17000);
+        assert_eq!(*unmarshaled.sequence(), 17000);
     }
 
     #[test]
@@ -948,7 +949,7 @@ mod tests {
 
         let marshaled = response.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 18000);
+        assert_eq!(*unmarshaled.sequence(), 18000);
     }
 
     #[test]
@@ -988,7 +989,7 @@ mod tests {
             .ie(custom_ie2.clone())
             .build();
 
-        assert_eq!(response.sequence(), 20000);
+        assert_eq!(*response.sequence(), 20000);
         assert_eq!(response.up_function_features, Some(up_features));
         assert_eq!(response.cp_function_features, Some(cp_features));
         assert!(response.recovery_time_stamp.is_some());
@@ -1059,7 +1060,7 @@ mod tests {
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(original, unmarshaled);
-        assert_eq!(unmarshaled.sequence(), 21000);
+        assert_eq!(*unmarshaled.sequence(), 21000);
         assert!(unmarshaled.up_function_features.is_some());
         assert!(unmarshaled.cp_function_features.is_some());
         assert!(unmarshaled.recovery_time_stamp.is_some());
@@ -1086,7 +1087,7 @@ mod tests {
 
             let marshaled = response.marshal();
             let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
-            assert_eq!(unmarshaled.sequence(), (22000 + idx) as u32);
+            assert_eq!(*unmarshaled.sequence(), (22000 + idx) as u32);
         }
     }
 
@@ -1099,7 +1100,7 @@ mod tests {
 
         let marshaled = response.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 29000);
+        assert_eq!(*unmarshaled.sequence(), 29000);
     }
 
     #[test]
@@ -1115,7 +1116,7 @@ mod tests {
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        assert_eq!(response.sequence(), 30000);
+        assert_eq!(*response.sequence(), 30000);
         assert!(response.up_function_features.is_some());
         assert!(response.cp_function_features.is_some());
         assert!(response.recovery_time_stamp.is_some());
@@ -1123,7 +1124,7 @@ mod tests {
         // Round trip test
         let marshaled = response.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled.sequence(), 30000);
+        assert_eq!(*unmarshaled.sequence(), 30000);
         assert!(unmarshaled.up_function_features.is_some());
         assert!(unmarshaled.cp_function_features.is_some());
         assert!(unmarshaled.recovery_time_stamp.is_some());

@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Modification Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -474,7 +475,7 @@ impl Message for SessionModificationRequest {
         MsgType::SessionModificationRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -482,11 +483,11 @@ impl Message for SessionModificationRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -698,7 +699,7 @@ impl Message for SessionModificationRequest {
 #[derive(Debug, Default)]
 pub struct SessionModificationRequestBuilder {
     seid: u64,
-    seq: u32,
+    seq: SequenceNumber,
     fseid: Option<Ie>,
     remove_pdrs: Option<Vec<Ie>>,
     remove_fars: Option<Vec<Ie>>,
@@ -734,10 +735,10 @@ pub struct SessionModificationRequestBuilder {
 }
 
 impl SessionModificationRequestBuilder {
-    pub fn new(seid: u64, seq: u32) -> Self {
+    pub fn new(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
         SessionModificationRequestBuilder {
             seid,
-            seq,
+            seq: seq.into(),
             fseid: None,
             remove_pdrs: None,
             remove_fars: None,
@@ -1203,8 +1204,8 @@ mod tests {
     fn test_builder_minimal() {
         let msg = SessionModificationRequestBuilder::new(0x1234567890ABCDEF, 100).build();
 
-        assert_eq!(msg.header.seid, 0x1234567890ABCDEF);
-        assert_eq!(msg.header.sequence_number, 100);
+        assert_eq!(*msg.header.seid, 0x1234567890ABCDEF);
+        assert_eq!(*msg.header.sequence_number, 100);
         assert_eq!(msg.msg_type(), MsgType::SessionModificationRequest);
         assert!(msg.fseid.is_none());
         assert!(msg.create_pdrs.is_none());
@@ -1563,8 +1564,8 @@ mod tests {
         let parsed = crate::message::parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::SessionModificationRequest);
-        assert_eq!(parsed.sequence(), 100);
-        assert_eq!(parsed.seid(), Some(0x1234567890ABCDEF));
+        assert_eq!(*parsed.sequence(), 100);
+        assert_eq!(parsed.seid(), Some(Seid(0x1234567890ABCDEF)));
     }
 
     #[test]
@@ -1576,8 +1577,8 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = SessionModificationRequest::unmarshal(&marshaled).unwrap();
 
-        assert_eq!(unmarshaled.header.seid, 0xABCD);
-        assert_eq!(unmarshaled.header.sequence_number, 200);
+        assert_eq!(*unmarshaled.header.seid, 0xABCD);
+        assert_eq!(*unmarshaled.header.sequence_number, 200);
         assert!(unmarshaled.fseid.is_some());
     }
 
@@ -1648,8 +1649,8 @@ mod tests {
 
         assert_eq!(msg.msg_type(), MsgType::SessionModificationRequest);
         assert_eq!(msg.msg_name(), "SessionModificationRequest");
-        assert_eq!(msg.sequence(), 600);
-        assert_eq!(msg.seid(), Some(0x5555));
+        assert_eq!(*msg.sequence(), 600);
+        assert_eq!(msg.seid(), Some(Seid(0x5555)));
         assert_eq!(msg.version(), 1);
     }
 
@@ -1657,9 +1658,9 @@ mod tests {
     fn test_message_set_sequence() {
         let mut msg = SessionModificationRequestBuilder::new(0x6666, 700).build();
 
-        assert_eq!(msg.sequence(), 700);
-        msg.set_sequence(800);
-        assert_eq!(msg.sequence(), 800);
+        assert_eq!(*msg.sequence(), 700);
+        msg.set_sequence(800.into());
+        assert_eq!(*msg.sequence(), 800);
     }
 
     #[test]

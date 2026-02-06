@@ -216,6 +216,7 @@ mod tests {
         proxying::Proxying,
         three_gpp_interface_type::{ThreeGppInterfaceType, ThreeGppInterfaceTypeIe},
     };
+    use crate::types::Teid;
     use std::net::Ipv4Addr;
 
     #[test]
@@ -260,7 +261,7 @@ mod tests {
         assert!(params.outer_header_creation.is_some());
         assert_eq!(
             params.outer_header_creation.as_ref().unwrap().teid,
-            Some(0x12345678)
+            Some(Teid(0x12345678))
         );
 
         let marshaled = params.marshal();

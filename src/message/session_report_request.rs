@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Report Request message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -127,7 +128,7 @@ impl Message for SessionReportRequest {
         MsgType::SessionReportRequest
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -135,11 +136,11 @@ impl Message for SessionReportRequest {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -217,7 +218,7 @@ impl SessionReportRequest {
     /// Creates a new Session Report Request.
     pub fn new(
         seid: u64,
-        sequence: u32,
+        sequence: impl Into<SequenceNumber>,
         report_type: Option<Ie>,
         downlink_data_report: Option<Ie>,
         usage_reports: Vec<Ie>,
@@ -257,7 +258,7 @@ impl SessionReportRequest {
 #[derive(Debug, Default)]
 pub struct SessionReportRequestBuilder {
     seid: u64,
-    seq: u32,
+    seq: SequenceNumber,
     report_type: Option<Ie>,
     downlink_data_report: Option<Ie>,
     usage_reports: Vec<Ie>,
@@ -269,10 +270,10 @@ pub struct SessionReportRequestBuilder {
 }
 
 impl SessionReportRequestBuilder {
-    pub fn new(seid: u64, seq: u32) -> Self {
+    pub fn new(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
         SessionReportRequestBuilder {
             seid,
-            seq,
+            seq: seq.into(),
             report_type: None,
             downlink_data_report: None,
             usage_reports: Vec::new(),
@@ -402,8 +403,8 @@ mod tests {
 
         assert_eq!(req, unmarshaled);
         assert_eq!(req.msg_type(), MsgType::SessionReportRequest);
-        assert_eq!(req.seid(), Some(seid));
-        assert_eq!(req.sequence(), sequence);
+        assert_eq!(req.seid().map(|s| *s), Some(seid));
+        assert_eq!(*req.sequence(), sequence);
     }
 
     #[test]
@@ -504,8 +505,8 @@ mod tests {
             .build();
 
         assert_eq!(req.msg_type(), MsgType::SessionReportRequest);
-        assert_eq!(req.seid(), Some(seid));
-        assert_eq!(req.sequence(), sequence);
+        assert_eq!(req.seid().map(|s| *s), Some(seid));
+        assert_eq!(*req.sequence(), sequence);
         assert_eq!(req.report_type, Some(report_type_ie));
         assert_eq!(req.usage_reports, vec![usage_report_ie]);
         assert_eq!(req.load_control_information, Some(load_control_ie));
@@ -570,9 +571,9 @@ mod tests {
 
         let mut req = SessionReportRequest::new(seid, sequence, None, None, vec![], vec![]);
 
-        assert_eq!(req.sequence(), sequence);
-        req.set_sequence(new_sequence);
-        assert_eq!(req.sequence(), new_sequence);
+        assert_eq!(*req.sequence(), sequence);
+        req.set_sequence(new_sequence.into());
+        assert_eq!(*req.sequence(), new_sequence);
     }
 
     #[test]
@@ -613,8 +614,8 @@ mod tests {
         let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
 
         assert_eq!(unmarshaled.msg_type(), MsgType::SessionReportRequest);
-        assert_eq!(unmarshaled.seid(), Some(seid));
-        assert_eq!(unmarshaled.sequence(), sequence);
+        assert_eq!(unmarshaled.seid().map(|s| *s), Some(seid));
+        assert_eq!(*unmarshaled.sequence(), sequence);
         assert!(unmarshaled.report_type.is_none());
         assert!(unmarshaled.downlink_data_report.is_none());
         assert!(unmarshaled.usage_reports.is_empty());

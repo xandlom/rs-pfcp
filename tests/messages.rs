@@ -391,8 +391,8 @@ fn test_session_report_response_marshal_unmarshal_minimal() {
 
     assert_eq!(res, unmarshaled);
     assert_eq!(res.msg_type(), MsgType::SessionReportResponse);
-    assert_eq!(res.seid(), Some(seid));
-    assert_eq!(res.sequence(), sequence);
+    assert_eq!(res.seid().map(|s| *s), Some(seid));
+    assert_eq!(*res.sequence(), sequence);
     assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
 }
 
@@ -486,8 +486,8 @@ fn test_session_report_response_builder() {
         .unwrap();
 
     assert_eq!(res.msg_type(), MsgType::SessionReportResponse);
-    assert_eq!(res.seid(), Some(seid));
-    assert_eq!(res.sequence(), sequence);
+    assert_eq!(res.seid().map(|s| *s), Some(seid));
+    assert_eq!(*res.sequence(), sequence);
     assert_eq!(res.cause, cause_ie);
     assert_eq!(res.usage_reports, vec![usage_report_ie]);
     assert_eq!(res.cp_function_features, Some(cp_features_ie));
@@ -564,9 +564,9 @@ fn test_session_report_response_set_sequence() {
 
     let mut res = SessionReportResponse::new(seid, sequence, cause_ie, None, vec![], vec![]);
 
-    assert_eq!(res.sequence(), sequence);
-    res.set_sequence(new_sequence);
-    assert_eq!(res.sequence(), new_sequence);
+    assert_eq!(*res.sequence(), sequence);
+    res.set_sequence(new_sequence.into());
+    assert_eq!(*res.sequence(), new_sequence);
 }
 
 #[test]
@@ -616,8 +616,8 @@ fn test_session_report_response_empty_unmarshal() {
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
 
     assert_eq!(unmarshaled.msg_type(), MsgType::SessionReportResponse);
-    assert_eq!(unmarshaled.seid(), Some(seid));
-    assert_eq!(unmarshaled.sequence(), sequence);
+    assert_eq!(unmarshaled.seid().map(|s| *s), Some(seid));
+    assert_eq!(*unmarshaled.sequence(), sequence);
     assert_eq!(unmarshaled.cause, cause_ie);
     assert!(unmarshaled.offending_ie.is_none());
     assert!(unmarshaled.usage_reports.is_empty());
@@ -706,8 +706,8 @@ fn test_session_establishment_response_multiple_created_pdrs() {
 
     // Verify the response contains both Created PDR IEs
     assert_eq!(response.created_pdrs().len(), 2);
-    assert_eq!(response.seid(), Some(seid));
-    assert_eq!(response.sequence(), sequence);
+    assert_eq!(response.seid().map(|s| *s), Some(seid));
+    assert_eq!(*response.sequence(), sequence);
 
     // Marshal and unmarshal to test round-trip
     let marshaled = response.marshal();
@@ -719,8 +719,8 @@ fn test_session_establishment_response_multiple_created_pdrs() {
 
     // Verify unmarshaled response has both Created PDR IEs
     assert_eq!(unmarshaled.created_pdrs().len(), 2);
-    assert_eq!(unmarshaled.seid(), Some(seid));
-    assert_eq!(unmarshaled.sequence(), sequence);
+    assert_eq!(unmarshaled.seid().map(|s| *s), Some(seid));
+    assert_eq!(*unmarshaled.sequence(), sequence);
 
     // Verify the Created PDR contents
     let created_pdr1_unmarshaled =
@@ -729,10 +729,16 @@ fn test_session_establishment_response_multiple_created_pdrs() {
         CreatedPdr::unmarshal(&unmarshaled.created_pdrs()[1].payload).unwrap();
 
     assert_eq!(created_pdr1_unmarshaled.pdr_id.value, 1);
-    assert_eq!(created_pdr1_unmarshaled.f_teid.teid, 0x12345679);
+    assert_eq!(
+        created_pdr1_unmarshaled.f_teid.teid,
+        rs_pfcp::Teid(0x12345679)
+    );
 
     assert_eq!(created_pdr2_unmarshaled.pdr_id.value, 2);
-    assert_eq!(created_pdr2_unmarshaled.f_teid.teid, 0x1234567a);
+    assert_eq!(
+        created_pdr2_unmarshaled.f_teid.teid,
+        rs_pfcp::Teid(0x1234567a)
+    );
 
     // Verify the length field is correctly calculated
     let expected_length = marshaled.len() - 4; // Total length minus first 4 header bytes
@@ -831,7 +837,7 @@ fn test_association_update_response_parse_integration() {
         parsed_message.msg_type(),
         MsgType::AssociationUpdateResponse
     );
-    assert_eq!(parsed_message.sequence(), 0xABCDEF);
+    assert_eq!(*parsed_message.sequence(), 0xABCDEF);
     assert!(parsed_message.find_ie(IeType::NodeId).is_some());
     assert!(parsed_message.find_ie(IeType::Cause).is_some());
 }
@@ -852,6 +858,6 @@ fn test_version_not_supported_response_parse_integration() {
         parsed_message.msg_type(),
         MsgType::VersionNotSupportedResponse
     );
-    assert_eq!(parsed_message.sequence(), 0x654321);
+    assert_eq!(*parsed_message.sequence(), 0x654321);
     assert!(parsed_message.find_ie(IeType::OffendingIe).is_some());
 }

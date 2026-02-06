@@ -3,6 +3,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a PFD Management Response message.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,7 +18,7 @@ pub struct PfdManagementResponse {
 impl PfdManagementResponse {
     /// Creates a new PFD Management Response message.
     pub fn new(
-        seq: u32,
+        seq: impl Into<SequenceNumber>,
         cause: Ie,
         offending_ie: Option<Ie>,
         node_id: Option<Ie>,
@@ -121,7 +122,7 @@ impl Message for PfdManagementResponse {
         MsgType::PfdManagementResponse
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -129,11 +130,11 @@ impl Message for PfdManagementResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -174,7 +175,7 @@ impl Message for PfdManagementResponse {
 /// Builder for PfdManagementResponse message.
 #[derive(Debug, Default)]
 pub struct PfdManagementResponseBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
     node_id: Option<Ie>,
@@ -183,9 +184,9 @@ pub struct PfdManagementResponseBuilder {
 
 impl PfdManagementResponseBuilder {
     /// Creates a new PfdManagementResponse builder.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             cause: None,
             offending_ie: None,
             node_id: None,
@@ -398,7 +399,7 @@ mod tests {
             .cause_ie(cause_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.msg_type(), MsgType::PfdManagementResponse);
         assert_eq!(response.cause, cause_ie);
         assert!(response.offending_ie.is_none());
@@ -417,7 +418,7 @@ mod tests {
             .offending_ie(offending_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
         assert!(response.ies.is_empty());
@@ -438,7 +439,7 @@ mod tests {
             .ies(vec![ie2.clone(), ie3.clone()])
             .build();
 
-        assert_eq!(response.sequence(), 98765);
+        assert_eq!(*response.sequence(), 98765);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.ies.len(), 3);
         assert_eq!(response.ies[0], ie1);
@@ -460,7 +461,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 55555);
+        assert_eq!(*response.sequence(), 55555);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
         assert_eq!(response.ies.len(), 1);
@@ -478,7 +479,7 @@ mod tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.cause, cause_ie);
     }
 
@@ -533,7 +534,7 @@ mod tests {
             .node_id_ie(node_id_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, Some(node_id_ie));
         assert!(response.offending_ie.is_none());
@@ -549,7 +550,7 @@ mod tests {
             .node_id(Ipv4Addr::new(10, 0, 0, 1))
             .build();
 
-        assert_eq!(response.sequence(), 12345);
+        assert_eq!(*response.sequence(), 12345);
         assert!(response.node_id.is_some());
 
         // Verify the node_id can be retrieved via find_ie
@@ -564,7 +565,7 @@ mod tests {
             .node_id_fqdn("upf.example.com")
             .build();
 
-        assert_eq!(response.sequence(), 54321);
+        assert_eq!(*response.sequence(), 54321);
         assert!(response.node_id.is_some());
 
         // Verify the node_id can be retrieved via find_ie
@@ -616,7 +617,7 @@ mod tests {
             .cause_accepted()
             .build();
 
-        assert_eq!(response.sequence(), 22222);
+        assert_eq!(*response.sequence(), 22222);
         assert!(response.node_id.is_none());
         assert!(response.offending_ie.is_none());
 
@@ -640,7 +641,7 @@ mod tests {
             .ie(additional_ie.clone())
             .build();
 
-        assert_eq!(response.sequence(), 33333);
+        assert_eq!(*response.sequence(), 33333);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
         assert!(response.node_id.is_some());

@@ -5,6 +5,7 @@
 
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
+use crate::types::Teid;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 /// Outer Header Creation Description flags
@@ -125,7 +126,7 @@ impl Default for OuterHeaderCreationFlags {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OuterHeaderCreation {
     pub description: OuterHeaderCreationFlags,
-    pub teid: Option<u32>, // GTP-U TEID
+    pub teid: Option<Teid>, // GTP-U TEID
     pub ipv4_address: Option<Ipv4Addr>,
     pub ipv6_address: Option<Ipv6Addr>,
     pub port_number: Option<u16>, // UDP port
@@ -148,10 +149,10 @@ impl OuterHeaderCreation {
     }
 
     /// Creates GTP-U/UDP/IPv4 tunnel configuration
-    pub fn gtpu_ipv4(teid: u32, ipv4: Ipv4Addr) -> Self {
+    pub fn gtpu_ipv4(teid: impl Into<Teid>, ipv4: Ipv4Addr) -> Self {
         OuterHeaderCreation {
             description: OuterHeaderCreationFlags::gtpu_ipv4(),
-            teid: Some(teid),
+            teid: Some(teid.into()),
             ipv4_address: Some(ipv4),
             ipv6_address: None,
             port_number: None,
@@ -161,10 +162,10 @@ impl OuterHeaderCreation {
     }
 
     /// Creates GTP-U/UDP/IPv6 tunnel configuration
-    pub fn gtpu_ipv6(teid: u32, ipv6: Ipv6Addr) -> Self {
+    pub fn gtpu_ipv6(teid: impl Into<Teid>, ipv6: Ipv6Addr) -> Self {
         OuterHeaderCreation {
             description: OuterHeaderCreationFlags::gtpu_ipv6(),
-            teid: Some(teid),
+            teid: Some(teid.into()),
             ipv4_address: None,
             ipv6_address: Some(ipv6),
             port_number: None,
@@ -210,7 +211,7 @@ impl OuterHeaderCreation {
 
         // TEID (4 bytes) - included if any GTP-U flag is set
         if self.description.gtpu_udp_ipv4 || self.description.gtpu_udp_ipv6 {
-            let teid = self.teid.unwrap_or(0);
+            let teid = self.teid.map(|t| t.0).unwrap_or(0);
             data.extend_from_slice(&teid.to_be_bytes());
         }
 
@@ -290,7 +291,7 @@ impl OuterHeaderCreation {
                 payload[offset + 3],
             ]);
             offset += 4;
-            Some(teid_val)
+            Some(Teid(teid_val))
         } else {
             None
         };
@@ -417,7 +418,7 @@ mod tests {
         let ohc = OuterHeaderCreation::gtpu_ipv4(0x12345678, "192.168.1.1".parse().unwrap());
 
         assert!(ohc.description.gtpu_udp_ipv4);
-        assert_eq!(ohc.teid, Some(0x12345678));
+        assert_eq!(ohc.teid, Some(Teid(0x12345678)));
         assert_eq!(ohc.ipv4_address, Some("192.168.1.1".parse().unwrap()));
 
         let marshaled = ohc.marshal();
@@ -431,7 +432,7 @@ mod tests {
         let ohc = OuterHeaderCreation::gtpu_ipv6(0xABCDEF01, "2001:db8::1".parse().unwrap());
 
         assert!(ohc.description.gtpu_udp_ipv6);
-        assert_eq!(ohc.teid, Some(0xABCDEF01));
+        assert_eq!(ohc.teid, Some(Teid(0xABCDEF01)));
         assert_eq!(ohc.ipv6_address, Some("2001:db8::1".parse().unwrap()));
 
         let marshaled = ohc.marshal();

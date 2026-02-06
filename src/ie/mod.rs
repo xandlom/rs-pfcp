@@ -1583,6 +1583,7 @@ pub use builder_support::IntoIe;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{Seid, Teid};
 
     #[test]
     fn test_reject_zero_length_ie() {
@@ -2322,7 +2323,7 @@ mod tests {
             assert_eq!(ie.ie_type, IeType::Fseid);
 
             let fseid = Fseid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.seid, Seid(seid));
             assert_eq!(fseid.ipv4_address, Some(ipv4));
             assert_eq!(fseid.ipv6_address, None);
         }
@@ -2336,7 +2337,7 @@ mod tests {
             assert_eq!(ie.ie_type, IeType::Fseid);
 
             let fseid = Fseid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.seid, Seid(seid));
             assert_eq!(fseid.ipv4_address, None);
             assert_eq!(fseid.ipv6_address, Some(ipv6));
         }
@@ -2350,7 +2351,7 @@ mod tests {
             assert_eq!(ie.ie_type, IeType::Fseid);
 
             let fseid = Fseid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.seid, Seid(seid));
             assert!(fseid.ipv4_address.is_some());
             assert!(fseid.ipv6_address.is_none());
         }
@@ -2364,7 +2365,7 @@ mod tests {
             assert_eq!(ie.ie_type, IeType::Fseid);
 
             let fseid = Fseid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.seid, Seid(seid));
             assert!(fseid.ipv4_address.is_none());
             assert!(fseid.ipv6_address.is_some());
         }
@@ -2379,7 +2380,7 @@ mod tests {
 
             // Unmarshal and verify
             let fseid = Fseid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fseid.seid, seid);
+            assert_eq!(fseid.seid, Seid(seid));
             assert_eq!(fseid.ipv4_address, Some(ipv4));
 
             // Verify it matches explicit construction
@@ -2398,7 +2399,7 @@ mod tests {
 
             assert_eq!(ie.ie_type, IeType::Fteid);
             let fteid = Fteid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.teid, Teid(teid));
             assert_eq!(fteid.ipv4_address, Some(ip));
             assert_eq!(fteid.ipv6_address, None);
             assert!(fteid.v4);
@@ -2416,7 +2417,7 @@ mod tests {
 
             assert_eq!(ie.ie_type, IeType::Fteid);
             let fteid = Fteid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.teid, Teid(teid));
             assert_eq!(fteid.ipv4_address, None);
             assert_eq!(fteid.ipv6_address, Some(ip));
             assert!(!fteid.v4);
@@ -2435,7 +2436,7 @@ mod tests {
 
             assert_eq!(ie.ie_type, IeType::Fteid);
             let fteid = Fteid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.teid, Teid(teid));
             assert_eq!(fteid.ipv4_address, Some(ipv4));
             assert_eq!(fteid.ipv6_address, None);
         }
@@ -2452,7 +2453,7 @@ mod tests {
 
             assert_eq!(ie.ie_type, IeType::Fteid);
             let fteid = Fteid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.teid, Teid(teid));
             assert_eq!(fteid.ipv4_address, None);
             assert_eq!(fteid.ipv6_address, Some(ipv6));
         }
@@ -2469,7 +2470,7 @@ mod tests {
 
             // Unmarshal and verify
             let fteid = Fteid::unmarshal(&ie.payload).unwrap();
-            assert_eq!(fteid.teid, teid);
+            assert_eq!(fteid.teid, Teid(teid));
             assert_eq!(fteid.ipv4_address, Some(ipv4));
 
             // Verify it matches explicit construction

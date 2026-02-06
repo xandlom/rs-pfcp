@@ -5,6 +5,7 @@
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
+use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Set Deletion Response message.
 /// Sent by UPF in response to Session Set Deletion Request from CP function.
@@ -19,7 +20,13 @@ pub struct SessionSetDeletionResponse {
 
 impl SessionSetDeletionResponse {
     /// Creates a new Session Set Deletion Response message.
-    pub fn new(seq: u32, node_id: Ie, cause: Ie, offending_ie: Option<Ie>, ies: Vec<Ie>) -> Self {
+    pub fn new(
+        seq: impl Into<SequenceNumber>,
+        node_id: Ie,
+        cause: Ie,
+        offending_ie: Option<Ie>,
+        ies: Vec<Ie>,
+    ) -> Self {
         let mut payload_len = node_id.len() + cause.len();
         if let Some(ref ie) = offending_ie {
             payload_len += ie.len();
@@ -44,7 +51,7 @@ impl SessionSetDeletionResponse {
 /// Builder for Session Set Deletion Response messages.
 #[derive(Debug, Default)]
 pub struct SessionSetDeletionResponseBuilder {
-    sequence: u32,
+    sequence: SequenceNumber,
     node_id: Option<Ie>,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
@@ -53,9 +60,9 @@ pub struct SessionSetDeletionResponseBuilder {
 
 impl SessionSetDeletionResponseBuilder {
     /// Creates a new builder with the required sequence number.
-    pub fn new(sequence: u32) -> Self {
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            sequence,
+            sequence: sequence.into(),
             node_id: None,
             cause: None,
             offending_ie: None,
@@ -265,7 +272,7 @@ impl Message for SessionSetDeletionResponse {
         })
     }
 
-    fn seid(&self) -> Option<u64> {
+    fn seid(&self) -> Option<Seid> {
         if self.header.has_seid {
             Some(self.header.seid)
         } else {
@@ -273,11 +280,11 @@ impl Message for SessionSetDeletionResponse {
         }
     }
 
-    fn sequence(&self) -> u32 {
+    fn sequence(&self) -> SequenceNumber {
         self.header.sequence_number
     }
 
-    fn set_sequence(&mut self, seq: u32) {
+    fn set_sequence(&mut self, seq: SequenceNumber) {
         self.header.sequence_number = seq;
     }
 
@@ -463,7 +470,7 @@ mod tests {
         let message = SessionSetDeletionResponse::new(999, node_id_ie, cause_ie, None, Vec::new());
 
         assert_eq!(message.msg_type(), MsgType::SessionSetDeletionResponse);
-        assert_eq!(message.sequence(), 999);
+        assert_eq!(*message.sequence(), 999);
         assert_eq!(message.seid(), None); // Session set operations don't use SEID in header
         assert_eq!(message.version(), 1);
     }
@@ -539,7 +546,7 @@ mod tests {
             .cause_ie(cause_ie.clone())
             .build();
 
-        assert_eq!(message.sequence(), 123);
+        assert_eq!(*message.sequence(), 123);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
         assert!(message.offending_ie.is_none());
@@ -566,7 +573,7 @@ mod tests {
             .offending_ie(offending_ie.clone())
             .build();
 
-        assert_eq!(message.sequence(), 456);
+        assert_eq!(*message.sequence(), 456);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
         assert_eq!(message.offending_ie, Some(offending_ie));
@@ -595,7 +602,7 @@ mod tests {
             .additional_ies(additional_ies.clone())
             .build();
 
-        assert_eq!(message.sequence(), 789);
+        assert_eq!(*message.sequence(), 789);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
         assert_eq!(message.ies, additional_ies);
@@ -625,7 +632,7 @@ mod tests {
             .add_ie(load_control_ie.clone())
             .build();
 
-        assert_eq!(message.sequence(), 555);
+        assert_eq!(*message.sequence(), 555);
         assert_eq!(message.ies.len(), 2);
         assert_eq!(message.ies[0], timer_ie);
         assert_eq!(message.ies[1], load_control_ie);
@@ -653,7 +660,7 @@ mod tests {
             .add_ie(timer_ie.clone())
             .build();
 
-        assert_eq!(message.sequence(), 777);
+        assert_eq!(*message.sequence(), 777);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
         assert_eq!(message.offending_ie, Some(offending_ie));
@@ -703,7 +710,7 @@ mod tests {
 
         assert!(result.is_ok());
         let message = result.unwrap();
-        assert_eq!(message.sequence(), 999);
+        assert_eq!(*message.sequence(), 999);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
     }
