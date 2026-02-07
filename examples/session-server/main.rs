@@ -258,8 +258,8 @@ fn handle_session_establishment_request(
     msg: &dyn Message,
     data: &[u8],
 ) -> Result<(), Box<dyn Error>> {
-    let seid = msg.seid().unwrap();
-    println!("  Session ID: 0x{:016x}", *seid);
+    let seid = *msg.seid().expect("Session establishment request must have SEID");
+    println!("  Session ID: 0x{seid:016x}");
 
     // Parse the full SessionEstablishmentRequest to access create_pdrs
     let establishment_req = match SessionEstablishmentRequest::unmarshal(data) {
@@ -296,7 +296,7 @@ fn handle_session_establishment_request(
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
                             .ipv4(Ipv4Addr::new(192, 168, 1, 100))
                             .build()
-                            .unwrap()
+                            .expect("Failed to build IPv4 F-TEID for uplink PDR")
                     }
                     2 => {
                         // For PDR 2: Dual-stack F-TEID with both IPv4 and IPv6
@@ -304,9 +304,9 @@ fn handle_session_establishment_request(
                         FteidBuilder::new()
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
                             .ipv4(Ipv4Addr::new(192, 168, 1, 100))
-                            .ipv6("2001:db8::100".parse().unwrap())
+                            .ipv6("2001:db8::100".parse().expect("Invalid IPv6 address"))
                             .build()
-                            .unwrap()
+                            .expect("Failed to build dual-stack F-TEID for downlink PDR")
                     }
                     _ => {
                         // For other PDRs: Use CHOOSE flag to let SMF know UPF will select
@@ -316,7 +316,7 @@ fn handle_session_establishment_request(
                             .choose_ipv4()
                             .choose_id(received_pdr.pdr_id.value as u8) // For correlation
                             .build()
-                            .unwrap()
+                            .expect("Failed to build F-TEID with CHOOSE flag")
                     }
                 };
 
@@ -345,7 +345,7 @@ fn handle_session_establishment_request(
         },
     );
 
-    let fseid_ie = msg.ies(IeType::Fseid).next().unwrap().clone();
+    let fseid_ie = msg.ies(IeType::Fseid).next().expect("Session establishment request must have F-SEID").clone();
 
     // Build response with all created PDRs
     let mut response_builder = SessionEstablishmentResponseBuilder::accepted(seid, msg.sequence())
@@ -357,7 +357,7 @@ fn handle_session_establishment_request(
         response_builder = response_builder.created_pdr(created_pdr);
     }
 
-    let res = response_builder.build().unwrap();
+    let res = response_builder.build().expect("Failed to build session establishment response");
     ctx.socket.send_to(&res.marshal(), ctx.src)?;
 
     // Simulate quota exhaustion after 2 seconds
@@ -385,7 +385,7 @@ fn handle_session_modification_request(
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Session Modification Request");
-    let res = SessionModificationResponseBuilder::new(msg.seid().unwrap(), msg.sequence())
+    let res = SessionModificationResponseBuilder::new(*msg.seid().expect("Session modification request must have SEID"), msg.sequence())
         .cause_accepted()
         .marshal();
     ctx.socket.send_to(&res, ctx.src)?;
@@ -396,7 +396,7 @@ fn handle_session_deletion_request(
     ctx: &mut HandlerContext,
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
-    let seid = *msg.seid().unwrap();
+    let seid = *msg.seid().expect("Session deletion request must have SEID");
     println!("  Deleting session 0x{seid:016x}");
 
     if ctx.sessions.contains_key(&seid) {
