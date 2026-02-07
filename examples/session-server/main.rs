@@ -97,9 +97,9 @@ struct Args {
 }
 
 // Helper function to create a quota exhausted usage report using the enhanced builder
-fn create_quota_exhausted_usage_report() -> Ie {
+fn create_quota_exhausted_usage_report() -> Option<Ie> {
     // Create a comprehensive usage report with Phase 3 enhanced features
-    let usage_report = UsageReportBuilder::new(UrrId::new(1))
+    let usage_report = match UsageReportBuilder::new(UrrId::new(1))
         .sequence_number(SequenceNumber::new(1))
         .trigger(UsageReportTrigger::VOLTH) // Volume Threshold exhausted
         .volume_measurement(VolumeMeasurement::new(
@@ -115,9 +115,15 @@ fn create_quota_exhausted_usage_report() -> Ie {
         // Note: Phase 3 enhancements (Application Detection, UE IP Usage, Additional Reports)
         // require grouped IE structure updates for full 3GPP compliance
         .build()
-        .expect("Failed to build usage report");
+    {
+        Ok(report) => report,
+        Err(e) => {
+            eprintln!("ERROR: Failed to build usage report: {e}");
+            return None;
+        }
+    };
 
-    usage_report.to_ie()
+    Some(usage_report.to_ie())
 }
 
 // Structure to track session states
@@ -258,7 +264,13 @@ fn handle_session_establishment_request(
     msg: &dyn Message,
     data: &[u8],
 ) -> Result<(), Box<dyn Error>> {
-    let seid = *msg.seid().expect("Session establishment request must have SEID");
+    let seid = match msg.seid() {
+        Some(s) => *s,
+        None => {
+            eprintln!("ERROR: Session establishment request missing SEID - dropping message");
+            return Ok(());
+        }
+    };
     println!("  Session ID: 0x{seid:016x}");
 
     // Parse the full SessionEstablishmentRequest to access create_pdrs
@@ -292,31 +304,56 @@ fn handle_session_establishment_request(
                     1 => {
                         // For PDR 1: Standard IPv4 F-TEID allocation
                         println!("      → Allocating standard IPv4 F-TEID for uplink PDR");
-                        FteidBuilder::new()
+                        match FteidBuilder::new()
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
                             .ipv4(Ipv4Addr::new(192, 168, 1, 100))
                             .build()
-                            .expect("Failed to build IPv4 F-TEID for uplink PDR")
+                        {
+                            Ok(fteid) => fteid,
+                            Err(e) => {
+                                eprintln!("ERROR: Failed to build IPv4 F-TEID for uplink PDR: {e}");
+                                continue;
+                            }
+                        }
                     }
                     2 => {
                         // For PDR 2: Dual-stack F-TEID with both IPv4 and IPv6
                         println!("      → Allocating dual-stack F-TEID for downlink PDR");
-                        FteidBuilder::new()
+                        let ipv6 = match "2001:db8::100".parse() {
+                            Ok(addr) => addr,
+                            Err(e) => {
+                                eprintln!("ERROR: Invalid IPv6 address: {e}");
+                                continue;
+                            }
+                        };
+                        match FteidBuilder::new()
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
                             .ipv4(Ipv4Addr::new(192, 168, 1, 100))
-                            .ipv6("2001:db8::100".parse().expect("Invalid IPv6 address"))
+                            .ipv6(ipv6)
                             .build()
-                            .expect("Failed to build dual-stack F-TEID for downlink PDR")
+                        {
+                            Ok(fteid) => fteid,
+                            Err(e) => {
+                                eprintln!("ERROR: Failed to build dual-stack F-TEID for downlink PDR: {e}");
+                                continue;
+                            }
+                        }
                     }
                     _ => {
                         // For other PDRs: Use CHOOSE flag to let SMF know UPF will select
                         println!("      → Using CHOOSE flag for dynamic F-TEID allocation");
-                        FteidBuilder::new()
+                        match FteidBuilder::new()
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
                             .choose_ipv4()
                             .choose_id(received_pdr.pdr_id.value as u8) // For correlation
                             .build()
-                            .expect("Failed to build F-TEID with CHOOSE flag")
+                        {
+                            Ok(fteid) => fteid,
+                            Err(e) => {
+                                eprintln!("ERROR: Failed to build F-TEID with CHOOSE flag: {e}");
+                                continue;
+                            }
+                        }
                     }
                 };
 
@@ -345,7 +382,13 @@ fn handle_session_establishment_request(
         },
     );
 
-    let fseid_ie = msg.ies(IeType::Fseid).next().expect("Session establishment request must have F-SEID").clone();
+    let fseid_ie = match msg.ies(IeType::Fseid).next() {
+        Some(ie) => ie.clone(),
+        None => {
+            eprintln!("ERROR: Session establishment request missing F-SEID - dropping message");
+            return Ok(());
+        }
+    };
 
     // Build response with all created PDRs
     let mut response_builder = SessionEstablishmentResponseBuilder::accepted(seid, msg.sequence())
@@ -357,7 +400,13 @@ fn handle_session_establishment_request(
         response_builder = response_builder.created_pdr(created_pdr);
     }
 
-    let res = response_builder.build().expect("Failed to build session establishment response");
+    let res = match response_builder.build() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("ERROR: Failed to build session establishment response: {e}");
+            return Ok(());
+        }
+    };
     ctx.socket.send_to(&res.marshal(), ctx.src)?;
 
     // Simulate quota exhaustion after 2 seconds
@@ -366,7 +415,13 @@ fn handle_session_establishment_request(
 
     // Create and send Session Report Request with quota exhausted usage report
     let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // USAR (Usage Report)
-    let usage_report_ie = create_quota_exhausted_usage_report();
+    let usage_report_ie = match create_quota_exhausted_usage_report() {
+        Some(ie) => ie,
+        None => {
+            eprintln!("ERROR: Failed to create usage report - skipping session report");
+            return Ok(());
+        }
+    };
 
     let session_report_req = SessionReportRequestBuilder::new(seid, *ctx.next_sequence)
         .report_type(report_type_ie)
@@ -385,7 +440,14 @@ fn handle_session_modification_request(
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Session Modification Request");
-    let res = SessionModificationResponseBuilder::new(*msg.seid().expect("Session modification request must have SEID"), msg.sequence())
+    let seid = match msg.seid() {
+        Some(s) => *s,
+        None => {
+            eprintln!("ERROR: Session modification request missing SEID - dropping message");
+            return Ok(());
+        }
+    };
+    let res = SessionModificationResponseBuilder::new(seid, msg.sequence())
         .cause_accepted()
         .marshal();
     ctx.socket.send_to(&res, ctx.src)?;
@@ -396,7 +458,13 @@ fn handle_session_deletion_request(
     ctx: &mut HandlerContext,
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
-    let seid = *msg.seid().expect("Session deletion request must have SEID");
+    let seid = match msg.seid() {
+        Some(s) => *s,
+        None => {
+            eprintln!("ERROR: Session deletion request missing SEID - dropping message");
+            return Ok(());
+        }
+    };
     println!("  Deleting session 0x{seid:016x}");
 
     if ctx.sessions.contains_key(&seid) {
