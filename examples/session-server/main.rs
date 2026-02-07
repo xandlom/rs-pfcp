@@ -76,6 +76,7 @@ use rs_pfcp::message::{
     session_set_deletion_response::SessionSetDeletionResponseBuilder,
     session_set_modification_response::SessionSetModificationResponseBuilder, Message, MsgType,
 };
+use rs_pfcp::error::PfcpError;
 use std::error::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::{collections::HashMap, thread, time::Duration};
@@ -385,7 +386,11 @@ fn handle_session_establishment_request(
     let fseid_ie = match msg.ies(IeType::Fseid).next() {
         Some(ie) => ie.clone(),
         None => {
-            eprintln!("ERROR: Session establishment request missing F-SEID - dropping message");
+            eprintln!("ERROR: Session establishment request missing F-SEID - sending rejection");
+            let rejection = SessionEstablishmentResponseBuilder::rejected(seid, msg.sequence())
+                .node_id(Ipv4Addr::new(127, 0, 0, 1))
+                .marshal()?;
+            ctx.socket.send_to(&rejection, ctx.src)?;
             return Ok(());
         }
     };
@@ -402,8 +407,20 @@ fn handle_session_establishment_request(
 
     let res = match response_builder.build() {
         Ok(r) => r,
+        Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
+            eprintln!("ERROR: Missing mandatory IE {:?} - sending rejection", ie_type);
+            let rejection = SessionEstablishmentResponseBuilder::rejected(seid, msg.sequence())
+                .node_id(Ipv4Addr::new(127, 0, 0, 1))
+                .marshal()?;
+            ctx.socket.send_to(&rejection, ctx.src)?;
+            return Ok(());
+        }
         Err(e) => {
-            eprintln!("ERROR: Failed to build session establishment response: {e}");
+            eprintln!("ERROR: Failed to build session establishment response: {e} - sending rejection");
+            let rejection = SessionEstablishmentResponseBuilder::rejected(seid, msg.sequence())
+                .node_id(Ipv4Addr::new(127, 0, 0, 1))
+                .marshal()?;
+            ctx.socket.send_to(&rejection, ctx.src)?;
             return Ok(());
         }
     };
