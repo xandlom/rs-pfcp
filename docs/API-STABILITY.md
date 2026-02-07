@@ -32,8 +32,7 @@ pub trait Message {
     fn msg_type(&self) -> MsgType;
     fn seid(&self) -> Option<u64>;
     fn sequence(&self) -> u32;
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie>;
-    fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie>;
+    fn ies(&self, ie_type: IeType) -> IeIter<'_>;
 }
 ```
 
@@ -176,8 +175,8 @@ let request = SessionEstablishmentRequestBuilder::new(seid, seq)
 let msg_type = request.msg_type();
 let sequence = request.sequence();
 
-// Use find_ie for IE access
-let node_id_ie = request.find_ie(IeType::NodeId);
+// Use ies() for IE access
+let node_id_ie = request.ies(IeType::NodeId).next();
 
 // Use enums by value with wildcard for future compatibility
 match msg_type {

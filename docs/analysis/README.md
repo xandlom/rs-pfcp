@@ -48,7 +48,7 @@ Active task tracking and work-in-progress planning:
 
 #### [Unified IE Access Patterns](completed/unified-ie-access.md)
 **Status**: ✅ COMPLETE (v0.2.2)
-**Outcome**: Iterator-based IE access with `ies()` method, deprecated old `find_ie()` methods
+**Outcome**: Iterator-based IE access with `ies()` method; deprecated `find_ie()`/`find_all_ies()` methods removed in v0.3.0
 
 #### [Expand IntoIe Trait](completed/expand-into-ie-trait.md)
 **Status**: ✅ COMPLETE (v0.2.1, v0.2.3)
@@ -148,7 +148,7 @@ Strong typing for primitives:
 Breaking change release focused on type safety:
 - ✅ PfcpError migration (COMPLETE - done in v0.2.x)
 - 🎯 Newtype wrappers (Seid, SequenceNumber, Teid)
-- 🎯 Remove deprecated methods (find_ie, find_all_ies)
+- ✅ Remove deprecated methods (find_ie, find_all_ies) - **DONE**
 
 ### Code Quality & Refactoring
 

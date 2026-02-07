@@ -110,14 +110,6 @@ impl Message for AssociationReleaseRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            _ => None,
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         vec![&self.node_id]
     }
@@ -171,7 +163,6 @@ impl AssociationReleaseRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::node_id::NodeId;

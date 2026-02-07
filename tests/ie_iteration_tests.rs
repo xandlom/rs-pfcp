@@ -430,29 +430,6 @@ fn test_iterator_chaining() {
     assert_eq!(enumerated[9].0, 9);
 }
 
-/// Test backward compatibility with deprecated methods
-#[test]
-#[allow(deprecated)]
-fn test_backward_compatibility() {
-    let request = AssociationSetupRequestBuilder::new(1)
-        .node_id(Ipv4Addr::new(192, 168, 1, 1))
-        .recovery_time_stamp(std::time::SystemTime::now())
-        .build();
-
-    // Old API (deprecated)
-    let old_api_result = request.find_ie(IeType::NodeId);
-
-    // New API
-    let new_api_result = request.ies(IeType::NodeId).next();
-
-    // Should return same result
-    assert_eq!(old_api_result.is_some(), new_api_result.is_some());
-    if let (Some(old_ie), Some(new_ie)) = (old_api_result, new_api_result) {
-        assert_eq!(old_ie.ie_type, new_ie.ie_type);
-        assert_eq!(old_ie.payload, new_ie.payload);
-    }
-}
-
 /// Test zero-cost abstraction (compile-time check via benchmark comparison)
 #[test]
 fn test_performance_characteristics() {

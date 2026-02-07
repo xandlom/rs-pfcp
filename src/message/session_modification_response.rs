@@ -175,20 +175,6 @@ impl Message for SessionModificationResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::CreatedPdr => self.created_pdr.as_ref(),
-            IeType::LoadControlInformation => self.load_control_information.as_ref(),
-            IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
-            IeType::PdnType => self.pdn_type.as_ref(),
-            IeType::UsageReportWithinSessionModificationResponse => self.usage_reports.first(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
@@ -443,7 +429,6 @@ impl SessionModificationResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;
@@ -660,7 +645,9 @@ mod tests {
         assert_eq!(response.usage_reports.len(), 1);
         assert_eq!(response.usage_reports[0], usage_report_ie);
         assert_eq!(
-            response.find_ie(IeType::UsageReportWithinSessionModificationResponse),
+            response
+                .ies(IeType::UsageReportWithinSessionModificationResponse)
+                .next(),
             Some(&usage_report_ie)
         );
 

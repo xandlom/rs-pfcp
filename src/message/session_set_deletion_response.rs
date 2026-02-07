@@ -299,16 +299,6 @@ impl Message for SessionSetDeletionResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            IeType::Cause => Some(&self.cause),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause];
         if let Some(ref ie) = self.offending_ie {
@@ -320,7 +310,6 @@ impl Message for SessionSetDeletionResponse {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::{Cause, CauseValue};
@@ -429,7 +418,7 @@ mod tests {
     }
 
     #[test]
-    fn test_session_set_deletion_response_find_ie() {
+    fn test_session_set_deletion_response_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
@@ -450,10 +439,10 @@ mod tests {
             Vec::new(),
         );
 
-        assert!(message.find_ie(IeType::NodeId).is_some());
-        assert!(message.find_ie(IeType::Cause).is_some());
-        assert!(message.find_ie(IeType::OffendingIe).is_some());
-        assert!(message.find_ie(IeType::Unknown).is_none());
+        assert!(message.ies(IeType::NodeId).next().is_some());
+        assert!(message.ies(IeType::Cause).next().is_some());
+        assert!(message.ies(IeType::OffendingIe).next().is_some());
+        assert!(message.ies(IeType::Unknown).next().is_none());
     }
 
     #[test]

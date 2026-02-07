@@ -1593,7 +1593,6 @@ impl MessageDisplay for Box<dyn Message> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::{Cause, CauseValue};

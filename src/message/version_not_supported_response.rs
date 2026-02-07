@@ -111,11 +111,6 @@ impl Message for VersionNotSupportedResponse {
         IeIter::generic(&self.ies, ie_type)
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        self.ies.iter().find(|ie| ie.ie_type == ie_type)
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         self.ies.iter().collect()
     }
@@ -160,7 +155,6 @@ impl VersionNotSupportedResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
 
@@ -206,13 +200,13 @@ mod tests {
     }
 
     #[test]
-    fn test_version_not_supported_response_find_ie() {
+    fn test_version_not_supported_response_ies() {
         let ies = vec![Ie::new(IeType::OffendingIe, vec![0x00, 0x01])];
 
         let message = VersionNotSupportedResponse::new_with_ies(123, ies);
 
-        assert!(message.find_ie(IeType::OffendingIe).is_some());
-        assert!(message.find_ie(IeType::NodeId).is_none());
+        assert!(message.ies(IeType::OffendingIe).next().is_some());
+        assert!(message.ies(IeType::NodeId).next().is_none());
     }
 
     #[test]

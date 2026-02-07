@@ -209,7 +209,6 @@ impl<'a> IeIter<'a> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
 

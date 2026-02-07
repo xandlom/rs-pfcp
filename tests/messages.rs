@@ -125,18 +125,18 @@ fn test_association_setup_response_from_request() {
     let mut header = Header::new(MsgType::AssociationSetupResponse, false, 0, req.sequence());
     header.length = 8
         + cause_ie.len()
-        + req.find_ie(IeType::NodeId).unwrap().len()
-        + req.find_ie(IeType::UpFunctionFeatures).unwrap().len()
-        + req.find_ie(IeType::CpFunctionFeatures).unwrap().len()
-        + req.find_ie(IeType::RecoveryTimeStamp).unwrap().len();
+        + req.ies(IeType::NodeId).next().unwrap().len()
+        + req.ies(IeType::UpFunctionFeatures).next().unwrap().len()
+        + req.ies(IeType::CpFunctionFeatures).next().unwrap().len()
+        + req.ies(IeType::RecoveryTimeStamp).next().unwrap().len();
 
     let res = AssociationSetupResponse {
         header,
         cause: cause_ie.clone(),
-        node_id: req.find_ie(IeType::NodeId).unwrap().clone(),
-        up_function_features: req.find_ie(IeType::UpFunctionFeatures).cloned(),
-        cp_function_features: req.find_ie(IeType::CpFunctionFeatures).cloned(),
-        recovery_time_stamp: req.find_ie(IeType::RecoveryTimeStamp).cloned(),
+        node_id: req.ies(IeType::NodeId).next().unwrap().clone(),
+        up_function_features: req.ies(IeType::UpFunctionFeatures).next().cloned(),
+        cp_function_features: req.ies(IeType::CpFunctionFeatures).next().cloned(),
+        recovery_time_stamp: req.ies(IeType::RecoveryTimeStamp).next().cloned(),
         ies: vec![],
     };
 
@@ -393,7 +393,7 @@ fn test_session_report_response_marshal_unmarshal_minimal() {
     assert_eq!(res.msg_type(), MsgType::SessionReportResponse);
     assert_eq!(res.seid().map(|s| *s), Some(seid));
     assert_eq!(*res.sequence(), sequence);
-    assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
+    assert_eq!(res.ies(IeType::Cause).next(), Some(&cause_ie));
 }
 
 #[test]
@@ -419,8 +419,8 @@ fn test_session_report_response_marshal_unmarshal_with_offending_ie() {
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
 
     assert_eq!(res, unmarshaled);
-    assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
-    assert_eq!(res.find_ie(IeType::OffendingIe), Some(&offending_ie));
+    assert_eq!(res.ies(IeType::Cause).next(), Some(&cause_ie));
+    assert_eq!(res.ies(IeType::OffendingIe).next(), Some(&offending_ie));
 }
 
 #[test]
@@ -460,7 +460,8 @@ fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
     assert_eq!(res, unmarshaled);
     assert_eq!(res.usage_reports.len(), 1);
     assert_eq!(
-        res.find_ie(IeType::UsageReportWithinSessionReportRequest),
+        res.ies(IeType::UsageReportWithinSessionReportRequest)
+            .next(),
         Some(&usage_report_ie)
     );
 }
@@ -570,7 +571,7 @@ fn test_session_report_response_set_sequence() {
 }
 
 #[test]
-fn test_session_report_response_find_ie() {
+fn test_session_report_response_ies() {
     use rs_pfcp::ie::cause::CauseValue;
     use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
 
@@ -589,13 +590,14 @@ fn test_session_report_response_find_ie() {
         .build()
         .unwrap();
 
-    assert_eq!(res.find_ie(IeType::Cause), Some(&cause_ie));
+    assert_eq!(res.ies(IeType::Cause).next(), Some(&cause_ie));
     assert_eq!(
-        res.find_ie(IeType::UsageReportWithinSessionReportRequest),
+        res.ies(IeType::UsageReportWithinSessionReportRequest)
+            .next(),
         Some(&usage_report_ie)
     );
-    assert_eq!(res.find_ie(IeType::Timer), Some(&unknown_ie));
-    assert_eq!(res.find_ie(IeType::NodeId), None);
+    assert_eq!(res.ies(IeType::Timer).next(), Some(&unknown_ie));
+    assert_eq!(res.ies(IeType::NodeId).next(), None);
 }
 
 #[test]
@@ -838,8 +840,8 @@ fn test_association_update_response_parse_integration() {
         MsgType::AssociationUpdateResponse
     );
     assert_eq!(*parsed_message.sequence(), 0xABCDEF);
-    assert!(parsed_message.find_ie(IeType::NodeId).is_some());
-    assert!(parsed_message.find_ie(IeType::Cause).is_some());
+    assert!(parsed_message.ies(IeType::NodeId).next().is_some());
+    assert!(parsed_message.ies(IeType::Cause).next().is_some());
 }
 
 #[test]
@@ -859,5 +861,5 @@ fn test_version_not_supported_response_parse_integration() {
         MsgType::VersionNotSupportedResponse
     );
     assert_eq!(*parsed_message.sequence(), 0x654321);
-    assert!(parsed_message.find_ie(IeType::OffendingIe).is_some());
+    assert!(parsed_message.ies(IeType::OffendingIe).next().is_some());
 }

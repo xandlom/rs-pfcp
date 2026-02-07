@@ -210,24 +210,6 @@ impl Message for SessionDeletionResponse {
         }
     }
 
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::LoadControlInformation => self.load_control_information.as_ref(),
-            IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
-            IeType::UsageReportWithinSessionDeletionResponse => self.usage_reports.first(),
-            IeType::AdditionalUsageReportsInformation => {
-                self.additional_usage_reports_information.as_ref()
-            }
-            IeType::PacketRateStatusReport => self.packet_rate_status_reports.first(),
-            IeType::MbsSessionN4Information => self.mbs_session_n4_information.first(),
-            IeType::TlContainer => self.tl_container.first(),
-            IeType::PfcpsdrspFlags => self.pfcpsdrsp_flags.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
@@ -584,7 +566,6 @@ impl SessionDeletionResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;
@@ -754,7 +735,9 @@ mod tests {
         assert_eq!(response.usage_reports.len(), 1);
         assert_eq!(response.usage_reports[0], usage_report_ie);
         assert_eq!(
-            response.find_ie(IeType::UsageReportWithinSessionDeletionResponse),
+            response
+                .ies(IeType::UsageReportWithinSessionDeletionResponse)
+                .next(),
             Some(&usage_report_ie)
         );
 
@@ -783,7 +766,9 @@ mod tests {
             Some(auri_ie.clone())
         );
         assert_eq!(
-            response.find_ie(IeType::AdditionalUsageReportsInformation),
+            response
+                .ies(IeType::AdditionalUsageReportsInformation)
+                .next(),
             Some(&auri_ie)
         );
 
@@ -813,7 +798,7 @@ mod tests {
         assert_eq!(response.packet_rate_status_reports[0], prsr_ie1);
         assert_eq!(response.packet_rate_status_reports[1], prsr_ie2);
         assert_eq!(
-            response.find_ie(IeType::PacketRateStatusReport),
+            response.ies(IeType::PacketRateStatusReport).next(),
             Some(&prsr_ie1)
         );
 

@@ -122,16 +122,10 @@ pub trait Message {
     /// ```
     fn ies(&self, ie_type: IeType) -> IeIter<'_>;
 
-    // Deprecated methods (keep for backward compatibility)
-    #[deprecated(since = "0.2.0", note = "Use `ies(ie_type).next()` instead")]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        self.ies(ie_type).next()
-    }
-
-    #[deprecated(since = "0.2.0", note = "Use `ies(ie_type).collect()` instead")]
-    fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie> {
-        self.ies(ie_type).collect()
-    }
+    // Note: find_ie() and find_all_ies() were deprecated in v0.2.2
+    // and have been removed in v0.3.0. Use ies() instead:
+    //   find_ie(ie_type)      -> ies(ie_type).next()
+    //   find_all_ies(ie_type) -> ies(ie_type).collect()
 }
 ```
 
@@ -338,16 +332,8 @@ pub trait Message {
     /// Get all IEs of a specific type as an iterator.
     fn ies(&self, ie_type: IeType) -> IeIter<'_>;
 
-    // Deprecate old methods
-    #[deprecated(since = "0.2.0", note = "Use `ies(ie_type).next()` instead")]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        self.ies(ie_type).next()
-    }
-
-    #[deprecated(since = "0.2.0", note = "Use `ies(ie_type).collect()` instead")]
-    fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie> {
-        self.ies(ie_type).collect()
-    }
+    // Note: find_ie() and find_all_ies() were deprecated in v0.2.2
+    // and removed in v0.3.0. Use ies() instead.
 }
 ```
 
@@ -395,16 +381,11 @@ impl Message for <MessageType> {
 **Update all usage in examples:**
 
 ```rust
-// Before
-if let Some(node_ie) = msg.find_ie(IeType::NodeId) {
-    // ...
-}
+// Before (removed in v0.3.0)
+// if let Some(node_ie) = msg.find_ie(IeType::NodeId) { ... }
+// for pdr in msg.find_all_ies(IeType::CreatePdr) { ... }
 
-for pdr in msg.find_all_ies(IeType::CreatePdr) {
-    // ...
-}
-
-// After
+// After (current API)
 if let Some(node_ie) = msg.ies(IeType::NodeId).next() {
     // ...
 }
@@ -552,20 +533,15 @@ fn test_unified_access_patterns() {
 }
 
 #[test]
-fn test_backward_compatibility() {
+fn test_ies_api() {
     let msg = create_session_establishment_request();
 
-    // Old methods still work (with deprecation warnings)
-    #[allow(deprecated)]
-    {
-        let old_way = msg.find_ie(IeType::NodeId);
-        let new_way = msg.ies(IeType::NodeId).next();
-        assert_eq!(old_way, new_way);
+    // Use the ies() iterator API (find_ie/find_all_ies removed in v0.3.0)
+    let node_id = msg.ies(IeType::NodeId).next();
+    assert!(node_id.is_some());
 
-        let old_all = msg.find_all_ies(IeType::CreatePdr);
-        let new_all: Vec<_> = msg.ies(IeType::CreatePdr).collect();
-        assert_eq!(old_all, new_all);
-    }
+    let all_pdrs: Vec<_> = msg.ies(IeType::CreatePdr).collect();
+    assert_eq!(all_pdrs.len(), 2);
 }
 ```
 
@@ -597,16 +573,16 @@ fn test_backward_compatibility() {
 
 ### Gradual Adoption
 
-**Phase 1 (v0.2.0)**: Add new API, deprecate old
+**Phase 1 (v0.2.2)**: Added new API, deprecated old
 ```rust
-// Both work, new API encouraged
-msg.find_ie(IeType::NodeId)        // Deprecated
+// Both worked during v0.2.x, new API encouraged
+msg.find_ie(IeType::NodeId)        // Deprecated (removed in v0.3.0)
 msg.ies(IeType::NodeId).next()     // Recommended
 ```
 
-**Phase 2 (v0.3.0)**: Remove deprecated methods
+**Phase 2 (v0.3.0)**: Remove deprecated methods -- **DONE**
 ```rust
-// Only new API available
+// Only new API available (find_ie and find_all_ies have been removed)
 msg.ies(IeType::NodeId).next()
 ```
 

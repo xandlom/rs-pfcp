@@ -274,68 +274,6 @@ pub trait Message {
     /// ```
     fn ies(&self, ie_type: crate::ie::IeType) -> IeIter<'_>;
 
-    /// Get the first IE of a specific type.
-    ///
-    /// **Deprecated:** This method only returns the first IE, which can lead to bugs
-    /// when an IE appears multiple times. Use `ies(ie_type).next()` instead.
-    ///
-    /// # Migration
-    ///
-    /// ```rust
-    /// # use rs_pfcp::message::{Message, SessionEstablishmentRequest};
-    /// # use rs_pfcp::ie::IeType;
-    /// # fn example(msg: &SessionEstablishmentRequest) {
-    /// // Old way (deprecated)
-    /// # #[allow(deprecated)]
-    /// let node_id = msg.find_ie(IeType::NodeId);
-    ///
-    /// // New way (recommended)
-    /// let node_id = msg.ies(IeType::NodeId).next();
-    /// # }
-    /// ```
-    #[deprecated(
-        since = "0.2.2",
-        note = "Use `ies(ie_type).next()` instead. This method only returns the first IE, which can cause bugs with multiple IEs."
-    )]
-    fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie> {
-        self.ies(ie_type).next()
-    }
-
-    /// Get all IEs of a specific type as a vector.
-    ///
-    /// **Deprecated:** This method allocates a Vec. Use `ies(ie_type)` which returns
-    /// an iterator for better ergonomics and performance.
-    ///
-    /// # Migration
-    ///
-    /// ```rust
-    /// # use rs_pfcp::message::{Message, SessionEstablishmentRequest};
-    /// # use rs_pfcp::ie::IeType;
-    /// # fn example(msg: &SessionEstablishmentRequest) {
-    /// // Old way (deprecated)
-    /// # #[allow(deprecated)]
-    /// let pdrs = msg.find_all_ies(IeType::CreatePdr);
-    /// for pdr in pdrs {
-    ///     // Process
-    /// }
-    ///
-    /// // New way (recommended)
-    /// for pdr in msg.ies(IeType::CreatePdr) {
-    ///     // Process - no allocation!
-    /// }
-    ///
-    /// // If you really need a Vec
-    /// let pdrs: Vec<_> = msg.ies(IeType::CreatePdr).collect();
-    /// # }
-    /// ```
-    #[deprecated(
-        since = "0.2.2",
-        note = "Use `ies(ie_type)` instead, which returns an iterator. Call `.collect()` if you need a Vec."
-    )]
-    fn find_all_ies(&self, ie_type: crate::ie::IeType) -> Vec<&Ie> {
-        self.ies(ie_type).collect()
-    }
-
     /// Get all IEs from the message.
     ///
     /// Returns a vector containing references to all Information Elements
@@ -423,11 +361,6 @@ impl Message for Generic {
         IeIter::generic(&self.ies, ie_type)
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: crate::ie::IeType) -> Option<&Ie> {
-        self.ies.iter().find(|ie| ie.ie_type == ie_type)
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         self.ies.iter().collect()
     }
@@ -495,7 +428,6 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, PfcpError> {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{Ie, IeType};
@@ -691,72 +623,6 @@ mod tests {
         assert_eq!(msg.sequence(), SequenceNumber::new(100));
         msg.set_sequence(SequenceNumber::new(200));
         assert_eq!(msg.sequence(), SequenceNumber::new(200));
-    }
-
-    #[test]
-    fn test_generic_message_find_ie() {
-        let ies = vec![
-            Ie::new(IeType::Cause, vec![0x01]),
-            Ie::new(IeType::NodeId, vec![0x00, 0x01, 0x02, 0x03, 0x04]),
-            Ie::new(IeType::RecoveryTimeStamp, vec![0x00, 0x00, 0x00, 0x01]),
-        ];
-
-        let msg = Generic {
-            header: Header {
-                version: 1,
-                has_fo: false,
-                has_mp: false,
-                message_type: MsgType::Unknown,
-                length: 8,
-                seid: Seid(0),
-                sequence_number: SequenceNumber::new(1),
-                message_priority: 0,
-                has_seid: false,
-            },
-            ies,
-        };
-
-        // Find existing IE
-        let cause = msg.find_ie(IeType::Cause);
-        assert!(cause.is_some());
-        assert_eq!(cause.unwrap().ie_type, IeType::Cause);
-
-        // Find non-existent IE
-        let far_id = msg.find_ie(IeType::FarId);
-        assert!(far_id.is_none());
-    }
-
-    #[test]
-    fn test_generic_message_find_all_ies() {
-        let ies = vec![
-            Ie::new(IeType::Cause, vec![0x01]),
-            Ie::new(IeType::CreatePdr, vec![0x01, 0x02]),
-            Ie::new(IeType::CreatePdr, vec![0x03, 0x04]),
-            Ie::new(IeType::NodeId, vec![0x00, 0x01, 0x02, 0x03, 0x04]),
-        ];
-
-        let msg = Generic {
-            header: Header {
-                version: 1,
-                has_fo: false,
-                has_mp: false,
-                message_type: MsgType::Unknown,
-                length: 8,
-                seid: Seid(0),
-                sequence_number: SequenceNumber::new(1),
-                message_priority: 0,
-                has_seid: false,
-            },
-            ies,
-        };
-
-        // Default implementation returns single IE or empty vec
-        let cause_ies = msg.find_all_ies(IeType::Cause);
-        assert_eq!(cause_ies.len(), 1);
-
-        // Non-existent IE
-        let far_ies = msg.find_all_ies(IeType::FarId);
-        assert_eq!(far_ies.len(), 0);
     }
 
     #[test]
@@ -1092,7 +958,7 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         // Verify IE is preserved
-        let found_ie = parsed.find_ie(IeType::RecoveryTimeStamp);
+        let found_ie = parsed.ies(IeType::RecoveryTimeStamp).next();
         assert!(found_ie.is_some());
         assert_eq!(found_ie.unwrap().ie_type, IeType::RecoveryTimeStamp);
     }

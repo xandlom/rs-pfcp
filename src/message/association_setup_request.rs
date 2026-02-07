@@ -145,17 +145,6 @@ impl Message for AssociationSetupRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            IeType::RecoveryTimeStamp => Some(&self.recovery_time_stamp),
-            IeType::UpFunctionFeatures => self.up_function_features.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.recovery_time_stamp];
         if let Some(ref ie) = self.up_function_features {
@@ -419,7 +408,6 @@ impl AssociationSetupRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::node_id::NodeId;
@@ -708,31 +696,31 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie_node_id() {
+    fn test_ies_node_id() {
         let request = AssociationSetupRequestBuilder::new(6000)
             .node_id(Ipv4Addr::new(192, 168, 1, 1))
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        let found = request.find_ie(IeType::NodeId);
+        let found = request.ies(IeType::NodeId).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::NodeId);
     }
 
     #[test]
-    fn test_find_ie_recovery_timestamp() {
+    fn test_ies_recovery_timestamp() {
         let request = AssociationSetupRequestBuilder::new(7000)
             .node_id(Ipv4Addr::new(10, 1, 1, 1))
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        let found = request.find_ie(IeType::RecoveryTimeStamp);
+        let found = request.ies(IeType::RecoveryTimeStamp).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::RecoveryTimeStamp);
     }
 
     #[test]
-    fn test_find_ie_up_function_features() {
+    fn test_ies_up_function_features() {
         let up_features = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02]);
         let request = AssociationSetupRequestBuilder::new(8000)
             .node_id(Ipv4Addr::new(10, 2, 2, 2))
@@ -740,13 +728,13 @@ mod tests {
             .up_function_features(up_features.clone())
             .build();
 
-        let found = request.find_ie(IeType::UpFunctionFeatures);
+        let found = request.ies(IeType::UpFunctionFeatures).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &up_features);
     }
 
     #[test]
-    fn test_find_ie_cp_function_features() {
+    fn test_ies_cp_function_features() {
         let cp_features = Ie::new(IeType::CpFunctionFeatures, vec![0x03, 0x04]);
         let request = AssociationSetupRequestBuilder::new(9000)
             .node_id(Ipv4Addr::new(10, 3, 3, 3))
@@ -754,13 +742,13 @@ mod tests {
             .cp_function_features(cp_features.clone())
             .build();
 
-        let found = request.find_ie(IeType::CpFunctionFeatures);
+        let found = request.ies(IeType::CpFunctionFeatures).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &cp_features);
     }
 
     #[test]
-    fn test_find_ie_in_additional_ies() {
+    fn test_ies_in_additional_ies() {
         let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
         let request = AssociationSetupRequestBuilder::new(10000)
             .node_id(Ipv4Addr::new(10, 4, 4, 4))
@@ -768,19 +756,19 @@ mod tests {
             .ie(custom_ie.clone())
             .build();
 
-        let found = request.find_ie(IeType::UserPlaneIpResourceInformation);
+        let found = request.ies(IeType::UserPlaneIpResourceInformation).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &custom_ie);
     }
 
     #[test]
-    fn test_find_ie_not_found() {
+    fn test_ies_not_found() {
         let request = AssociationSetupRequestBuilder::new(11000)
             .node_id(Ipv4Addr::new(10, 5, 5, 5))
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        let found = request.find_ie(IeType::UpFunctionFeatures);
+        let found = request.ies(IeType::UpFunctionFeatures).next();
         assert!(found.is_none());
     }
 

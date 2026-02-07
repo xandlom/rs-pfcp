@@ -174,17 +174,6 @@ impl Message for AssociationUpdateResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            IeType::Cause => Some(&self.cause),
-            IeType::UpFunctionFeatures => self.up_function_features.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause];
         if let Some(ref ie) = self.up_function_features {
@@ -199,7 +188,6 @@ impl Message for AssociationUpdateResponse {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::{Cause, CauseValue};
@@ -285,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie() {
+    fn test_ies() {
         let node_id_ie = Ie::new(
             IeType::NodeId,
             NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 1))
@@ -300,10 +288,10 @@ mod tests {
         let message =
             AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None, Vec::new());
 
-        assert!(message.find_ie(IeType::NodeId).is_some());
-        assert!(message.find_ie(IeType::Cause).is_some());
-        assert!(message.find_ie(IeType::UpFunctionFeatures).is_none());
-        assert!(message.find_ie(IeType::Unknown).is_none());
+        assert!(message.ies(IeType::NodeId).next().is_some());
+        assert!(message.ies(IeType::Cause).next().is_some());
+        assert!(message.ies(IeType::UpFunctionFeatures).next().is_none());
+        assert!(message.ies(IeType::Unknown).next().is_none());
     }
 }
 
@@ -483,7 +471,6 @@ impl AssociationUpdateResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod builder_tests {
     use super::*;
     use crate::ie::cause::{Cause, CauseValue};

@@ -391,7 +391,7 @@ let session_request = SessionEstablishmentRequestBuilder::new(seid, seq)
 // Handle quota exhaustion reports from UPF
 match message.msg_type() {
     MsgType::SessionReportRequest => {
-        if let Some(usage_report) = message.find_ie(IeType::UsageReport) {
+        if let Some(usage_report) = message.ies(IeType::UsageReport).next() {
             let triggers = usage_report.usage_report_trigger();
 
             if triggers.contains(UsageReportTrigger::VOLTH) {

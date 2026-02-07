@@ -293,21 +293,6 @@ impl Message for SessionEstablishmentResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            IeType::Cause => Some(&self.cause),
-            IeType::Fseid => Some(&self.fseid),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::CreatedPdr => self.created_pdrs.first(),
-            IeType::PdnType => self.pdn_type.as_ref(),
-            IeType::LoadControlInformation => self.load_control_information.as_ref(),
-            IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause, &self.fseid];
         if let Some(ref ie) = self.offending_ie {
@@ -550,7 +535,6 @@ impl SessionEstablishmentResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::node_id::NodeId;
@@ -831,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie() {
+    fn test_ies() {
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xFFFF, 1900)
@@ -841,17 +825,17 @@ mod tests {
             .build()
             .unwrap();
 
-        let found = msg.find_ie(IeType::PdnType);
+        let found = msg.ies(IeType::PdnType).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::PdnType);
 
-        let cause_found = msg.find_ie(IeType::Cause);
+        let cause_found = msg.ies(IeType::Cause).next();
         assert!(cause_found.is_some());
 
-        let node_id_found = msg.find_ie(IeType::NodeId);
+        let node_id_found = msg.ies(IeType::NodeId).next();
         assert!(node_id_found.is_some());
 
-        let not_found = msg.find_ie(IeType::CreatedTrafficEndpoint);
+        let not_found = msg.ies(IeType::CreatedTrafficEndpoint).next();
         assert!(not_found.is_none());
     }
 

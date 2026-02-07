@@ -25,7 +25,7 @@ use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
 let seq = request.header.sequence_number;
 
 // Will this trait method always exist?
-let ie = request.find_ie(IeType::NodeId);
+let ie = request.ies(IeType::NodeId).next();
 ```
 
 ## Current State Analysis
@@ -89,8 +89,7 @@ pub trait Message {
     fn msg_type(&self) -> MsgType;
     fn seid(&self) -> Option<u64>;
     fn sequence(&self) -> u32;
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie>;
-    fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie>;
+    fn ies(&self, ie_type: IeType) -> IeIter<'_>;
 }
 ```
 

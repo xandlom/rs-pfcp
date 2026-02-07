@@ -329,49 +329,6 @@ impl Message for SessionEstablishmentRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            IeType::Fseid => Some(&self.fseid),
-            IeType::PdnType => self.pdn_type.as_ref(),
-            IeType::UserId => self.user_id.as_ref(),
-            IeType::Snssai => self.s_nssai.as_ref(),
-            IeType::TraceInformation => self.trace_information.as_ref(),
-            IeType::RecoveryTimeStamp => self.recovery_time_stamp.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            IeType::ApnDnn => self.apn_dnn.as_ref(),
-            IeType::UserPlaneInactivityTimer => self.user_plane_inactivity_timer.as_ref(),
-            IeType::PfcpsmReqFlags => self.pfcpsm_req_flags.as_ref(),
-            IeType::EthernetPduSessionInformation => self.ethernet_pdu_session_information.as_ref(),
-            IeType::CreatePdr => self.create_pdrs.first(),
-            IeType::CreateFar => self.create_fars.first(),
-            IeType::CreateUrr => self.create_urrs.first(),
-            IeType::CreateQer => self.create_qers.first(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
-    #[allow(deprecated)]
-    fn find_all_ies(&self, ie_type: crate::ie::IeType) -> Vec<&Ie> {
-        match ie_type {
-            IeType::CreatePdr => self.create_pdrs.iter().collect(),
-            IeType::CreateFar => self.create_fars.iter().collect(),
-            IeType::CreateUrr => self.create_urrs.iter().collect(),
-            IeType::CreateQer => self.create_qers.iter().collect(),
-            IeType::CreateBar => self.create_bars.iter().collect(),
-            IeType::CreateTrafficEndpoint => self.create_traffic_endpoints.iter().collect(),
-            _ => {
-                // For other types, return single IE as vector or empty vector
-                if let Some(ie) = self.find_ie(ie_type) {
-                    vec![ie]
-                } else {
-                    vec![]
-                }
-            }
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.fseid];
         result.extend(self.create_pdrs.iter());
@@ -815,7 +772,6 @@ impl SessionEstablishmentRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{
@@ -1323,7 +1279,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie() {
+    fn test_ies() {
         let (pdrs, fars) = create_minimal_pdr_far();
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
 
@@ -1336,14 +1292,14 @@ mod tests {
             .build()
             .unwrap();
 
-        let found = msg.find_ie(IeType::PdnType);
+        let found = msg.ies(IeType::PdnType).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::PdnType);
 
-        let node_found = msg.find_ie(IeType::NodeId);
+        let node_found = msg.ies(IeType::NodeId).next();
         assert!(node_found.is_some());
 
-        let not_found = msg.find_ie(IeType::Cause);
+        let not_found = msg.ies(IeType::Cause).next();
         assert!(not_found.is_none());
     }
 

@@ -133,16 +133,6 @@ impl Message for AssociationUpdateRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id),
-            IeType::UpFunctionFeatures => self.up_function_features.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id];
         if let Some(ref ie) = self.up_function_features {
@@ -279,7 +269,6 @@ impl AssociationUpdateRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::node_id::NodeId;

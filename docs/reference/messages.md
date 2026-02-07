@@ -230,7 +230,7 @@ All messages implement the `Message` trait providing:
 - `msg_type()`: Get message type enum
 - `seid()`: Get Session Endpoint Identifier
 - `sequence()`: Get sequence number
-- `find_ie()`: Locate specific Information Elements
+- `ies()`: Iterate/find specific Information Elements
 
 ### Builder Patterns
 **ALL messages now support builder patterns for consistent, ergonomic construction:**
@@ -328,7 +328,7 @@ let set_del_req = SessionSetDeletionRequestBuilder::new(seq)
 match msg.msg_type() {
     MsgType::SessionReportRequest => {
         // Check report type
-        if let Some(report_type_ie) = msg.find_ie(IeType::ReportType) {
+        if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
             // Process usage reports, quota exhaustion, etc.
         }
 
@@ -399,7 +399,7 @@ match rs_pfcp::message::parse(data) {
 // Check for required IEs before processing
 match msg.msg_type() {
     MsgType::SessionEstablishmentRequest => {
-        if msg.find_ie(IeType::NodeId).is_none() {
+        if msg.ies(IeType::NodeId).next().is_none() {
             // Missing required Node ID
             let cause = Ie::new(IeType::Cause, vec![CauseValue::MandatoryIeMissing as u8]);
             // Send error response
@@ -520,7 +520,7 @@ impl HeartbeatManager {
         self.failed_count = 0;
 
         // Check peer recovery timestamp for restarts
-        if let Some(peer_recovery) = msg.find_ie(IeType::RecoveryTimeStamp) {
+        if let Some(peer_recovery) = msg.ies(IeType::RecoveryTimeStamp).next() {
             let peer_ts = RecoveryTimeStamp::unmarshal(&peer_recovery.payload)?;
             if peer_ts.timestamp() > self.recovery_timestamp {
                 // Peer has restarted - need to re-establish associations

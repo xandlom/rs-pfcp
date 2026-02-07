@@ -168,26 +168,6 @@ impl Message for SessionReportRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::ReportType => self.report_type.as_ref(),
-            IeType::DownlinkDataServiceInformation => self.downlink_data_report.as_ref(),
-            IeType::LoadControlInformation => self.load_control_information.as_ref(),
-            IeType::OverloadControlInformation => self.overload_control_information.as_ref(),
-            _ => {
-                // Check usage reports first
-                if ie_type == IeType::UsageReportWithinSessionReportRequest
-                    && !self.usage_reports.is_empty()
-                {
-                    return Some(&self.usage_reports[0]);
-                }
-                // Then check additional IEs
-                self.ies.iter().find(|ie| ie.ie_type == ie_type)
-            }
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
         if let Some(ref ie) = self.report_type {
@@ -383,7 +363,6 @@ impl SessionReportRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::sequence_number::SequenceNumber;
@@ -428,7 +407,7 @@ mod tests {
         let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
 
         assert_eq!(req, unmarshaled);
-        assert_eq!(req.find_ie(IeType::ReportType), Some(&report_type_ie));
+        assert_eq!(req.ies(IeType::ReportType).next(), Some(&report_type_ie));
     }
 
     #[test]
@@ -454,7 +433,8 @@ mod tests {
         assert_eq!(req, unmarshaled);
         assert_eq!(req.usage_reports.len(), 1);
         assert_eq!(
-            req.find_ie(IeType::UsageReportWithinSessionReportRequest),
+            req.ies(IeType::UsageReportWithinSessionReportRequest)
+                .next(),
             Some(&usage_report_ie)
         );
     }
@@ -481,7 +461,7 @@ mod tests {
 
         assert_eq!(req, unmarshaled);
         assert_eq!(
-            req.find_ie(IeType::LoadControlInformation),
+            req.ies(IeType::LoadControlInformation).next(),
             Some(&load_control_ie)
         );
     }
@@ -577,7 +557,7 @@ mod tests {
     }
 
     #[test]
-    fn test_session_report_request_find_ie() {
+    fn test_session_report_request_ies() {
         let seid = 0x1122334455667788;
         let sequence = 0x112233;
 
@@ -594,13 +574,14 @@ mod tests {
             .ies(vec![unknown_ie.clone()])
             .build();
 
-        assert_eq!(req.find_ie(IeType::ReportType), Some(&report_type_ie));
+        assert_eq!(req.ies(IeType::ReportType).next(), Some(&report_type_ie));
         assert_eq!(
-            req.find_ie(IeType::UsageReportWithinSessionReportRequest),
+            req.ies(IeType::UsageReportWithinSessionReportRequest)
+                .next(),
             Some(&usage_report_ie)
         );
-        assert_eq!(req.find_ie(IeType::Timer), Some(&unknown_ie));
-        assert_eq!(req.find_ie(IeType::NodeId), None);
+        assert_eq!(req.ies(IeType::Timer).next(), Some(&unknown_ie));
+        assert_eq!(req.ies(IeType::NodeId).next(), None);
     }
 
     #[test]

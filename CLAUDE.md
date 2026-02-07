@@ -180,7 +180,7 @@ All PFCP messages implement the `Message` trait with:
 - `msg_type() -> MsgType` - Get message type
 - `sequence() -> u32` - Get sequence number
 - `seid() -> Option<u64>` - Get session endpoint ID (if applicable)
-- `find_ie(&self, ie_type: IeType) -> Option<&Ie>` - Find IE by type
+- `ies(&self, ie_type: IeType) -> IeIter<'_>` - Iterate IEs by type
 
 **Information Elements (IEs):**
 - Each IE type has its own module in `src/ie/`

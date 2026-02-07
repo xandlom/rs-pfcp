@@ -577,25 +577,6 @@ impl Message for SessionModificationRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Fseid => self.fseid.as_ref(),
-            IeType::PdnType => self.pdn_type.as_ref(),
-            IeType::UserId => self.user_id.as_ref(),
-            IeType::Snssai => self.s_nssai.as_ref(),
-            IeType::TraceInformation => self.trace_information.as_ref(),
-            IeType::RecoveryTimeStamp => self.recovery_time_stamp.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            IeType::ApnDnn => self.apn_dnn.as_ref(),
-            IeType::UserPlaneInactivityTimer => self.user_plane_inactivity_timer.as_ref(),
-            IeType::PfcpsmReqFlags => self.pfcpsm_req_flags.as_ref(),
-            IeType::NodeId => self.node_id.as_ref(),
-            IeType::EthernetContextInformation => self.ethernet_context_information.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
         if let Some(ref ie) = self.fseid {
@@ -1191,7 +1172,6 @@ impl SessionModificationRequestBuilder {
 impl SessionModificationRequest {}
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -1664,19 +1644,19 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie() {
+    fn test_ies() {
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
         let msg = SessionModificationRequestBuilder::new(0x7777, 900)
             .pdn_type(pdn_ie.clone())
             .build();
 
         // Test finding an IE that's in the explicit fields
-        let found = msg.find_ie(IeType::PdnType);
+        let found = msg.ies(IeType::PdnType).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::PdnType);
 
         // Test not finding an IE
-        let not_found = msg.find_ie(IeType::Cause);
+        let not_found = msg.ies(IeType::Cause).next();
         assert!(not_found.is_none());
     }
 
@@ -1687,7 +1667,7 @@ mod tests {
             .create_pdrs(vec![create_pdr.clone()])
             .build();
 
-        // CreatePdrs are stored in the create_pdrs field, not via find_ie
+        // CreatePdrs are stored in the create_pdrs field, not via ies()
         assert!(msg.create_pdrs.is_some());
         let pdrs = msg.create_pdrs.as_ref().unwrap();
         assert_eq!(pdrs.len(), 1);

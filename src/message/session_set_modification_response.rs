@@ -122,15 +122,6 @@ impl Message for SessionSetModificationResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
@@ -314,7 +305,6 @@ impl SessionSetModificationResponse {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{cause::Cause, Ie, IeType};
@@ -331,8 +321,8 @@ mod tests {
         assert_eq!(response.msg_type(), MsgType::SessionSetModificationResponse);
         assert_eq!(*response.sequence(), 123);
         assert_eq!(response.seid(), None);
-        assert!(response.find_ie(IeType::Cause).is_some());
-        assert_eq!(response.find_ie(IeType::Cause).unwrap().payload, vec![1]);
+        assert!(response.ies(IeType::Cause).next().is_some());
+        assert_eq!(response.ies(IeType::Cause).next().unwrap().payload, vec![1]);
     }
 
     #[test]
@@ -350,7 +340,7 @@ mod tests {
 
         assert!(response.offending_ie.is_some());
         assert_eq!(
-            response.find_ie(IeType::OffendingIe).unwrap().payload,
+            response.ies(IeType::OffendingIe).next().unwrap().payload,
             OffendingIe::new(IeType::AlternativeSmfIpAddress as u16)
                 .marshal()
                 .to_vec()

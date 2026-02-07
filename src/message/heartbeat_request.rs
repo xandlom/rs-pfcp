@@ -196,21 +196,6 @@ impl Message for HeartbeatRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        if self.recovery_time_stamp.ie_type == ie_type {
-            return Some(&self.recovery_time_stamp);
-        }
-        if self
-            .source_ip_address
-            .as_ref()
-            .is_some_and(|ie| ie.ie_type == ie_type)
-        {
-            return self.source_ip_address.as_ref();
-        }
-        self.ies.iter().find(|ie| ie.ie_type == ie_type)
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
         result.push(&self.recovery_time_stamp);
@@ -371,7 +356,6 @@ impl HeartbeatRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{recovery_time_stamp::RecoveryTimeStamp, source_ip_address::SourceIpAddress};
@@ -604,49 +588,49 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie_recovery_timestamp() {
+    fn test_ies_recovery_timestamp() {
         let request = HeartbeatRequestBuilder::new(1000)
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        let found = request.find_ie(IeType::RecoveryTimeStamp);
+        let found = request.ies(IeType::RecoveryTimeStamp).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::RecoveryTimeStamp);
     }
 
     #[test]
-    fn test_find_ie_source_ip_address() {
+    fn test_ies_source_ip_address() {
         let request = HeartbeatRequestBuilder::new(2000)
             .recovery_time_stamp(SystemTime::now())
             .source_ip_address(Ipv4Addr::new(10, 0, 0, 1))
             .build();
 
-        let found = request.find_ie(IeType::SourceIpAddress);
+        let found = request.ies(IeType::SourceIpAddress).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::SourceIpAddress);
     }
 
     #[test]
-    fn test_find_ie_in_additional_ies() {
+    fn test_ies_in_additional_ies() {
         let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
         let request = HeartbeatRequestBuilder::new(3000)
             .recovery_time_stamp(SystemTime::now())
             .ie(custom_ie.clone())
             .build();
 
-        let found = request.find_ie(IeType::UserPlaneIpResourceInformation);
+        let found = request.ies(IeType::UserPlaneIpResourceInformation).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &custom_ie);
     }
 
     #[test]
-    fn test_find_ie_not_found() {
+    fn test_ies_not_found() {
         let request = HeartbeatRequestBuilder::new(4000)
             .recovery_time_stamp(SystemTime::now())
             .build();
 
         // Recovery timestamp will be found, so test for a different IE
-        let found = request.find_ie(IeType::SourceIpAddress);
+        let found = request.ies(IeType::SourceIpAddress).next();
         assert!(found.is_none());
     }
 

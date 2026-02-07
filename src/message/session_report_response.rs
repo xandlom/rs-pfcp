@@ -191,29 +191,6 @@ impl Message for SessionReportResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::UpdateBarWithinSessionReportResponse => {
-                self.update_bar_within_session_report_response.as_ref()
-            }
-            IeType::PfcpsrrspFlags => self.pfcpsrrsp_flags.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            _ => {
-                // Check usage reports first
-                if ie_type == IeType::UsageReportWithinSessionReportRequest
-                    && !self.usage_reports.is_empty()
-                {
-                    return Some(&self.usage_reports[0]);
-                }
-                // Then check additional IEs
-                self.ies.iter().find(|ie| ie.ie_type == ie_type)
-            }
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {

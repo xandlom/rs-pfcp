@@ -149,16 +149,6 @@ impl Message for PfdManagementResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::OffendingIe => self.offending_ie.as_ref(),
-            IeType::NodeId => self.node_id.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
@@ -385,7 +375,6 @@ impl PfdManagementResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;
@@ -553,8 +542,8 @@ mod tests {
         assert_eq!(*response.sequence(), 12345);
         assert!(response.node_id.is_some());
 
-        // Verify the node_id can be retrieved via find_ie
-        let found_node_id = response.find_ie(IeType::NodeId);
+        // Verify the node_id can be retrieved via ies()
+        let found_node_id = response.ies(IeType::NodeId).next();
         assert!(found_node_id.is_some());
     }
 
@@ -568,8 +557,8 @@ mod tests {
         assert_eq!(*response.sequence(), 54321);
         assert!(response.node_id.is_some());
 
-        // Verify the node_id can be retrieved via find_ie
-        let found_node_id = response.find_ie(IeType::NodeId);
+        // Verify the node_id can be retrieved via ies()
+        let found_node_id = response.ies(IeType::NodeId).next();
         assert!(found_node_id.is_some());
     }
 
@@ -621,8 +610,8 @@ mod tests {
         assert!(response.node_id.is_none());
         assert!(response.offending_ie.is_none());
 
-        // find_ie should return None for NodeId
-        assert!(response.find_ie(IeType::NodeId).is_none());
+        // ies() should return None for NodeId
+        assert!(response.ies(IeType::NodeId).next().is_none());
     }
 
     #[test]

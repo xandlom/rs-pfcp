@@ -46,11 +46,11 @@ These items significantly improve API stability and developer experience:
 These items improve consistency and prevent common bugs:
 
 4. **[Unified IE Access Patterns](./unified-ie-access.md)**
-   - **Issue:** Inconsistent IE access (`find_ie` vs `find_all_ies`)
+   - **Issue:** Inconsistent IE access (`find_ie` vs `find_all_ies`) - resolved with `ies()` iterator
    - **Impact:** User confusion, "first only" bugs
    - **Effort:** Medium (2-3 days)
-   - **Breaking:** No (with deprecation)
-   - **Status:** 📋 Planned
+   - **Breaking:** No (with deprecation); deprecated methods removed in v0.3.0
+   - **Status:** ✅ Completed (v0.2.2; deprecated methods removed in v0.3.0)
 
 5. **[Newtype Wrappers](./newtype-wrappers.md)**
    - **Issue:** Primitive types in constructors (easy to swap)

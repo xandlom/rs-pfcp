@@ -123,24 +123,6 @@ impl Message for SessionDeletionRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        if let Some(ie) = self.tl_container.iter().find(|ie| ie.ie_type == ie_type) {
-            return Some(ie);
-        }
-        if let Some(ie) = &self.node_id {
-            if ie.ie_type == ie_type {
-                return Some(ie);
-            }
-        }
-        if let Some(ie) = &self.cp_fseid {
-            if ie.ie_type == ie_type {
-                return Some(ie);
-            }
-        }
-        self.ies.iter().find(|ie| ie.ie_type == ie_type)
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
         result.extend(self.tl_container.iter());
@@ -392,7 +374,6 @@ impl SessionDeletionRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::fseid::Fseid;

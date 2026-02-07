@@ -136,15 +136,6 @@ impl Message for AssociationReleaseResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::NodeId => Some(&self.node_id),
-            _ => None,
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         vec![&self.cause, &self.node_id]
     }
@@ -273,7 +264,6 @@ impl AssociationReleaseResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::{cause::*, node_id::NodeId};

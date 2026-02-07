@@ -26,7 +26,7 @@ pub trait Message {
     fn msg_type(&self) -> MsgType;          // Get message type
     fn seid(&self) -> Option<u64>;          // Session Endpoint ID
     fn sequence(&self) -> u32;              // Message sequence number
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie>; // Find specific IE
+    fn ies(&self, ie_type: IeType) -> IeIter<'_>;      // Iterate/find IEs by type
 }
 ```
 
@@ -170,7 +170,7 @@ use rs_pfcp::ie::{UsageReportTrigger, UsageReport};
 // Handle usage reports (UPF → SMF)
 fn handle_usage_report(message: &SessionReportRequest) -> Result<SessionReportResponse, Box<dyn Error>> {
     // Check report type
-    if let Some(report_type_ie) = message.find_ie(IeType::ReportType) {
+    if let Some(report_type_ie) = message.ies(IeType::ReportType).next() {
         let report_type = ReportType::unmarshal(&report_type_ie.payload)?;
 
         if report_type.contains(ReportTypeFlags::USAR) {
@@ -221,7 +221,7 @@ async fn establish_association(peer_addr: SocketAddr) -> Result<(), Box<dyn Erro
     let response: AssociationSetupResponse = send_and_await_response(peer_addr, request).await?;
 
     // Check if association was accepted
-    if let Some(cause_ie) = response.find_ie(IeType::Cause) {
+    if let Some(cause_ie) = response.ies(IeType::Cause).next() {
         let cause = Cause::unmarshal(&cause_ie.payload)?;
         match cause.cause_value() {
             CauseValue::RequestAccepted => {
@@ -291,7 +291,7 @@ fn validate_session_establishment(message: &dyn Message) -> Result<(), PfcpError
     let required_ies = [IeType::NodeId, IeType::Fseid];
 
     for &ie_type in &required_ies {
-        if message.find_ie(ie_type).is_none() {
+        if message.ies(ie_type).next().is_none() {
             return Err(PfcpError::ProtocolError(CauseValue::MandatoryIeMissing));
         }
     }
@@ -436,7 +436,7 @@ fn debug_message(data: &[u8]) -> Result<(), Box<dyn Error>> {
     println!("Message JSON:\n{}", message.to_json_pretty()?);
 
     // Inspect specific IEs
-    if let Some(fseid_ie) = message.find_ie(IeType::Fseid) {
+    if let Some(fseid_ie) = message.ies(IeType::Fseid).next() {
         let fseid = Fseid::unmarshal(&fseid_ie.payload)?;
         println!("F-SEID: Session ID={:016x}, IP={}",
                  fseid.seid(), fseid.ipv4_address().unwrap_or("N/A".parse().unwrap()));
@@ -476,8 +476,8 @@ mod tests {
         assert_eq!(parsed_message.sequence(), 42);
 
         // Verify IEs are preserved
-        assert!(parsed_message.find_ie(IeType::NodeId).is_some());
-        assert!(parsed_message.find_ie(IeType::Fseid).is_some());
+        assert!(parsed_message.ies(IeType::NodeId).next().is_some());
+        assert!(parsed_message.ies(IeType::Fseid).next().is_some());
     }
 
     #[test]

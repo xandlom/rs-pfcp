@@ -153,18 +153,6 @@ impl Message for AssociationSetupResponse {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::Cause => Some(&self.cause),
-            IeType::NodeId => Some(&self.node_id),
-            IeType::UpFunctionFeatures => self.up_function_features.as_ref(),
-            IeType::CpFunctionFeatures => self.cp_function_features.as_ref(),
-            IeType::RecoveryTimeStamp => self.recovery_time_stamp.as_ref(),
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause, &self.node_id];
         if let Some(ref ie) = self.up_function_features {
@@ -465,7 +453,6 @@ impl AssociationSetupResponseBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::cause::*;
@@ -822,31 +809,31 @@ mod tests {
     }
 
     #[test]
-    fn test_find_ie_cause() {
+    fn test_ies_cause() {
         let response = AssociationSetupResponseBuilder::new(9000)
             .cause_accepted()
             .node_id(Ipv4Addr::new(10, 2, 2, 2))
             .build();
 
-        let found = response.find_ie(IeType::Cause);
+        let found = response.ies(IeType::Cause).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::Cause);
     }
 
     #[test]
-    fn test_find_ie_node_id() {
+    fn test_ies_node_id() {
         let response = AssociationSetupResponseBuilder::new(10000)
             .cause_accepted()
             .node_id(Ipv4Addr::new(10, 3, 3, 3))
             .build();
 
-        let found = response.find_ie(IeType::NodeId);
+        let found = response.ies(IeType::NodeId).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::NodeId);
     }
 
     #[test]
-    fn test_find_ie_up_function_features() {
+    fn test_ies_up_function_features() {
         let up_features = Ie::new(IeType::UpFunctionFeatures, vec![0x01, 0x02]);
         let response = AssociationSetupResponseBuilder::new(11000)
             .cause_accepted()
@@ -854,13 +841,13 @@ mod tests {
             .up_function_features(up_features.clone())
             .build();
 
-        let found = response.find_ie(IeType::UpFunctionFeatures);
+        let found = response.ies(IeType::UpFunctionFeatures).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &up_features);
     }
 
     #[test]
-    fn test_find_ie_cp_function_features() {
+    fn test_ies_cp_function_features() {
         let cp_features = Ie::new(IeType::CpFunctionFeatures, vec![0x03, 0x04]);
         let response = AssociationSetupResponseBuilder::new(12000)
             .cause_accepted()
@@ -868,26 +855,26 @@ mod tests {
             .cp_function_features(cp_features.clone())
             .build();
 
-        let found = response.find_ie(IeType::CpFunctionFeatures);
+        let found = response.ies(IeType::CpFunctionFeatures).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &cp_features);
     }
 
     #[test]
-    fn test_find_ie_recovery_timestamp() {
+    fn test_ies_recovery_timestamp() {
         let response = AssociationSetupResponseBuilder::new(13000)
             .cause_accepted()
             .node_id(Ipv4Addr::new(10, 6, 6, 6))
             .recovery_time_stamp(SystemTime::now())
             .build();
 
-        let found = response.find_ie(IeType::RecoveryTimeStamp);
+        let found = response.ies(IeType::RecoveryTimeStamp).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap().ie_type, IeType::RecoveryTimeStamp);
     }
 
     #[test]
-    fn test_find_ie_in_additional_ies() {
+    fn test_ies_in_additional_ies() {
         let custom_ie = Ie::new(IeType::UserPlaneIpResourceInformation, vec![0xAA, 0xBB]);
         let response = AssociationSetupResponseBuilder::new(14000)
             .cause_accepted()
@@ -895,19 +882,19 @@ mod tests {
             .ie(custom_ie.clone())
             .build();
 
-        let found = response.find_ie(IeType::UserPlaneIpResourceInformation);
+        let found = response.ies(IeType::UserPlaneIpResourceInformation).next();
         assert!(found.is_some());
         assert_eq!(found.unwrap(), &custom_ie);
     }
 
     #[test]
-    fn test_find_ie_not_found() {
+    fn test_ies_not_found() {
         let response = AssociationSetupResponseBuilder::new(15000)
             .cause_accepted()
             .node_id(Ipv4Addr::new(10, 8, 8, 8))
             .build();
 
-        let found = response.find_ie(IeType::UpFunctionFeatures);
+        let found = response.ies(IeType::UpFunctionFeatures).next();
         assert!(found.is_none());
     }
 

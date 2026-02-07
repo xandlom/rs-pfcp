@@ -117,7 +117,7 @@ This document tracks the actual implementation status of items from API-IMPROVEM
   - Created `src/message/ie_iter.rs` with IeIter infrastructure (361 lines)
   - Added `ies()` method to Message trait
   - Implemented for all 26 message types (100% coverage)
-  - Deprecated `find_ie()` and `find_all_ies()` with clear migration path
+  - Deprecated `find_ie()` and `find_all_ies()` with clear migration path (removed in v0.3.0)
 - **Tests:** 11 comprehensive tests in `tests/ie_iteration_tests.rs`
 - **Examples:** Updated all examples to use new iterator API
 - **Benefits:**

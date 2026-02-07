@@ -35,7 +35,7 @@ pub struct SessionSetModificationRequest {
     pub group_ids: Option<Vec<GroupId>>,
     pub cp_ip_addresses: Option<Vec<CpIpAddress>>,
     pub ies: Vec<Ie>,
-    // Raw IEs for backwards compatibility with find_ie
+    // Raw IEs for additional/unknown IE types
     node_id_ie: Ie,
     alternative_smf_ip_address_ie: Ie,
     fq_csids_ies: Option<Vec<Ie>>,
@@ -248,65 +248,6 @@ impl Message for SessionSetModificationRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => Some(&self.node_id_ie),
-            IeType::AlternativeSmfIpAddress => Some(&self.alternative_smf_ip_address_ie),
-            IeType::FqCsid => {
-                if let Some(ies) = &self.fq_csids_ies {
-                    ies.first()
-                } else {
-                    None
-                }
-            }
-            IeType::GroupId => {
-                if let Some(ies) = &self.group_ids_ies {
-                    ies.first()
-                } else {
-                    None
-                }
-            }
-            IeType::CpIpAddress => {
-                if let Some(ies) = &self.cp_ip_addresses_ies {
-                    ies.first()
-                } else {
-                    None
-                }
-            }
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
-    #[allow(deprecated)]
-    fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie> {
-        match ie_type {
-            IeType::AlternativeSmfIpAddress => vec![&self.alternative_smf_ip_address_ie],
-            IeType::FqCsid => {
-                if let Some(ies) = &self.fq_csids_ies {
-                    ies.iter().collect()
-                } else {
-                    vec![]
-                }
-            }
-            IeType::GroupId => {
-                if let Some(ies) = &self.group_ids_ies {
-                    ies.iter().collect()
-                } else {
-                    vec![]
-                }
-            }
-            IeType::CpIpAddress => {
-                if let Some(ies) = &self.cp_ip_addresses_ies {
-                    ies.iter().collect()
-                } else {
-                    vec![]
-                }
-            }
-            _ => self.ies.iter().filter(|ie| ie.ie_type == ie_type).collect(),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.alternative_smf_ip_address_ie];
         if let Some(ref vec) = self.fq_csids_ies {
@@ -482,7 +423,6 @@ impl SessionSetModificationRequestBuilder {
 impl SessionSetModificationRequest {}
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::IeType;
@@ -501,8 +441,11 @@ mod tests {
         assert_eq!(request.msg_type(), MsgType::SessionSetModificationRequest);
         assert_eq!(*request.sequence(), 123);
         assert_eq!(request.seid(), None);
-        assert!(request.find_ie(IeType::NodeId).is_some());
-        assert!(request.find_ie(IeType::AlternativeSmfIpAddress).is_some());
+        assert!(request.ies(IeType::NodeId).next().is_some());
+        assert!(request
+            .ies(IeType::AlternativeSmfIpAddress)
+            .next()
+            .is_some());
     }
 
     #[test]
@@ -578,7 +521,7 @@ mod tests {
     }
 
     #[test]
-    fn test_session_set_modification_request_find_all_ies() {
+    fn test_session_set_modification_request_ies_collect() {
         let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
         let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
         let fq_csid1 = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
@@ -592,7 +535,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let all_fq_csids = request.find_all_ies(IeType::FqCsid);
+        let all_fq_csids: Vec<_> = request.ies(IeType::FqCsid).collect();
         assert_eq!(all_fq_csids.len(), 2);
     }
 }

@@ -164,37 +164,6 @@ impl Message for PfdManagementRequest {
         }
     }
 
-    #[allow(deprecated)]
-    fn find_ie(&self, ie_type: IeType) -> Option<&Ie> {
-        match ie_type {
-            IeType::NodeId => {
-                // For type-safe implementation, we need to convert on-demand
-                // This is not ideal, but maintains compatibility with the trait
-                // In practice, users should access the typed fields directly
-                None // Type-safe access via .node_id field
-            }
-            IeType::ApplicationIdsPfds => {
-                // Type-safe access via .application_ids_pfds field
-                None
-            }
-            _ => self.ies.iter().find(|ie| ie.ie_type == ie_type),
-        }
-    }
-
-    fn find_all_ies(&self, ie_type: IeType) -> Vec<&Ie> {
-        match ie_type {
-            IeType::NodeId => {
-                // Type-safe access via .node_id field
-                vec![]
-            }
-            IeType::ApplicationIdsPfds => {
-                // Type-safe access via .application_ids_pfds field
-                vec![]
-            }
-            _ => self.ies(ie_type).collect(),
-        }
-    }
-
     fn all_ies(&self) -> Vec<&Ie> {
         // Note: PfdManagementRequest uses type-safe fields (NodeId and ApplicationIdsPfds)
         // that are not stored as Ie. Only return IEs from the ies vector.
@@ -273,7 +242,6 @@ impl PfdManagementRequestBuilder {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::ie::application_id::ApplicationId;
@@ -538,11 +506,11 @@ mod tests {
         assert_eq!(request.ies.len(), 1);
         assert_eq!(request.ies[0], other_ie);
 
-        // find_ie returns None for type-safe fields (use direct field access instead)
-        assert_eq!(request.find_ie(IeType::NodeId), None);
-        assert_eq!(request.find_ie(IeType::ApplicationIdsPfds), None);
+        // ies() returns None for type-safe fields (use direct field access instead)
+        assert_eq!(request.ies(IeType::NodeId).next(), None);
+        assert_eq!(request.ies(IeType::ApplicationIdsPfds).next(), None);
 
-        // find_ie still works for other IEs
-        assert_eq!(request.find_ie(IeType::Unknown), Some(&other_ie));
+        // ies() still works for other IEs
+        assert_eq!(request.ies(IeType::Unknown).next(), Some(&other_ie));
     }
 }

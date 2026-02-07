@@ -140,22 +140,22 @@ fn read_and_parse(path: &Path) -> Result<Message, PfcpError> {
 
 ### What Changed
 
-IE access patterns are now consistent across all message types. All messages support both `find_ie()` (first match) and `find_all_ies()` (all matches).
+IE access patterns are now consistent across all message types. All messages support the unified `ies()` iterator API.
 
 ### Migration Required
 
 **Before (v0.1.x):**
 ```rust
 // Inconsistent patterns
-let ie = request.find_ie(IeType::NodeId);  // Some messages
-let ies = request.get_create_pdrs();       // Other messages
+let ie = request.find_ie(IeType::NodeId);   // Some messages (deprecated, removed in v0.3.0)
+let ies = request.get_create_pdrs();        // Other messages
 ```
 
 **After (v0.2.0):**
 ```rust
-// Consistent pattern for all messages
-let ie = request.find_ie(IeType::NodeId);
-let all_ies = request.find_all_ies(IeType::CreatePdr);
+// Consistent pattern for all messages (ies() iterator API)
+let ie = request.ies(IeType::NodeId).next();
+let all_ies: Vec<_> = request.ies(IeType::CreatePdr).collect();
 
 // Typed accessors for known fields (preferred)
 let node_id = request.node_id();
@@ -164,10 +164,12 @@ let create_pdrs = request.create_pdrs();
 
 ### Deprecations
 
-The following methods are deprecated in v0.2.0 and will be removed in v0.3.0:
+The following methods were deprecated in v0.2.0 and removed in v0.3.0:
 
-- `get_create_pdrs()` → Use `create_pdrs()` or `find_all_ies(IeType::CreatePdr)`
-- `get_create_fars()` → Use `create_fars()` or `find_all_ies(IeType::CreateFar)`
+- `get_create_pdrs()` --> Use `create_pdrs()` or `ies(IeType::CreatePdr).collect()`
+- `get_create_fars()` --> Use `create_fars()` or `ies(IeType::CreateFar).collect()`
+- `find_ie()` --> Use `ies(ie_type).next()`
+- `find_all_ies()` --> Use `ies(ie_type).collect()`
 
 ## Migration Checklist
 

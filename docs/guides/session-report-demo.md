@@ -292,7 +292,7 @@ fn handle_session_report_advanced(
     println!("  Received Session Report Request");
 
     // Detailed report type analysis
-    if let Some(report_type_ie) = msg.find_ie(IeType::ReportType) {
+    if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
         let report_type = report_type_ie.payload[0];
         match report_type {
             0x02 => {
@@ -444,7 +444,7 @@ impl SessionReportMetrics {
 use slog::{Logger, info, warn, error};
 
 fn log_session_report(logger: &Logger, msg: &dyn Message) {
-    if let Some(report_type_ie) = msg.find_ie(IeType::ReportType) {
+    if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
         let report_type = report_type_ie.payload[0];
 
         match report_type {
