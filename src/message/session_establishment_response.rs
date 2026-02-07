@@ -107,6 +107,11 @@ impl SessionEstablishmentResponse {
 
     // Raw IE accessors (compatibility layer)
 
+    /// Returns the raw node ID IE.
+    pub fn node_id_ie(&self) -> &Ie {
+        &self.node_id
+    }
+
     /// Returns the raw cause IE.
     pub fn cause_ie(&self) -> &Ie {
         &self.cause
@@ -410,8 +415,49 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
-    /// Sets the Node ID IE.
-    pub fn node_id(mut self, node_id: Ie) -> Self {
+    /// Sets the Node ID from an IP address (IPv4 or IPv6).
+    ///
+    /// This is a convenience method that accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`.
+    /// For FQDN node IDs, use [`node_id_fqdn`]. For full control, use [`node_id_ie`].
+    ///
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    /// [`node_id_ie`]: #method.node_id_ie
+    pub fn node_id<T>(mut self, node_id: T) -> Self
+    where
+        T: Into<std::net::IpAddr>,
+    {
+        use crate::ie::node_id::NodeId;
+        let ip_addr = node_id.into();
+        let node = match ip_addr {
+            std::net::IpAddr::V4(v4) => NodeId::new_ipv4(v4),
+            std::net::IpAddr::V6(v6) => NodeId::new_ipv6(v6),
+        };
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the Node ID from a string (FQDN).
+    ///
+    /// This is a convenience method for FQDN node IDs.
+    /// For IP addresses, use [`node_id`]. For full control, use [`node_id_ie`].
+    ///
+    /// [`node_id`]: #method.node_id
+    /// [`node_id_ie`]: #method.node_id_ie
+    pub fn node_id_fqdn(mut self, fqdn: &str) -> Self {
+        use crate::ie::node_id::NodeId;
+        let node = NodeId::new_fqdn(fqdn);
+        self.node_id = Some(node.to_ie());
+        self
+    }
+
+    /// Sets the Node ID IE directly.
+    ///
+    /// This method provides full control over the IE construction.
+    /// For common cases, use [`node_id`] or [`node_id_fqdn`].
+    ///
+    /// [`node_id`]: #method.node_id
+    /// [`node_id_fqdn`]: #method.node_id_fqdn
+    pub fn node_id_ie(mut self, node_id: Ie) -> Self {
         self.node_id = Some(node_id);
         self
     }
@@ -552,7 +598,7 @@ mod tests {
     #[test]
     fn test_builder_accepted_minimal() {
         let msg = SessionEstablishmentResponseBuilder::accepted(0x1234, 100)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
             .build()
             .unwrap();
@@ -565,7 +611,7 @@ mod tests {
     #[test]
     fn test_builder_rejected() {
         let msg = SessionEstablishmentResponseBuilder::rejected(0xABCD, 200)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x9876, Ipv4Addr::new(10, 0, 0, 2))
             .build()
             .unwrap();
@@ -578,7 +624,7 @@ mod tests {
     fn test_builder_with_fseid_ipv6() {
         let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
         let msg = SessionEstablishmentResponseBuilder::accepted(0x1111, 300)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x2222, ipv6)
             .build()
             .unwrap();
@@ -590,12 +636,61 @@ mod tests {
     fn test_builder_with_fseid_ipaddr() {
         let ip = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
         let msg = SessionEstablishmentResponseBuilder::accepted(0x3333, 400)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x4444, ip)
             .build()
             .unwrap();
 
         assert_eq!(msg.fseid_ie().ie_type, IeType::Fseid);
+    }
+
+    // ========================================================================
+    // Builder Ergonomic Node ID Tests
+    // ========================================================================
+
+    #[test]
+    fn test_builder_ergonomic_node_id_ipv4() {
+        let ipv4 = Ipv4Addr::new(192, 168, 1, 1);
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x1234, 100)
+            .node_id(ipv4)
+            .fseid(0x5678, Ipv4Addr::new(10, 0, 0, 1))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.seid(), Some(Seid(0x1234)));
+        assert_eq!(*msg.sequence(), 100);
+        assert_eq!(msg.node_id_ie().ie_type, IeType::NodeId);
+
+        // Verify the node ID unmarshals correctly
+        let node = NodeId::unmarshal(&msg.node_id_ie().payload).unwrap();
+        assert_eq!(node, NodeId::IPv4(ipv4));
+    }
+
+    #[test]
+    fn test_builder_ergonomic_node_id_ipv6() {
+        let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xABCD, 200)
+            .node_id(ipv6)
+            .fseid(0x9876, Ipv4Addr::new(10, 0, 0, 2))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.seid(), Some(Seid(0xABCD)));
+        let node = NodeId::unmarshal(&msg.node_id_ie().payload).unwrap();
+        assert_eq!(node, NodeId::IPv6(ipv6));
+    }
+
+    #[test]
+    fn test_builder_ergonomic_node_id_fqdn() {
+        let fqdn = "upf.example.com";
+        let msg = SessionEstablishmentResponseBuilder::accepted(0x1111, 300)
+            .node_id_fqdn(fqdn)
+            .fseid(0x2222, Ipv4Addr::new(10, 0, 0, 3))
+            .build()
+            .unwrap();
+
+        let node = NodeId::unmarshal(&msg.node_id_ie().payload).unwrap();
+        assert_eq!(node, NodeId::FQDN(fqdn.to_string()));
     }
 
     // ========================================================================
@@ -607,7 +702,7 @@ mod tests {
         let created_pdr = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0x5555, 500)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x6666, Ipv4Addr::new(10, 0, 0, 1))
             .created_pdr(created_pdr)
             .build()
@@ -623,7 +718,7 @@ mod tests {
         let pdr3 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 3]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0x7777, 600)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x8888, Ipv4Addr::new(10, 0, 0, 1))
             .created_pdr(pdr1)
             .created_pdr(pdr2)
@@ -643,7 +738,7 @@ mod tests {
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0x9999, 700)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xAAAA, Ipv4Addr::new(10, 0, 0, 1))
             .pdn_type(pdn_ie)
             .build()
@@ -657,7 +752,7 @@ mod tests {
         let offending = Ie::new(IeType::OffendingIe, vec![0, 1, 0, 2, 0, 1]);
 
         let msg = SessionEstablishmentResponseBuilder::rejected(0xBBBB, 800)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xCCCC, Ipv4Addr::new(10, 0, 0, 1))
             .offending_ie(offending)
             .build()
@@ -671,7 +766,7 @@ mod tests {
         let load_ie = Ie::new(IeType::LoadControlInformation, vec![0, 1, 2, 3]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xDDDD, 900)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xEEEE, Ipv4Addr::new(10, 0, 0, 1))
             .load_control_information(load_ie)
             .build()
@@ -685,7 +780,7 @@ mod tests {
         let overload_ie = Ie::new(IeType::OverloadControlInformation, vec![0, 1, 2, 3]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xFFFF, 1000)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x1111, Ipv4Addr::new(10, 0, 0, 1))
             .overload_control_information(overload_ie)
             .build()
@@ -701,7 +796,7 @@ mod tests {
     #[test]
     fn test_builder_validation_missing_fseid() {
         let result = SessionEstablishmentResponseBuilder::accepted(0x2222, 1100)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .build();
 
         assert!(result.is_err());
@@ -720,7 +815,7 @@ mod tests {
     #[test]
     fn test_marshal_unmarshal_accepted() {
         let original = SessionEstablishmentResponseBuilder::accepted(0x3333, 1200)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x4444, Ipv4Addr::new(10, 0, 0, 1))
             .build()
             .unwrap();
@@ -736,7 +831,7 @@ mod tests {
     #[test]
     fn test_marshal_unmarshal_rejected() {
         let original = SessionEstablishmentResponseBuilder::rejected(0x5555, 1300)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x6666, Ipv4Addr::new(10, 0, 0, 1))
             .build()
             .unwrap();
@@ -753,7 +848,7 @@ mod tests {
         let pdr = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 1]);
 
         let original = SessionEstablishmentResponseBuilder::accepted(0x7777, 1400)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x8888, Ipv4Addr::new(10, 0, 0, 1))
             .created_pdr(pdr)
             .build()
@@ -770,7 +865,7 @@ mod tests {
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
 
         let original = SessionEstablishmentResponseBuilder::accepted(0x9999, 1500)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xAAAA, Ipv4Addr::new(10, 0, 0, 1))
             .pdn_type(pdn_ie)
             .build()
@@ -789,7 +884,7 @@ mod tests {
     #[test]
     fn test_message_trait_methods() {
         let msg = SessionEstablishmentResponseBuilder::accepted(0xBBBB, 1600)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xCCCC, Ipv4Addr::new(10, 0, 0, 1))
             .build()
             .unwrap();
@@ -804,7 +899,7 @@ mod tests {
     #[test]
     fn test_message_set_sequence() {
         let mut msg = SessionEstablishmentResponseBuilder::accepted(0xDDDD, 1700)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xEEEE, Ipv4Addr::new(10, 0, 0, 1))
             .build()
             .unwrap();
@@ -819,7 +914,7 @@ mod tests {
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xFFFF, 1900)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x1111, Ipv4Addr::new(10, 0, 0, 1))
             .pdn_type(pdn_ie.clone())
             .build()
@@ -846,7 +941,7 @@ mod tests {
     #[test]
     fn test_direct_marshal_from_builder() {
         let bytes = SessionEstablishmentResponseBuilder::accepted(0x2222, 2000)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x3333, Ipv4Addr::new(10, 0, 0, 1))
             .marshal()
             .unwrap();
@@ -861,7 +956,7 @@ mod tests {
         let pdn_ie = Ie::new(IeType::PdnType, vec![0x01]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0x4444, 2100)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x5555, Ipv4Addr::new(10, 0, 0, 1))
             .created_pdr(pdr)
             .pdn_type(pdn_ie)
@@ -882,7 +977,7 @@ mod tests {
         let pdr2 = Ie::new(IeType::CreatedPdr, vec![0, 56, 0, 2, 0, 2]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0x12345678, 2200)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x87654321, Ipv4Addr::new(192, 168, 1, 20))
             .created_pdr(pdr1)
             .created_pdr(pdr2)
@@ -897,7 +992,7 @@ mod tests {
     #[test]
     fn test_successful_ipv6_session() {
         let msg = SessionEstablishmentResponseBuilder::accepted(0xABCDEF01, 2300)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x01FEDCBA, Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 2))
             .pdn_type(Ie::new(IeType::PdnType, vec![0x02]))
             .build()
@@ -909,7 +1004,7 @@ mod tests {
     #[test]
     fn test_successful_dual_stack_session() {
         let msg = SessionEstablishmentResponseBuilder::accepted(0x11223344, 2400)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x44332211, Ipv4Addr::new(10, 0, 0, 2))
             .pdn_type(Ie::new(IeType::PdnType, vec![0x03]))
             .build()
@@ -923,7 +1018,7 @@ mod tests {
         let offending = Ie::new(IeType::OffendingIe, vec![0, 1, 0, 2, 0, 56]);
 
         let msg = SessionEstablishmentResponseBuilder::rejected(0x55667788, 2500)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x88776655, Ipv4Addr::new(10, 0, 0, 1))
             .offending_ie(offending)
             .build()
@@ -937,7 +1032,7 @@ mod tests {
         let load_ie = Ie::new(IeType::LoadControlInformation, vec![0, 1, 2, 3]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0x99AABBCC, 2600)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0xCCBBAA99, Ipv4Addr::new(10, 0, 0, 1))
             .load_control_information(load_ie)
             .build()
@@ -951,7 +1046,7 @@ mod tests {
         let overload_ie = Ie::new(IeType::OverloadControlInformation, vec![0, 1, 2, 3]);
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xDDEEFF00, 2700)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x00FFEEDD, Ipv4Addr::new(10, 0, 0, 1))
             .overload_control_information(overload_ie)
             .build()
@@ -963,7 +1058,7 @@ mod tests {
     #[test]
     fn test_empty_created_pdrs_vec() {
         let msg = SessionEstablishmentResponseBuilder::accepted(0x11111111, 2800)
-            .node_id(test_node_id())
+            .node_id_ie(test_node_id())
             .fseid(0x22222222, Ipv4Addr::new(10, 0, 0, 1))
             // No created PDRs in this case
             .build()

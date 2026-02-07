@@ -811,7 +811,7 @@ mod tests {
         use std::net::{IpAddr, Ipv4Addr};
 
         let msg = SessionEstablishmentResponseBuilder::accepted(0xABCDEF, 77777)
-            .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 100)).to_ie())
+            .node_id(Ipv4Addr::new(10, 0, 0, 100))
             .fseid(0xABCDEF, IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)))
             .marshal()
             .unwrap();

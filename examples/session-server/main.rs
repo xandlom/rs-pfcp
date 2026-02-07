@@ -1,5 +1,45 @@
 // examples/session-server/main.rs
 //
+//! # PFCP Session Server Example
+//!
+//! This example implements a UPF (User Plane Function) simulator that demonstrates:
+//! - PFCP association and session management request handling
+//! - Server-side F-TEID allocation with multiple strategies (IPv4, IPv6, dual-stack, CHOOSE flags)
+//! - Created PDR response construction with proper validation
+//! - Usage reporting simulation with quota exhaustion scenarios
+//! - Comprehensive session state management
+//!
+//! ## Usage
+//!
+//! ```bash
+//! # Basic usage (binds to loopback interface)
+//! cargo run --example session-server -- --interface lo --port 8805
+//!
+//! # Enable verbose output to see YAML/JSON message dumps
+//! cargo run --example session-server -- --interface lo --port 8805 --verbose
+//!
+//! # Use with session-client for full testing
+//! cargo run --example session-client -- --address 127.0.0.1 --sessions 3
+//! ```
+//!
+//! ## Key Features Demonstrated
+//!
+//! ### Server-Side F-TEID Allocation
+//! - Standard IPv4 F-TEID allocation for uplink PDRs
+//! - Dual-stack (IPv4+IPv6) F-TEID for downlink PDRs
+//! - CHOOSE flag usage for dynamic UPF address selection
+//!
+//! ### Session Management
+//! - Association setup/update/release handling
+//! - Session establishment with Created PDR responses
+//! - Session modification and deletion
+//! - Heartbeat request/response (bidirectional keepalive)
+//!
+//! ### Usage Reporting
+//! - Simulated quota exhaustion after 2 seconds
+//! - Session Report Request generation with volume measurements
+//! - Duration tracking and usage report triggers
+//
 // Enhanced PFCP Session Server demonstrating builder pattern responses
 //
 // This server example showcases the new builder patterns for server-side PFCP processing:
@@ -37,7 +77,7 @@ use rs_pfcp::message::{
     session_set_modification_response::SessionSetModificationResponseBuilder, Message, MsgType,
 };
 use std::error::Error;
-use std::net::{IpAddr, SocketAddr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::{collections::HashMap, thread, time::Duration};
 
 #[derive(Parser, Debug)]
@@ -50,6 +90,10 @@ struct Args {
     /// The port to bind to
     #[arg(short, long, default_value_t = 8805)]
     port: u16,
+
+    /// Enable verbose output (YAML/JSON message dumps)
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 // Helper function to create a quota exhausted usage report using the enhanced builder
@@ -68,13 +112,8 @@ fn create_quota_exhausted_usage_report() -> Ie {
             None, // No packet counters
         ))
         .duration_measurement(DurationMeasurement::new(3600)) // 1 hour session duration
-        // Phase 3 enhancements: Application detection and user tracking
-        // TODO: Fix ApplicationDetectionInformation grouped IE structure for 3GPP compliance
-        // .with_detected_application("YouTube") // Detected video streaming
-        // TODO: Fix UE IP Address Usage Information grouped IE structure for 3GPP compliance
-        // .with_ue_ipv4_usage(std::net::Ipv4Addr::new(192, 168, 1, 50), 1) // UE IP usage stats
-        // TODO: Fix Additional Usage Reports Information IE structure for 3GPP compliance
-        // .with_additional_flags(true, false) // Request additional interim usage reports
+        // Note: Phase 3 enhancements (Application Detection, UE IP Usage, Additional Reports)
+        // require grouped IE structure updates for full 3GPP compliance
         .build()
         .expect("Failed to build usage report");
 
@@ -142,7 +181,7 @@ fn handle_association_setup_request(
     println!("  Processing Association Setup Request");
     let response_bytes = AssociationSetupResponseBuilder::new(msg.sequence())
         .cause_accepted()
-        .node_id(std::net::Ipv4Addr::new(127, 0, 0, 1))
+        .node_id(Ipv4Addr::new(127, 0, 0, 1))
         .marshal();
     ctx.socket.send_to(&response_bytes, ctx.src)?;
     Ok(())
@@ -255,7 +294,7 @@ fn handle_session_establishment_request(
                         println!("      → Allocating standard IPv4 F-TEID for uplink PDR");
                         FteidBuilder::new()
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
-                            .ipv4(std::net::Ipv4Addr::new(192, 168, 1, 100))
+                            .ipv4(Ipv4Addr::new(192, 168, 1, 100))
                             .build()
                             .unwrap()
                     }
@@ -264,7 +303,7 @@ fn handle_session_establishment_request(
                         println!("      → Allocating dual-stack F-TEID for downlink PDR");
                         FteidBuilder::new()
                             .teid(0x12345678 + received_pdr.pdr_id.value as u32)
-                            .ipv4(std::net::Ipv4Addr::new(192, 168, 1, 100))
+                            .ipv4(Ipv4Addr::new(192, 168, 1, 100))
                             .ipv6("2001:db8::100".parse().unwrap())
                             .build()
                             .unwrap()
@@ -309,8 +348,9 @@ fn handle_session_establishment_request(
     let fseid_ie = msg.ies(IeType::Fseid).next().unwrap().clone();
 
     // Build response with all created PDRs
-    let mut response_builder =
-        SessionEstablishmentResponseBuilder::accepted(seid, msg.sequence()).fseid_ie(fseid_ie);
+    let mut response_builder = SessionEstablishmentResponseBuilder::accepted(seid, msg.sequence())
+        .node_id(Ipv4Addr::new(127, 0, 0, 1))
+        .fseid_ie(fseid_ie);
 
     // Add all created PDRs to the response
     for created_pdr in created_pdrs {
@@ -352,7 +392,6 @@ fn handle_session_modification_request(
     Ok(())
 }
 
-/// Handle SessionDeletionRequest messages
 fn handle_session_deletion_request(
     ctx: &mut HandlerContext,
     msg: &dyn Message,
@@ -360,38 +399,7 @@ fn handle_session_deletion_request(
     let seid = *msg.seid().unwrap();
     println!("  Deleting session 0x{seid:016x}");
 
-    // Demonstrate additional builder patterns for session cleanup
     if ctx.sessions.contains_key(&seid) {
-        println!("=== Server-side Builder Pattern Examples ===");
-
-        // Example 1: Alternative F-TEID strategies for different use cases
-        let _enterprise_fteid = FteidBuilder::new()
-            .teid(0xDEADBEEF)
-            .ipv4("10.0.0.1".parse().unwrap()) // Enterprise IP range
-            .build()
-            .unwrap();
-        println!("✅ Enterprise F-TEID created for private networks");
-
-        // Example 2: IPv6-only F-TEID for modern deployments
-        let _ipv6_only_fteid = FteidBuilder::new()
-            .teid(0xCAFEBABE)
-            .ipv6("2001:db8:5a::1".parse().unwrap()) // Valid IPv6 address
-            .build()
-            .unwrap();
-        println!("✅ IPv6-only F-TEID created for modern 5G deployments");
-
-        // Example 3: CHOOSE flag with correlation for dynamic allocation
-        let _dynamic_fteid = FteidBuilder::new()
-            .teid(0xABCDEF00)
-            .choose_ipv4()
-            .choose_id(123) // Correlation ID for tracking
-            .build()
-            .unwrap();
-        println!("✅ Dynamic F-TEID with CHOOSE flag for UPF selection");
-
-        println!("=== Server-side patterns demonstrated! ===\n");
-
-        // Remove session from tracking
         ctx.sessions.remove(&seid);
     }
 
@@ -481,7 +489,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let interface = network_interfaces
         .iter()
         .find(|iface| iface.name == args.interface)
-        .ok_or_else(|| format!("Interface '{}' not found", args.interface))?;
+        .ok_or_else(|| {
+            let available: Vec<_> = network_interfaces.iter().map(|i| &i.name).collect();
+            format!(
+                "Interface '{}' not found. Available interfaces: {:?}",
+                args.interface, available
+            )
+        })?;
 
     // Find the first IPv4 address of the interface and convert to a `String`
     let ip_address: IpAddr = interface
@@ -501,36 +515,45 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Combine the interface and port to create the bind address string
 
     let socket = UdpSocket::bind(&bind_address)?;
+    socket.set_read_timeout(Some(Duration::from_secs(1)))?; // Allow periodic checks
     println!("Listening on {}...", &bind_address);
     println!("Socket bound successfully to {}", socket.local_addr()?);
 
-    let mut buf = [0; 1024];
+    let mut buf = vec![0u8; 4096]; // Increased buffer size for larger PFCP messages
     let mut sessions: HashMap<u64, SessionInfo> = HashMap::new();
     let mut next_sequence: u32 = 1000;
 
     loop {
-        let (len, src) = socket.recv_from(&mut buf)?;
+        let (len, src) = match socket.recv_from(&mut buf) {
+            Ok(result) => result,
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock 
+                   || e.kind() == std::io::ErrorKind::TimedOut => {
+                continue; // Timeout, check loop condition and continue
+            }
+            Err(e) => return Err(e.into()),
+        };
         let data = &buf[..len];
 
         match rs_pfcp::message::parse(data) {
             Ok(msg) => {
                 println!("Received {} from {}", msg.msg_name(), src);
 
-                // Print message content in YAML format
-                println!("=== Message Content (YAML) ===");
-                match msg.to_yaml() {
-                    Ok(yaml) => println!("{yaml}"),
-                    Err(e) => println!("Failed to serialize to YAML: {e}"),
-                }
-                println!("============================");
+                // Print message content in YAML/JSON format if verbose mode enabled
+                if args.verbose {
+                    println!("=== Message Content (YAML) ===");
+                    match msg.to_yaml() {
+                        Ok(yaml) => println!("{yaml}"),
+                        Err(e) => println!("Failed to serialize to YAML: {e}"),
+                    }
+                    println!("============================");
 
-                // Print message content in JSON format
-                println!("=== Message Content (JSON) ===");
-                match msg.to_json_pretty() {
-                    Ok(json) => println!("{json}"),
-                    Err(e) => println!("Failed to serialize to JSON: {e}"),
-                }
-                println!("===========================");
+                    println!("=== Message Content (JSON) ===");
+                    match msg.to_json_pretty() {
+                        Ok(json) => println!("{json}"),
+                        Err(e) => println!("Failed to serialize to JSON: {e}"),
+                    }
+                    println!("===========================");
+                };
 
                 // Create handler context
                 let mut ctx = HandlerContext {
@@ -613,19 +636,5 @@ fn main() -> Result<(), Box<dyn Error>> {
                 eprintln!("Failed to parse message: {e}");
             }
         }
-    }
-
-    // This code is unreachable due to the infinite loop above, but serves as documentation
-    #[allow(unreachable_code)]
-    {
-        println!("🎉 PFCP Session Server with Enhanced Builder Patterns!");
-        println!("📚 This server demonstrated comprehensive server-side builder usage:");
-        println!("   • F-TEID Builder: Server-side allocation with multiple strategies");
-        println!("   • IPv4/IPv6/Dual-stack: Different network deployment scenarios");
-        println!("   • CHOOSE flags: Dynamic UPF address selection with correlation");
-        println!("   • Enterprise scenarios: Private network F-TEID allocation");
-        println!("   • Type-safe construction: Validation and error prevention");
-        println!("   • Real UPF behavior: Proper Created PDR responses");
-        Ok(())
     }
 }
