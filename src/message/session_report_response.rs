@@ -221,7 +221,7 @@ impl Message for SessionReportResponse {
 impl SessionReportResponse {
     /// Creates a new Session Report Response.
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         sequence: impl Into<SequenceNumber>,
         cause: Ie,
         offending_ie: Option<Ie>,
@@ -260,7 +260,7 @@ impl SessionReportResponse {
 
 #[derive(Debug, Default)]
 pub struct SessionReportResponseBuilder {
-    seid: u64,
+    seid: Seid,
     seq: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
@@ -284,7 +284,7 @@ impl SessionReportResponseBuilder {
     /// [`rejected()`]: #method.rejected
     /// [`new_with_ie()`]: #method.new_with_ie
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         seq: impl Into<SequenceNumber>,
         cause: crate::ie::cause::CauseValue,
     ) -> Self {
@@ -292,7 +292,7 @@ impl SessionReportResponseBuilder {
         use crate::ie::{Ie, IeType};
         let cause_ie = Ie::new(IeType::Cause, Cause::new(cause).marshal().to_vec());
         SessionReportResponseBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             cause: Some(cause_ie),
             offending_ie: None,
@@ -310,7 +310,7 @@ impl SessionReportResponseBuilder {
     /// Convenience constructor for an accepted response.
     ///
     /// Equivalent to `new(seid, seq, CauseValue::RequestAccepted)`.
-    pub fn accepted(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn accepted(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         Self::new(
             seid,
             seq.into(),
@@ -321,7 +321,7 @@ impl SessionReportResponseBuilder {
     /// Convenience constructor for a rejected response.
     ///
     /// Equivalent to `new(seid, seq, CauseValue::RequestRejected)`.
-    pub fn rejected(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn rejected(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         Self::new(
             seid,
             seq.into(),
@@ -336,9 +336,9 @@ impl SessionReportResponseBuilder {
     /// [`new()`]: #method.new
     /// [`accepted()`]: #method.accepted
     /// [`rejected()`]: #method.rejected
-    pub fn new_with_ie(seid: u64, seq: impl Into<SequenceNumber>, cause: Ie) -> Self {
+    pub fn new_with_ie(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>, cause: Ie) -> Self {
         SessionReportResponseBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             cause: Some(cause),
             offending_ie: None,

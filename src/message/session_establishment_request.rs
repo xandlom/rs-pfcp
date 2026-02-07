@@ -374,7 +374,7 @@ impl Message for SessionEstablishmentRequest {
 
 #[derive(Debug, Default)]
 pub struct SessionEstablishmentRequestBuilder {
-    seid: u64,
+    seid: Seid,
     seq: SequenceNumber,
     node_id: Option<Ie>,
     fseid: Option<Ie>,
@@ -398,9 +398,9 @@ pub struct SessionEstablishmentRequestBuilder {
 }
 
 impl SessionEstablishmentRequestBuilder {
-    pub fn new(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn new(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         SessionEstablishmentRequestBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             node_id: None,
             fseid: None,
@@ -495,7 +495,7 @@ impl SessionEstablishmentRequestBuilder {
     /// ```
     ///
     /// [`fseid_ie`]: #method.fseid_ie
-    pub fn fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    pub fn fseid<T>(mut self, seid: impl Into<Seid>, ip_addr: T) -> Self
     where
         T: Into<std::net::IpAddr>,
     {

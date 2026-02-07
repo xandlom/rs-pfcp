@@ -315,7 +315,7 @@ impl Message for SessionEstablishmentResponse {
 
 #[derive(Debug, Default)]
 pub struct SessionEstablishmentResponseBuilder {
-    seid: u64,
+    seid: Seid,
     seq: SequenceNumber,
     node_id: Option<Ie>,
     cause: Option<Ie>,
@@ -338,7 +338,7 @@ impl SessionEstablishmentResponseBuilder {
     /// [`rejected()`]: #method.rejected
     /// [`new_with_ie()`]: #method.new_with_ie
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         seq: impl Into<SequenceNumber>,
         cause: crate::ie::cause::CauseValue,
     ) -> Self {
@@ -346,7 +346,7 @@ impl SessionEstablishmentResponseBuilder {
         use crate::ie::{Ie, IeType};
         let cause_ie = Ie::new(IeType::Cause, Cause::new(cause).marshal().to_vec());
         SessionEstablishmentResponseBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             node_id: None,
             cause: Some(cause_ie),
@@ -363,7 +363,7 @@ impl SessionEstablishmentResponseBuilder {
     /// Convenience constructor for an accepted response.
     ///
     /// Equivalent to `new(seid, seq, CauseValue::RequestAccepted)`.
-    pub fn accepted(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn accepted(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         Self::new(
             seid,
             seq.into(),
@@ -374,7 +374,7 @@ impl SessionEstablishmentResponseBuilder {
     /// Convenience constructor for a rejected response.
     ///
     /// Equivalent to `new(seid, seq, CauseValue::RequestRejected)`.
-    pub fn rejected(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn rejected(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         Self::new(
             seid,
             seq.into(),
@@ -389,9 +389,9 @@ impl SessionEstablishmentResponseBuilder {
     /// [`new()`]: #method.new
     /// [`accepted()`]: #method.accepted
     /// [`rejected()`]: #method.rejected
-    pub fn new_with_ie(seid: u64, seq: impl Into<SequenceNumber>, cause: Ie) -> Self {
+    pub fn new_with_ie(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>, cause: Ie) -> Self {
         SessionEstablishmentResponseBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             node_id: None,
             cause: Some(cause),
@@ -421,7 +421,7 @@ impl SessionEstablishmentResponseBuilder {
     /// For full control, use [`fseid_ie`].
     ///
     /// [`fseid_ie`]: #method.fseid_ie
-    pub fn fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    pub fn fseid<T>(mut self, seid: impl Into<Seid>, ip_addr: T) -> Self
     where
         T: Into<std::net::IpAddr>,
     {

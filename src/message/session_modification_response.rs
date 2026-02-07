@@ -201,7 +201,7 @@ impl Message for SessionModificationResponse {
 impl SessionModificationResponse {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         seq: impl Into<SequenceNumber>,
         cause_ie: Ie,
         offending_ie: Option<Ie>,
@@ -253,7 +253,7 @@ impl SessionModificationResponse {
 /// Builder for SessionModificationResponse message.
 #[derive(Debug, Default)]
 pub struct SessionModificationResponseBuilder {
-    seid: u64,
+    seid: Seid,
     sequence: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
@@ -267,9 +267,9 @@ pub struct SessionModificationResponseBuilder {
 
 impl SessionModificationResponseBuilder {
     /// Creates a new SessionModificationResponse builder.
-    pub fn new(seid: u64, sequence: impl Into<SequenceNumber>) -> Self {
+    pub fn new(seid: impl Into<Seid>, sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            seid,
+            seid: seid.into(),
             sequence: sequence.into(),
             cause: None,
             offending_ie: None,

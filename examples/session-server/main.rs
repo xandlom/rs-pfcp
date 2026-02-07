@@ -219,8 +219,8 @@ fn handle_session_establishment_request(
     msg: &dyn Message,
     data: &[u8],
 ) -> Result<(), Box<dyn Error>> {
-    let seid = *msg.seid().unwrap();
-    println!("  Session ID: 0x{seid:016x}");
+    let seid = msg.seid().unwrap();
+    println!("  Session ID: 0x{:016x}", *seid);
 
     // Parse the full SessionEstablishmentRequest to access create_pdrs
     let establishment_req = match SessionEstablishmentRequest::unmarshal(data) {
@@ -298,9 +298,9 @@ fn handle_session_establishment_request(
 
     // Store session information
     ctx.sessions.insert(
-        seid,
+        *seid,
         SessionInfo {
-            seid,
+            seid: *seid,
             client_addr: ctx.src,
             sequence: *ctx.next_sequence,
         },
@@ -345,7 +345,7 @@ fn handle_session_modification_request(
     msg: &dyn Message,
 ) -> Result<(), Box<dyn Error>> {
     println!("  Processing Session Modification Request");
-    let res = SessionModificationResponseBuilder::new(*msg.seid().unwrap(), msg.sequence())
+    let res = SessionModificationResponseBuilder::new(msg.seid().unwrap(), msg.sequence())
         .cause_accepted()
         .marshal();
     ctx.socket.send_to(&res, ctx.src)?;

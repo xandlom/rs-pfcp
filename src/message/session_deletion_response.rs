@@ -256,7 +256,7 @@ impl SessionDeletionResponse {
     /// * `ies` - Additional/unknown IEs
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         seq: impl Into<SequenceNumber>,
         cause_ie: Ie,
         offending_ie: Option<Ie>,
@@ -323,7 +323,7 @@ impl SessionDeletionResponse {
 /// Builder for SessionDeletionResponse message per 3GPP TS 29.244 Section 7.5.7.
 #[derive(Debug, Default)]
 pub struct SessionDeletionResponseBuilder {
-    seid: u64,
+    seid: Seid,
     sequence: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
@@ -340,9 +340,9 @@ pub struct SessionDeletionResponseBuilder {
 
 impl SessionDeletionResponseBuilder {
     /// Creates a new SessionDeletionResponse builder.
-    pub fn new(seid: u64, sequence: impl Into<SequenceNumber>) -> Self {
+    pub fn new(seid: impl Into<Seid>, sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            seid,
+            seid: seid.into(),
             sequence: sequence.into(),
             cause: None,
             offending_ie: None,

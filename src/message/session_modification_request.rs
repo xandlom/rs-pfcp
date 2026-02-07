@@ -679,7 +679,7 @@ impl Message for SessionModificationRequest {
 
 #[derive(Debug, Default)]
 pub struct SessionModificationRequestBuilder {
-    seid: u64,
+    seid: Seid,
     seq: SequenceNumber,
     fseid: Option<Ie>,
     remove_pdrs: Option<Vec<Ie>>,
@@ -716,9 +716,9 @@ pub struct SessionModificationRequestBuilder {
 }
 
 impl SessionModificationRequestBuilder {
-    pub fn new(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn new(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         SessionModificationRequestBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             fseid: None,
             remove_pdrs: None,
@@ -771,7 +771,7 @@ impl SessionModificationRequestBuilder {
     /// ```
     ///
     /// [`fseid_ie`]: #method.fseid_ie
-    pub fn fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    pub fn fseid<T>(mut self, seid: impl Into<Seid>, ip_addr: T) -> Self
     where
         T: Into<std::net::IpAddr>,
     {

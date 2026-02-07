@@ -149,7 +149,7 @@ impl SessionDeletionRequest {
     /// * `cp_fseid` - Optional CP F-SEID when Node ID present and CP changes F-SEID
     /// * `ies` - Additional/unknown IEs
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         seq: impl Into<SequenceNumber>,
         tl_container: Vec<Ie>,
         node_id: Option<Ie>,
@@ -201,7 +201,7 @@ impl SessionDeletionRequest {
 /// not as an IE in the message body.
 #[derive(Debug, Default)]
 pub struct SessionDeletionRequestBuilder {
-    seid: u64,
+    seid: Seid,
     sequence: SequenceNumber,
     tl_container: Vec<Ie>,
     node_id: Option<Ie>,
@@ -216,9 +216,9 @@ impl SessionDeletionRequestBuilder {
     ///
     /// * `seid` - Session endpoint ID identifying the PFCP session (carried in header)
     /// * `sequence` - Sequence number for the message
-    pub fn new(seid: u64, sequence: impl Into<SequenceNumber>) -> Self {
+    pub fn new(seid: impl Into<Seid>, sequence: impl Into<SequenceNumber>) -> Self {
         Self {
-            seid,
+            seid: seid.into(),
             sequence: sequence.into(),
             tl_container: Vec::new(),
             node_id: None,
@@ -297,7 +297,7 @@ impl SessionDeletionRequestBuilder {
     /// Accepts `Ipv4Addr`, `Ipv6Addr`, or `IpAddr`. For full control, use [`cp_fseid_ie`].
     ///
     /// [`cp_fseid_ie`]: #method.cp_fseid_ie
-    pub fn cp_fseid<T>(mut self, seid: u64, ip_addr: T) -> Self
+    pub fn cp_fseid<T>(mut self, seid: impl Into<Seid>, ip_addr: T) -> Self
     where
         T: Into<std::net::IpAddr>,
     {

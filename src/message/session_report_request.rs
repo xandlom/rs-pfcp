@@ -197,7 +197,7 @@ impl Message for SessionReportRequest {
 impl SessionReportRequest {
     /// Creates a new Session Report Request.
     pub fn new(
-        seid: u64,
+        seid: impl Into<Seid>,
         sequence: impl Into<SequenceNumber>,
         report_type: Option<Ie>,
         downlink_data_report: Option<Ie>,
@@ -237,7 +237,7 @@ impl SessionReportRequest {
 
 #[derive(Debug, Default)]
 pub struct SessionReportRequestBuilder {
-    seid: u64,
+    seid: Seid,
     seq: SequenceNumber,
     report_type: Option<Ie>,
     downlink_data_report: Option<Ie>,
@@ -250,9 +250,9 @@ pub struct SessionReportRequestBuilder {
 }
 
 impl SessionReportRequestBuilder {
-    pub fn new(seid: u64, seq: impl Into<SequenceNumber>) -> Self {
+    pub fn new(seid: impl Into<Seid>, seq: impl Into<SequenceNumber>) -> Self {
         SessionReportRequestBuilder {
-            seid,
+            seid: seid.into(),
             seq: seq.into(),
             report_type: None,
             downlink_data_report: None,

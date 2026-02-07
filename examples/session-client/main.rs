@@ -112,7 +112,7 @@ fn handle_session_report_request(
 
     // Send Session Report Response with RequestAccepted
     let response_bytes =
-        SessionReportResponseBuilder::accepted(*msg.seid().unwrap(), msg.sequence()).marshal()?;
+        SessionReportResponseBuilder::accepted(msg.seid().unwrap(), msg.sequence()).marshal()?;
 
     socket.send_to(&response_bytes, src)?;
     println!("  Sent Session Report Response (RequestAccepted)");
