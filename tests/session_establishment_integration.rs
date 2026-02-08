@@ -21,11 +21,20 @@
 
 use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::{
-    apply_action::ApplyAction, cause::CauseValue, create_far::CreateFarBuilder,
-    create_pdr::CreatePdr, destination_interface::{DestinationInterface, Interface},
-    far_id::FarId, forwarding_parameters::ForwardingParameters, fseid::Fseid,
-    node_id::NodeId, pdi::Pdi, pdr_id::PdrId, precedence::Precedence,
-    source_interface::{SourceInterface, SourceInterfaceValue}, Ie, IeType,
+    apply_action::ApplyAction,
+    cause::CauseValue,
+    create_far::CreateFarBuilder,
+    create_pdr::CreatePdr,
+    destination_interface::{DestinationInterface, Interface},
+    far_id::FarId,
+    forwarding_parameters::ForwardingParameters,
+    fseid::Fseid,
+    node_id::NodeId,
+    pdi::Pdi,
+    pdr_id::PdrId,
+    precedence::Precedence,
+    source_interface::{SourceInterface, SourceInterfaceValue},
+    Ie, IeType,
 };
 use rs_pfcp::message::{
     header::Header, session_establishment_request::SessionEstablishmentRequest,
@@ -58,7 +67,16 @@ fn basic_pdi() -> Pdi {
 }
 
 fn basic_create_pdr() -> CreatePdr {
-    CreatePdr::new(basic_pdr_id(), basic_precedence(), basic_pdi(), None, None, None, None, None)
+    CreatePdr::new(
+        basic_pdr_id(),
+        basic_precedence(),
+        basic_pdi(),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 }
 
 fn basic_far_id() -> FarId {
@@ -107,7 +125,12 @@ fn test_session_establishment_happy_path_with_all_mandatory_ies() {
     let create_far = basic_create_far();
     let create_far_ie = Ie::new(IeType::CreateFar, create_far.marshal());
 
-    let mut header = Header::new(MsgType::SessionEstablishmentRequest, false, TEST_SEID, TEST_SEQUENCE);
+    let mut header = Header::new(
+        MsgType::SessionEstablishmentRequest,
+        false,
+        TEST_SEID,
+        TEST_SEQUENCE,
+    );
     let payload_len = node_id_ie.len() + fseid_ie.len() + create_pdr_ie.len() + create_far_ie.len();
     header.length = payload_len + header.len() - 4;
 
@@ -164,7 +187,12 @@ fn test_session_establishment_request_missing_node_id() {
     let create_far = basic_create_far();
     let create_far_ie = Ie::new(IeType::CreateFar, create_far.marshal());
 
-    let mut header = Header::new(MsgType::SessionEstablishmentRequest, false, TEST_SEID, TEST_SEQUENCE);
+    let mut header = Header::new(
+        MsgType::SessionEstablishmentRequest,
+        false,
+        TEST_SEID,
+        TEST_SEQUENCE,
+    );
     let payload_len = fseid_ie.len() + create_pdr_ie.len() + create_far_ie.len();
     header.length = payload_len + header.len() - 4;
 
@@ -200,7 +228,12 @@ fn test_session_establishment_request_missing_fseid() {
     let create_far = basic_create_far();
     let create_far_ie = Ie::new(IeType::CreateFar, create_far.marshal());
 
-    let mut header = Header::new(MsgType::SessionEstablishmentRequest, false, TEST_SEID, TEST_SEQUENCE);
+    let mut header = Header::new(
+        MsgType::SessionEstablishmentRequest,
+        false,
+        TEST_SEID,
+        TEST_SEQUENCE,
+    );
     let payload_len = node_id_ie.len() + create_pdr_ie.len() + create_far_ie.len();
     header.length = payload_len + header.len() - 4;
 
@@ -236,7 +269,12 @@ fn test_session_establishment_request_missing_create_pdrs() {
     let create_far = basic_create_far();
     let create_far_ie = Ie::new(IeType::CreateFar, create_far.marshal());
 
-    let mut header = Header::new(MsgType::SessionEstablishmentRequest, false, TEST_SEID, TEST_SEQUENCE);
+    let mut header = Header::new(
+        MsgType::SessionEstablishmentRequest,
+        false,
+        TEST_SEID,
+        TEST_SEQUENCE,
+    );
     let payload_len = node_id_ie.len() + fseid_ie.len() + create_far_ie.len();
     header.length = payload_len + header.len() - 4;
 
@@ -252,7 +290,11 @@ fn test_session_establishment_request_missing_create_pdrs() {
 
     match result {
         Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
-            assert_eq!(ie_type, IeType::CreatePdr, "Expected Create PDR to be missing");
+            assert_eq!(
+                ie_type,
+                IeType::CreatePdr,
+                "Expected Create PDR to be missing"
+            );
             println!("✓ Missing Create PDRs test passed: Correctly detected missing mandatory IE");
         }
         Ok(_) => panic!("Expected parsing to fail due to missing Create PDRs"),
@@ -272,7 +314,12 @@ fn test_session_establishment_request_missing_create_fars() {
     let create_pdr = basic_create_pdr();
     let create_pdr_ie = Ie::new(IeType::CreatePdr, create_pdr.marshal());
 
-    let mut header = Header::new(MsgType::SessionEstablishmentRequest, false, TEST_SEID, TEST_SEQUENCE);
+    let mut header = Header::new(
+        MsgType::SessionEstablishmentRequest,
+        false,
+        TEST_SEID,
+        TEST_SEQUENCE,
+    );
     let payload_len = node_id_ie.len() + fseid_ie.len() + create_pdr_ie.len();
     header.length = payload_len + header.len() - 4;
 
@@ -288,7 +335,11 @@ fn test_session_establishment_request_missing_create_fars() {
 
     match result {
         Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
-            assert_eq!(ie_type, IeType::CreateFar, "Expected Create FAR to be missing");
+            assert_eq!(
+                ie_type,
+                IeType::CreateFar,
+                "Expected Create FAR to be missing"
+            );
             println!("✓ Missing Create FARs test passed: Correctly detected missing mandatory IE");
         }
         Ok(_) => panic!("Expected parsing to fail due to missing Create FARs"),
@@ -318,7 +369,10 @@ fn test_session_establishment_response_rejection_generation() {
         .expect("Failed to marshal rejection response");
 
     // Verify response can be parsed back
-    let parsed = rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(&rejection_response)
+    let parsed =
+        rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(
+            &rejection_response,
+        )
         .expect("Failed to unmarshal rejection response");
 
     // Verify cause is rejection
@@ -364,7 +418,10 @@ fn test_session_establishment_response_accepted_generation() {
         .expect("Failed to marshal accepted response");
 
     // Verify response can be parsed back
-    let parsed = rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(&accepted_response)
+    let parsed =
+        rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse::unmarshal(
+            &accepted_response,
+        )
         .expect("Failed to unmarshal accepted response");
 
     // Verify cause is accepted
@@ -431,7 +488,12 @@ fn test_session_establishment_multiple_pdrs_fars() {
         create_far_ies.push(Ie::new(IeType::CreateFar, far.marshal()));
     }
 
-    let mut header = Header::new(MsgType::SessionEstablishmentRequest, false, TEST_SEID, TEST_SEQUENCE);
+    let mut header = Header::new(
+        MsgType::SessionEstablishmentRequest,
+        false,
+        TEST_SEID,
+        TEST_SEQUENCE,
+    );
     let mut payload_len = node_id_ie.len() + fseid_ie.len();
     for ie in &create_pdr_ies {
         payload_len += ie.len();

@@ -806,7 +806,6 @@ mod tests {
 
     #[test]
     fn test_parse_session_establishment_response() {
-        use crate::ie::node_id::NodeId;
         use crate::message::session_establishment_response::SessionEstablishmentResponseBuilder;
         use std::net::{IpAddr, Ipv4Addr};
 

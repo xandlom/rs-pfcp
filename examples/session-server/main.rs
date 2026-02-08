@@ -56,6 +56,7 @@
 use clap::Parser;
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
+use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::{
     cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr,
     duration_measurement::DurationMeasurement, f_teid::FteidBuilder,
@@ -76,7 +77,6 @@ use rs_pfcp::message::{
     session_set_deletion_response::SessionSetDeletionResponseBuilder,
     session_set_modification_response::SessionSetModificationResponseBuilder, Message, MsgType,
 };
-use rs_pfcp::error::PfcpError;
 use std::error::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::{collections::HashMap, thread, time::Duration};
@@ -408,7 +408,10 @@ fn handle_session_establishment_request(
     let res = match response_builder.build() {
         Ok(r) => r,
         Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
-            eprintln!("ERROR: Missing mandatory IE {:?} - sending rejection", ie_type);
+            eprintln!(
+                "ERROR: Missing mandatory IE {:?} - sending rejection",
+                ie_type
+            );
             let rejection = SessionEstablishmentResponseBuilder::rejected(seid, msg.sequence())
                 .node_id(Ipv4Addr::new(127, 0, 0, 1))
                 .marshal()?;
@@ -416,7 +419,9 @@ fn handle_session_establishment_request(
             return Ok(());
         }
         Err(e) => {
-            eprintln!("ERROR: Failed to build session establishment response: {e} - sending rejection");
+            eprintln!(
+                "ERROR: Failed to build session establishment response: {e} - sending rejection"
+            );
             let rejection = SessionEstablishmentResponseBuilder::rejected(seid, msg.sequence())
                 .node_id(Ipv4Addr::new(127, 0, 0, 1))
                 .marshal()?;
@@ -611,8 +616,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         let (len, src) = match socket.recv_from(&mut buf) {
             Ok(result) => result,
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock 
-                   || e.kind() == std::io::ErrorKind::TimedOut => {
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
                 continue; // Timeout, check loop condition and continue
             }
             Err(e) => return Err(e.into()),
