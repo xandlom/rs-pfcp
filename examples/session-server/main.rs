@@ -375,9 +375,9 @@ fn handle_session_establishment_request(
 
     // Store session information
     ctx.sessions.insert(
-        *seid,
+        seid,
         SessionInfo {
-            seid: *seid,
+            seid,
             client_addr: ctx.src,
             sequence: *ctx.next_sequence,
         },
