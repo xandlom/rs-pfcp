@@ -641,16 +641,6 @@ impl From<io::Error> for PfcpError {
     }
 }
 
-// TEMPORARY: Bridge conversion for incremental migration (v0.3.0 Phase 1.3)
-// This allows migrated IEs (returning PfcpError) to work with non-migrated code (expecting io::Error).
-// TODO: Remove this once all IEs and messages are migrated to PfcpError.
-impl From<PfcpError> for io::Error {
-    fn from(err: PfcpError) -> Self {
-        // Convert PfcpError back to io::Error during migration
-        io::Error::new(io::ErrorKind::InvalidData, err.to_string())
-    }
-}
-
 impl From<std::str::Utf8Error> for PfcpError {
     fn from(source: std::str::Utf8Error) -> Self {
         // Note: This is a generic conversion. Prefer using PfcpError::encoding_error()

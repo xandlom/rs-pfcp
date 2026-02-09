@@ -73,7 +73,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.2.2"
+rs-pfcp = "0.3.0"
 ```
 
 ### Basic Usage

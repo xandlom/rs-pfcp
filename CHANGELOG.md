@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-XX-XX
+
+### Breaking Changes
+
+#### Error Handling: `io::Error` → `PfcpError`
+- All `unmarshal()` and `build()` methods now return `Result<T, PfcpError>` instead of `Result<T, io::Error>`
+- `PfcpError` provides 9 structured variants with descriptive context (IE name, type, expected/actual values)
+- `to_cause_code()` maps errors to 3GPP TS 29.244 Cause values for protocol-compliant rejection responses
+- Removed temporary `From<PfcpError> for io::Error` bridge conversion
+
+#### Type-Safe Newtypes: `Seid`, `SequenceNumber`, `Teid`
+- `Message::seid()` returns `Option<Seid>` instead of `Option<u64>`
+- `Message::sequence()` returns `SequenceNumber` instead of `u32`
+- `Message::set_sequence()` accepts `SequenceNumber` instead of `u32`
+- `Header::seid` is `Option<Seid>` instead of `Option<u64>`
+- `Header::sequence` is `SequenceNumber` instead of `u32`
+- `Fseid` and `Fteid` use `Seid` and `Teid` respectively
+- All builders accept `impl Into<Type>`, so raw integer literals continue to compile unchanged
+
+#### Removed Deprecated Methods
+- Removed `find_ie()` and `find_all_ies()` from the `Message` trait (deprecated in v0.2.2)
+- Use `ies(ie_type).next()` instead of `find_ie(ie_type)`
+- Use `ies(ie_type).collect::<Vec<_>>()` instead of `find_all_ies(ie_type)`
+
+### Added
+- `rs_pfcp::types` module with `Seid`, `SequenceNumber`, and `Teid` newtype wrappers
+- `PfcpError` enum in `rs_pfcp::error` with 9 variants: `MissingMandatoryIe`, `IeParseError`, `InvalidLength`, `InvalidValue`, `ValidationError`, `EncodingError`, `ZeroLengthNotAllowed`, `MessageParseError`, `IoError`
+- `PfcpError::to_cause_code()` for 3GPP-compliant error-to-cause mapping
+- `Deref` implementations for newtypes to access inner values transparently
+- `From<u64>` / `From<u32>` conversions for ergonomic newtype construction
+
+### Migration
+
+See [docs/guides/v0.3.0-migration.md](docs/guides/v0.3.0-migration.md) for a comprehensive migration guide with search-and-replace patterns.
+
 ## [0.2.5] - 2025-12-14
 
 ### Added

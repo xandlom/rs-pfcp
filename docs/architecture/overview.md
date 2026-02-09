@@ -140,10 +140,10 @@ All PFCP messages implement the `Message` trait:
 ```rust
 pub trait Message {
     fn marshal(&self) -> Vec<u8>;
-    fn unmarshal(data: &[u8]) -> Result<Box<dyn Message>, io::Error>;
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>;
     fn msg_type(&self) -> MsgType;
-    fn sequence(&self) -> u32;
-    fn seid(&self) -> Option<u64>;
+    fn sequence(&self) -> SequenceNumber;
+    fn seid(&self) -> Option<Seid>;
     // ... additional methods
 }
 ```
@@ -188,7 +188,7 @@ All IEs use consistent TLV encoding:
 impl Ie {
     pub fn new(ie_type: IeType, value: Vec<u8>) -> Self;
     pub fn marshal(&self) -> Vec<u8>;
-    pub fn unmarshal(data: &[u8]) -> Result<Vec<Self>, io::Error>;
+    pub fn unmarshal(data: &[u8]) -> Result<Vec<Self>, PfcpError>;
 }
 ```
 
@@ -200,23 +200,24 @@ impl Ie {
 
 ### 4. Error Handling
 
-Consistent error handling using `std::io::Error`:
+Consistent error handling using `PfcpError`:
 
 ```rust
 // All marshal/unmarshal return Result
-fn unmarshal(data: &[u8]) -> Result<Self, io::Error> {
+fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
     if data.len() < MIN_LENGTH {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("Short buffer: got {}, need {}", data.len(), MIN_LENGTH)
-        ));
+        return Err(PfcpError::InvalidLength {
+            ie_name: "MyIe",
+            expected: MIN_LENGTH,
+            actual: data.len(),
+        });
     }
     // ...
 }
 ```
 
 **Benefits:**
-- Standard Rust error handling
+- Domain-specific error types with 3GPP cause code mapping
 - Descriptive error messages
 - No panics on invalid input
 - Clear error propagation

@@ -14,7 +14,7 @@ use std::fmt;
 /// ```rust,no_run
 /// use rs_pfcp::comparison::MessageComparator;
 /// # use rs_pfcp::message::Message;
-/// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+/// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 ///
 /// let diff = MessageComparator::new(msg1, msg2)
 ///     .with_detailed_diff()

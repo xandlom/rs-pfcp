@@ -17,7 +17,7 @@ use crate::message::MsgType;
 /// ```rust,no_run
 /// use rs_pfcp::comparison::MessageComparator;
 /// # use rs_pfcp::message::Message;
-/// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+/// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 ///
 /// let result = MessageComparator::new(msg1, msg2)
 ///     .ignore_sequence()

@@ -128,22 +128,30 @@ src/
 
 ### Error Handling
 
-- Use `Result<T, std::io::Error>` for operations that can fail
-- Provide descriptive error messages
-- Use `io::ErrorKind::InvalidData` for protocol violations
+- Use `Result<T, PfcpError>` for all marshal/unmarshal operations
+- Provide descriptive error messages with IE names and types
+- Use specific `PfcpError` variants for different failure modes
 
 ```rust
-// Good
+use rs_pfcp::error::PfcpError;
+
+// Good - specific error variant with context
 if data.len() < 4 {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("PDR ID requires 2 bytes, got {}", data.len()),
-    ));
+    return Err(PfcpError::InvalidLength {
+        ie_name: "PDR ID".to_string(),
+        ie_type: IeType::PdrId,
+        expected: 2,
+        actual: data.len(),
+    });
 }
 
-// Bad
+// Bad - generic error without context
 if data.len() < 4 {
-    return Err(io::Error::new(io::ErrorKind::Other, "Invalid"));
+    return Err(PfcpError::InvalidValue {
+        field: "data".to_string(),
+        value: "too short".to_string(),
+        reason: "Invalid".to_string(),
+    });
 }
 ```
 

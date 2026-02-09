@@ -72,11 +72,10 @@ impl PdrId {
         self.0.to_be_bytes().to_vec()
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "PDR ID requires 2 bytes",
+            return Err(PfcpError::invalid_length(
+                "PDR ID", IeType::PdrId, 2, payload.len(),
             ));
         }
         let id = u16::from_be_bytes([payload[0], payload[1]]);
@@ -110,11 +109,10 @@ impl SourceInterface {
         *self as u8
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Source Interface requires at least 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Source Interface", IeType::SourceInterface, 1, 0,
             ));
         }
 
@@ -123,9 +121,9 @@ impl SourceInterface {
             1 => Ok(SourceInterface::Core),
             2 => Ok(SourceInterface::SgiLanN6Lan),
             3 => Ok(SourceInterface::CpFunction),
-            v => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Invalid Source Interface value: {}", v),
+            v => Err(PfcpError::invalid_value(
+                "Source Interface", v.to_string(),
+                "must be 0-3 per 3GPP TS 29.244",
             )),
         }
     }
@@ -177,11 +175,10 @@ impl ApplyAction {
         self.flags
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Apply Action requires at least 1 byte",
+            return Err(PfcpError::invalid_length(
+                "Apply Action", IeType::ApplyAction, 1, 0,
             ));
         }
         Ok(ApplyAction::new(payload[0]))
@@ -238,11 +235,10 @@ impl Fseid {
         data
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         if payload.len() < 9 {  // Minimum: flags(1) + seid(8)
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "F-SEID requires at least 9 bytes",
+            return Err(PfcpError::invalid_length(
+                "F-SEID", IeType::FSeid, 9, payload.len(),
             ));
         }
 
@@ -255,9 +251,8 @@ impl Fseid {
         let mut offset = 9;
         let ipv4 = if has_v4 {
             if payload.len() < offset + 4 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "F-SEID: not enough bytes for IPv4",
+                return Err(PfcpError::invalid_length(
+                    "F-SEID (IPv4)", IeType::FSeid, offset + 4, payload.len(),
                 ));
             }
             let addr = Ipv4Addr::new(
@@ -272,9 +267,8 @@ impl Fseid {
 
         let ipv6 = if has_v6 {
             if payload.len() < offset + 16 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "F-SEID: not enough bytes for IPv6",
+                return Err(PfcpError::invalid_length(
+                    "F-SEID (IPv6)", IeType::FSeid, offset + 16, payload.len(),
                 ));
             }
             let mut octets = [0u8; 16];
@@ -338,7 +332,7 @@ impl CreatePdr {
         data
     }
 
-    pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut pdr_id = None;
         let mut precedence = None;
         let mut pdi = None;
@@ -373,18 +367,15 @@ impl CreatePdr {
         }
 
         // Validate mandatory IEs
-        let pdr_id = pdr_id.ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Create PDR missing mandatory PDR ID"
-        ))?;
-        let precedence = precedence.ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Create PDR missing mandatory Precedence"
-        ))?;
-        let pdi = pdi.ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Create PDR missing mandatory PDI"
-        ))?;
+        let pdr_id = pdr_id.ok_or_else(||
+            PfcpError::missing_ie_in_grouped(IeType::PdrId, IeType::CreatePdr)
+        )?;
+        let precedence = precedence.ok_or_else(||
+            PfcpError::missing_ie_in_grouped(IeType::Precedence, IeType::CreatePdr)
+        )?;
+        let pdi = pdi.ok_or_else(||
+            PfcpError::missing_ie_in_grouped(IeType::Pdi, IeType::CreatePdr)
+        )?;
 
         Ok(CreatePdr {
             pdr_id,
@@ -523,11 +514,10 @@ Parsing IEs from wire format:
 
 ```rust
 impl Ie {
-    pub fn unmarshal(buf: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError> {
         // Need at least type(2) + length(2) = 4 bytes
         if buf.len() < 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+            return Err(PfcpError::message_parse_error(
                 "IE header requires at least 4 bytes",
             ));
         }
@@ -541,10 +531,9 @@ impl Ie {
 
         // Validate buffer has enough data
         if buf.len() < 4 + length {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("IE payload too short: expected {}, got {}",
-                        length, buf.len() - 4),
+            return Err(PfcpError::invalid_length(
+                format!("{:?}", ie_type), ie_type,
+                4 + length, buf.len(),
             ));
         }
 
@@ -565,7 +554,7 @@ impl Ie {
 While marshaling follows spec order, unmarshaling accepts any order:
 
 ```rust
-pub fn unmarshal_flexible(payload: &[u8]) -> Result<Self, io::Error> {
+pub fn unmarshal_flexible(payload: &[u8]) -> Result<Self, PfcpError> {
     // Use Option types for all IEs
     let mut node_id = None;
     let mut cp_f_seid = None;
@@ -589,10 +578,9 @@ pub fn unmarshal_flexible(payload: &[u8]) -> Result<Self, io::Error> {
     }
 
     // Validate mandatory IEs after parsing
-    let node_id = node_id.ok_or_else(|| io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Missing mandatory Node ID"
-    ))?;
+    let node_id = node_id.ok_or_else(||
+        PfcpError::missing_ie(IeType::NodeId)
+    )?;
 
     Ok(SessionEstablishmentRequest {
         node_id,
@@ -638,11 +626,10 @@ impl EnterpriseIe {
         buf
     }
 
-    pub fn unmarshal(buf: &[u8]) -> Result<Self, io::Error> {
+    pub fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError> {
         if buf.len() < 6 {  // type(2) + length(2) + enterprise_id(2)
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Enterprise IE too short"
+            return Err(PfcpError::message_parse_error(
+                "Enterprise IE too short",
             ));
         }
 
@@ -670,7 +657,7 @@ Users can register custom IE handlers:
 ```rust
 pub trait VendorIeHandler {
     fn enterprise_id(&self) -> u16;
-    fn handle_ie(&self, vendor_type: u16, payload: &[u8]) -> Result<Box<dyn Any>, io::Error>;
+    fn handle_ie(&self, vendor_type: u16, payload: &[u8]) -> Result<Box<dyn Any>, PfcpError>;
 }
 
 // Example: Nokia vendor IEs
@@ -681,12 +668,12 @@ impl VendorIeHandler for NokiaIeHandler {
         94  // Nokia's IANA enterprise number
     }
 
-    fn handle_ie(&self, vendor_type: u16, payload: &[u8]) -> Result<Box<dyn Any>, io::Error> {
+    fn handle_ie(&self, vendor_type: u16, payload: &[u8]) -> Result<Box<dyn Any>, PfcpError> {
         match vendor_type {
             100 => Ok(Box::new(NokiaCustomIE::unmarshal(payload)?)),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Unknown Nokia IE type: {}", vendor_type)
+            _ => Err(PfcpError::invalid_value(
+                "vendor_ie_type", vendor_type.to_string(),
+                format!("Unknown Nokia IE type: {}", vendor_type),
             ))
         }
     }
@@ -702,12 +689,10 @@ impl VendorIeHandler for NokiaIeHandler {
 Every IE validates its length during unmarshal:
 
 ```rust
-pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
+pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
     if payload.len() < MINIMUM_LENGTH {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("{} requires at least {} bytes, got {}",
-                    IE_NAME, MINIMUM_LENGTH, payload.len())
+        return Err(PfcpError::invalid_length(
+            IE_NAME, Self::IE_TYPE, MINIMUM_LENGTH, payload.len(),
         ));
     }
     // ... parse fields
@@ -721,14 +706,14 @@ pub fn unmarshal(payload: &[u8]) -> Result<Self, io::Error> {
 Field values are validated for specification compliance:
 
 ```rust
-pub fn unmarshal(payload: &[u8]) -> Result<Precedence, io::Error> {
+pub fn unmarshal(payload: &[u8]) -> Result<Precedence, PfcpError> {
     let value = u32::from_be_bytes(payload[0..4].try_into().unwrap());
 
     // Per 3GPP TS 29.244: Precedence must be non-zero
     if value == 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Precedence value cannot be zero"
+        return Err(PfcpError::invalid_value(
+            "Precedence", "0",
+            "Precedence value cannot be zero per 3GPP TS 29.244",
         ));
     }
 
@@ -804,15 +789,17 @@ Avoid copying for read-only operations:
 
 ```rust
 // Bad: Copies data
-pub fn get_pdr_id(buf: &[u8]) -> Result<PdrId, io::Error> {
+pub fn get_pdr_id(buf: &[u8]) -> Result<PdrId, PfcpError> {
     let ie = Ie::unmarshal(buf)?;  // Copies payload
     PdrId::unmarshal(&ie.payload)
 }
 
 // Good: References original buffer
-pub fn peek_pdr_id(buf: &[u8]) -> Result<u16, io::Error> {
+pub fn peek_pdr_id(buf: &[u8]) -> Result<u16, PfcpError> {
     if buf.len() < 6 {  // type(2) + len(2) + value(2)
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "Too short"));
+        return Err(PfcpError::invalid_length(
+            "PDR ID peek", IeType::PdrId, 6, buf.len(),
+        ));
     }
 
     // Direct access, no allocation

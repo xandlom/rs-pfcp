@@ -40,7 +40,7 @@ Where possible, avoid copying data during parsing:
 
 ```rust
 /// Bad: Copies entire payload
-pub fn get_node_id(buf: &[u8]) -> Result<NodeId, io::Error> {
+pub fn get_node_id(buf: &[u8]) -> Result<NodeId, PfcpError> {
     let header = PfcpHeader::unmarshal(buf)?;  // Allocates
     let ie_buf = buf[header.len() as usize..].to_vec();  // Copies!
     let ie = Ie::unmarshal(&ie_buf)?;  // Another allocation
@@ -48,9 +48,14 @@ pub fn get_node_id(buf: &[u8]) -> Result<NodeId, io::Error> {
 }
 
 /// Good: References original buffer
-pub fn peek_node_id(buf: &[u8]) -> Result<&[u8], io::Error> {
+pub fn peek_node_id(buf: &[u8]) -> Result<&[u8], PfcpError> {
     if buf.len() < 12 {  // Min header + IE header
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "Too short"));
+        return Err(PfcpError::InvalidLength {
+            ie_name: "PfcpHeader".into(),
+            ie_type: 0,
+            expected: 12,
+            actual: buf.len(),
+        });
     }
 
     let header_len = if buf[0] & 0x01 != 0 { 16 } else { 8 };
@@ -83,7 +88,7 @@ pub struct Message {
 
 impl Message {
     /// Parse header and index IEs without unmarshaling
-    pub fn from_bytes(buf: Vec<u8>) -> Result<Self, io::Error> {
+    pub fn from_bytes(buf: Vec<u8>) -> Result<Self, PfcpError> {
         let header = PfcpHeader::unmarshal(&buf)?;
 
         let mut ie_offsets = Vec::new();
@@ -106,7 +111,7 @@ impl Message {
     }
 
     /// Parse specific IE on-demand
-    pub fn get_ie(&self, ie_type: u16) -> Option<Result<Ie, io::Error>> {
+    pub fn get_ie(&self, ie_type: u16) -> Option<Result<Ie, PfcpError>> {
         for &(typ, offset, length) in &self.ie_offsets {
             if typ == ie_type {
                 let payload = &self.raw_buffer[offset..offset + length];
@@ -251,7 +256,7 @@ impl MessageCodec {
         &self.marshal_buf
     }
 
-    pub fn unmarshal(&mut self, data: &[u8]) -> Result<Message, io::Error> {
+    pub fn unmarshal(&mut self, data: &[u8]) -> Result<Message, PfcpError> {
         self.unmarshal_buf.clear();
         self.unmarshal_buf.extend_from_slice(data);
 
@@ -291,7 +296,7 @@ Structure hot paths for predictable branches:
 
 ```rust
 // Bad: Unpredictable branch in hot path
-pub fn unmarshal_ie(buf: &[u8]) -> Result<Ie, io::Error> {
+pub fn unmarshal_ie(buf: &[u8]) -> Result<Ie, PfcpError> {
     let ie_type = u16::from_be_bytes([buf[0], buf[1]]);
 
     // Match has 100+ branches - poor branch prediction
@@ -304,13 +309,13 @@ pub fn unmarshal_ie(buf: &[u8]) -> Result<Ie, io::Error> {
 }
 
 // Good: Table lookup, no branching
-static IE_PARSERS: [fn(&[u8]) -> Result<Ie, io::Error>; 256] = [
+static IE_PARSERS: [fn(&[u8]) -> Result<Ie, PfcpError>; 256] = [
     parse_recovery_timestamp,  // Type 1
     parse_some_ie,             // Type 2
     // ...
 ];
 
-pub fn unmarshal_ie(buf: &[u8]) -> Result<Ie, io::Error> {
+pub fn unmarshal_ie(buf: &[u8]) -> Result<Ie, PfcpError> {
     let ie_type = u16::from_be_bytes([buf[0], buf[1]]);
 
     if ie_type < 256 {
@@ -352,9 +357,14 @@ Mark hot path functions for inlining:
 
 ```rust
 #[inline(always)]
-pub fn peek_message_type(buf: &[u8]) -> Result<u8, io::Error> {
+pub fn peek_message_type(buf: &[u8]) -> Result<u8, PfcpError> {
     if buf.len() < 2 {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "Too short"));
+        return Err(PfcpError::InvalidLength {
+            ie_name: "PfcpHeader".into(),
+            ie_type: 0,
+            expected: 2,
+            actual: buf.len(),
+        });
     }
     Ok(buf[1])
 }
@@ -366,7 +376,7 @@ pub fn peek_seid_flag(buf: &[u8]) -> bool {
 
 // Don't inline large functions
 #[inline(never)]
-pub fn unmarshal_complex_message(buf: &[u8]) -> Result<Message, io::Error> {
+pub fn unmarshal_complex_message(buf: &[u8]) -> Result<Message, PfcpError> {
     // Large function body...
 }
 ```
@@ -610,7 +620,7 @@ impl UncheckedMessage {
     }
 
     /// Slow: Validates on first access
-    pub fn validated(self) -> Result<Message, io::Error> {
+    pub fn validated(self) -> Result<Message, PfcpError> {
         Message::unmarshal(&self.raw)
     }
 

@@ -461,17 +461,17 @@ Err(PfcpError::invalid_value(
 
 ## Backward Compatibility
 
-### Conversion to io::Error
+### Integration with io::Error
 
-`PfcpError` implements `From<PfcpError> for io::Error`:
+For application code that needs to work with both `PfcpError` and `io::Error` (e.g., network operations), use `Box<dyn std::error::Error>` or a custom application error type:
 
 ```rust
-use std::io;
 use rs_pfcp::error::PfcpError;
 
-fn legacy_api() -> Result<(), io::Error> {
-    let result: Result<(), PfcpError> = some_pfcp_operation();
-    result.map_err(|e| e.into())  // Converts PfcpError to io::Error
+fn app_handler(data: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+    let msg = rs_pfcp::message::parse(data)?;  // PfcpError -> Box<dyn Error>
+    // ... network I/O with io::Error also works with Box<dyn Error>
+    Ok(())
 }
 ```
 
@@ -496,5 +496,5 @@ assert!(matches!(pfcp_err, PfcpError::IoError { .. }));
 ---
 
 **Last Updated**: 2026-02-03
-**Architecture Version**: 0.2.5
+**Architecture Version**: 0.3.0
 **Specification**: 3GPP TS 29.244 Release 18

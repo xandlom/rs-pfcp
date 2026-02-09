@@ -25,7 +25,6 @@ use rs_pfcp::ie::f_teid::FteidBuilder;
 use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
 use rs_pfcp::message::{parse, Message};
 use std::env;
-use std::io;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::{Duration, SystemTime};
 
@@ -40,7 +39,7 @@ mod colors {
     pub const RED: &str = "\x1b[31m";
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     let demo = if args.len() > 1 {
         args[1].as_str()
@@ -84,7 +83,7 @@ fn main() -> io::Result<()> {
 }
 
 /// Demo 1: Round-trip marshal/unmarshal validation
-fn demo_roundtrip() -> io::Result<()> {
+fn demo_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
     print_header("Demo 1: Round-Trip Validation");
 
     println!(
@@ -136,7 +135,7 @@ fn demo_roundtrip() -> io::Result<()> {
 }
 
 /// Demo 2: Semantic comparison with F-TEID
-fn demo_semantic() -> io::Result<()> {
+fn demo_semantic() -> Result<(), Box<dyn std::error::Error>> {
     print_header("Demo 2: Semantic Comparison");
 
     println!(
@@ -227,7 +226,7 @@ fn demo_semantic() -> io::Result<()> {
 }
 
 /// Demo 3: Timestamp tolerance comparison
-fn demo_timestamp() -> io::Result<()> {
+fn demo_timestamp() -> Result<(), Box<dyn std::error::Error>> {
     print_header("Demo 3: Timestamp Tolerance");
 
     println!(
@@ -305,7 +304,7 @@ fn demo_timestamp() -> io::Result<()> {
 }
 
 /// Demo 4: Message validation patterns
-fn demo_validation() -> io::Result<()> {
+fn demo_validation() -> Result<(), Box<dyn std::error::Error>> {
     print_header("Demo 4: Message Validation");
 
     println!(
@@ -382,7 +381,7 @@ fn demo_validation() -> io::Result<()> {
 }
 
 /// Demo 5: Diff generation
-fn demo_diff() -> io::Result<()> {
+fn demo_diff() -> Result<(), Box<dyn std::error::Error>> {
     print_header("Demo 5: Diff Generation");
 
     println!(

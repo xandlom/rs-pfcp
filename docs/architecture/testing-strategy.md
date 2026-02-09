@@ -63,7 +63,7 @@ mod tests {
         assert!(result.is_err());
 
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(err, PfcpError::InvalidLength { .. }));
     }
 
     #[test]
@@ -250,7 +250,7 @@ mod compliance_tests {
         assert!(result.is_err(), "Zero precedence should be rejected");
 
         let err = result.unwrap_err();
-        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+        assert!(matches!(err, PfcpError::InvalidValue { .. }));
         assert!(err.to_string().contains("cannot be zero"));
     }
 
@@ -482,7 +482,7 @@ mod tests {
     fn test_node_id_unmarshal_empty() {
         let result = NodeId::unmarshal(&[]);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::InvalidData);
+        assert!(matches!(result.unwrap_err(), PfcpError::InvalidLength { .. }));
     }
 
     // Negative test: Invalid type
@@ -645,7 +645,7 @@ fn test_with_macros() {
     assert_round_trip!(PdrId, PdrId::new(42));
 
     let result = PdrId::unmarshal(&[]);
-    assert_parse_error!(result, io::ErrorKind::InvalidData);
+    assert!(matches!(result.unwrap_err(), PfcpError::InvalidLength { .. }));
 }
 ```
 

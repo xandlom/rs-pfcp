@@ -11,7 +11,7 @@
 //! ```rust,no_run
 //! use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
-//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //!
 //! let result = MessageComparator::new(msg1, msg2)
 //!     .ignore_sequence()
@@ -30,7 +30,7 @@
 //! ```rust,no_run
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
-//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let result = MessageComparator::new(msg1, msg2)
 //!     .strict_mode()
 //!     .compare()?;
@@ -43,7 +43,7 @@
 //! ```rust,no_run
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
-//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let result = MessageComparator::new(msg1, msg2)
 //!     .test_mode()  // Ignores sequence, timestamps, etc.
 //!     .compare()?;
@@ -57,7 +57,7 @@
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
 //! # use rs_pfcp::ie::IeType;
-//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let result = MessageComparator::new(msg1, msg2)
 //!     .focus_on_ie_types(&[IeType::CreatePdr, IeType::CreateFar])
 //!     .compare()?;
@@ -71,7 +71,7 @@
 //! ```rust,no_run
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
-//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+//! # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let diff = MessageComparator::new(msg1, msg2)
 //!     .with_detailed_diff()
 //!     .diff()?;
@@ -89,7 +89,7 @@
 //! ```rust,no_run
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::{Message, heartbeat_request::HeartbeatRequest};
-//! # fn example(original: &HeartbeatRequest) -> std::io::Result<()> {
+//! # fn example(original: &HeartbeatRequest) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let bytes = original.marshal();
 //! let parsed = HeartbeatRequest::unmarshal(&bytes)?;
 //!
@@ -107,7 +107,7 @@
 //! ```rust,no_run
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
-//! # fn example(expected: &dyn Message, actual: &dyn Message) -> std::io::Result<()> {
+//! # fn example(expected: &dyn Message, actual: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let diff = MessageComparator::new(expected, actual)
 //!     .include_payload_in_diff()
 //!     .diff()?;
@@ -125,7 +125,7 @@
 //! # use rs_pfcp::comparison::MessageComparator;
 //! # use rs_pfcp::message::Message;
 //! # use rs_pfcp::comparison::OptionalIeMode;
-//! # fn example(reference: &dyn Message, msg: &dyn Message) -> std::io::Result<()> {
+//! # fn example(reference: &dyn Message, msg: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 //! let result = MessageComparator::new(reference, msg)
 //!     .optional_ie_mode(OptionalIeMode::RequireLeft)
 //!     .semantic_mode()

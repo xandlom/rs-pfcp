@@ -90,7 +90,7 @@ fn handle_session_report_request(
     socket: &UdpSocket,
     msg: &dyn Message,
     src: std::net::SocketAddr,
-) -> std::io::Result<()> {
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("  Received Session Report Request");
 
     // Check what type of report

@@ -69,22 +69,25 @@ impl EnterpriseIe {
     }
 
     /// Unmarshal from IE
-    pub fn from_ie(ie: &Ie) -> Result<Self, io::Error> {
+    pub fn from_ie(ie: &Ie) -> Result<Self, PfcpError> {
         let ie_type = ie.ie_type as u16;
 
         // Check enterprise bit
         if ie_type & 0x8000 == 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Not an enterprise IE (bit 15 not set)"
-            ));
+            return Err(PfcpError::InvalidValue {
+                field: "ie_type".into(),
+                value: format!("0x{:04X}", ie_type),
+                reason: "Not an enterprise IE (bit 15 not set)".into(),
+            });
         }
 
         if ie.payload.len() < 2 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Enterprise IE requires at least 2 bytes for Enterprise ID"
-            ));
+            return Err(PfcpError::InvalidLength {
+                ie_name: "EnterpriseIe".into(),
+                ie_type: ie_type,
+                expected: 2,
+                actual: ie.payload.len(),
+            });
         }
 
         let enterprise_id = u16::from_be_bytes([ie.payload[0], ie.payload[1]]);
@@ -140,28 +143,32 @@ pub mod nokia {
         }
 
         /// Unmarshal from vendor IE
-        pub fn from_enterprise_ie(ie: &EnterpriseIe) -> Result<Self, io::Error> {
+        pub fn from_enterprise_ie(ie: &EnterpriseIe) -> Result<Self, PfcpError> {
             if ie.enterprise_id != NOKIA_ENTERPRISE_ID {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Wrong enterprise ID: expected {}, got {}",
-                            NOKIA_ENTERPRISE_ID, ie.enterprise_id)
-                ));
+                return Err(PfcpError::InvalidValue {
+                    field: "enterprise_id".into(),
+                    value: format!("{}", ie.enterprise_id),
+                    reason: format!("Wrong enterprise ID: expected {}",
+                                    NOKIA_ENTERPRISE_ID),
+                });
             }
 
             if ie.vendor_type != Self::VENDOR_TYPE {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("Wrong vendor type: expected {}, got {}",
-                            Self::VENDOR_TYPE, ie.vendor_type)
-                ));
+                return Err(PfcpError::InvalidValue {
+                    field: "vendor_type".into(),
+                    value: format!("{}", ie.vendor_type),
+                    reason: format!("Wrong vendor type: expected {}",
+                                    Self::VENDOR_TYPE),
+                });
             }
 
             if ie.payload.len() < 6 {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Nokia Enhanced QoS requires 6 bytes"
-                ));
+                return Err(PfcpError::InvalidLength {
+                    ie_name: "NokiaEnhancedQos".into(),
+                    ie_type: Self::VENDOR_TYPE,
+                    expected: 6,
+                    actual: ie.payload.len(),
+                });
             }
 
             let priority_level = ie.payload[0];
@@ -212,7 +219,7 @@ pub trait VendorIeHandler: Send + Sync {
 
     /// Parse vendor IE
     fn parse(&self, vendor_type: u16, payload: &[u8])
-        -> Result<Box<dyn Any>, io::Error>;
+        -> Result<Box<dyn Any>, PfcpError>;
 
     /// Format for display
     fn format(&self, ie: &dyn Any) -> String;
@@ -236,14 +243,15 @@ impl VendorIeRegistry {
     }
 
     /// Parse vendor IE using registered handler
-    pub fn parse_vendor_ie(&self, ie: &Ie) -> Result<Box<dyn Any>, io::Error> {
+    pub fn parse_vendor_ie(&self, ie: &Ie) -> Result<Box<dyn Any>, PfcpError> {
         let enterprise_ie = EnterpriseIe::from_ie(ie)?;
 
         let handler = self.handlers.get(&enterprise_ie.enterprise_id)
-            .ok_or_else(|| io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("No handler for enterprise ID {}", enterprise_ie.enterprise_id)
-            ))?;
+            .ok_or_else(|| PfcpError::InvalidValue {
+                field: "enterprise_id".into(),
+                value: format!("{}", enterprise_ie.enterprise_id),
+                reason: "No handler registered for this enterprise ID".into(),
+            })?;
 
         handler.parse(enterprise_ie.vendor_type, &enterprise_ie.payload)
     }
@@ -281,7 +289,7 @@ pub trait CustomMessage {
     fn marshal(&self) -> Vec<u8>;
 
     /// Unmarshal from bytes
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error>
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized;
 }
@@ -321,7 +329,7 @@ impl CustomMessage for PolicyUpdateRequest {
         buf
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, io::Error> {
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError> {
         let header = PfcpHeader::unmarshal(buf)?;
 
         let mut offset = header.len() as usize;
@@ -344,14 +352,16 @@ impl CustomMessage for PolicyUpdateRequest {
 
         Ok(PolicyUpdateRequest {
             header,
-            node_id: node_id.ok_or_else(|| io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing Node ID"
-            ))?,
-            policy_id: policy_id.ok_or_else(|| io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Missing Policy ID"
-            ))?,
+            node_id: node_id.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeId,
+                ie_name: "Node ID".into(),
+                message_type: "PolicyUpdateRequest".into(),
+            })?,
+            policy_id: policy_id.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::PolicyId,
+                ie_name: "Policy ID".into(),
+                message_type: "PolicyUpdateRequest".into(),
+            })?,
             policy_rules,
         })
     }
@@ -363,7 +373,7 @@ impl CustomMessage for PolicyUpdateRequest {
 Dynamic message type routing:
 
 ```rust
-pub type MessageParser = fn(&[u8]) -> Result<Box<dyn Any>, io::Error>;
+pub type MessageParser = fn(&[u8]) -> Result<Box<dyn Any>, PfcpError>;
 
 pub struct MessageRegistry {
     parsers: HashMap<u8, MessageParser>,
@@ -397,14 +407,15 @@ impl MessageRegistry {
     }
 
     /// Parse message using registered parser
-    pub fn parse(&self, buf: &[u8]) -> Result<Box<dyn Any>, io::Error> {
+    pub fn parse(&self, buf: &[u8]) -> Result<Box<dyn Any>, PfcpError> {
         let msg_type = peek_message_type(buf)?;
 
         let parser = self.parsers.get(&msg_type)
-            .ok_or_else(|| io::Error::new(
-                io::ErrorKind::Other,
-                format!("Unknown message type: {}", msg_type)
-            ))?;
+            .ok_or_else(|| PfcpError::InvalidValue {
+                field: "message_type".into(),
+                value: format!("{}", msg_type),
+                reason: "Unknown message type".into(),
+            })?;
 
         parser(buf)
     }
@@ -844,7 +855,7 @@ pub trait VersionedMessage {
     fn marshal_for_version(&self, version: SpecVersion) -> Vec<u8>;
 
     fn unmarshal_for_version(buf: &[u8], version: SpecVersion)
-        -> Result<Self, io::Error>
+        -> Result<Self, PfcpError>
     where
         Self: Sized;
 }

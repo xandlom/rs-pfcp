@@ -74,10 +74,10 @@ pub trait PfcpMessage {
         Self: Sized;
 
     /// Get SEID if present (session messages only)
-    fn seid(&self) -> Option<u64>;
+    fn seid(&self) -> Option<Seid>;
 
     /// Get sequence number
-    fn sequence_number(&self) -> u32;
+    fn sequence_number(&self) -> SequenceNumber;
 }
 ```
 
@@ -406,8 +406,8 @@ pub struct PfcpHeader {
     spare: u8,        // Reserved bits
     mp: bool,         // Message Priority
     s: bool,          // SEID present flag
-    seid: Option<u64>, // Session Endpoint ID (if S=1)
-    sequence_number: u32,  // 24-bit sequence number
+    seid: Seid,            // Session Endpoint ID (if S=1)
+    sequence_number: SequenceNumber,  // 24-bit sequence number
     priority: u8,     // Message priority (if MP=1)
 }
 ```

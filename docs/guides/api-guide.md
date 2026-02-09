@@ -22,10 +22,10 @@ use rs_pfcp::ie::{Ie, IeType};
 // Every message implements the Message trait
 pub trait Message {
     fn marshal(&self) -> Vec<u8>;           // Serialize to bytes
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error>; // Parse from bytes
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>; // Parse from bytes
     fn msg_type(&self) -> MsgType;          // Get message type
-    fn seid(&self) -> Option<u64>;          // Session Endpoint ID
-    fn sequence(&self) -> u32;              // Message sequence number
+    fn seid(&self) -> Option<Seid>;         // Session Endpoint ID
+    fn sequence(&self) -> SequenceNumber;   // Message sequence number
     fn ies(&self, ie_type: IeType) -> IeIter<'_>;      // Iterate/find IEs by type
 }
 ```
@@ -244,59 +244,46 @@ async fn establish_association(peer_addr: SocketAddr) -> Result<(), Box<dyn Erro
 ### 1. Comprehensive Error Strategy
 
 ```rust
-use std::io::{Error, ErrorKind};
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::message::{parse, Message, MsgType};
+use rs_pfcp::ie::IeType;
 
-// Custom error types for different failure scenarios
-#[derive(Debug)]
-pub enum PfcpError {
-    InvalidMessage(String),
-    NetworkError(std::io::Error),
-    ProtocolError(CauseValue),
-    TimeoutError,
-}
-
-impl From<std::io::Error> for PfcpError {
-    fn from(e: std::io::Error) -> Self {
-        PfcpError::NetworkError(e)
-    }
-}
-
-// Robust message processing with error handling
+// Robust message processing using the library's PfcpError
 fn process_message(data: &[u8]) -> Result<(), PfcpError> {
-    let message = parse(data)
-        .map_err(|e| PfcpError::InvalidMessage(format!("Parse failed: {}", e)))?;
+    // parse() returns PfcpError on failure with descriptive context
+    let message = parse(data)?;
 
     match message.msg_type() {
         MsgType::SessionEstablishmentRequest => {
-            // Validate mandatory IEs
-            validate_session_establishment(&message)?;
-            handle_session_establishment(&message)?;
+            // Access mandatory IEs - library validates during unmarshal
+            let _node_id = message.ies(IeType::NodeId).next();
+            let _fseid = message.ies(IeType::Fseid).next();
+            // Process the session establishment...
         }
         MsgType::SessionReportRequest => {
-            handle_session_report(&message)?;
+            // Handle session reports...
         }
         _ => {
-            return Err(PfcpError::InvalidMessage(
-                format!("Unsupported message type: {:?}", message.msg_type())
-            ));
+            eprintln!("Unsupported message type: {:?}", message.msg_type());
         }
     }
 
     Ok(())
 }
 
-// IE validation patterns
-fn validate_session_establishment(message: &dyn Message) -> Result<(), PfcpError> {
-    // Check for mandatory IEs
-    let required_ies = [IeType::NodeId, IeType::Fseid];
-
-    for &ie_type in &required_ies {
-        if message.ies(ie_type).next().is_none() {
-            return Err(PfcpError::ProtocolError(CauseValue::MandatoryIeMissing));
+// Pattern matching on PfcpError variants for specific handling
+fn handle_parse_error(err: &PfcpError) {
+    match err {
+        PfcpError::MissingMandatoryIe { ie_type, .. } => {
+            // Map to 3GPP cause code for response
+            let cause = err.to_cause_code();
+            eprintln!("Missing IE {:?}, cause: {:?}", ie_type, cause);
         }
+        PfcpError::InvalidLength { ie_name, expected, actual, .. } => {
+            eprintln!("{}: expected {} bytes, got {}", ie_name, expected, actual);
+        }
+        _ => eprintln!("Parse error: {}", err),
     }
-
-    Ok(())
 }
 ```
 
@@ -306,13 +293,25 @@ fn validate_session_establishment(message: &dyn Message) -> Result<(), PfcpError
 use std::time::Duration;
 use tokio::time::timeout;
 
+// Application-level error type wrapping both library and network errors
+#[derive(Debug)]
+enum AppError {
+    Pfcp(PfcpError),
+    Network(std::io::Error),
+    Timeout,
+}
+
+impl From<PfcpError> for AppError {
+    fn from(e: PfcpError) -> Self { AppError::Pfcp(e) }
+}
+
 // Reliable message sending with retries
 async fn send_with_retry<T: Message>(
     socket: &UdpSocket,
     addr: SocketAddr,
     message: T,
     max_retries: u32
-) -> Result<(), PfcpError> {
+) -> Result<(), AppError> {
     let data = message.marshal();
 
     for attempt in 1..=max_retries {
@@ -321,13 +320,13 @@ async fn send_with_retry<T: Message>(
             Ok(Err(e)) => {
                 eprintln!("Send attempt {} failed: {}", attempt, e);
                 if attempt == max_retries {
-                    return Err(PfcpError::NetworkError(e));
+                    return Err(AppError::Network(e));
                 }
             }
             Err(_) => {
                 eprintln!("Send attempt {} timed out", attempt);
                 if attempt == max_retries {
-                    return Err(PfcpError::TimeoutError);
+                    return Err(AppError::Timeout);
                 }
             }
         }

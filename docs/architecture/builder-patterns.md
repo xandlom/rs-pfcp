@@ -75,21 +75,20 @@ impl IeNameBuilder {
     }
 
     // Build with validation
-    pub fn build(self) -> Result<IeName, io::Error> {
+    pub fn build(self) -> Result<IeName, PfcpError> {
         // Validate required fields
         let required = self.required_field.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "required_field is mandatory"
+            PfcpError::validation_error(
+                "IeNameBuilder", "required_field", "required_field is mandatory",
             )
         })?;
 
         // Validate logical constraints
         if let Some(x) = self.optional_field {
             if x > MAX_VALUE {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("value {} exceeds maximum {}", x, MAX_VALUE)
+                return Err(PfcpError::validation_error(
+                    "IeNameBuilder", "optional_field",
+                    format!("value {} exceeds maximum {}", x, MAX_VALUE),
                 ));
             }
         }
@@ -107,7 +106,7 @@ impl IeNameBuilder {
 - **Builder struct**: `<IeName>Builder`
 - **Constructor**: `new()` with minimal required params
 - **Setters**: Method names match field names
-- **Finalizer**: `build()` returning `Result<IE, io::Error>`
+- **Finalizer**: `build()` returning `Result<IE, PfcpError>`
 - **Convenience constructors**: Static methods like `uplink_to_core()`
 
 ### Validation Strategy
@@ -118,9 +117,8 @@ Builders perform validation at three levels:
 
 ```rust
 let field = self.field.ok_or_else(|| {
-    io::Error::new(
-        io::ErrorKind::InvalidData,
-        "field_name is required"
+    PfcpError::validation_error(
+        "IeNameBuilder", "field_name", "field_name is required",
     )
 })?;
 ```
@@ -129,9 +127,9 @@ let field = self.field.ok_or_else(|| {
 
 ```rust
 if value > MAX_VALUE || value < MIN_VALUE {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("value {} out of range [{}, {}]", value, MIN_VALUE, MAX_VALUE)
+    return Err(PfcpError::validation_error(
+        "IeNameBuilder", "value",
+        format!("value {} out of range [{}, {}]", value, MIN_VALUE, MAX_VALUE),
     ));
 }
 ```
@@ -141,9 +139,9 @@ if value > MAX_VALUE || value < MIN_VALUE {
 ```rust
 // Example: BUFF action requires BAR ID
 if apply_action.contains(ApplyAction::BUFF) && self.bar_id.is_none() {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "BUFF action requires BAR ID to be set"
+    return Err(PfcpError::validation_error(
+        "CreateFarBuilder", "bar_id",
+        "BUFF action requires BAR ID to be set",
     ));
 }
 ```

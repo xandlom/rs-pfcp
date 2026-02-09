@@ -73,7 +73,7 @@ All Information Elements implement:
 - Type-Length-Value (TLV) encoding for IEs
 - Support for vendor-specific IEs with enterprise IDs
 - 3GPP TS 29.244 compliant F-TEID encoding with proper CHOOSE/CHOOSE_ID flag handling
-- Proper error handling with `std::io::Error`
+- Proper error handling with `PfcpError`
 - **Security**: Zero-length IEs are rejected at protocol level to prevent DoS attacks (per 3GPP TS 29.244, all IEs have minimum length ≥ 1 byte)
 
 #### Message Display and Debugging
@@ -86,8 +86,8 @@ The library includes sophisticated display capabilities via `MessageDisplay` tra
 
 #### Error Handling Patterns
 Consistent error handling throughout the codebase:
-- All marshal/unmarshal operations return `Result<T, std::io::Error>`
-- Invalid data errors use `io::ErrorKind::InvalidData` with descriptive messages
+- All marshal/unmarshal operations return `Result<T, PfcpError>`
+- Invalid data errors use specific `PfcpError` variants with descriptive context
 - Short buffer errors caught early with length validation
 - Grouped IEs parse child IEs lazily via `as_ies()` method
 
@@ -235,23 +235,23 @@ The rs-pfcp library implements comprehensive builder patterns for complex Inform
    // Optional setters: method names matching field names
    pub fn forwarding_parameters(mut self, params: ForwardingParameters) -> Self { ... }
 
-   // Finalizer: build() returning Result<IE, io::Error>
-   pub fn build(self) -> Result<CreateFar, io::Error> { ... }
+   // Finalizer: build() returning Result<IE, PfcpError>
+   pub fn build(self) -> Result<CreateFar, PfcpError> { ... }
    ```
 
 2. **Validation Strategy:**
    ```rust
-   pub fn build(self) -> Result<CreateFar, io::Error> {
+   pub fn build(self) -> Result<CreateFar, PfcpError> {
        // Required field validation
        let far_id = self.far_id.ok_or_else(|| {
-           io::Error::new(io::ErrorKind::InvalidData, "FAR ID is required")
+           PfcpError::validation_error("CreateFarBuilder", "far_id", "FAR ID is required")
        })?;
 
        // Logical validation (e.g., action and parameter combinations)
        if apply_action.contains(ApplyAction::BUFF) && self.bar_id.is_none() {
-           return Err(io::Error::new(
-               io::ErrorKind::InvalidData,
-               "BUFF action requires BAR ID to be set"
+           return Err(PfcpError::validation_error(
+               "CreateFarBuilder", "bar_id",
+               "BUFF action requires BAR ID to be set",
            ));
        }
 
@@ -333,10 +333,10 @@ mod tests {
 
 2. **Method Chaining:**
    - All setters return `Self` for fluent interface
-   - Build method consumes self and returns `Result<T, io::Error>`
+   - Build method consumes self and returns `Result<T, PfcpError>`
 
 3. **Error Handling:**
-   - Use `io::ErrorKind::InvalidData` for validation errors
+   - Use `PfcpError::validation_error()` for builder validation errors
    - Provide clear, descriptive error messages
    - Validate logical relationships between fields
 
@@ -352,7 +352,7 @@ mod tests {
 **Threat**: Malformed PFCP messages with zero-length Information Elements can cause DoS attacks (similar to free5gc CVE-like issues).
 
 **Mitigation**: The library implements **allowlist-based validation** at protocol level in `src/ie/mod.rs`:
-- Zero-length IEs are **rejected by default** with `io::ErrorKind::InvalidData`
+- Zero-length IEs are **rejected by default** with `PfcpError::ZeroLengthNotAllowed`
 - **Three IEs explicitly allowed** to support zero-length for clear/reset semantics per TS 29.244 R18
 - Prevents attack vectors discovered in production PFCP implementations
 
@@ -387,10 +387,10 @@ fn allows_zero_length(ie_type: IeType) -> bool {
 }
 
 if length == 0 && !Self::allows_zero_length(ie_type) {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("Zero-length IE not allowed for {:?}", ie_type),
-    ));
+    return Err(PfcpError::ZeroLengthNotAllowed {
+        ie_name: format!("{:?}", ie_type),
+        ie_type: ie_type as u16,
+    });
 }
 ```
 

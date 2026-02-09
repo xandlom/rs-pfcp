@@ -75,9 +75,10 @@ fn allows_zero_length(ie_type: IeType) -> bool {
 }
 
 if length == 0 && !Self::allows_zero_length(ie_type) {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("Zero-length IE not allowed for {:?}", ie_type),
+    return Err(PfcpError::invalid_value(
+        "IE",
+        format!("{:?} (type {})", ie_type, raw_type),
+        "Zero-length IE not allowed per 3GPP TS 29.244",
     ));
 }
 ```
@@ -107,10 +108,10 @@ Only pure OCTET STRING IEs with clear/reset semantics:
 const MAX_MESSAGE_LENGTH: usize = 65535;  // Max UDP payload
 
 if msg_length > MAX_MESSAGE_LENGTH {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("Message length {} exceeds maximum {}", msg_length, MAX_MESSAGE_LENGTH)
-    ));
+    return Err(PfcpError::MessageParseError {
+        message_type: None,
+        reason: format!("Message length {} exceeds maximum {}", msg_length, MAX_MESSAGE_LENGTH),
+    });
 }
 ```
 
@@ -119,18 +120,18 @@ if msg_length > MAX_MESSAGE_LENGTH {
 ```rust
 // Version check
 if version != 1 {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("Unsupported PFCP version: {}", version)
-    ));
+    return Err(PfcpError::MessageParseError {
+        message_type: None,
+        reason: format!("Unsupported PFCP version: {}", version),
+    });
 }
 
 // Reserved bits must be zero
 if spare_bits != 0 {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Reserved bits must be zero"
-    ));
+    return Err(PfcpError::MessageParseError {
+        message_type: None,
+        reason: "Reserved bits must be zero".to_string(),
+    });
 }
 ```
 
@@ -146,9 +147,11 @@ Each IE validates minimum required length:
 const MIN_LENGTH: usize = 4;  // Type-specific minimum
 
 if data.len() < MIN_LENGTH {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("IE too short: got {}, need {}", data.len(), MIN_LENGTH)
+    return Err(PfcpError::invalid_length(
+        "IE Name",
+        IeType::Unknown,
+        MIN_LENGTH,
+        data.len(),
     ));
 }
 ```
@@ -164,9 +167,10 @@ if data.len() < MIN_LENGTH {
 ```rust
 // Example: Port number validation
 if port == 0 || port > 65535 {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        format!("Invalid port number: {}", port)
+    return Err(PfcpError::invalid_value(
+        "port",
+        port.to_string(),
+        "must be between 1 and 65535",
     ));
 }
 ```
@@ -176,9 +180,10 @@ if port == 0 || port > 65535 {
 ```rust
 // Example: F-TEID flag validation
 if flags.contains(V4) && flags.contains(CHOOSE_V4) {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Cannot specify both V4 and CHOOSE_V4 flags"
+    return Err(PfcpError::invalid_value(
+        "F-TEID flags",
+        format!("{:?}", flags),
+        "Cannot specify both V4 and CHOOSE_V4 flags",
     ));
 }
 ```
@@ -190,11 +195,10 @@ if flags.contains(V4) && flags.contains(CHOOSE_V4) {
 #### Mandatory IE Validation
 
 ```rust
-let node_id = self.node_id.ok_or_else(|| {
-    io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Node ID is mandatory for Session Establishment Request"
-    )
+let node_id = self.node_id.ok_or(PfcpError::MissingMandatoryIe {
+    ie_type: IeType::NodeId,
+    message_type: Some(MsgType::SessionEstablishmentRequest),
+    parent_ie: None,
 })?;
 ```
 
@@ -203,9 +207,10 @@ let node_id = self.node_id.ok_or_else(|| {
 ```rust
 // Example: FAR builder validation
 if apply_action.contains(ApplyAction::BUFF) && self.bar_id.is_none() {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "BUFF action requires BAR ID to be set"
+    return Err(PfcpError::validation_error(
+        "CreateFarBuilder",
+        "bar_id",
+        "BUFF action requires BAR ID to be set",
     ));
 }
 ```
@@ -228,9 +233,11 @@ The library uses **zero unsafe code** except where required by dependencies. All
 ```rust
 // Always check buffer bounds
 if offset + length > data.len() {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Buffer overflow detected"
+    return Err(PfcpError::invalid_length(
+        "IE Name",
+        IeType::Unknown,
+        offset + length,
+        data.len(),
     ));
 }
 ```
@@ -240,10 +247,10 @@ if offset + length > data.len() {
 ```rust
 // Use checked arithmetic for length calculations
 let total_length = header_length.checked_add(payload_length)
-    .ok_or_else(|| io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Integer overflow in length calculation"
-    ))?;
+    .ok_or(PfcpError::MessageParseError {
+        message_type: None,
+        reason: "Integer overflow in length calculation".to_string(),
+    })?;
 ```
 
 ## DoS Attack Prevention
@@ -270,10 +277,10 @@ All parsing operations have bounded complexity:
 ```rust
 // Reject malformed input immediately
 if !is_valid_header(data) {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Invalid header detected"
-    ));
+    return Err(PfcpError::MessageParseError {
+        message_type: None,
+        reason: "Invalid header detected".to_string(),
+    });
 }
 // Don't proceed to expensive parsing
 ```
@@ -282,7 +289,7 @@ if !is_valid_header(data) {
 
 ### No Panics on Invalid Input
 
-**Rule**: All validation uses `Result<T, io::Error>`, never `panic!` or `unwrap()`.
+**Rule**: All validation uses `Result<T, PfcpError>`, never `panic!` or `unwrap()`.
 
 **Exceptions**: Only in tests or when invariant is guaranteed (e.g., builder defaults).
 
@@ -292,15 +299,17 @@ Error messages are descriptive but don't leak sensitive information:
 
 ```rust
 // ✅ GOOD: Descriptive without leaking data
-Err(io::Error::new(
-    io::ErrorKind::InvalidData,
-    "Invalid F-TEID flags combination"
+Err(PfcpError::invalid_value(
+    "F-TEID flags",
+    "conflicting",
+    "Invalid F-TEID flags combination",
 ))
 
 // ❌ BAD: Could leak internal state
-Err(io::Error::new(
-    io::ErrorKind::InvalidData,
-    format!("Session secret: {:?}", session_data)
+Err(PfcpError::invalid_value(
+    "session",
+    format!("{:?}", session_data),
+    "Session secret leaked in error",
 ))
 ```
 
@@ -356,7 +365,7 @@ Planned fuzzing with `cargo-fuzz`:
 
 ### Known Vulnerabilities
 
-**None identified as of v0.1.2**
+**None identified as of v0.3.0**
 
 ### Fixed Security Issues
 
@@ -417,7 +426,7 @@ When adding new IEs or messages:
 
 ---
 
-**Security Version**: 0.1.3
+**Security Version**: 0.3.0
 **Last Security Audit**: 2025-01-08
 **Next Planned Audit**: TBD
 **Fuzzing Status**: Planned

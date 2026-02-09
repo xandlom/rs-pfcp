@@ -178,8 +178,8 @@ All PFCP messages implement the `Message` trait with:
 - `marshal() -> Vec<u8>` - Serialize to binary
 - `unmarshal(data: &[u8]) -> Result<Box<dyn Message>, PfcpError>` - Parse from binary
 - `msg_type() -> MsgType` - Get message type
-- `sequence() -> u32` - Get sequence number
-- `seid() -> Option<u64>` - Get session endpoint ID (if applicable)
+- `sequence() -> SequenceNumber` - Get sequence number
+- `seid() -> Option<Seid>` - Get session endpoint ID (if applicable)
 - `ies(&self, ie_type: IeType) -> IeIter<'_>` - Iterate IEs by type
 
 **Information Elements (IEs):**

@@ -1,7 +1,7 @@
 # Builder Pattern Guide for rs-pfcp
 
-**Last Updated:** 2025-12-03
-**Target:** rs-pfcp v0.2.0+
+**Last Updated:** 2026-02-08
+**Target:** rs-pfcp v0.3.0+
 
 This guide covers the builder patterns used throughout rs-pfcp for constructing PFCP messages and Information Elements (IEs).
 
@@ -287,7 +287,7 @@ let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
 Extract common patterns:
 
 ```rust
-fn build_uplink_pdr(id: u16, precedence: u32, ue_ip: Ipv4Addr) -> Result<CreatePdr, io::Error> {
+fn build_uplink_pdr(id: u16, precedence: u32, ue_ip: Ipv4Addr) -> Result<CreatePdr, PfcpError> {
     let pdi = PdiBuilder::new(SourceInterface::access())
         .ue_ip_address(UeIpAddress::ipv4(ue_ip))
         .build()?;
@@ -554,6 +554,7 @@ let fseid_ie = (seid, ip).into_ie();
 ### Complete Session Establishment
 
 ```rust
+use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::{IntoIe, node_id::NodeId};
 use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
 use rs_pfcp::ie::create_far::CreateFarBuilder;
@@ -565,7 +566,7 @@ fn create_session(
     sequence: u32,
     smf_ip: Ipv4Addr,
     ue_ip: Ipv4Addr,
-) -> Result<Vec<u8>, std::io::Error> {
+) -> Result<Vec<u8>, PfcpError> {
     // Build PDR for uplink traffic
     let pdi = /* ... build PDI ... */;
     let pdr = CreatePdrBuilder::new(PdrId::new(1))
@@ -593,10 +594,11 @@ fn create_session(
 ### Heartbeat with Recovery Time
 
 ```rust
+use rs_pfcp::error::PfcpError;
 use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
 use std::time::SystemTime;
 
-fn send_heartbeat(sequence: u32) -> Result<Vec<u8>, std::io::Error> {
+fn send_heartbeat(sequence: u32) -> Result<Vec<u8>, PfcpError> {
     let request = HeartbeatRequestBuilder::new(sequence)
         .recovery_time_stamp(SystemTime::now())
         .build()?;
@@ -608,10 +610,11 @@ fn send_heartbeat(sequence: u32) -> Result<Vec<u8>, std::io::Error> {
 ### Ethernet PDU Session
 
 ```rust
+use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::ethernet_packet_filter::EthernetPacketFilterBuilder;
 use rs_pfcp::ie::ethernet_pdu_session_information::EthernetPduSessionInformation;
 
-fn create_ethernet_session() -> Result<(), std::io::Error> {
+fn create_ethernet_session() -> Result<(), PfcpError> {
     // Ethernet-specific information
     let eth_pdu_info = EthernetPduSessionInformation::new();
 
@@ -640,6 +643,10 @@ fn create_ethernet_session() -> Result<(), std::io::Error> {
 
 ## Version History
 
+- **v0.3.0** (2026-02-08):
+  - Migrated error handling from `io::Error` to `PfcpError`
+  - Builder `.build()` methods now return `Result<T, PfcpError>`
+  - Message trait returns `SequenceNumber` and `Option<Seid>` instead of raw primitives
 - **v0.2.1** (2025-12-03):
   - Added IntoIe tuple conversions for F-SEID
   - Added Default trait to builders

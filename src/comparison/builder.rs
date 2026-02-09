@@ -18,7 +18,7 @@ mod compare;
 /// ```rust,no_run
 /// use rs_pfcp::comparison::MessageComparator;
 /// # use rs_pfcp::message::Message;
-/// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+/// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
 ///
 /// let result = MessageComparator::new(msg1, msg2)
 ///     .ignore_sequence()
@@ -123,7 +123,7 @@ impl<'a> MessageComparator<'a> {
     /// ```rust,no_run
     /// # use rs_pfcp::comparison::MessageComparator;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     /// let result = MessageComparator::new(msg1, msg2)
     ///     .ignore_sequence()
     ///     .compare()?;
@@ -203,7 +203,7 @@ impl<'a> MessageComparator<'a> {
     /// ```rust,no_run
     /// # use rs_pfcp::comparison::MessageComparator;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     /// // Allow 5 second tolerance
     /// let result = MessageComparator::new(msg1, msg2)
     ///     .timestamp_tolerance_secs(5)
@@ -228,7 +228,7 @@ impl<'a> MessageComparator<'a> {
     /// use rs_pfcp::comparison::MessageComparator;
     /// use rs_pfcp::ie::IeType;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     ///
     /// let result = MessageComparator::new(msg1, msg2)
     ///     .ignore_ie_types(&[IeType::RecoveryTimeStamp, IeType::UrSeqn])
@@ -251,7 +251,7 @@ impl<'a> MessageComparator<'a> {
     /// use rs_pfcp::comparison::MessageComparator;
     /// use rs_pfcp::ie::IeType;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     ///
     /// // Only verify PDR and FAR configuration
     /// let result = MessageComparator::new(msg1, msg2)
@@ -407,7 +407,7 @@ impl<'a> MessageComparator<'a> {
     /// ```rust,no_run
     /// # use rs_pfcp::comparison::MessageComparator;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     /// let result = MessageComparator::new(msg1, msg2)
     ///     .test_mode()
     ///     .compare()?;
@@ -466,7 +466,7 @@ impl<'a> MessageComparator<'a> {
     /// ```rust,no_run
     /// # use rs_pfcp::comparison::MessageComparator;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     /// let result = MessageComparator::new(msg1, msg2)
     ///     .ignore_sequence()
     ///     .compare()?;
@@ -492,7 +492,7 @@ impl<'a> MessageComparator<'a> {
     /// ```rust,no_run
     /// # use rs_pfcp::comparison::MessageComparator;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     /// let diff = MessageComparator::new(msg1, msg2)
     ///     .diff()?;
     ///
@@ -515,7 +515,7 @@ impl<'a> MessageComparator<'a> {
     /// ```rust,no_run
     /// # use rs_pfcp::comparison::MessageComparator;
     /// # use rs_pfcp::message::Message;
-    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> std::io::Result<()> {
+    /// # fn example(msg1: &dyn Message, msg2: &dyn Message) -> Result<(), rs_pfcp::error::PfcpError> {
     /// if MessageComparator::new(msg1, msg2).test_mode().matches()? {
     ///     println!("Messages are equivalent");
     /// }

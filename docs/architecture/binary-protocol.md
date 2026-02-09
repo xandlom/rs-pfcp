@@ -452,10 +452,10 @@ Implements 3GPP security best practices:
 ```rust
 // Reject zero-length for all other IEs
 if length == 0 && !Self::allows_zero_length(ie_type) {
-    return Err(io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Zero-length IE not allowed"
-    ));
+    return Err(PfcpError::ZeroLengthNotAllowed {
+        ie_name: ie_type.to_string(),
+        ie_type: ie_type as u16,
+    });
 }
 ```
 
@@ -480,7 +480,10 @@ let mut ies = Vec::new();
 while offset < data.len() {
     // Parse IE header (minimum 4 bytes)
     if data.len() < offset + 4 {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "IE header truncated"));
+        return Err(PfcpError::MessageParseError {
+            message_type: None,
+            reason: "IE header truncated".to_string(),
+        });
     }
 
     // Unmarshal single IE
@@ -489,7 +492,10 @@ while offset < data.len() {
 
     // Validate bounds
     if offset + ie_len > data.len() {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "IE payload truncated"));
+        return Err(PfcpError::MessageParseError {
+            message_type: None,
+            reason: "IE payload truncated".to_string(),
+        });
     }
 
     ies.push(ie);
@@ -524,7 +530,7 @@ Binary protocol optimizations:
 
 ## Metadata
 
-- **Version:** 0.1.3
-- **Last Updated:** 2025-10-17
+- **Version:** 0.3.0
+- **Last Updated:** 2026-02-08
 - **3GPP Compliance:** TS 29.244 Release 18
 - **Specification Reference:** 3GPP TS 29.244 V18.1.0 (2023-12)
