@@ -173,8 +173,14 @@ fn demo_semantic() -> Result<(), Box<dyn std::error::Error>> {
         teid, ipv4, ie2.payload[0]
     );
 
-    let msg1 = HeartbeatRequestBuilder::new(100).ies(vec![ie1]).build();
-    let msg2 = HeartbeatRequestBuilder::new(100).ies(vec![ie2]).build();
+    let msg1 = HeartbeatRequestBuilder::new(100)
+        .recovery_time_stamp(SystemTime::now())
+        .ies(vec![ie1])
+        .build();
+    let msg2 = HeartbeatRequestBuilder::new(100)
+        .recovery_time_stamp(SystemTime::now())
+        .ies(vec![ie2])
+        .build();
 
     // Strict comparison (will fail - different bytes)
     println!(
@@ -319,8 +325,10 @@ fn demo_validation() -> Result<(), Box<dyn std::error::Error>> {
         .source_ip_address(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)))
         .build();
 
-    // Create a minimal heartbeat (no optional IEs)
-    let minimal = HeartbeatRequestBuilder::new(300).build();
+    // Create a minimal heartbeat (only mandatory IEs)
+    let minimal = HeartbeatRequestBuilder::new(300)
+        .recovery_time_stamp(SystemTime::now())
+        .build();
 
     println!("  Complete message: {} IEs", complete.all_ies().len());
     println!("  Minimal message: {} IEs", minimal.all_ies().len());

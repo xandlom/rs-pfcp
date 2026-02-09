@@ -64,6 +64,18 @@ jobs:
         cargo build --example session-client
         cargo build --example session-server
         cargo build --example pcap-reader
+        cargo build --example message-comparison
+        cargo build --example error-handling-demo
+        cargo build --example ethernet-session-demo
+        cargo build --example pdn-type-demo
+        cargo build --example pdn-type-simple
+        cargo build --example usage_report_phase1_demo
+        cargo build --example usage_report_phase2_demo
+        cargo build --example comprehensive_pfcp_features
+        cargo build --example debug_parser
+        cargo build --example debug_ie_parser
+        cargo build --example header-length-test
+        cargo build --example test_real_messages
 
     - name: Test examples compilation
       run: |
@@ -72,6 +84,33 @@ jobs:
         cargo check --example session-client
         cargo check --example session-server
         cargo check --example pcap-reader
+        cargo check --example message-comparison
+        cargo check --example error-handling-demo
+        cargo check --example ethernet-session-demo
+        cargo check --example pdn-type-demo
+        cargo check --example pdn-type-simple
+        cargo check --example usage_report_phase1_demo
+        cargo check --example usage_report_phase2_demo
+        cargo check --example comprehensive_pfcp_features
+        cargo check --example debug_parser
+        cargo check --example debug_ie_parser
+        cargo check --example header-length-test
+        cargo check --example test_real_messages
+
+    - name: Run standalone examples
+      if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
+      run: |
+        cargo run --example message-comparison
+        cargo run --example error-handling-demo
+        cargo run --example ethernet-session-demo
+        cargo run --example pdn-type-demo
+        cargo run --example pdn-type-simple
+        cargo run --example usage_report_phase1_demo
+        cargo run --example usage_report_phase2_demo
+        cargo run --example comprehensive_pfcp_features
+        cargo run --example debug_parser
+        cargo run --example debug_ie_parser
+        cargo run --example header-length-test
 
   clippy:
     name: Clippy

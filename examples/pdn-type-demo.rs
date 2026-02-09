@@ -3,7 +3,19 @@
 //! This example demonstrates how the PDN Type Information Element (Type 99)
 //! is properly integrated into PFCP messages for 5G network identification.
 
-use rs_pfcp::ie::{cause::Cause, pdn_type::PdnType, Ie, IeType, IntoIe};
+use rs_pfcp::ie::{
+    apply_action::ApplyAction,
+    cause::Cause,
+    create_far::CreateFar,
+    create_pdr::CreatePdrBuilder,
+    far_id::FarId,
+    pdi::PdiBuilder,
+    pdn_type::PdnType,
+    pdr_id::PdrId,
+    precedence::Precedence,
+    source_interface::{SourceInterface, SourceInterfaceValue},
+    Ie, IeType, IntoIe,
+};
 use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_establishment_response::SessionEstablishmentResponseBuilder,
@@ -34,9 +46,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Demonstrate Session Establishment Request with PDN Type
     println!("\n2. 📨 Session Establishment Request with PDN Type:");
+    // Create minimal PDR and FAR (mandatory per 3GPP TS 29.244)
+    let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access)).build()?;
+    let pdr = CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        .pdi(pdi)
+        .far_id(FarId::new(1))
+        .build()?;
+    let far = CreateFar::builder(FarId::new(1))
+        .apply_action(ApplyAction::new(0x02))
+        .build()?;
+
     let session_req = SessionEstablishmentRequestBuilder::new(0, 1001)
         .node_id(Ipv4Addr::new(192, 168, 1, 10))
         .fseid(0x123456789ABCDEF0, Ipv4Addr::new(10, 0, 0, 1))
+        .create_pdrs(vec![pdr.to_ie()])
+        .create_fars(vec![far.to_ie()])
         .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in request
         .build()?;
 
@@ -54,6 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let session_resp =
         SessionEstablishmentResponseBuilder::new_with_ie(0x987654321, 1001, cause_ie)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
             .fseid_ie(fseid_ie.clone())
             .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
             .build()?;

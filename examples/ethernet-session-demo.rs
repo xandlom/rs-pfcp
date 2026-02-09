@@ -201,6 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let establishment_resp =
         SessionEstablishmentResponseBuilder::new_with_ie(cp_seid, seq_num - 1, cause_ie)
+            .node_id(upf_ip)
             .fseid_ie(fseid_ie)
             .build()?;
 
