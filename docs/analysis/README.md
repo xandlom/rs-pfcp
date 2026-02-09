@@ -126,63 +126,49 @@ Active task tracking and work-in-progress planning:
 **Status**: ✅ COMPLETE (v0.2.1)
 **Outcome**: Default trait for IE builders
 
-## Ongoing Work
+### v0.3.0 Release (2026-02)
 
-### API Improvements for v0.3.0 (Breaking Changes)
+#### [v0.3.0 Release Plan](completed/v0.3.0-plan.md)
+**Status**: ✅ COMPLETE (v0.3.0)
+**Outcome**: Breaking change release shipped with PfcpError, newtype wrappers, deprecated method removal
 
-#### [Newtype Wrappers](ongoing/newtype-wrappers.md)
-**Status**: ⏳ PLANNED (v0.3.0)
-**Effort**: 2-3 days
+#### [Newtype Wrappers](completed/newtype-wrappers.md)
+**Status**: ✅ COMPLETE (v0.3.0)
+**Outcome**: `Seid(u64)`, `SequenceNumber(u32)`, `Teid(u32)` newtype wrappers for compile-time safety
 
-Strong typing for primitives:
-- `Seid(u64)`, `SequenceNumber(u32)`, `Teid(u32)`
-- Prevents argument swapping bugs at compile time
-- Type-safe message construction
+#### [API Improvements Index](completed/API-IMPROVEMENTS-INDEX.md)
+**Status**: ✅ COMPLETE (v0.3.0)
+**Outcome**: All 9 API improvement items implemented
 
-**Blocker**: Breaking change - deferred until v0.3.0
+#### [API Improvements Status](completed/API-IMPROVEMENTS-STATUS.md)
+**Status**: ✅ COMPLETE (v0.3.0)
+**Outcome**: 9/9 items (100%) - final tracking through v0.3.0 release
 
-#### [v0.3.0 Release Plan](ongoing/v0.3.0-plan.md)
-**Status**: 🎯 READY FOR IMPLEMENTATION
-**Effort**: 4-6 days
-
-Breaking change release focused on type safety:
-- ✅ PfcpError migration (COMPLETE - done in v0.2.x)
-- 🎯 Newtype wrappers (Seid, SequenceNumber, Teid)
-- ✅ Remove deprecated methods (find_ie, find_all_ies) - **DONE**
+#### [v0.2.x Stabilization Roadmap](completed/v0.2.x-stabilization-roadmap.md)
+**Status**: ✅ COMPLETE (v0.2.5)
+**Outcome**: Stabilization through v0.2.5 leading to v0.3.0 breaking release
 
 ### Code Quality & Refactoring
 
-#### [Refactoring Plan v0.2.x](ongoing/refactoring-plan-v0.2.x.md)
-**Status**: 📋 REVIEW PENDING
-**Created**: 2025-12-05
+#### [Refactoring Plan v0.2.x](completed/refactoring-plan-v0.2.x.md)
+**Status**: ✅ COMPLETE (v0.2.5)
+**Outcome**: Phase 1 and Phase 2 refactoring completed (grouped IE helpers, test fixtures)
 
-Comprehensive refactoring opportunities identified:
-- 3,000-4,000 LOC reduction potential
-- 5-15% performance improvement
-- Phase 1 (Quick Wins): `.to_vec()` standardization, error messages
-- Phase 2 (Structural): Grouped IE helpers, test fixtures
-- Phase 3 (Advanced): Macro-based generation (optional)
+#### [Phase 2 Grouped IE Helpers Design](completed/phase2-grouped-ie-helpers-design.md)
+**Status**: ✅ COMPLETE (2025-12-13)
+**Outcome**: ~170 LOC reduced, 2-4% performance improvement
 
-**Next**: Deep review by maintainer
+## Ongoing Work
 
-### Version Planning
+### Code Quality
 
-#### [v0.2.x Stabilization Roadmap](ongoing/v0.2.x-stabilization-roadmap.md)
+#### [Test Fixtures Benefits Demo](ongoing/test-fixtures-benefits-demo.md)
 **Status**: 🔄 IN PROGRESS
-**Current**: v0.2.2 complete, v0.2.3 in progress
+Demonstrates test fixture helper patterns (58% test setup reduction). Full codebase migration ongoing.
 
-Tracks v0.2.x non-breaking improvements before v0.3.0
-
-#### [API Improvements Status](ongoing/API-IMPROVEMENTS-STATUS.md)
-**Status**: 📊 ACTIVE TRACKING
-**Completion**: 7/9 items (78%)
-
-Tracks implementation status of all API improvements from the index
-
-#### [API Improvements Index](ongoing/API-IMPROVEMENTS-INDEX.md)
-**Status**: 📋 REFERENCE
-
-Master list of all API improvement proposals
+#### [Test Utilities Implementation](ongoing/test-utilities-implementation.md)
+**Status**: 🔄 IN PROGRESS
+Test helper utilities (fixtures.rs, macros). Pilot migration done on 9 files, broader adoption ongoing.
 
 ### Security & Compliance
 
@@ -268,18 +254,18 @@ When starting new research or planning:
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Completed Analyses | 21 | ✅ Archived |
-| Ongoing Tasks | 6 | 🔄 Active |
-| Version | 0.2.5 | Released |
-| Total Tests | 2,081 | ✅ Passing |
+| Completed Analyses | 28 | ✅ Archived |
+| Ongoing Tasks | 3 | 🔄 Active |
+| Version | 0.3.0 | Released |
+| Total Tests | 2,500+ | ✅ Passing |
 | Test Coverage | ~89% | 🎯 Target: 95% |
-| API Improvements | 8/9 (89%) | PfcpError complete |
+| API Improvements | 9/9 (100%) | ✅ Complete |
 | Builder Coverage | 100% | ✅ Complete |
-| IE Count | 139+ | ✅ R16 compliant |
+| IE Count | 139+ | ✅ R18 compliant |
 | Error Handling | 100% | ✅ PfcpError migration complete |
 
 ---
 
-**Last Updated**: 2026-02-04
-**Current Focus**: v0.3.0 preparation (newtype wrappers)
+**Last Updated**: 2026-02-09
+**Current Focus**: Test utilities adoption, zero-length IE validation Phase 2
 **Maintenance**: Update when moving documents between ongoing/completed
