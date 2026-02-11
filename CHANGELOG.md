@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Display module rewrite** — Rewrote `src/message/display.rs` from scratch with a 3-layer architecture (2,146 → 936 lines, 56% reduction)
+  - Single `serde_json::Value` intermediate eliminates all YAML/JSON duplication (8 function pairs → 12 single functions)
+  - Array-based IE output preserves binary message (wire) order via `all_ies()`
+  - Removed hardcoded `get_common_ie_types()` list and multi-instance grouping logic
+  - Removed `to_structured_data()` and `to_json_data()` from `MessageDisplay` trait (internal use only)
+  - Enabled `serde_json` `preserve_order` feature for natural field ordering (`type`/`length` appear first in each IE)
+
+### Breaking Changes
+
+- `MessageDisplay::to_structured_data()` and `to_json_data()` removed from the public trait; use `to_json()`/`to_yaml()` instead
+- `information_elements` output format changed from a map (keyed by IE type name) to an ordered array (each element self-describing with a `type` field)
+
 ## [0.3.0] - 2026-02-09
 
 ### Breaking Changes
