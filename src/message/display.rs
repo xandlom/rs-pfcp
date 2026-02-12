@@ -102,12 +102,26 @@ fn rich_display(ie: &Ie) -> Option<Map<String, Value>> {
         IeType::NodeId => display_node_id(&ie.payload),
         IeType::Cause => display_cause(&ie.payload),
         IeType::RecoveryTimeStamp => display_recovery_timestamp(&ie.payload),
+        IeType::OffendingIe => display_offending_ie(&ie.payload),
         IeType::ReportType => display_report_type(&ie.payload),
+        IeType::Timer => display_timer(&ie.payload),
+        IeType::PdnType => display_pdn_type(&ie.payload),
         IeType::UsageReportWithinSessionReportRequest => display_usage_report(&ie.payload),
         IeType::Fseid => display_fseid(&ie.payload),
         IeType::CreatePdr => display_create_pdr(&ie.payload),
         IeType::CreatedPdr => display_created_pdr(&ie.payload),
         IeType::CreateFar => display_create_far(&ie.payload),
+        IeType::CpFunctionFeatures => display_cp_function_features(&ie.payload),
+        IeType::UpFunctionFeatures => display_up_function_features(&ie.payload),
+        IeType::PfcpsmReqFlags => display_pfcpsm_req_flags(&ie.payload),
+        IeType::SourceIpAddress => display_source_ip_address(&ie.payload),
+        IeType::ApnDnn => display_apn_dnn(&ie.payload),
+        IeType::UserPlaneInactivityTimer => display_user_plane_inactivity_timer(&ie.payload),
+        IeType::Snssai => display_snssai(&ie.payload),
+        IeType::UserId => display_user_id(&ie.payload),
+        IeType::GroupId => display_group_id(&ie.payload),
+        IeType::AlternativeSmfIpAddress => display_alternative_smf_ip_address(&ie.payload),
+        IeType::FqCsid => display_fq_csid(&ie.payload),
         IeType::EthernetPduSessionInformation => display_ethernet_pdu_info(&ie.payload),
         IeType::EthernetContextInformation => display_ethernet_context(&ie.payload),
         IeType::EthernetInactivityTimer => display_ethernet_inactivity_timer(&ie.payload),
@@ -463,6 +477,209 @@ fn display_create_far(payload: &[u8]) -> Option<Map<String, Value>> {
     if let Some(ref bar_id) = far.bar_id {
         map.insert("bar_id".into(), json!(bar_id.id));
     }
+    Some(map)
+}
+
+fn display_offending_ie(payload: &[u8]) -> Option<Map<String, Value>> {
+    let oi = crate::ie::offending_ie::OffendingIe::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    map.insert("ie_type_value".into(), json!(oi.ie_type));
+    // Try to resolve the IE type name
+    let ie_type = IeType::from(oi.ie_type);
+    map.insert("ie_type_name".into(), json!(format!("{ie_type:?}")));
+    Some(map)
+}
+
+fn display_timer(payload: &[u8]) -> Option<Map<String, Value>> {
+    let timer = crate::ie::timer::Timer::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    map.insert("value".into(), json!(timer.value));
+    Some(map)
+}
+
+fn display_pdn_type(payload: &[u8]) -> Option<Map<String, Value>> {
+    let pdn = crate::ie::pdn_type::PdnType::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    map.insert("pdn_type".into(), json!(format!("{:?}", pdn.pdn_type)));
+    Some(map)
+}
+
+fn display_cp_function_features(payload: &[u8]) -> Option<Map<String, Value>> {
+    let features = crate::ie::cp_function_features::CPFunctionFeatures::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    use crate::ie::cp_function_features::CPFunctionFeatures;
+    let mut flags = Vec::new();
+    for (flag, name) in [
+        (CPFunctionFeatures::LOAD, "LOAD"),
+        (CPFunctionFeatures::OVRL, "OVRL"),
+        (CPFunctionFeatures::EPCO, "EPCO"),
+        (CPFunctionFeatures::DDEX, "DDEX"),
+        (CPFunctionFeatures::PFDL, "PFDL"),
+        (CPFunctionFeatures::APDP, "APDP"),
+        (CPFunctionFeatures::PFDC, "PFDC"),
+    ] {
+        if features.contains(flag) {
+            flags.push(name);
+        }
+    }
+    map.insert("features".into(), json!(flags));
+    Some(map)
+}
+
+fn display_up_function_features(payload: &[u8]) -> Option<Map<String, Value>> {
+    let features = crate::ie::up_function_features::UPFunctionFeatures::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    use crate::ie::up_function_features::UPFunctionFeatures;
+    let mut flags = Vec::new();
+    for (flag, name) in [
+        (UPFunctionFeatures::BUCP, "BUCP"),
+        (UPFunctionFeatures::DDND, "DDND"),
+        (UPFunctionFeatures::DLBD, "DLBD"),
+        (UPFunctionFeatures::TRST, "TRST"),
+        (UPFunctionFeatures::FTUP, "FTUP"),
+        (UPFunctionFeatures::PFDM, "PFDM"),
+        (UPFunctionFeatures::HEEU, "HEEU"),
+        (UPFunctionFeatures::TREU, "TREU"),
+        (UPFunctionFeatures::EMPU, "EMPU"),
+        (UPFunctionFeatures::PDIU, "PDIU"),
+        (UPFunctionFeatures::UDBC, "UDBC"),
+        (UPFunctionFeatures::QUOV, "QUOV"),
+        (UPFunctionFeatures::ADPDP, "ADPDP"),
+        (UPFunctionFeatures::UEIP, "UEIP"),
+        (UPFunctionFeatures::SSET, "SSET"),
+        (UPFunctionFeatures::MPTCP, "MPTCP"),
+    ] {
+        if features.contains(flag) {
+            flags.push(name);
+        }
+    }
+    map.insert("features".into(), json!(flags));
+    Some(map)
+}
+
+fn display_pfcpsm_req_flags(payload: &[u8]) -> Option<Map<String, Value>> {
+    let flags_val = crate::ie::pfcpsm_req_flags::PfcpsmReqFlags::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    use crate::ie::pfcpsm_req_flags::PfcpsmReqFlags;
+    let mut flags = Vec::new();
+    for (flag, name) in [
+        (PfcpsmReqFlags::DROBU, "DROBU"),
+        (PfcpsmReqFlags::SNDEM, "SNDEM"),
+        (PfcpsmReqFlags::QAURR, "QAURR"),
+        (PfcpsmReqFlags::ISRSI, "ISRSI"),
+    ] {
+        if flags_val.contains(flag) {
+            flags.push(name);
+        }
+    }
+    map.insert("flags".into(), json!(flags));
+    Some(map)
+}
+
+fn display_source_ip_address(payload: &[u8]) -> Option<Map<String, Value>> {
+    let src = crate::ie::source_ip_address::SourceIpAddress::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    if let Some(ipv4) = src.ipv4 {
+        map.insert("ipv4".into(), json!(ipv4.to_string()));
+    }
+    if let Some(ipv6) = src.ipv6 {
+        map.insert("ipv6".into(), json!(ipv6.to_string()));
+    }
+    if let Some(mask) = src.mask_prefix_length {
+        map.insert("mask_prefix_length".into(), json!(mask));
+    }
+    Some(map)
+}
+
+fn display_apn_dnn(payload: &[u8]) -> Option<Map<String, Value>> {
+    let apn = crate::ie::apn_dnn::ApnDnn::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    map.insert("name".into(), json!(&apn.name));
+    Some(map)
+}
+
+fn display_user_plane_inactivity_timer(payload: &[u8]) -> Option<Map<String, Value>> {
+    let timer =
+        crate::ie::user_plane_inactivity_timer::UserPlaneInactivityTimer::unmarshal(payload)
+            .ok()?;
+    let mut map = Map::new();
+    map.insert("timer_seconds".into(), json!(timer.as_seconds()));
+    Some(map)
+}
+
+fn display_snssai(payload: &[u8]) -> Option<Map<String, Value>> {
+    let snssai = crate::ie::snssai::Snssai::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    map.insert("sst".into(), json!(snssai.sst));
+    if let Some(sd) = snssai.sd {
+        map.insert(
+            "sd".into(),
+            json!(format!("0x{:02x}{:02x}{:02x}", sd[0], sd[1], sd[2])),
+        );
+    }
+    Some(map)
+}
+
+fn display_user_id(payload: &[u8]) -> Option<Map<String, Value>> {
+    let uid = crate::ie::user_id::UserId::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    map.insert("id_type".into(), json!(format!("{:?}", uid.user_id_type)));
+    if let Some(s) = uid.as_string() {
+        map.insert("value".into(), json!(s));
+    } else {
+        let hex = uid
+            .user_id_value
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        map.insert("value_hex".into(), json!(hex));
+    }
+    Some(map)
+}
+
+fn display_group_id(payload: &[u8]) -> Option<Map<String, Value>> {
+    let gid = crate::ie::group_id::GroupId::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    if let Some(uuid) = gid.to_uuid_string() {
+        map.insert("uuid".into(), json!(uuid));
+    } else {
+        map.insert("hex".into(), json!(gid.to_hex()));
+    }
+    Some(map)
+}
+
+fn display_alternative_smf_ip_address(payload: &[u8]) -> Option<Map<String, Value>> {
+    let addr =
+        crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    if let Some(ipv4) = addr.ipv4_address {
+        map.insert("ipv4_address".into(), json!(ipv4.to_string()));
+    }
+    if let Some(ipv6) = addr.ipv6_address {
+        map.insert("ipv6_address".into(), json!(ipv6.to_string()));
+    }
+    map.insert(
+        "preferred_pfcp_entity".into(),
+        json!(addr.preferred_pfcp_entity),
+    );
+    Some(map)
+}
+
+fn display_fq_csid(payload: &[u8]) -> Option<Map<String, Value>> {
+    let csid = crate::ie::fq_csid::FqCsid::unmarshal(payload).ok()?;
+    let mut map = Map::new();
+    let node_addr = match &csid.node_id {
+        crate::ie::fq_csid::NodeId::Ipv4(ip) => ip.to_string(),
+        crate::ie::fq_csid::NodeId::Ipv6(ip) => ip.to_string(),
+        crate::ie::fq_csid::NodeId::Fqdn(fqdn) => fqdn.clone(),
+    };
+    map.insert(
+        "node_id_type".into(),
+        json!(format!("{:?}", csid.node_id_type)),
+    );
+    map.insert("node_address".into(), json!(node_addr));
+    map.insert("csids".into(), json!(csid.csids));
     Some(map)
 }
 
@@ -872,7 +1089,7 @@ mod tests {
 
     #[test]
     fn test_unknown_ie_hex_fallback() {
-        let ie = Ie::new(IeType::OffendingIe, vec![0xDE, 0xAD, 0xBE, 0xEF]);
+        let ie = Ie::new(IeType::ValidityTimer, vec![0xDE, 0xAD, 0xBE, 0xEF]);
         let value = ie_to_value(&ie);
 
         assert_eq!(value["payload_hex"], "de ad be ef");
@@ -880,7 +1097,7 @@ mod tests {
 
     #[test]
     fn test_unknown_ie_large_payload_shows_size() {
-        let ie = Ie::new(IeType::OffendingIe, vec![0u8; 64]);
+        let ie = Ie::new(IeType::ValidityTimer, vec![0u8; 64]);
         let value = ie_to_value(&ie);
 
         assert_eq!(value["payload_size"], 64);
