@@ -65,7 +65,8 @@ fn message_to_value(msg: &dyn Message) -> Value {
     map.insert("version".into(), json!(msg.version()));
 
     if let Some(seid) = msg.seid() {
-        map.insert("seid".into(), json!(*seid));
+        map.insert("seid".into(), json!(format!("0x{:016x}", seid)));
+        map.insert("seid_decimal".into(), json!(*seid));
     }
 
     let all = msg.all_ies();
@@ -631,7 +632,7 @@ mod tests {
 
         assert!(yaml.contains("SessionEstablishmentRequest"));
         assert!(yaml.contains("sequence: 54321"));
-        assert!(yaml.contains("seid: 0"));
+        assert!(yaml.contains("seid: '0x0000000000000000'"));
         assert!(yaml.contains("type: NodeId"));
         assert!(yaml.contains("type: Fseid"));
     }
@@ -708,7 +709,7 @@ mod tests {
 
         assert!(json.contains("\"SessionEstablishmentRequest\""));
         assert!(json.contains("\"sequence\":54321"));
-        assert!(json.contains("\"seid\":0"));
+        assert!(json.contains("\"seid\":\"0x0000000000000000\""));
     }
 
     #[test]
@@ -764,7 +765,8 @@ mod tests {
         let value = message_to_value(response.as_ref());
 
         assert!(value.get("seid").is_some());
-        assert_eq!(value["seid"], json!(0x1234567890ABCDEFu64));
+        assert_eq!(value["seid"], "0x1234567890abcdef");
+        assert_eq!(value["seid_decimal"], json!(0x1234567890ABCDEFu64));
     }
 
     #[test]
