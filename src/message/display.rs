@@ -82,49 +82,70 @@ fn message_to_value(msg: &dyn Message) -> Value {
 // Layer 1: IE → Value
 // ============================================================================
 
-/// Convert a single IE to a JSON value with type-specific rich display.
-fn ie_to_value(ie: &Ie) -> Value {
-    let mut obj = Map::new();
-    obj.insert("type".into(), json!(format!("{:?}", ie.ie_type)));
-    obj.insert("length".into(), json!(ie.len()));
-
-    match rich_display(ie) {
-        Some(fields) => obj.extend(fields),
-        None => add_fallback_payload(&mut obj, &ie.payload),
-    }
-
-    Value::Object(obj)
+/// Compact: single-value IEs rendered as `{TypeName: value}`.
+/// Detailed: multi-field IEs rendered as `{type: TypeName, field: ..., ...}`.
+enum IeDisplayResult {
+    Compact(Value),
+    Detailed(Map<String, Value>),
 }
 
-/// Try to produce rich display fields for known IE types.
-fn rich_display(ie: &Ie) -> Option<Map<String, Value>> {
+/// Convert a single IE to a JSON value.
+fn ie_to_value(ie: &Ie) -> Value {
+    let type_name = format!("{:?}", ie.ie_type);
+
+    match rich_display(ie) {
+        Some(IeDisplayResult::Compact(v)) => {
+            let mut obj = Map::new();
+            obj.insert(type_name, v);
+            Value::Object(obj)
+        }
+        Some(IeDisplayResult::Detailed(fields)) => {
+            let mut obj = Map::new();
+            obj.insert("type".into(), json!(type_name));
+            obj.extend(fields);
+            Value::Object(obj)
+        }
+        None => {
+            let mut obj = Map::new();
+            obj.insert("type".into(), json!(type_name));
+            obj.insert("length".into(), json!(ie.len()));
+            add_fallback_payload(&mut obj, &ie.payload);
+            Value::Object(obj)
+        }
+    }
+}
+
+/// Try to produce rich display for known IE types.
+fn rich_display(ie: &Ie) -> Option<IeDisplayResult> {
     match ie.ie_type {
-        IeType::NodeId => display_node_id(&ie.payload),
+        // Compact: single-value IEs
         IeType::Cause => display_cause(&ie.payload),
-        IeType::RecoveryTimeStamp => display_recovery_timestamp(&ie.payload),
         IeType::OffendingIe => display_offending_ie(&ie.payload),
         IeType::ReportType => display_report_type(&ie.payload),
         IeType::Timer => display_timer(&ie.payload),
         IeType::PdnType => display_pdn_type(&ie.payload),
-        IeType::UsageReportWithinSessionReportRequest => display_usage_report(&ie.payload),
+        IeType::ApnDnn => display_apn_dnn(&ie.payload),
+        IeType::UserPlaneInactivityTimer => display_user_plane_inactivity_timer(&ie.payload),
+        IeType::EthernetInactivityTimer => display_ethernet_inactivity_timer(&ie.payload),
+        IeType::GroupId => display_group_id(&ie.payload),
+        IeType::CpFunctionFeatures => display_cp_function_features(&ie.payload),
+        IeType::UpFunctionFeatures => display_up_function_features(&ie.payload),
+        IeType::PfcpsmReqFlags => display_pfcpsm_req_flags(&ie.payload),
+        // Detailed: multi-field IEs
+        IeType::NodeId => display_node_id(&ie.payload),
+        IeType::RecoveryTimeStamp => display_recovery_timestamp(&ie.payload),
         IeType::Fseid => display_fseid(&ie.payload),
         IeType::CreatePdr => display_create_pdr(&ie.payload),
         IeType::CreatedPdr => display_created_pdr(&ie.payload),
         IeType::CreateFar => display_create_far(&ie.payload),
-        IeType::CpFunctionFeatures => display_cp_function_features(&ie.payload),
-        IeType::UpFunctionFeatures => display_up_function_features(&ie.payload),
-        IeType::PfcpsmReqFlags => display_pfcpsm_req_flags(&ie.payload),
+        IeType::UsageReportWithinSessionReportRequest => display_usage_report(&ie.payload),
         IeType::SourceIpAddress => display_source_ip_address(&ie.payload),
-        IeType::ApnDnn => display_apn_dnn(&ie.payload),
-        IeType::UserPlaneInactivityTimer => display_user_plane_inactivity_timer(&ie.payload),
         IeType::Snssai => display_snssai(&ie.payload),
         IeType::UserId => display_user_id(&ie.payload),
-        IeType::GroupId => display_group_id(&ie.payload),
         IeType::AlternativeSmfIpAddress => display_alternative_smf_ip_address(&ie.payload),
         IeType::FqCsid => display_fq_csid(&ie.payload),
         IeType::EthernetPduSessionInformation => display_ethernet_pdu_info(&ie.payload),
         IeType::EthernetContextInformation => display_ethernet_context(&ie.payload),
-        IeType::EthernetInactivityTimer => display_ethernet_inactivity_timer(&ie.payload),
         _ => None,
     }
 }
@@ -147,7 +168,7 @@ fn add_fallback_payload(obj: &mut Map<String, Value>, payload: &[u8]) {
 // IE-specific display functions
 // ============================================================================
 
-fn display_node_id(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_node_id(payload: &[u8]) -> Option<IeDisplayResult> {
     let node_id = crate::ie::node_id::NodeId::unmarshal(payload).ok()?;
     let mut map = Map::new();
     match &node_id {
@@ -164,18 +185,18 @@ fn display_node_id(payload: &[u8]) -> Option<Map<String, Value>> {
             map.insert("address".into(), json!(fqdn));
         }
     }
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_cause(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_cause(payload: &[u8]) -> Option<IeDisplayResult> {
     let cause = crate::ie::cause::Cause::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    map.insert("cause_value".into(), json!(cause.value as u8));
-    map.insert("cause_name".into(), json!(format!("{:?}", cause.value)));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(format!(
+        "{:?}",
+        cause.value
+    ))))
 }
 
-fn display_recovery_timestamp(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_recovery_timestamp(payload: &[u8]) -> Option<IeDisplayResult> {
     use std::time::UNIX_EPOCH;
 
     let ts = crate::ie::recovery_time_stamp::RecoveryTimeStamp::unmarshal(payload).ok()?;
@@ -227,28 +248,24 @@ fn display_recovery_timestamp(payload: &[u8]) -> Option<Map<String, Value>> {
         "timestamp_description".into(),
         json!(format!("{secs} seconds since Unix epoch")),
     );
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_report_type(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_report_type(payload: &[u8]) -> Option<IeDisplayResult> {
     if payload.is_empty() {
         return None;
     }
-    let report_type = payload[0];
-    let report_name = match report_type {
+    let report_name = match payload[0] {
         0x01 => "DLDR (Downlink Data Report)",
         0x02 => "USAR (Usage Report)",
         0x04 => "ERIR (Error Indication Report)",
         0x08 => "UPIR (User Plane Inactivity Report)",
         _ => "Unknown",
     };
-    let mut map = Map::new();
-    map.insert("report_type_value".into(), json!(report_type));
-    map.insert("report_type_name".into(), json!(report_name));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(report_name)))
 }
 
-fn display_usage_report(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_usage_report(payload: &[u8]) -> Option<IeDisplayResult> {
     let ur = crate::ie::usage_report::UsageReport::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("urr_id".into(), json!(ur.urr_id.id));
@@ -272,10 +289,10 @@ fn display_usage_report(payload: &[u8]) -> Option<Map<String, Value>> {
         }
     }
     map.insert("usage_report_trigger".into(), json!(triggers));
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_fseid(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_fseid(payload: &[u8]) -> Option<IeDisplayResult> {
     let fseid = crate::ie::fseid::Fseid::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("seid".into(), json!(format!("0x{:016x}", fseid.seid)));
@@ -296,10 +313,10 @@ fn display_fseid(payload: &[u8]) -> Option<Map<String, Value>> {
         flags.push("IPv6");
     }
     map.insert("address_flags".into(), json!(flags));
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_create_pdr(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_create_pdr(payload: &[u8]) -> Option<IeDisplayResult> {
     let pdr = crate::ie::create_pdr::CreatePdr::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("pdr_id".into(), json!(pdr.pdr_id.value));
@@ -389,7 +406,7 @@ fn display_create_pdr(payload: &[u8]) -> Option<Map<String, Value>> {
     if let Some(ref far_id) = pdr.far_id {
         map.insert("far_id".into(), json!(far_id.value));
     }
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
 fn c_tag_to_value(tag: &crate::ie::c_tag::CTag) -> Value {
@@ -408,7 +425,7 @@ fn s_tag_to_value(tag: &crate::ie::s_tag::STag) -> Value {
     Value::Object(m)
 }
 
-fn display_created_pdr(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_created_pdr(payload: &[u8]) -> Option<IeDisplayResult> {
     let pdr = crate::ie::created_pdr::CreatedPdr::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("pdr_id".into(), json!(pdr.pdr_id.value));
@@ -439,10 +456,10 @@ fn display_created_pdr(payload: &[u8]) -> Option<Map<String, Value>> {
     fteid.insert("flags".into(), json!(flags));
 
     map.insert("f_teid".into(), Value::Object(fteid));
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_create_far(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_create_far(payload: &[u8]) -> Option<IeDisplayResult> {
     let far = crate::ie::create_far::CreateFar::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("far_id".into(), json!(far.far_id.value));
@@ -477,39 +494,32 @@ fn display_create_far(payload: &[u8]) -> Option<Map<String, Value>> {
     if let Some(ref bar_id) = far.bar_id {
         map.insert("bar_id".into(), json!(bar_id.id));
     }
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_offending_ie(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_offending_ie(payload: &[u8]) -> Option<IeDisplayResult> {
     let oi = crate::ie::offending_ie::OffendingIe::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    map.insert("ie_type_value".into(), json!(oi.ie_type));
-    // Try to resolve the IE type name
     let ie_type = IeType::from(oi.ie_type);
-    map.insert("ie_type_name".into(), json!(format!("{ie_type:?}")));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(format!("{ie_type:?}"))))
 }
 
-fn display_timer(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_timer(payload: &[u8]) -> Option<IeDisplayResult> {
     let timer = crate::ie::timer::Timer::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    map.insert("value".into(), json!(timer.value));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(timer.value)))
 }
 
-fn display_pdn_type(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_pdn_type(payload: &[u8]) -> Option<IeDisplayResult> {
     let pdn = crate::ie::pdn_type::PdnType::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    map.insert("pdn_type".into(), json!(format!("{:?}", pdn.pdn_type)));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(format!(
+        "{:?}",
+        pdn.pdn_type
+    ))))
 }
 
-fn display_cp_function_features(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_cp_function_features(payload: &[u8]) -> Option<IeDisplayResult> {
     let features = crate::ie::cp_function_features::CPFunctionFeatures::unmarshal(payload).ok()?;
-    let mut map = Map::new();
     use crate::ie::cp_function_features::CPFunctionFeatures;
-    let mut flags = Vec::new();
-    for (flag, name) in [
+    let flags: Vec<&str> = [
         (CPFunctionFeatures::LOAD, "LOAD"),
         (CPFunctionFeatures::OVRL, "OVRL"),
         (CPFunctionFeatures::EPCO, "EPCO"),
@@ -517,21 +527,18 @@ fn display_cp_function_features(payload: &[u8]) -> Option<Map<String, Value>> {
         (CPFunctionFeatures::PFDL, "PFDL"),
         (CPFunctionFeatures::APDP, "APDP"),
         (CPFunctionFeatures::PFDC, "PFDC"),
-    ] {
-        if features.contains(flag) {
-            flags.push(name);
-        }
-    }
-    map.insert("features".into(), json!(flags));
-    Some(map)
+    ]
+    .into_iter()
+    .filter(|(flag, _)| features.contains(*flag))
+    .map(|(_, name)| name)
+    .collect();
+    Some(IeDisplayResult::Compact(json!(flags)))
 }
 
-fn display_up_function_features(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_up_function_features(payload: &[u8]) -> Option<IeDisplayResult> {
     let features = crate::ie::up_function_features::UPFunctionFeatures::unmarshal(payload).ok()?;
-    let mut map = Map::new();
     use crate::ie::up_function_features::UPFunctionFeatures;
-    let mut flags = Vec::new();
-    for (flag, name) in [
+    let flags: Vec<&str> = [
         (UPFunctionFeatures::BUCP, "BUCP"),
         (UPFunctionFeatures::DDND, "DDND"),
         (UPFunctionFeatures::DLBD, "DLBD"),
@@ -548,35 +555,31 @@ fn display_up_function_features(payload: &[u8]) -> Option<Map<String, Value>> {
         (UPFunctionFeatures::UEIP, "UEIP"),
         (UPFunctionFeatures::SSET, "SSET"),
         (UPFunctionFeatures::MPTCP, "MPTCP"),
-    ] {
-        if features.contains(flag) {
-            flags.push(name);
-        }
-    }
-    map.insert("features".into(), json!(flags));
-    Some(map)
+    ]
+    .into_iter()
+    .filter(|(flag, _)| features.contains(*flag))
+    .map(|(_, name)| name)
+    .collect();
+    Some(IeDisplayResult::Compact(json!(flags)))
 }
 
-fn display_pfcpsm_req_flags(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_pfcpsm_req_flags(payload: &[u8]) -> Option<IeDisplayResult> {
     let flags_val = crate::ie::pfcpsm_req_flags::PfcpsmReqFlags::unmarshal(payload).ok()?;
-    let mut map = Map::new();
     use crate::ie::pfcpsm_req_flags::PfcpsmReqFlags;
-    let mut flags = Vec::new();
-    for (flag, name) in [
+    let flags: Vec<&str> = [
         (PfcpsmReqFlags::DROBU, "DROBU"),
         (PfcpsmReqFlags::SNDEM, "SNDEM"),
         (PfcpsmReqFlags::QAURR, "QAURR"),
         (PfcpsmReqFlags::ISRSI, "ISRSI"),
-    ] {
-        if flags_val.contains(flag) {
-            flags.push(name);
-        }
-    }
-    map.insert("flags".into(), json!(flags));
-    Some(map)
+    ]
+    .into_iter()
+    .filter(|(flag, _)| flags_val.contains(*flag))
+    .map(|(_, name)| name)
+    .collect();
+    Some(IeDisplayResult::Compact(json!(flags)))
 }
 
-fn display_source_ip_address(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_source_ip_address(payload: &[u8]) -> Option<IeDisplayResult> {
     let src = crate::ie::source_ip_address::SourceIpAddress::unmarshal(payload).ok()?;
     let mut map = Map::new();
     if let Some(ipv4) = src.ipv4 {
@@ -588,26 +591,22 @@ fn display_source_ip_address(payload: &[u8]) -> Option<Map<String, Value>> {
     if let Some(mask) = src.mask_prefix_length {
         map.insert("mask_prefix_length".into(), json!(mask));
     }
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_apn_dnn(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_apn_dnn(payload: &[u8]) -> Option<IeDisplayResult> {
     let apn = crate::ie::apn_dnn::ApnDnn::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    map.insert("name".into(), json!(&apn.name));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(&apn.name)))
 }
 
-fn display_user_plane_inactivity_timer(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_user_plane_inactivity_timer(payload: &[u8]) -> Option<IeDisplayResult> {
     let timer =
         crate::ie::user_plane_inactivity_timer::UserPlaneInactivityTimer::unmarshal(payload)
             .ok()?;
-    let mut map = Map::new();
-    map.insert("timer_seconds".into(), json!(timer.as_seconds()));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(timer.as_seconds())))
 }
 
-fn display_snssai(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_snssai(payload: &[u8]) -> Option<IeDisplayResult> {
     let snssai = crate::ie::snssai::Snssai::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("sst".into(), json!(snssai.sst));
@@ -617,10 +616,10 @@ fn display_snssai(payload: &[u8]) -> Option<Map<String, Value>> {
             json!(format!("0x{:02x}{:02x}{:02x}", sd[0], sd[1], sd[2])),
         );
     }
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_user_id(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_user_id(payload: &[u8]) -> Option<IeDisplayResult> {
     let uid = crate::ie::user_id::UserId::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("id_type".into(), json!(format!("{:?}", uid.user_id_type)));
@@ -635,21 +634,16 @@ fn display_user_id(payload: &[u8]) -> Option<Map<String, Value>> {
             .join(" ");
         map.insert("value_hex".into(), json!(hex));
     }
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_group_id(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_group_id(payload: &[u8]) -> Option<IeDisplayResult> {
     let gid = crate::ie::group_id::GroupId::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    if let Some(uuid) = gid.to_uuid_string() {
-        map.insert("uuid".into(), json!(uuid));
-    } else {
-        map.insert("hex".into(), json!(gid.to_hex()));
-    }
-    Some(map)
+    let value = gid.to_uuid_string().unwrap_or_else(|| gid.to_hex());
+    Some(IeDisplayResult::Compact(json!(value)))
 }
 
-fn display_alternative_smf_ip_address(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_alternative_smf_ip_address(payload: &[u8]) -> Option<IeDisplayResult> {
     let addr =
         crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress::unmarshal(payload).ok()?;
     let mut map = Map::new();
@@ -663,10 +657,10 @@ fn display_alternative_smf_ip_address(payload: &[u8]) -> Option<Map<String, Valu
         "preferred_pfcp_entity".into(),
         json!(addr.preferred_pfcp_entity),
     );
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_fq_csid(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_fq_csid(payload: &[u8]) -> Option<IeDisplayResult> {
     let csid = crate::ie::fq_csid::FqCsid::unmarshal(payload).ok()?;
     let mut map = Map::new();
     let node_addr = match &csid.node_id {
@@ -680,10 +674,10 @@ fn display_fq_csid(payload: &[u8]) -> Option<Map<String, Value>> {
     );
     map.insert("node_address".into(), json!(node_addr));
     map.insert("csids".into(), json!(csid.csids));
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_ethernet_pdu_info(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_ethernet_pdu_info(payload: &[u8]) -> Option<IeDisplayResult> {
     let info =
         crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation::unmarshal(
             payload,
@@ -695,10 +689,10 @@ fn display_ethernet_pdu_info(payload: &[u8]) -> Option<Map<String, Value>> {
         "has_ethernet_header".into(),
         json!(info.has_ethernet_header()),
     );
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_ethernet_context(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_ethernet_context(payload: &[u8]) -> Option<IeDisplayResult> {
     let ctx =
         crate::ie::ethernet_context_information::EthernetContextInformation::unmarshal(payload)
             .ok()?;
@@ -717,20 +711,18 @@ fn display_ethernet_context(payload: &[u8]) -> Option<Map<String, Value>> {
         .collect();
 
     if detected.is_empty() {
-        return Some(Map::new());
+        return Some(IeDisplayResult::Detailed(Map::new()));
     }
 
     let mut map = Map::new();
     map.insert("mac_addresses_detected".into(), Value::Array(detected));
-    Some(map)
+    Some(IeDisplayResult::Detailed(map))
 }
 
-fn display_ethernet_inactivity_timer(payload: &[u8]) -> Option<Map<String, Value>> {
+fn display_ethernet_inactivity_timer(payload: &[u8]) -> Option<IeDisplayResult> {
     let timer =
         crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer::unmarshal(payload).ok()?;
-    let mut map = Map::new();
-    map.insert("timer_seconds".into(), json!(timer.seconds()));
-    Some(map)
+    Some(IeDisplayResult::Compact(json!(timer.seconds())))
 }
 
 // ============================================================================
@@ -861,7 +853,7 @@ mod tests {
 
         assert!(yaml.contains("SessionEstablishmentResponse"));
         assert!(yaml.contains("sequence: 54321"));
-        assert!(yaml.contains("type: Cause"));
+        assert!(yaml.contains("Cause: RequestAccepted"));
         assert!(yaml.contains("type: Fseid"));
     }
 
@@ -1000,10 +992,9 @@ mod tests {
 
         let ies = value["information_elements"].as_array().unwrap();
         assert!(!ies.is_empty());
-        // Each IE should have a type field
+        // Each IE should be a JSON object
         for ie in ies {
-            assert!(ie.get("type").is_some());
-            assert!(ie.get("length").is_some());
+            assert!(ie.is_object());
         }
     }
 
@@ -1060,9 +1051,7 @@ mod tests {
         let ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
         let value = ie_to_value(&ie);
 
-        assert_eq!(value["type"], "Cause");
-        assert!(value.get("cause_value").is_some());
-        assert!(value.get("cause_name").is_some());
+        assert_eq!(value["Cause"], "RequestAccepted");
     }
 
     #[test]
