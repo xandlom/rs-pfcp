@@ -9,17 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Display module rewrite** — Rewrote `src/message/display.rs` from scratch with a 3-layer architecture (2,146 → 936 lines, 56% reduction)
-  - Single `serde_json::Value` intermediate eliminates all YAML/JSON duplication (8 function pairs → 12 single functions)
+- **Display module rewrite** — Rewrote `src/message/display.rs` from scratch with a 3-layer architecture (2,146 → ~1,150 lines, ~46% reduction)
+  - Single `serde_json::Value` intermediate eliminates all YAML/JSON duplication (8 function pairs → 26 single functions)
   - Array-based IE output preserves binary message (wire) order via `all_ies()`
   - Removed hardcoded `get_common_ie_types()` list and multi-instance grouping logic
   - Removed `to_structured_data()` and `to_json_data()` from `MessageDisplay` trait (internal use only)
   - Enabled `serde_json` `preserve_order` feature for natural field ordering (`type`/`length` appear first in each IE)
+  - **Compact format** for simple single-value IEs (e.g., `Cause: "RequestAccepted"`, `Timer: "60s"`)
+  - **Detailed format** for complex multi-field IEs (e.g., `{type: NodeId, node_type: IPv4, address: ...}`)
+  - Consistent hex SEID format for both message-level and Fseid IE (`0x{hex}` + `seid_decimal`)
+
+### Added
+
+- **14 new rich display IEs** — expanded from 12 to 26 IE types with structured display:
+  - High priority: OffendingIe, CpFunctionFeatures, Timer, PdnType, UpFunctionFeatures
+  - Medium priority: SourceIpAddress, ApnDnn, UserPlaneInactivityTimer, Snssai, UserId, GroupId, PfcpsmReqFlags, AlternativeSmfIpAddress, FqCsid
 
 ### Breaking Changes
 
 - `MessageDisplay::to_structured_data()` and `to_json_data()` removed from the public trait; use `to_json()`/`to_yaml()` instead
 - `information_elements` output format changed from a map (keyed by IE type name) to an ordered array (each element self-describing with a `type` field)
+- Simple IEs now use compact format (`{TypeName: value}`) instead of detailed format (`{type: TypeName, ...}`)
 
 ## [0.3.0] - 2026-02-09
 
