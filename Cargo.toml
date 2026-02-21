@@ -27,7 +27,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 anyhow = "1.0.101"
-bitflags = "2.10.0"
+bitflags = "2.11.0"
 clap = { version = "4.5.58", features = ["derive"] }
 network-interface = "2.0.5"
 pcap-file = "2.0"
