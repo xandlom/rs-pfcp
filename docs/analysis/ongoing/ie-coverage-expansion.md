@@ -1,8 +1,8 @@
 # IE Coverage Expansion Plan
 
-**Status:** Phase 2 Complete
-**Current coverage:** 199 modules / 334 IeType variants (60%)
-**Target:** Phase 1-3 → ~224 modules (~67%)
+**Status:** Phase 3 Complete
+**Current coverage:** 223 modules / 334 IeType variants (67%)
+**Target:** Phase 1-3 → ~224 modules (~67%) - ACHIEVED
 
 ## Phase 1: Simple Scalar IEs (22 IEs) - COMPLETE
 
@@ -60,36 +60,36 @@ Single-byte bitflag IEs using `bitflags!` macro pattern. All validated against t
 | TrafficParameterMeasurementIndication | 328 | TPMI | Done |
 | MeasurementIndication | 337 | RLCI, DLQI | Done |
 
-## Phase 3: Medium Complexity IEs (~25 IEs)
+## Phase 3: Medium Complexity IEs (24 IEs) - COMPLETE
 
-Multi-field IEs following existing patterns.
+Multi-field IEs with various patterns. All validated against tshark.
 
-| IE | Type | Notes | Status |
+| IE | Type | Pattern | Status |
 |---|---|---|---|
-| TimeQuotaMechanism | 115 | u8 type + u32 interval | |
-| FramedRoute | 153 | Variable string | |
-| FramedRouting | 154 | u32 enum | |
-| FramedIpv6Route | 155 | Variable string | |
-| MarId | 170 | u16 identifier | |
-| SteeringFunctionality | 171 | u8 enum | |
-| SteeringMode | 172 | u8 enum | |
-| Weight | 173 | u8 value | |
-| Priority | 174 | u8 enum | |
-| UeIpAddressPoolIdentity | 177 | u16 len + string | |
-| CpPfcpEntityIpAddress | 185 | flags + v4/v6 | |
-| IpMulticastAddress | 191 | flags + v4/v6 + range | |
-| TsnBridgeId | 198 | 8-byte MAC | |
-| SrrId | 215 | u8 | |
-| DataNetworkAccessIdentifier | 232 | Variable string | |
-| NfInstanceId | 253 | 16-byte UUID | |
-| IpVersion | 258 | u8 flags | |
-| NumberOfUeIpAddresses | 268 | flags + u32 counts | |
-| MbsSessionIdentifier | 305 | TMGI + S-NSSAI | |
-| TunnelPassword | 313 | Variable bytes | |
-| N6JitterMeasurement | 327 | u32 microseconds | |
-| HplmnSNssai | 338 | Like SNSSAI | |
-| MappedN6IpAddress | 350 | v4/v6 address | |
-| Uri | 352 | Variable string | |
+| TimeQuotaMechanism | 115 | u8 type + u32 interval | Done |
+| FramedRoute | 153 | Variable string | Done |
+| FramedRouting | 154 | u32 enum | Done |
+| FramedIpv6Route | 155 | Variable string | Done |
+| MarId | 170 | u16 identifier | Done |
+| SteeringFunctionality | 171 | u8 enum | Done |
+| SteeringMode | 172 | u8 enum | Done |
+| Weight | 173 | u8 value | Done |
+| Priority | 174 | u8 enum | Done |
+| UeIpAddressPoolIdentity | 177 | u16 len + string | Done |
+| CpPfcpEntityIpAddress | 185 | flags + v4/v6 | Done |
+| IpMulticastAddress | 191 | flags + v4/v6 + any | Done |
+| TsnBridgeId | 198 | flags + MAC | Done |
+| SrrId | 215 | u8 | Done |
+| DataNetworkAccessIdentifier | 232 | Variable string | Done |
+| NfInstanceId | 253 | 16-byte UUID | Done |
+| IpVersion | 258 | u8 flags (bitflags) | Done |
+| NumberOfUeIpAddresses | 268 | flags + u32 counts | Done |
+| MbsSessionIdentifier | 305 | TMGI + optional SSM | Done |
+| TunnelPassword | 313 | Variable bytes | Done |
+| N6JitterMeasurement | 327 | u32 microseconds | Done |
+| HplmnSNssai | 338 | SST + optional SD | Done |
+| MappedN6IpAddress | 350 | v4/v6 by length | Done |
+| Uri | 352 | Variable string | Done |
 
 ## Phase 4: Grouped IEs (~110 IEs)
 
