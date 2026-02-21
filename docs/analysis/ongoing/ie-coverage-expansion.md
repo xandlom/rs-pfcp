@@ -1,7 +1,7 @@
 # IE Coverage Expansion Plan
 
-**Status:** Phase 1 Complete
-**Current coverage:** 179 modules / 334 IeType variants (54%)
+**Status:** Phase 2 Complete
+**Current coverage:** 199 modules / 334 IeType variants (60%)
 **Target:** Phase 1-3 → ~224 modules (~67%)
 
 ## Phase 1: Simple Scalar IEs (22 IEs) - COMPLETE
@@ -33,32 +33,32 @@ Each is a single numeric value. All validated against tshark.
 | DlPeriodicity | 326 | u32 | Precedence | Done |
 | UlPeriodicity | 329 | u32 | Precedence | Done |
 
-## Phase 2: Flag IEs (~20 IEs)
+## Phase 2: Flag IEs (20 IEs) - COMPLETE
 
-Single-byte bitflag IEs. Follow `PfcpsmReqFlags`/`ReportType` pattern.
+Single-byte bitflag IEs using `bitflags!` macro pattern. All validated against tshark.
 
-| IE | Type | Notes | Status |
+| IE | Type | Flags | Status |
 |---|---|---|---|
-| OciFlags | 110 | u8, 1 flag (AOCI) | |
-| PfcpAssociationReleaseRequest | 111 | u8, 2 flags (SARR, URSS) | |
-| PfcpsrReqFlags | 161 | u8, 1 flag (PMSRI) | |
-| PfcpauReqFlags | 162 | u8, 1 flag (PARPS) | |
-| PfcpseReqFlags | 186 | u8, 1 flag (RESTI) | |
-| PfcpasReqFlags | 259 | u8, 1 flag (UUPSI) | |
-| PfcpsdrspFlags | 318 | u8 flags | |
-| QerIndications | 319 | u8 flags | |
-| PacketReplicationAndDetectionCarryOnInformation | 179 | u8, 4 flags | |
-| MptcpApplicableIndication | 265 | u8, 1 flag | |
-| Mbsn4mbReqFlags | 307 | u8 flags | |
-| Mbsn4RespFlags | 312 | u8 flags | |
-| DataStatus | 260 | u8, 2 flags (DROP, BUFF) | |
-| RequestedClockDriftInformation | 204 | u8, 2 flags | |
-| RequestedAccessAvailabilityInformation | 217 | u8 flags | |
-| QosReportTrigger | 237 | u8 flags | |
-| RequestedQosMonitoring | 243 | u8 flags | |
-| ReportingFrequency | 244 | u8 flags | |
-| MeasurementIndication | 337 | u8 flags | |
-| TrafficParameterMeasurementIndication | 328 | u8 flags | |
+| OciFlags | 110 | AOCI | Done |
+| PfcpAssociationReleaseRequest | 111 | SARR, URSS | Done |
+| PfcpsrReqFlags | 161 | PMSRI | Done |
+| PfcpauReqFlags | 162 | PARPS | Done |
+| PacketReplicationAndDetectionCarryOnInformation | 179 | PRIUEAI, PRIN19I, PRIN6I, DCARONI | Done |
+| PfcpseReqFlags | 186 | RESTI | Done |
+| RequestedClockDriftInformation | 204 | RRTO, RRCR | Done |
+| RequestedAccessAvailabilityInformation | 217 | RRCA | Done |
+| QosReportTrigger | 237 | PER, THR, IRE | Done |
+| RequestedQosMonitoring | 243 | DL, UL, RP | Done |
+| ReportingFrequency | 244 | EVETT, PERIO, SESRL | Done |
+| PfcpasReqFlags | 259 | UUPSI | Done |
+| DataStatus | 260 | DROP, BUFF | Done |
+| MptcpApplicableIndication | 265 | MAI | Done |
+| Mbsn4mbReqFlags | 307 | PLLSSM, JMBSSM, LMBSSM | Done |
+| Mbsn4RespFlags | 312 | JMTI, NMTI | Done |
+| PfcpsdrspFlags | 318 | PURU | Done |
+| QerIndications | 319 | IQFCI | Done |
+| TrafficParameterMeasurementIndication | 328 | TPMI | Done |
+| MeasurementIndication | 337 | RLCI, DLQI | Done |
 
 ## Phase 3: Medium Complexity IEs (~25 IEs)
 
