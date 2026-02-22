@@ -16,9 +16,9 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 120+ Information Elements implemented with complete core session management
+- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 139+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Sub-microsecond binary protocol implementation
-- 🧪 **Battle Tested** - 1,900+ comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 2,800+ comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
@@ -57,11 +57,15 @@ for pdr in msg.ies(IeType::CreatePdr) {
 
 let first_fseid = msg.ies(IeType::Fseid).next();
 let pdr_count = msg.ies(IeType::CreatePdr).count();
+
+// Typed IE decoding with Ie::parse<T>()
+let pdr_id: PdrId = msg.ies(IeType::PdrId).next()?.parse()?;
+let cause: Cause = msg.ies(IeType::Cause).next()?.parse()?;
 ```
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **120+ Information Elements** implemented (270+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **139+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting, Ethernet PDU sessions
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
 
@@ -238,10 +242,10 @@ rs-pfcp/
 
 ## 🔒 API Stability
 
-rs-pfcp is currently **pre-1.0** (version 0.2.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
+rs-pfcp is currently **pre-1.0** (version 0.3.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
 
 **Current Status:**
-- **Version**: 0.2.5
+- **Version**: 0.3.0
 - **MSRV**: Rust 1.90.0
 - **Spec Compliance**: 3GPP TS 29.244 Release 18
 - **Stability**: Pre-1.0 (API evolving)
@@ -271,7 +275,7 @@ We provide migration guides for all breaking changes and deprecate features befo
 # Build the library
 cargo build
 
-# Run all tests (1,900+ tests)
+# Run all tests (2,800+ tests)
 cargo test
 
 # Run specific test category
