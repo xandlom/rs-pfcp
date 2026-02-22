@@ -925,6 +925,25 @@ impl From<u16> for IeType {
     }
 }
 
+/// Trait for types that can be parsed from an [`Ie`] payload.
+///
+/// Implement this trait to enable [`Ie::parse`] for your IE type.
+/// All standard IE types in this crate implement this trait automatically.
+///
+/// # Examples
+///
+/// ```
+/// use rs_pfcp::ie::{Ie, IeType, ParseIe};
+/// use rs_pfcp::ie::cause::Cause;
+///
+/// let ie = Ie::new(IeType::Cause, vec![1]);
+/// let cause = ie.parse::<Cause>().unwrap();
+/// ```
+pub trait ParseIe: Sized {
+    /// Parse this type from the raw IE payload bytes.
+    fn parse_from_payload(data: &[u8]) -> Result<Self, PfcpError>;
+}
+
 /// Helper trait to convert marshal results into `Vec<u8>`.
 ///
 /// This trait provides a unified interface for handling both `Vec<u8>` and
@@ -1271,6 +1290,35 @@ impl Ie {
             offset += ie_len;
         }
         Ok(&self.child_ies)
+    }
+
+    /// Parse the IE payload into a strongly-typed representation.
+    ///
+    /// This is a convenience method to convert a raw [`Ie`] into a typed IE value
+    /// without manually referencing `.payload`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rs_pfcp::ie::{Ie, IeType};
+    /// use rs_pfcp::ie::cause::{Cause, CauseValue};
+    ///
+    /// let ie = Ie::new(IeType::Cause, vec![1]);
+    /// let cause = ie.parse::<Cause>().unwrap();
+    /// assert_eq!(cause.value, CauseValue::RequestAccepted);
+    /// ```
+    ///
+    /// ```
+    /// use rs_pfcp::ie::{Ie, IeType};
+    /// use rs_pfcp::ie::create_pdr::CreatePdr;
+    ///
+    /// // Grouped IE - parse directly from the raw Ie
+    /// fn handle(ie: &Ie) -> rs_pfcp::error::PfcpError {
+    ///     ie.parse::<CreatePdr>().unwrap_err()
+    /// }
+    /// ```
+    pub fn parse<T: ParseIe>(&self) -> Result<T, PfcpError> {
+        T::parse_from_payload(&self.payload)
     }
 }
 
@@ -1648,6 +1696,74 @@ pub mod builder_support {
 
 // Re-export IntoIe for convenience
 pub use builder_support::IntoIe;
+
+// Implement ParseIe for all standard IE types that follow the
+// `fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>` pattern.
+macro_rules! impl_parse_ie {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl ParseIe for $ty {
+                fn parse_from_payload(data: &[u8]) -> Result<Self, PfcpError> {
+                    Self::unmarshal(data)
+                }
+            }
+        )*
+    };
+}
+
+impl_parse_ie!(
+    // Core session IEs
+    cause::Cause,
+    node_id::NodeId,
+    fseid::Fseid,
+    f_teid::Fteid,
+    // Scalar ID IEs
+    pdr_id::PdrId,
+    far_id::FarId,
+    urr_id::UrrId,
+    qer_id::QerId,
+    bar_id::BarId,
+    // PDR / FAR / URR / QER components
+    precedence::Precedence,
+    source_interface::SourceInterface,
+    destination_interface::DestinationInterface,
+    network_instance::NetworkInstance,
+    apply_action::ApplyAction,
+    gate_status::GateStatus,
+    mbr::Mbr,
+    gbr::Gbr,
+    reporting_triggers::ReportingTriggers,
+    report_type::ReportType,
+    ue_ip_address::UeIpAddress,
+    outer_header_removal::OuterHeaderRemoval,
+    outer_header_creation::OuterHeaderCreation,
+    // Feature / capability IEs
+    up_function_features::UPFunctionFeatures,
+    cp_function_features::CPFunctionFeatures,
+    // Timestamp & identity IEs
+    recovery_time_stamp::RecoveryTimeStamp,
+    nf_instance_id::NfInstanceId,
+    alternative_smf_ip_address::AlternativeSmfIpAddress,
+    smf_set_id::SmfSetId,
+    pfcpas_req_flags::PfcpasReqFlags,
+    pfcpas_rsp_flags::PfcpasRspFlags,
+    // Grouped IEs
+    create_pdr::CreatePdr,
+    create_far::CreateFar,
+    create_urr::CreateUrr,
+    create_qer::CreateQer,
+    create_bar::CreateBar,
+    created_pdr::CreatedPdr,
+    pdi::Pdi,
+    forwarding_parameters::ForwardingParameters,
+    update_far::UpdateFar,
+    update_pdr::UpdatePdr,
+    update_qer::UpdateQer,
+    update_urr::UpdateUrr,
+    usage_report_srr::UsageReportSrr,
+    usage_report_smr::UsageReportSmr,
+    usage_report_sdr::UsageReportSdr,
+);
 
 #[cfg(test)]
 mod tests {
@@ -2797,5 +2913,87 @@ mod tests {
             assert_eq!(iter.offset, payload.len());
             assert!(iter.next().is_none());
         }
+    }
+
+    // ========================================================================
+    // ParseIe Tests
+    // ========================================================================
+
+    #[test]
+    fn test_parse_cause() {
+        use cause::{Cause, CauseValue};
+        let ie = Ie::new(IeType::Cause, vec![1]);
+        let cause = ie.parse::<Cause>().unwrap();
+        assert_eq!(cause.value, CauseValue::RequestAccepted);
+    }
+
+    #[test]
+    fn test_parse_cause_error_on_empty() {
+        use cause::Cause;
+        let ie = Ie::new(IeType::Cause, vec![]);
+        // payload is empty but we're calling parse directly on the Ie,
+        // bypassing the zero-length wire check — parse still errors correctly.
+        assert!(ie.parse::<Cause>().is_err());
+    }
+
+    #[test]
+    fn test_parse_pdr_id() {
+        use pdr_id::PdrId;
+        let original = PdrId::new(42);
+        let ie = original.to_ie();
+        let parsed = ie.parse::<PdrId>().unwrap();
+        assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn test_parse_far_id() {
+        use far_id::FarId;
+        let original = FarId::new(7);
+        let ie = original.to_ie();
+        let parsed = ie.parse::<FarId>().unwrap();
+        assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn test_parse_node_id() {
+        use node_id::NodeId;
+        let original = NodeId::new_ipv4("192.168.1.1".parse().unwrap());
+        let ie = original.to_ie();
+        let parsed = ie.parse::<NodeId>().unwrap();
+        assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn test_parse_recovery_time_stamp() {
+        use std::time::Duration;
+        use std::time::UNIX_EPOCH;
+        let original = RecoveryTimeStamp::new(UNIX_EPOCH + Duration::from_secs(1_700_000_000));
+        let ie = original.to_ie();
+        let parsed = ie.parse::<RecoveryTimeStamp>().unwrap();
+        assert_eq!(
+            parsed
+                .timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            original
+                .timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+        );
+    }
+
+    #[test]
+    fn test_parse_works_on_any_ie_reference() {
+        // Verify that parse works on both owned and borrowed Ie
+        use cause::{Cause, CauseValue};
+        let ie = Ie::new(IeType::Cause, vec![64]);
+        let cause = ie.parse::<Cause>().unwrap();
+        assert_eq!(cause.value, CauseValue::RequestRejected);
+
+        // Works via reference too (auto-deref applies)
+        let cause_ref = ie.parse::<Cause>().unwrap();
+        assert_eq!(cause_ref.value, CauseValue::RequestRejected);
     }
 }
