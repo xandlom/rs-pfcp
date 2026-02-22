@@ -11,6 +11,7 @@ use crate::ie::{Ie, IeType};
 pub enum SteeringFunctionality {
     AtsdLL = 0,
     Mptcp = 1,
+    Mpquic = 2,
 }
 
 impl SteeringFunctionality {
@@ -30,10 +31,11 @@ impl SteeringFunctionality {
         match data[0] & 0x0F {
             0 => Ok(SteeringFunctionality::AtsdLL),
             1 => Ok(SteeringFunctionality::Mptcp),
+            2 => Ok(SteeringFunctionality::Mpquic),
             v => Err(PfcpError::invalid_value(
                 "Steering Functionality",
                 v.to_string(),
-                "must be 0 (ATSSS-LL) or 1 (MPTCP)",
+                "must be 0 (ATSSS-LL), 1 (MPTCP), or 2 (MPQUIC)",
             )),
         }
     }
@@ -49,7 +51,11 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal() {
-        for sf in [SteeringFunctionality::AtsdLL, SteeringFunctionality::Mptcp] {
+        for sf in [
+            SteeringFunctionality::AtsdLL,
+            SteeringFunctionality::Mptcp,
+            SteeringFunctionality::Mpquic,
+        ] {
             let parsed = SteeringFunctionality::unmarshal(&sf.marshal()).unwrap();
             assert_eq!(parsed, sf);
         }

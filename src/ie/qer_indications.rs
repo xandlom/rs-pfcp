@@ -9,7 +9,10 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct QerIndications: u8 {
-        const IQFCI = 1 << 0; // Bit 1: Insert QFI in encapsulation header
+        const IQFISN = 1 << 0; // Bit 1: Insert DL MBS QFI SN
+        const EDBMI = 1 << 1; // Bit 2: End Of Data Burst Marking Indication
+        const EML4S = 1 << 2; // Bit 3: ECN Marking for L4S
+        const PDUSM = 1 << 3; // Bit 4: PDU Set Marking
     }
 }
 
@@ -41,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal() {
-        let flags = QerIndications::IQFCI;
+        let flags = QerIndications::IQFISN;
         let parsed = QerIndications::unmarshal(&flags.marshal()).unwrap();
         assert_eq!(parsed, flags);
     }
@@ -57,7 +60,7 @@ mod tests {
     #[test]
     fn test_to_ie() {
         assert_eq!(
-            QerIndications::IQFCI.to_ie().ie_type,
+            QerIndications::IQFISN.to_ie().ie_type,
             IeType::QerIndications
         );
     }

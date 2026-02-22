@@ -13,6 +13,9 @@ pub enum Priority {
     Standby = 1,
     NoPriority = 2,
     High = 3,
+    Low = 4,
+    Primary = 5,
+    Secondary = 6,
 }
 
 impl Priority {
@@ -34,10 +37,13 @@ impl Priority {
             1 => Ok(Priority::Standby),
             2 => Ok(Priority::NoPriority),
             3 => Ok(Priority::High),
+            4 => Ok(Priority::Low),
+            5 => Ok(Priority::Primary),
+            6 => Ok(Priority::Secondary),
             v => Err(PfcpError::invalid_value(
                 "Priority",
                 v.to_string(),
-                "must be 0-3",
+                "must be 0-6",
             )),
         }
     }
@@ -58,6 +64,9 @@ mod tests {
             Priority::Standby,
             Priority::NoPriority,
             Priority::High,
+            Priority::Low,
+            Priority::Primary,
+            Priority::Secondary,
         ] {
             let parsed = Priority::unmarshal(&p.marshal()).unwrap();
             assert_eq!(parsed, p);

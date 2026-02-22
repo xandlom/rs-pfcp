@@ -9,7 +9,9 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct TrafficParameterMeasurementIndication: u8 {
-        const TPMI = 1 << 0; // Bit 1: Traffic Parameter Measurement Indication
+        const ULPMI = 1 << 0; // Bit 1: UL Periodicity Measurement Indication
+        const DLPMI = 1 << 1; // Bit 2: DL Periodicity Measurement Indication
+        const N6JMI = 1 << 2; // Bit 3: N6 Jitter Measurement Indication
     }
 }
 
@@ -44,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal() {
-        let flags = TrafficParameterMeasurementIndication::TPMI;
+        let flags = TrafficParameterMeasurementIndication::ULPMI;
         let parsed = TrafficParameterMeasurementIndication::unmarshal(&flags.marshal()).unwrap();
         assert_eq!(parsed, flags);
     }
@@ -60,7 +62,7 @@ mod tests {
     #[test]
     fn test_to_ie() {
         assert_eq!(
-            TrafficParameterMeasurementIndication::TPMI.to_ie().ie_type,
+            TrafficParameterMeasurementIndication::ULPMI.to_ie().ie_type,
             IeType::TrafficParameterMeasurementIndication
         );
     }

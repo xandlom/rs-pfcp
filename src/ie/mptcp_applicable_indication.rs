@@ -9,7 +9,8 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct MptcpApplicableIndication: u8 {
-        const MAI = 1 << 0; // Bit 1: MPTCP Applicable Indication
+        const MTAI = 1 << 0; // Bit 1: MPTCP Applicable Indication
+        const MQAI = 1 << 1; // Bit 2: MPQUIC Applicable Indication
     }
 }
 
@@ -41,7 +42,7 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal() {
-        let flags = MptcpApplicableIndication::MAI;
+        let flags = MptcpApplicableIndication::MTAI;
         let parsed = MptcpApplicableIndication::unmarshal(&flags.marshal()).unwrap();
         assert_eq!(parsed, flags);
     }
@@ -57,7 +58,7 @@ mod tests {
     #[test]
     fn test_to_ie() {
         assert_eq!(
-            MptcpApplicableIndication::MAI.to_ie().ie_type,
+            MptcpApplicableIndication::MTAI.to_ie().ie_type,
             IeType::MptcpApplicableIndication
         );
     }

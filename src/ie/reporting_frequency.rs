@@ -9,9 +9,9 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct ReportingFrequency: u8 {
-        const EVETT = 1 << 0; // Bit 1: Event Triggered
-        const PERIO = 1 << 1; // Bit 2: Periodic
-        const SESRL = 1 << 2; // Bit 3: Session Released
+        const EVETT = 1 << 0; // Bit 1: Event Triggered QoS monitoring reporting
+        const PERIO = 1 << 1; // Bit 2: Periodic QoS monitoring reporting
+        // Bit 3: Reserved (deprecated per spec)
     }
 }
 
@@ -43,8 +43,7 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal_all() {
-        let flags =
-            ReportingFrequency::EVETT | ReportingFrequency::PERIO | ReportingFrequency::SESRL;
+        let flags = ReportingFrequency::EVETT | ReportingFrequency::PERIO;
         let parsed = ReportingFrequency::unmarshal(&flags.marshal()).unwrap();
         assert_eq!(parsed, flags);
     }

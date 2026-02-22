@@ -11,7 +11,7 @@ bitflags! {
     pub struct Mbsn4mbReqFlags: u8 {
         const PLLSSM = 1 << 0; // Bit 1: Provide Linked Session Set Member
         const JMBSSM = 1 << 1; // Bit 2: Join MBS Session Set Member
-        const LMBSSM = 1 << 2; // Bit 3: Leave MBS Session Set Member
+        const MBSRESTI = 1 << 2; // Bit 3: MBS Restoration Indication
     }
 }
 

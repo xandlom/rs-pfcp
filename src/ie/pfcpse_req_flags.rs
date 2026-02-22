@@ -11,6 +11,8 @@ bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct PfcpseReqFlags: u8 {
         const RESTI = 1 << 0; // Bit 1: Restoration Indication
+        const SUMPC = 1 << 1; // Bit 2: Stop of Usage Measurement to Pause Charging
+        const HRSBOM = 1 << 2; // Bit 3: HR-SBO Mode
     }
 }
 

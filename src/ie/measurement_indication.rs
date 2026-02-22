@@ -9,8 +9,7 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct MeasurementIndication: u8 {
-        const RLCI = 1 << 0; // Bit 1: Report Loss Combination Information
-        const DLQI = 1 << 1; // Bit 2: DL QoS Information
+        const DQFI = 1 << 0; // Bit 1: Default QoS Flow Indication
     }
 }
 
@@ -42,7 +41,7 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal() {
-        let flags = MeasurementIndication::RLCI | MeasurementIndication::DLQI;
+        let flags = MeasurementIndication::DQFI;
         let parsed = MeasurementIndication::unmarshal(&flags.marshal()).unwrap();
         assert_eq!(parsed, flags);
     }
@@ -58,7 +57,7 @@ mod tests {
     #[test]
     fn test_to_ie() {
         assert_eq!(
-            MeasurementIndication::RLCI.to_ie().ie_type,
+            MeasurementIndication::DQFI.to_ie().ie_type,
             IeType::MeasurementIndication
         );
     }

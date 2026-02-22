@@ -41,24 +41,24 @@ Single-byte bitflag IEs using `bitflags!` macro pattern. All validated against t
 |---|---|---|---|
 | OciFlags | 110 | AOCI | Done |
 | PfcpAssociationReleaseRequest | 111 | SARR, URSS | Done |
-| PfcpsrReqFlags | 161 | PMSRI | Done |
+| PfcpsrReqFlags | 161 | PSDBU | Done |
 | PfcpauReqFlags | 162 | PARPS | Done |
 | PacketReplicationAndDetectionCarryOnInformation | 179 | PRIUEAI, PRIN19I, PRIN6I, DCARONI | Done |
-| PfcpseReqFlags | 186 | RESTI | Done |
+| PfcpseReqFlags | 186 | RESTI, SUMPC, HRSBOM | Done |
 | RequestedClockDriftInformation | 204 | RRTO, RRCR | Done |
 | RequestedAccessAvailabilityInformation | 217 | RRCA | Done |
 | QosReportTrigger | 237 | PER, THR, IRE | Done |
-| RequestedQosMonitoring | 243 | DL, UL, RP | Done |
-| ReportingFrequency | 244 | EVETT, PERIO, SESRL | Done |
+| RequestedQosMonitoring | 243 | DLPD, ULPD, RPPD, GTPUPM, DLCI, ULCI, DLDR, ULDR | Done |
+| ReportingFrequency | 244 | EVETT, PERIO | Done |
 | PfcpasReqFlags | 259 | UUPSI | Done |
 | DataStatus | 260 | DROP, BUFF | Done |
-| MptcpApplicableIndication | 265 | MAI | Done |
-| Mbsn4mbReqFlags | 307 | PLLSSM, JMBSSM, LMBSSM | Done |
-| Mbsn4RespFlags | 312 | JMTI, NMTI | Done |
+| MptcpApplicableIndication | 265 | MTAI, MQAI | Done |
+| Mbsn4mbReqFlags | 307 | PLLSSM, JMBSSM, MBSRESTI | Done |
+| Mbsn4RespFlags | 312 | NN19DT, JMTI, N19DTR | Done |
 | PfcpsdrspFlags | 318 | PURU | Done |
-| QerIndications | 319 | IQFCI | Done |
-| TrafficParameterMeasurementIndication | 328 | TPMI | Done |
-| MeasurementIndication | 337 | RLCI, DLQI | Done |
+| QerIndications | 319 | IQFISN, EDBMI, EML4S, PDUSM | Done |
+| TrafficParameterMeasurementIndication | 328 | ULPMI, DLPMI, N6JMI | Done |
+| MeasurementIndication | 337 | DQFI | Done |
 
 ## Phase 3: Medium Complexity IEs (24 IEs) - COMPLETE
 
@@ -86,9 +86,9 @@ Multi-field IEs with various patterns. All validated against tshark.
 | NumberOfUeIpAddresses | 268 | flags + u32 counts | Done |
 | MbsSessionIdentifier | 305 | TMGI + optional SSM | Done |
 | TunnelPassword | 313 | Variable bytes | Done |
-| N6JitterMeasurement | 327 | u32 microseconds | Done |
+| N6JitterMeasurement | 327 | flags + u32 periodicity + i32 jitter fields | Done |
 | HplmnSNssai | 338 | SST + optional SD | Done |
-| MappedN6IpAddress | 350 | v4/v6 by length | Done |
+| MappedN6IpAddress | 350 | flags (CHV4/V4) + IPv4 | Done |
 | Uri | 352 | Variable string | Done |
 
 ## Phase 4: Grouped IEs (~110 IEs)

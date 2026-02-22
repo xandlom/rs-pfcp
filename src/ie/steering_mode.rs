@@ -13,6 +13,7 @@ pub enum SteeringMode {
     SmallestDelay = 1,
     LoadBalancing = 2,
     PriorityBased = 3,
+    Redundant = 4,
 }
 
 impl SteeringMode {
@@ -34,10 +35,11 @@ impl SteeringMode {
             1 => Ok(SteeringMode::SmallestDelay),
             2 => Ok(SteeringMode::LoadBalancing),
             3 => Ok(SteeringMode::PriorityBased),
+            4 => Ok(SteeringMode::Redundant),
             v => Err(PfcpError::invalid_value(
                 "Steering Mode",
                 v.to_string(),
-                "must be 0-3",
+                "must be 0-4",
             )),
         }
     }
@@ -58,6 +60,7 @@ mod tests {
             SteeringMode::SmallestDelay,
             SteeringMode::LoadBalancing,
             SteeringMode::PriorityBased,
+            SteeringMode::Redundant,
         ] {
             let parsed = SteeringMode::unmarshal(&sm.marshal()).unwrap();
             assert_eq!(parsed, sm);

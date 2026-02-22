@@ -9,9 +9,14 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     pub struct RequestedQosMonitoring: u8 {
-        const DL = 1 << 0; // Bit 1: Downlink packet delay monitoring
-        const UL = 1 << 1; // Bit 2: Uplink packet delay monitoring
-        const RP = 1 << 2; // Bit 3: Round trip packet delay monitoring
+        const DLPD = 1 << 0; // Bit 1: Downlink Packet Delay
+        const ULPD = 1 << 1; // Bit 2: Uplink Packet Delay
+        const RPPD = 1 << 2; // Bit 3: Round Trip Packet Delay
+        const GTPUPM = 1 << 3; // Bit 4: GTP-U Path Monitoring
+        const DLCI = 1 << 4; // Bit 5: Downlink Congestion Information
+        const ULCI = 1 << 5; // Bit 6: Uplink Congestion Information
+        const DLDR = 1 << 6; // Bit 7: Downlink Data Rate
+        const ULDR = 1 << 7; // Bit 8: Uplink Data Rate
     }
 }
 
@@ -43,8 +48,14 @@ mod tests {
 
     #[test]
     fn test_marshal_unmarshal_all() {
-        let flags =
-            RequestedQosMonitoring::DL | RequestedQosMonitoring::UL | RequestedQosMonitoring::RP;
+        let flags = RequestedQosMonitoring::DLPD
+            | RequestedQosMonitoring::ULPD
+            | RequestedQosMonitoring::RPPD
+            | RequestedQosMonitoring::GTPUPM
+            | RequestedQosMonitoring::DLCI
+            | RequestedQosMonitoring::ULCI
+            | RequestedQosMonitoring::DLDR
+            | RequestedQosMonitoring::ULDR;
         let parsed = RequestedQosMonitoring::unmarshal(&flags.marshal()).unwrap();
         assert_eq!(parsed, flags);
     }
@@ -60,7 +71,7 @@ mod tests {
     #[test]
     fn test_to_ie() {
         assert_eq!(
-            RequestedQosMonitoring::DL.to_ie().ie_type,
+            RequestedQosMonitoring::DLPD.to_ie().ie_type,
             IeType::RequestedQosMonitoring
         );
     }
