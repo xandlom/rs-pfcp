@@ -227,10 +227,13 @@ pub mod weight;
 pub mod volume_threshold;
 
 // Re-export commonly used IE types for convenience
+pub use alternative_smf_ip_address::AlternativeSmfIpAddress;
 pub use gtpu_path_qos_control_information::GtpuPathQosControlInformation;
+pub use nf_instance_id::NfInstanceId;
 pub use node_id::NodeId;
 pub use pfcp_session_change_info::PfcpSessionChangeInfo;
 pub use pfcp_session_retention_information::PfcpSessionRetentionInformation;
+pub use pfcpas_req_flags::PfcpasReqFlags;
 pub use pfcpas_rsp_flags::PfcpasRspFlags;
 pub use query_urr::QueryUrr;
 pub use recovery_time_stamp::RecoveryTimeStamp;

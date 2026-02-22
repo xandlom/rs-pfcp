@@ -118,6 +118,12 @@ fn test_association_setup_response_from_request() {
         Some(up_features_ie.clone()),
         Some(cp_features_ie.clone()),
         vec![],
+        None,
+        None,
+        vec![],
+        None,
+        None,
+        vec![],
     );
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);

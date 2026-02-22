@@ -29,6 +29,11 @@ impl RecoveryTimeStamp {
         (ntp_timestamp as u32).to_be_bytes()
     }
 
+    /// Converts this IE to a raw `Ie` value.
+    pub fn to_ie(&self) -> crate::ie::Ie {
+        crate::ie::Ie::new(IeType::RecoveryTimeStamp, self.marshal().to_vec())
+    }
+
     /// Unmarshals a 4-byte slice into a RecoveryTimeStamp.
     ///
     /// Per 3GPP TS 29.244, Recovery Time Stamp requires exactly 4 bytes (NTP timestamp).

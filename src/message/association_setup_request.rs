@@ -10,18 +10,18 @@ use crate::types::{Seid, SequenceNumber};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociationSetupRequest {
     pub header: Header,
-    pub node_id: Ie,                      // M - 3GPP TS 29.244 Table 7.4.4.1-1
-    pub recovery_time_stamp: Ie,          // M - 3GPP TS 29.244 Table 7.4.4.1-1
-    pub up_function_features: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.1-1
-    pub cp_function_features: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.1-1
-    // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
-    // TODO: [IE Type 180] SMF Set ID - C - When MPAS feature is advertised (N4/N4mb only)
-    // TODO: [IE Type 183] PFCP Session Retention Information - O - Grouped IE, see Table 7.4.4.1-2
+    pub node_id: Ie,                           // M - 3GPP TS 29.244 Table 7.4.4.1-1
+    pub recovery_time_stamp: Ie,               // M - 3GPP TS 29.244 Table 7.4.4.1-1
+    pub up_function_features: Option<Ie>,      // C - 3GPP TS 29.244 Table 7.4.4.1-1
+    pub cp_function_features: Option<Ie>,      // C - 3GPP TS 29.244 Table 7.4.4.1-1
+    pub alternative_smf_ip_addresses: Vec<Ie>, // O - Multiple - IE Type 178 (N4/N4mb only)
+    pub smf_set_id: Option<Ie>, // C - IE Type 180 - When MPAS feature is advertised (N4/N4mb only)
+    pub pfcp_session_retention_information: Option<Ie>, // O - IE Type 183 (N4/N4mb only)
+    pub gtpu_path_qos_control_information: Vec<Ie>, // C - Multiple - IE Type 238 (N4 only)
+    pub nf_instance_id: Option<Ie>, // O - IE Type 253 - When sent by 5G UP function (N4/N4mb only)
+    pub pfcpas_req_flags: Option<Ie>, // O - IE Type 259 - UUPSI flag for IPUPS support (N4 only)
     // TODO: [IE Type 233] UE IP address Pool Information - O - Multiple instances allowed (Sxb/N4 only)
-    // TODO: [IE Type 239] GTP-U Path QoS Control Information - C - Multiple instances allowed, Grouped IE (N4 only)
     // TODO: [IE Type 203] Clock Drift Control Information - O - Multiple instances allowed, Grouped IE (N4 only)
-    // TODO: [IE Type 253] NF Instance ID (UPF Instance ID) - O - When sent by 5G UP function (N4/N4mb only)
-    // TODO: [IE Type 259] PFCPASReq-Flags - O - Flags IE with UUPSI flag for IPUPS support (N4 only)
     pub ies: Vec<Ie>, // For any other IEs
 }
 
@@ -47,6 +47,24 @@ impl Message for AssociationSetupRequest {
         if let Some(ref ie) = self.cp_function_features {
             ie.marshal_into(buf);
         }
+        for ie in &self.alternative_smf_ip_addresses {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.smf_set_id {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.pfcp_session_retention_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.gtpu_path_qos_control_information {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.nf_instance_id {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.pfcpas_req_flags {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -60,6 +78,24 @@ impl Message for AssociationSetupRequest {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        for ie in &self.alternative_smf_ip_addresses {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.smf_set_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcp_session_retention_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.gtpu_path_qos_control_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.nf_instance_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcpas_req_flags {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -77,6 +113,12 @@ impl Message for AssociationSetupRequest {
         let mut recovery_time_stamp = None;
         let mut up_function_features = None;
         let mut cp_function_features = None;
+        let mut alternative_smf_ip_addresses = Vec::new();
+        let mut smf_set_id = None;
+        let mut pfcp_session_retention_information = None;
+        let mut gtpu_path_qos_control_information = Vec::new();
+        let mut nf_instance_id = None;
+        let mut pfcpas_req_flags = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -88,6 +130,14 @@ impl Message for AssociationSetupRequest {
                 IeType::RecoveryTimeStamp => recovery_time_stamp = Some(ie),
                 IeType::UpFunctionFeatures => up_function_features = Some(ie),
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
+                IeType::AlternativeSmfIpAddress => alternative_smf_ip_addresses.push(ie),
+                IeType::SmfSetId => smf_set_id = Some(ie),
+                IeType::PfcpSessionRetentionInformation => {
+                    pfcp_session_retention_information = Some(ie)
+                }
+                IeType::GtpuPathQosControlInformation => gtpu_path_qos_control_information.push(ie),
+                IeType::NfInstanceId => nf_instance_id = Some(ie),
+                IeType::PfcpasReqFlags => pfcpas_req_flags = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -109,6 +159,12 @@ impl Message for AssociationSetupRequest {
             })?,
             up_function_features,
             cp_function_features,
+            alternative_smf_ip_addresses,
+            smf_set_id,
+            pfcp_session_retention_information,
+            gtpu_path_qos_control_information,
+            nf_instance_id,
+            pfcpas_req_flags,
             ies,
         })
     }
@@ -141,6 +197,18 @@ impl Message for AssociationSetupRequest {
             IeType::CpFunctionFeatures => {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
+            IeType::AlternativeSmfIpAddress => {
+                IeIter::multiple(&self.alternative_smf_ip_addresses, ie_type)
+            }
+            IeType::SmfSetId => IeIter::single(self.smf_set_id.as_ref(), ie_type),
+            IeType::PfcpSessionRetentionInformation => {
+                IeIter::single(self.pfcp_session_retention_information.as_ref(), ie_type)
+            }
+            IeType::GtpuPathQosControlInformation => {
+                IeIter::multiple(&self.gtpu_path_qos_control_information, ie_type)
+            }
+            IeType::NfInstanceId => IeIter::single(self.nf_instance_id.as_ref(), ie_type),
+            IeType::PfcpasReqFlags => IeIter::single(self.pfcpas_req_flags.as_ref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -153,18 +221,39 @@ impl Message for AssociationSetupRequest {
         if let Some(ref ie) = self.cp_function_features {
             result.push(ie);
         }
+        result.extend(self.alternative_smf_ip_addresses.iter());
+        if let Some(ref ie) = self.smf_set_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcp_session_retention_information {
+            result.push(ie);
+        }
+        result.extend(self.gtpu_path_qos_control_information.iter());
+        if let Some(ref ie) = self.nf_instance_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcpas_req_flags {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
 }
 
 impl AssociationSetupRequest {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         seq: impl Into<SequenceNumber>,
         node_id: Ie,
         recovery_time_stamp: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
+        alternative_smf_ip_addresses: Vec<Ie>,
+        smf_set_id: Option<Ie>,
+        pfcp_session_retention_information: Option<Ie>,
+        gtpu_path_qos_control_information: Vec<Ie>,
+        nf_instance_id: Option<Ie>,
+        pfcpas_req_flags: Option<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len() + recovery_time_stamp.len();
@@ -172,6 +261,24 @@ impl AssociationSetupRequest {
             payload_len += ie.len();
         }
         if let Some(ie) = &cp_function_features {
+            payload_len += ie.len();
+        }
+        for ie in &alternative_smf_ip_addresses {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &smf_set_id {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &pfcp_session_retention_information {
+            payload_len += ie.len();
+        }
+        for ie in &gtpu_path_qos_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &nf_instance_id {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &pfcpas_req_flags {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -185,6 +292,12 @@ impl AssociationSetupRequest {
             recovery_time_stamp,
             up_function_features,
             cp_function_features,
+            alternative_smf_ip_addresses,
+            smf_set_id,
+            pfcp_session_retention_information,
+            gtpu_path_qos_control_information,
+            nf_instance_id,
+            pfcpas_req_flags,
             ies,
         }
     }
@@ -198,6 +311,12 @@ pub struct AssociationSetupRequestBuilder {
     recovery_time_stamp: Option<Ie>,
     up_function_features: Option<Ie>,
     cp_function_features: Option<Ie>,
+    alternative_smf_ip_addresses: Vec<Ie>,
+    smf_set_id: Option<Ie>,
+    pfcp_session_retention_information: Option<Ie>,
+    gtpu_path_qos_control_information: Vec<Ie>,
+    nf_instance_id: Option<Ie>,
+    pfcpas_req_flags: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -210,6 +329,12 @@ impl AssociationSetupRequestBuilder {
             recovery_time_stamp: None,
             up_function_features: None,
             cp_function_features: None,
+            alternative_smf_ip_addresses: Vec::new(),
+            smf_set_id: None,
+            pfcp_session_retention_information: None,
+            gtpu_path_qos_control_information: Vec::new(),
+            nf_instance_id: None,
+            pfcpas_req_flags: None,
             ies: Vec::new(),
         }
     }
@@ -298,9 +423,8 @@ impl AssociationSetupRequestBuilder {
     /// [`recovery_time_stamp_ie`]: #method.recovery_time_stamp_ie
     pub fn recovery_time_stamp(mut self, timestamp: std::time::SystemTime) -> Self {
         use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
-        use crate::ie::IeType;
         let ts = RecoveryTimeStamp::new(timestamp);
-        self.recovery_time_stamp = Some(Ie::new(IeType::RecoveryTimeStamp, ts.marshal().to_vec()));
+        self.recovery_time_stamp = Some(ts.to_ie());
         self
     }
 
@@ -324,6 +448,48 @@ impl AssociationSetupRequestBuilder {
     /// Sets the CP function features IE (optional).
     pub fn cp_function_features(mut self, cp_function_features: Ie) -> Self {
         self.cp_function_features = Some(cp_function_features);
+        self
+    }
+
+    /// Adds an Alternative SMF IP Address IE (optional, multiple allowed).
+    pub fn alternative_smf_ip_address(mut self, ie: Ie) -> Self {
+        self.alternative_smf_ip_addresses.push(ie);
+        self
+    }
+
+    /// Adds multiple Alternative SMF IP Address IEs.
+    pub fn alternative_smf_ip_addresses(mut self, mut ies: Vec<Ie>) -> Self {
+        self.alternative_smf_ip_addresses.append(&mut ies);
+        self
+    }
+
+    /// Sets the SMF Set ID IE (optional).
+    pub fn smf_set_id(mut self, ie: Ie) -> Self {
+        self.smf_set_id = Some(ie);
+        self
+    }
+
+    /// Sets the PFCP Session Retention Information IE (optional).
+    pub fn pfcp_session_retention_information(mut self, ie: Ie) -> Self {
+        self.pfcp_session_retention_information = Some(ie);
+        self
+    }
+
+    /// Adds a GTP-U Path QoS Control Information IE (optional, multiple allowed).
+    pub fn gtpu_path_qos_control_information(mut self, ie: Ie) -> Self {
+        self.gtpu_path_qos_control_information.push(ie);
+        self
+    }
+
+    /// Sets the NF Instance ID IE (optional).
+    pub fn nf_instance_id(mut self, ie: Ie) -> Self {
+        self.nf_instance_id = Some(ie);
+        self
+    }
+
+    /// Sets the PFCPASReq-Flags IE (optional).
+    pub fn pfcpas_req_flags(mut self, ie: Ie) -> Self {
+        self.pfcpas_req_flags = Some(ie);
         self
     }
 
@@ -357,6 +523,12 @@ impl AssociationSetupRequestBuilder {
             recovery_time_stamp,
             self.up_function_features,
             self.cp_function_features,
+            self.alternative_smf_ip_addresses,
+            self.smf_set_id,
+            self.pfcp_session_retention_information,
+            self.gtpu_path_qos_control_information,
+            self.nf_instance_id,
+            self.pfcpas_req_flags,
             self.ies,
         )
     }
@@ -402,6 +574,12 @@ impl AssociationSetupRequestBuilder {
             recovery_time_stamp,
             self.up_function_features,
             self.cp_function_features,
+            self.alternative_smf_ip_addresses,
+            self.smf_set_id,
+            self.pfcp_session_retention_information,
+            self.gtpu_path_qos_control_information,
+            self.nf_instance_id,
+            self.pfcpas_req_flags,
             self.ies,
         ))
     }
@@ -920,5 +1098,174 @@ mod tests {
         assert!(unmarshaled.up_function_features.is_some());
         assert!(unmarshaled.cp_function_features.is_some());
         assert_eq!(unmarshaled.ies.len(), 1);
+    }
+
+    #[test]
+    fn test_alternative_smf_ip_addresses_roundtrip() {
+        use std::net::Ipv4Addr;
+        let ie1 = Ie::new(IeType::AlternativeSmfIpAddress, vec![0x02, 10, 0, 0, 1]);
+        let ie2 = Ie::new(IeType::AlternativeSmfIpAddress, vec![0x02, 10, 0, 0, 2]);
+
+        let original = AssociationSetupRequestBuilder::new(20000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .alternative_smf_ip_address(ie1.clone())
+            .alternative_smf_ip_address(ie2.clone())
+            .build();
+
+        assert_eq!(original.alternative_smf_ip_addresses.len(), 2);
+        assert_eq!(original.alternative_smf_ip_addresses[0], ie1);
+        assert_eq!(original.alternative_smf_ip_addresses[1], ie2);
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.alternative_smf_ip_addresses.len(), 2);
+    }
+
+    #[test]
+    fn test_smf_set_id_roundtrip() {
+        use std::net::Ipv4Addr;
+        let ie = Ie::new(IeType::SmfSetId, b"smf-set-001".to_vec());
+
+        let original = AssociationSetupRequestBuilder::new(21000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .smf_set_id(ie.clone())
+            .build();
+
+        assert_eq!(original.smf_set_id, Some(ie));
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert!(unmarshaled.smf_set_id.is_some());
+    }
+
+    #[test]
+    fn test_pfcp_session_retention_information_roundtrip() {
+        use std::net::Ipv4Addr;
+        let ie = Ie::new(
+            IeType::PfcpSessionRetentionInformation,
+            vec![0x00, 0x00, 0x0E, 0x10, 0x01],
+        );
+
+        let original = AssociationSetupRequestBuilder::new(22000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .pfcp_session_retention_information(ie.clone())
+            .build();
+
+        assert_eq!(original.pfcp_session_retention_information, Some(ie));
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_gtpu_path_qos_control_information_roundtrip() {
+        use std::net::Ipv4Addr;
+        let ie1 = Ie::new(
+            IeType::GtpuPathQosControlInformation,
+            vec![0x01, 0x02, 0x03],
+        );
+        let ie2 = Ie::new(
+            IeType::GtpuPathQosControlInformation,
+            vec![0x04, 0x05, 0x06],
+        );
+
+        let original = AssociationSetupRequestBuilder::new(23000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .gtpu_path_qos_control_information(ie1.clone())
+            .gtpu_path_qos_control_information(ie2.clone())
+            .build();
+
+        assert_eq!(original.gtpu_path_qos_control_information.len(), 2);
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.gtpu_path_qos_control_information.len(), 2);
+    }
+
+    #[test]
+    fn test_nf_instance_id_roundtrip() {
+        use std::net::Ipv4Addr;
+        let uuid = [
+            0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44, 0x66, 0x55, 0x44,
+            0x00, 0x00,
+        ];
+        let ie = Ie::new(IeType::NfInstanceId, uuid.to_vec());
+
+        let original = AssociationSetupRequestBuilder::new(24000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .nf_instance_id(ie.clone())
+            .build();
+
+        assert_eq!(original.nf_instance_id, Some(ie));
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert!(unmarshaled.nf_instance_id.is_some());
+    }
+
+    #[test]
+    fn test_pfcpas_req_flags_roundtrip() {
+        use std::net::Ipv4Addr;
+        let ie = Ie::new(IeType::PfcpasReqFlags, vec![0x01]); // UUPSI flag
+
+        let original = AssociationSetupRequestBuilder::new(25000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .pfcpas_req_flags(ie.clone())
+            .build();
+
+        assert_eq!(original.pfcpas_req_flags, Some(ie));
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert!(unmarshaled.pfcpas_req_flags.is_some());
+    }
+
+    #[test]
+    fn test_ies_iter_new_fields() {
+        use std::net::Ipv4Addr;
+        let alt_smf = Ie::new(IeType::AlternativeSmfIpAddress, vec![0x02, 10, 0, 0, 1]);
+        let smf_set = Ie::new(IeType::SmfSetId, b"set-01".to_vec());
+        let nf_id = Ie::new(IeType::NfInstanceId, vec![0u8; 16]);
+        let flags = Ie::new(IeType::PfcpasReqFlags, vec![0x01]);
+
+        let request = AssociationSetupRequestBuilder::new(26000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .alternative_smf_ip_address(alt_smf.clone())
+            .smf_set_id(smf_set.clone())
+            .nf_instance_id(nf_id.clone())
+            .pfcpas_req_flags(flags.clone())
+            .build();
+
+        assert_eq!(
+            request.ies(IeType::AlternativeSmfIpAddress).next(),
+            Some(&alt_smf)
+        );
+        assert_eq!(request.ies(IeType::SmfSetId).next(), Some(&smf_set));
+        assert_eq!(request.ies(IeType::NfInstanceId).next(), Some(&nf_id));
+        assert_eq!(request.ies(IeType::PfcpasReqFlags).next(), Some(&flags));
+    }
+
+    #[test]
+    fn test_recovery_time_stamp_to_ie_consistency() {
+        // Verify the to_ie() path produces identical results to the manual IE construction
+        use crate::ie::recovery_time_stamp::RecoveryTimeStamp;
+        let ts = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000_000);
+        let rts = RecoveryTimeStamp::new(ts);
+        let via_to_ie = rts.to_ie();
+        let via_manual = Ie::new(IeType::RecoveryTimeStamp, rts.marshal().to_vec());
+        assert_eq!(via_to_ie, via_manual);
     }
 }
