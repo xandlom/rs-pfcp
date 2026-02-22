@@ -86,6 +86,11 @@ fn test_association_setup_response_marshal_unmarshal() {
         up_function_features: Some(up_features_ie.clone()),
         cp_function_features: Some(cp_features_ie.clone()),
         recovery_time_stamp: Some(ts_ie.clone()),
+        alternative_smf_ip_addresses: vec![],
+        smf_set_id: None,
+        pfcpas_rsp_flags: None,
+        gtpu_path_qos_control_information: vec![],
+        nf_instance_id: None,
         ies: vec![],
     };
 
@@ -143,6 +148,11 @@ fn test_association_setup_response_from_request() {
         up_function_features: req.ies(IeType::UpFunctionFeatures).next().cloned(),
         cp_function_features: req.ies(IeType::CpFunctionFeatures).next().cloned(),
         recovery_time_stamp: req.ies(IeType::RecoveryTimeStamp).next().cloned(),
+        alternative_smf_ip_addresses: vec![],
+        smf_set_id: None,
+        pfcpas_rsp_flags: None,
+        gtpu_path_qos_control_information: vec![],
+        nf_instance_id: None,
         ies: vec![],
     };
 
