@@ -12,7 +12,7 @@ rs-pfcp is a Rust implementation of PFCP (Packet Forwarding Control Protocol) fo
 - Zero-copy binary protocol implementation
 - 25 message types (100% coverage)
 - 139+ Information Elements (IEs) with 272+ enum variants
-- ~1,980 comprehensive tests with round-trip validation
+- ~2,800+ comprehensive tests with round-trip validation
 - Builder patterns for ergonomic API
 - MSRV: Rust 1.90.0
 
@@ -64,56 +64,19 @@ cargo check --all-targets
 ### Examples
 
 ```bash
-# Run PFCP heartbeat server on localhost
+# Run PFCP heartbeat server/client
 cargo run --example heartbeat-server -- --interface lo --port 8805
-
-# Run heartbeat client
 cargo run --example heartbeat-client -- --address 127.0.0.1 --port 8805
 
-# Run session establishment server (UPF simulator)
+# Run session establishment server/client (UPF/SMF simulators)
 cargo run --example session-server -- --interface lo --port 8805
-
-# Run session client (SMF simulator)
 cargo run --example session-client -- --address 127.0.0.1 --sessions 5
 
 # Analyze PCAP files
 cargo run --example pcap-reader -- --pcap traffic.pcap --format yaml --pfcp-only
-
-# Demo message comparison and validation (5 comprehensive demos)
-cargo run --example message-comparison          # Run all demos
-cargo run --example message-comparison roundtrip   # Round-trip validation
-cargo run --example message-comparison semantic    # Semantic comparison
-cargo run --example message-comparison timestamp   # Timestamp tolerance
-cargo run --example message-comparison validation  # Message validation
-cargo run --example message-comparison diff        # Diff generation
-
-# Demo quota exhaustion and usage reporting
-cd examples && ./test_session_report.sh lo
-
-# Demo Ethernet PDU session with PCAP generation
-cargo run --example ethernet-session-demo
-
-# Demo usage reporting (Phase 1 and Phase 2)
-cargo run --example usage_report_phase1_demo
-cargo run --example usage_report_phase2_demo
-
-# Demo PDN type handling
-cargo run --example pdn-type-demo
-cargo run --example pdn-type-simple
-
-# Demo PfcpError handling patterns
-cargo run --example error-handling-demo
-
-# Test with real messages
-cargo run --example test_real_messages
-
-# Debug parsers (development utilities)
-cargo run --example debug_parser
-cargo run --example debug_ie_parser
-
-# Header length test
-cargo run --example header-length-test
 ```
+
+Additional demo examples (error handling, Ethernet sessions, usage reporting, etc.) are in `examples/`.
 
 ### Benchmarking
 
@@ -188,6 +151,12 @@ All PFCP messages implement the `Message` trait with:
 - Complex IEs: `Fteid`, `Fseid`, `UeIpAddress` (multi-field structs)
 - Grouped IEs: `CreatePdr`, `CreateFar`, `Pdi` (contain child IEs)
 - All IEs use consistent TLV (Type-Length-Value) encoding
+
+**`ParseIe` Trait and `Ie::parse<T>()`:**
+- `Ie::parse::<T>()` decodes a raw `Ie` into a typed value, replacing manual payload slicing
+- Usage pattern: `msg.ies(IeType::PdrId).next()?.parse::<PdrId>()?`
+- All standard scalar/struct IEs implement `ParseIe` via macro in `src/ie/mod.rs`
+- Custom types can implement `ParseIe` manually for grouped or non-standard IEs
 
 **Builder Patterns:**
 - Used for complex messages and grouped IEs
@@ -463,54 +432,14 @@ Conventional commit format is appreciated (but not required):
 
 ## Release Process (Maintainers)
 
-### Automated Release (Recommended)
-
-Use the automated release script for consistent, safe releases:
+Use the automated release script — supports dry-run, auto-changelog, and publishing:
 
 ```bash
-# Test the release process (dry-run)
-./scripts/release.sh 0.2.3 --dry-run --auto-changelog
-
-# Perform actual release with auto-generated changelog
-./scripts/release.sh 0.2.3 --auto-changelog
-
-# Perform release with manual changelog entry
-./scripts/release.sh 0.2.3
-
-# Skip publishing to crates.io
-./scripts/release.sh 0.2.3 --no-publish
+./scripts/release.sh 0.2.3 --dry-run --auto-changelog  # Dry run
+./scripts/release.sh 0.2.3 --auto-changelog             # Release
 ```
 
-**Features:**
-- Version validation (semantic versioning)
-- Git status and branch checks
-- Automated test execution
-- Cargo.toml version updates
-- CHANGELOG.md management (manual or auto-generated from git log)
-- Git commit, tag, and push operations
-- Cargo publish integration
-- Dry-run mode for safety
-- Interactive prompts for push and publish
-
-**Safety Checks:**
-- Validates version format (X.Y.Z)
-- Ensures working directory is clean
-- Confirms on main branch (warns otherwise)
-- Runs all tests before proceeding
-- Checks tag doesn't already exist
-- Prompts before push and publish operations
-
-### Manual Release
-
-If you prefer manual control:
-
-1. Update version in `Cargo.toml`
-2. Update `CHANGELOG.md` with version and changes
-3. Commit: `git commit -m "chore: bump version to X.Y.Z"`
-4. Tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
-5. Push: `git push origin vX.Y.Z`
-6. Publish: `cargo publish`
-7. Create GitHub release with changelog
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full manual release steps.
 
 ## Common Untracked Files
 
