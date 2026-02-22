@@ -341,78 +341,7 @@ See [`go-interop/README.md`](go-interop/README.md) for detailed setup, usage exa
 
 ## 🌟 Real-World Usage
 
-### 5G Network Integration
-
-```rust
-// SMF establishing session with UPF
-let session_request = SessionEstablishmentRequestBuilder::new(seid, seq)
-    .node_id(smf_node_id)
-    .fseid(session_fseid)
-    .create_pdrs(vec![
-        // Uplink PDR - match user traffic
-        CreatePdr::builder()
-            .pdr_id(PdrId::new(1))
-            .precedence(Precedence::new(100))
-            .pdi(uplink_pdi)
-            .far_id(FarId::new(1))
-            .build()?,
-
-        // Downlink PDR - match network traffic
-        CreatePdr::builder()
-            .pdr_id(PdrId::new(2))
-            .precedence(Precedence::new(200))
-            .pdi(downlink_pdi)
-            .far_id(FarId::new(2))
-            .build()?,
-    ])
-    .create_fars(vec![
-        // Uplink FAR - forward to data network
-        CreateFar::builder()
-            .far_id(FarId::new(1))
-            .apply_action(ApplyAction::FORW)
-            .forwarding_parameters(ForwardingParameters::new(
-                DestinationInterface::Core,
-                Some(network_instance)
-            ))
-            .build()?,
-
-        // Downlink FAR - forward to access network
-        CreateFar::builder()
-            .far_id(FarId::new(2))
-            .apply_action(ApplyAction::FORW)
-            .forwarding_parameters(ForwardingParameters::new(
-                DestinationInterface::Access,
-                None
-            ))
-            .build()?,
-    ])
-    .build()?;
-```
-
-### Usage Reporting & Quota Management
-
-```rust
-// Handle quota exhaustion reports from UPF
-match message.msg_type() {
-    MsgType::SessionReportRequest => {
-        if let Some(usage_report) = message.ies(IeType::UsageReport).next() {
-            let triggers = usage_report.usage_report_trigger();
-
-            if triggers.contains(UsageReportTrigger::VOLTH) {
-                println!("📊 Volume quota exhausted for session {:016x}",
-                         message.seid().unwrap());
-
-                // Grant additional quota or terminate session
-                let response = SessionReportResponseBuilder::new(
-                    message.seid().unwrap(),
-                    message.sequence(),
-                    Cause::new(CauseValue::RequestAccepted)
-                ).build()?;
-            }
-        }
-    }
-}
-```
+The library covers the full 5G session lifecycle: PDR/FAR construction with grouped IE builders, usage reporting with quota triggers, Ethernet PDU sessions, and network slicing (S-NSSAI). See [docs/guides/api-guide.md](docs/guides/api-guide.md) for complete examples and [examples/session-client/](examples/session-client/) for a working SMF simulator.
 
 ## 🤝 Contributing
 

@@ -118,12 +118,17 @@ rs-pfcp/
 │   │   ├── pdr_id.rs    # Packet Detection Rule ID
 │   │   ├── create_pdr.rs # Grouped IE with builder
 │   │   └── ...
-│   └── message/         # PFCP Messages (25 types - 100% coverage)
-│       ├── mod.rs       # Message trait and parser
-│       ├── heartbeat_request.rs
-│       ├── session_establishment_request.rs
-│       ├── display.rs   # Display formatting (YAML/JSON)
-│       └── ...
+│   ├── message/         # PFCP Messages (25 types - 100% coverage)
+│   │   ├── mod.rs       # Message trait and parser
+│   │   ├── heartbeat_request.rs
+│   │   ├── session_establishment_request.rs
+│   │   ├── display.rs   # Display formatting (YAML/JSON)
+│   │   └── ...
+│   └── comparison/      # Message comparison framework
+│       ├── builder.rs   # Fluent MessageComparator API
+│       ├── semantic.rs  # Semantic comparison (F-TEID, UE IP, timestamps)
+│       ├── options.rs   # Comparison modes (strict, semantic, test, audit)
+│       └── result.rs    # Match stats, mismatch details, YAML diffs
 ├── tests/               # Integration tests
 │   └── messages.rs      # Message round-trip tests
 ├── benches/             # Performance benchmarks
@@ -151,6 +156,11 @@ All PFCP messages implement the `Message` trait with:
 - Complex IEs: `Fteid`, `Fseid`, `UeIpAddress` (multi-field structs)
 - Grouped IEs: `CreatePdr`, `CreateFar`, `Pdi` (contain child IEs)
 - All IEs use consistent TLV (Type-Length-Value) encoding
+
+**`IntoIe` Trait:**
+- Converts common Rust types directly into `Ie` values without manual construction
+- Tuple impls: `(u64, IpAddr).into_ie()` → F-SEID, `(u32, IpAddr).into_ie()` → F-TEID, `(Ipv4Addr, Ipv6Addr).into_ie()` → UE IP dual-stack
+- Defined in `src/ie/mod.rs`; use `use rs_pfcp::ie::IntoIe;`
 
 **`ParseIe` Trait and `Ie::parse<T>()`:**
 - `Ie::parse::<T>()` decodes a raw `Ie` into a typed value, replacing manual payload slicing
@@ -235,6 +245,7 @@ Messages support YAML/JSON formatting via `display::format_message()`:
    - Test marshal/unmarshal round trips
    - Test error cases (invalid data, short buffers)
    - Test edge cases (zero values, max values)
+   - Some test modules carry `#[allow(deprecated)]` — audit and remove these after deprecations are fully purged
 
 2. **Integration Tests** - In `tests/` directory
    - Full message lifecycle tests
