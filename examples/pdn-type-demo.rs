@@ -144,11 +144,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn demonstrate_pdn_types(pdn_types: &[(&Ie, &str)]) -> Result<(), Box<dyn std::error::Error>> {
     for (pdn_ie, name) in pdn_types {
-        let pdn_type = PdnType::unmarshal(&pdn_ie.payload)?;
+        let pdn_type = pdn_ie.parse::<PdnType>()?;
         println!(
             "   • {}: Type={}, Supports IPv4={}, Supports IPv6={}, IP-based={}",
             name,
-            pdn_ie.payload[0],
+            u8::from(pdn_type.pdn_type.clone()),
             pdn_type.supports_ipv4(),
             pdn_type.supports_ipv6(),
             pdn_type.is_ip_based()

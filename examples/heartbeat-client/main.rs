@@ -30,21 +30,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match socket.recv_from(&mut buf) {
             Ok((n, addr)) => match HeartbeatResponse::unmarshal(&buf[..n]) {
-                Ok(hbres) => {
-                    match RecoveryTimeStamp::unmarshal(&hbres.recovery_time_stamp_ie().payload) {
-                        Ok(recovery_ts) => {
-                            println!(
-                                "got Heartbeat Response with TS: {:?}, from: {}",
-                                recovery_ts.timestamp, addr
-                            );
-                            break;
-                        }
-                        Err(e) => {
-                            println!("got Heartbeat Response with invalid TS: {e}, from: {addr}");
-                            break;
-                        }
+                Ok(hbres) => match hbres.recovery_time_stamp_ie().parse::<RecoveryTimeStamp>() {
+                    Ok(recovery_ts) => {
+                        println!(
+                            "got Heartbeat Response with TS: {:?}, from: {}",
+                            recovery_ts.timestamp, addr
+                        );
+                        break;
                     }
-                }
+                    Err(e) => {
+                        println!("got Heartbeat Response with invalid TS: {e}, from: {addr}");
+                        break;
+                    }
+                },
                 Err(e) => {
                     println!("ignored undecodable message: {:?}, error: {}", &buf[..n], e);
                     continue;

@@ -58,10 +58,17 @@ use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 
 use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::{
-    cause::CauseValue, create_pdr::CreatePdr, created_pdr::CreatedPdr,
-    duration_measurement::DurationMeasurement, f_teid::FteidBuilder,
-    sequence_number::SequenceNumber, urr_id::UrrId, usage_report::UsageReportBuilder,
-    usage_report_trigger::UsageReportTrigger, volume_measurement::VolumeMeasurement, Ie, IeType,
+    cause::{Cause, CauseValue},
+    create_pdr::CreatePdr,
+    created_pdr::CreatedPdr,
+    duration_measurement::DurationMeasurement,
+    f_teid::FteidBuilder,
+    sequence_number::SequenceNumber,
+    urr_id::UrrId,
+    usage_report::UsageReportBuilder,
+    usage_report_trigger::UsageReportTrigger,
+    volume_measurement::VolumeMeasurement,
+    Ie, IeType,
 };
 use rs_pfcp::message::{
     association_release_response::AssociationReleaseResponseBuilder,
@@ -291,7 +298,7 @@ fn handle_session_establishment_request(
     );
 
     for (index, create_pdr_ie) in establishment_req.create_pdrs.iter().enumerate() {
-        match CreatePdr::unmarshal(&create_pdr_ie.payload) {
+        match create_pdr_ie.parse::<CreatePdr>() {
             Ok(received_pdr) => {
                 println!(
                     "    CreatePdr {}: PDR ID: {}, Precedence: {}",
@@ -540,7 +547,7 @@ fn handle_session_report_response(
 ) -> Result<(), Box<dyn Error>> {
     println!("  Received Session Report Response - quota exhaustion acknowledged");
     if let Some(cause_ie) = msg.ies(IeType::Cause).next() {
-        let cause_value = CauseValue::from(cause_ie.payload[0]);
+        let cause_value = cause_ie.parse::<Cause>()?.value;
         println!("  Response cause: {cause_value:?}");
     }
     Ok(())

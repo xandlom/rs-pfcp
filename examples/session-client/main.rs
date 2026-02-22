@@ -45,6 +45,7 @@ use rs_pfcp::ie::{
     pdr_id::PdrId,
     precedence::Precedence,
     qer_id::QerId,
+    report_type::ReportType,
     ue_ip_address::UeIpAddress,
     update_far::UpdateFarBuilder,
     update_forwarding_parameters::UpdateForwardingParameters,
@@ -95,10 +96,11 @@ fn handle_session_report_request(
 
     // Check what type of report
     if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
-        let report_type = report_type_ie.payload[0];
-        match report_type {
-            0x02 => println!("    Report Type: Usage Report (USAR)"),
-            _ => println!("    Report Type: Unknown (0x{report_type:02x})"),
+        let report_type = report_type_ie.parse::<ReportType>()?;
+        if report_type.is_usage_report() {
+            println!("    Report Type: Usage Report (USAR)");
+        } else {
+            println!("    Report Type: {report_type:?}");
         }
     }
 

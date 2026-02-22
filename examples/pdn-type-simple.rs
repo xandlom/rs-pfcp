@@ -20,11 +20,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (&ipv4v6_pdn, "IPv4v6 (Dual Stack)"),
         (&non_ip_pdn, "Non-IP (IoT)"),
     ] {
-        let pdn_type = PdnType::unmarshal(&pdn_ie.payload)?;
+        let pdn_type = pdn_ie.parse::<PdnType>()?;
         println!(
             "   • {}: Type={}, Supports IPv4={}, IP-based={}",
             name,
-            pdn_ie.payload[0],
+            u8::from(pdn_type.pdn_type.clone()),
             pdn_type.supports_ipv4(),
             pdn_type.is_ip_based()
         );
@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   ✅ PDN Type IE preserved: {}", pdn_preserved);
 
     if let Some(pdn_ie) = deserialized.ies(IeType::PdnType).next() {
-        let pdn_type = PdnType::unmarshal(&pdn_ie.payload)?;
+        let pdn_type = pdn_ie.parse::<PdnType>()?;
         println!(
             "   📋 Preserved PDN Type: {:?} (supports IPv4: {}, supports IPv6: {})",
             pdn_type.pdn_type,

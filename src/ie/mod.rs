@@ -1763,6 +1763,7 @@ impl_parse_ie!(
     usage_report_srr::UsageReportSrr,
     usage_report_smr::UsageReportSmr,
     usage_report_sdr::UsageReportSdr,
+    pdn_type::PdnType,
 );
 
 #[cfg(test)]
