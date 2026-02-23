@@ -100,7 +100,6 @@ impl Snssai {
 }
 
 /// Common SST (Slice/Service Type) values as defined in 3GPP TS 23.501
-#[allow(dead_code)]
 impl Snssai {
     /// eMBB (Enhanced Mobile Broadband)
     pub const SST_EMBB: u8 = 1;

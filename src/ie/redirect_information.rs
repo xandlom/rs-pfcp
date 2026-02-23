@@ -13,14 +13,20 @@ pub enum RedirectAddressType {
     SipUri,
 }
 
-impl From<u8> for RedirectAddressType {
-    fn from(value: u8) -> Self {
+impl TryFrom<u8> for RedirectAddressType {
+    type Error = PfcpError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => RedirectAddressType::Ipv4,
-            1 => RedirectAddressType::Ipv6,
-            2 => RedirectAddressType::Url,
-            3 => RedirectAddressType::SipUri,
-            _ => panic!("Invalid RedirectAddressType"),
+            0 => Ok(RedirectAddressType::Ipv4),
+            1 => Ok(RedirectAddressType::Ipv6),
+            2 => Ok(RedirectAddressType::Url),
+            3 => Ok(RedirectAddressType::SipUri),
+            _ => Err(PfcpError::invalid_value(
+                "RedirectAddressType",
+                value.to_string(),
+                "unknown redirect address type; valid values are 0=IPv4, 1=IPv6, 2=URL, 3=SIP URI",
+            )),
         }
     }
 }
@@ -55,7 +61,7 @@ impl RedirectInformation {
                 data.len(),
             ));
         }
-        let address_type = RedirectAddressType::from(data[0]);
+        let address_type = RedirectAddressType::try_from(data[0])?;
         let server_address = String::from_utf8(data[1..].to_vec()).map_err(|e| {
             PfcpError::encoding_error(
                 "Redirect Information",
@@ -88,5 +94,13 @@ mod tests {
         let marshaled = ri.marshal();
         let unmarshaled = RedirectInformation::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, ri);
+    }
+
+    #[test]
+    fn test_redirect_information_unknown_address_type() {
+        // Unknown address type must return error, not panic
+        let data = vec![0xFF, b'1', b'.', b'2', b'.', b'3', b'.', b'4'];
+        let result = RedirectInformation::unmarshal(&data);
+        assert!(matches!(result, Err(PfcpError::InvalidValue { .. })));
     }
 }

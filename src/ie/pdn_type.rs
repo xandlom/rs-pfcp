@@ -6,13 +6,13 @@ use crate::ie::{Ie, IeType};
 /// Represents the PDN Type Information Element.
 /// Used to indicate the type of PDN connection (IPv4, IPv6, IPv4v6, Non-IP, Ethernet).
 /// Defined in 3GPP TS 29.244 Section 8.2.99.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PdnType {
     pub pdn_type: PdnTypeValue,
 }
 
 /// PDN Type values as defined in 3GPP TS 29.244.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum PdnTypeValue {
     /// IPv4 PDN type
@@ -106,7 +106,7 @@ impl PdnType {
 
     /// Marshals the PDN Type into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
-        vec![u8::from(self.pdn_type.clone())]
+        vec![u8::from(self.pdn_type)]
     }
 
     /// Unmarshals a byte slice into a PDN Type IE.

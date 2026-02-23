@@ -24,7 +24,7 @@ use crate::ie::{Ie, IeType};
 /// use rs_pfcp::ie::paging_policy_indicator::PagingPolicyIndicator;
 ///
 /// // Create a PPI with value 5
-/// let ppi = PagingPolicyIndicator::new(5);
+/// let ppi = PagingPolicyIndicator::new(5).unwrap();
 /// assert_eq!(ppi.value(), 5);
 ///
 /// // Marshal and unmarshal
@@ -48,24 +48,25 @@ impl PagingPolicyIndicator {
     /// # Arguments
     /// * `value` - PPI value (0-7)
     ///
-    /// # Panics
-    /// Panics if value exceeds 7
+    /// # Errors
+    /// Returns `PfcpError::InvalidValue` if value exceeds 7 (3-bit limit)
     ///
     /// # Example
     /// ```
     /// use rs_pfcp::ie::paging_policy_indicator::PagingPolicyIndicator;
     ///
-    /// let ppi = PagingPolicyIndicator::new(3);
+    /// let ppi = PagingPolicyIndicator::new(3).unwrap();
     /// assert_eq!(ppi.value(), 3);
     /// ```
-    pub fn new(value: u8) -> Self {
-        assert!(
-            value <= Self::MAX,
-            "PPI value {} exceeds maximum {}",
-            value,
-            Self::MAX
-        );
-        PagingPolicyIndicator { value }
+    pub fn new(value: u8) -> Result<Self, PfcpError> {
+        if value > Self::MAX {
+            return Err(PfcpError::invalid_value(
+                "PagingPolicyIndicator.value",
+                value.to_string(),
+                format!("PPI value exceeds maximum {}", Self::MAX),
+            ));
+        }
+        Ok(PagingPolicyIndicator { value })
     }
 
     /// Get the PPI value
@@ -74,7 +75,7 @@ impl PagingPolicyIndicator {
     /// ```
     /// use rs_pfcp::ie::paging_policy_indicator::PagingPolicyIndicator;
     ///
-    /// let ppi = PagingPolicyIndicator::new(6);
+    /// let ppi = PagingPolicyIndicator::new(6).unwrap();
     /// assert_eq!(ppi.value(), 6);
     /// ```
     pub fn value(&self) -> u8 {
@@ -101,7 +102,7 @@ impl PagingPolicyIndicator {
     /// ```
     /// use rs_pfcp::ie::paging_policy_indicator::PagingPolicyIndicator;
     ///
-    /// let ppi = PagingPolicyIndicator::new(4);
+    /// let ppi = PagingPolicyIndicator::new(4).unwrap();
     /// let bytes = ppi.marshal();
     /// let parsed = PagingPolicyIndicator::unmarshal(&bytes)?;
     /// assert_eq!(ppi, parsed);
@@ -129,7 +130,7 @@ impl PagingPolicyIndicator {
     /// use rs_pfcp::ie::paging_policy_indicator::PagingPolicyIndicator;
     /// use rs_pfcp::ie::IeType;
     ///
-    /// let ppi = PagingPolicyIndicator::new(2);
+    /// let ppi = PagingPolicyIndicator::new(2).unwrap();
     /// let ie = ppi.to_ie();
     /// assert_eq!(ie.ie_type, IeType::PagingPolicyIndicator);
     /// ```
@@ -144,19 +145,19 @@ mod tests {
 
     #[test]
     fn test_ppi_new() {
-        let ppi = PagingPolicyIndicator::new(3);
+        let ppi = PagingPolicyIndicator::new(3).unwrap();
         assert_eq!(ppi.value(), 3);
     }
 
     #[test]
-    #[should_panic(expected = "PPI value 8 exceeds maximum 7")]
     fn test_ppi_new_invalid() {
-        PagingPolicyIndicator::new(8);
+        let result = PagingPolicyIndicator::new(8);
+        assert!(matches!(result, Err(PfcpError::InvalidValue { .. })));
     }
 
     #[test]
     fn test_ppi_marshal_unmarshal() {
-        let original = PagingPolicyIndicator::new(5);
+        let original = PagingPolicyIndicator::new(5).unwrap();
         let bytes = original.marshal();
         assert_eq!(bytes.len(), 1);
 
@@ -168,7 +169,7 @@ mod tests {
     #[test]
     fn test_ppi_marshal_all_values() {
         for i in 0..=7 {
-            let ppi = PagingPolicyIndicator::new(i);
+            let ppi = PagingPolicyIndicator::new(i).unwrap();
             let bytes = ppi.marshal();
             let parsed = PagingPolicyIndicator::unmarshal(&bytes).unwrap();
             assert_eq!(ppi, parsed, "Failed for value {}", i);
@@ -192,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_ppi_to_ie() {
-        let ppi = PagingPolicyIndicator::new(1);
+        let ppi = PagingPolicyIndicator::new(1).unwrap();
         let ie = ppi.to_ie();
         assert_eq!(ie.ie_type, IeType::PagingPolicyIndicator);
         assert_eq!(ie.payload.len(), 1);
@@ -204,14 +205,14 @@ mod tests {
 
     #[test]
     fn test_ppi_clone() {
-        let ppi1 = PagingPolicyIndicator::new(6);
+        let ppi1 = PagingPolicyIndicator::new(6).unwrap();
         let ppi2 = ppi1;
         assert_eq!(ppi1, ppi2);
     }
 
     #[test]
     fn test_ppi_round_trip_zero() {
-        let original = PagingPolicyIndicator::new(0);
+        let original = PagingPolicyIndicator::new(0).unwrap();
         let bytes = original.marshal();
         let parsed = PagingPolicyIndicator::unmarshal(&bytes).unwrap();
         assert_eq!(original, parsed);
@@ -219,7 +220,7 @@ mod tests {
 
     #[test]
     fn test_ppi_round_trip_max() {
-        let original = PagingPolicyIndicator::new(7);
+        let original = PagingPolicyIndicator::new(7).unwrap();
         let bytes = original.marshal();
         let parsed = PagingPolicyIndicator::unmarshal(&bytes).unwrap();
         assert_eq!(original, parsed);
@@ -228,7 +229,7 @@ mod tests {
     #[test]
     fn test_ppi_5g_qos_flow() {
         // Scenario: Set paging policy for QoS flow
-        let ppi = PagingPolicyIndicator::new(4);
+        let ppi = PagingPolicyIndicator::new(4).unwrap();
         let bytes = ppi.marshal();
         let parsed = PagingPolicyIndicator::unmarshal(&bytes).unwrap();
 

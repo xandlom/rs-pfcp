@@ -148,7 +148,7 @@ fn demonstrate_pdn_types(pdn_types: &[(&Ie, &str)]) -> Result<(), Box<dyn std::e
         println!(
             "   • {}: Type={}, Supports IPv4={}, Supports IPv6={}, IP-based={}",
             name,
-            u8::from(pdn_type.pdn_type.clone()),
+            u8::from(pdn_type.pdn_type),
             pdn_type.supports_ipv4(),
             pdn_type.supports_ipv6(),
             pdn_type.is_ip_based()

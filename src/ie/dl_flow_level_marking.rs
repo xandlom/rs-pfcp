@@ -25,7 +25,7 @@ use crate::ie::{Ie, IeType};
 /// use rs_pfcp::ie::dl_flow_level_marking::DlFlowLevelMarking;
 ///
 /// // Create marking for expedited forwarding (EF)
-/// let marking = DlFlowLevelMarking::new(46); // EF DSCP value
+/// let marking = DlFlowLevelMarking::new(46).unwrap(); // EF DSCP value
 /// assert_eq!(marking.dscp(), 46);
 ///
 /// // Marshal and unmarshal
@@ -48,25 +48,26 @@ impl DlFlowLevelMarking {
     /// # Arguments
     /// * `dscp` - DSCP value (0-63)
     ///
-    /// # Panics
-    /// Panics if DSCP value exceeds 63 (6-bit limit)
+    /// # Errors
+    /// Returns `PfcpError::InvalidValue` if DSCP value exceeds 63 (6-bit limit)
     ///
     /// # Example
     /// ```
     /// use rs_pfcp::ie::dl_flow_level_marking::DlFlowLevelMarking;
     ///
     /// // Create with AF41 (Assured Forwarding class 4, low drop)
-    /// let marking = DlFlowLevelMarking::new(34);
+    /// let marking = DlFlowLevelMarking::new(34).unwrap();
     /// assert_eq!(marking.dscp(), 34);
     /// ```
-    pub fn new(dscp: u8) -> Self {
-        assert!(
-            dscp <= Self::MAX_DSCP,
-            "DSCP value {} exceeds maximum {}",
-            dscp,
-            Self::MAX_DSCP
-        );
-        DlFlowLevelMarking { dscp }
+    pub fn new(dscp: u8) -> Result<Self, crate::error::PfcpError> {
+        if dscp > Self::MAX_DSCP {
+            return Err(crate::error::PfcpError::invalid_value(
+                "DlFlowLevelMarking.dscp",
+                dscp.to_string(),
+                format!("DSCP value exceeds maximum {}", Self::MAX_DSCP),
+            ));
+        }
+        Ok(DlFlowLevelMarking { dscp })
     }
 
     /// Get the DSCP value
@@ -75,7 +76,7 @@ impl DlFlowLevelMarking {
     /// ```
     /// use rs_pfcp::ie::dl_flow_level_marking::DlFlowLevelMarking;
     ///
-    /// let marking = DlFlowLevelMarking::new(10);
+    /// let marking = DlFlowLevelMarking::new(10).unwrap();
     /// assert_eq!(marking.dscp(), 10);
     /// ```
     pub fn dscp(&self) -> u8 {
@@ -106,7 +107,7 @@ impl DlFlowLevelMarking {
     /// ```
     /// use rs_pfcp::ie::dl_flow_level_marking::DlFlowLevelMarking;
     ///
-    /// let marking = DlFlowLevelMarking::new(26);
+    /// let marking = DlFlowLevelMarking::new(26).unwrap();
     /// let bytes = marking.marshal();
     /// let parsed = DlFlowLevelMarking::unmarshal(&bytes).unwrap();
     /// assert_eq!(marking, parsed);
@@ -134,7 +135,7 @@ impl DlFlowLevelMarking {
     /// use rs_pfcp::ie::dl_flow_level_marking::DlFlowLevelMarking;
     /// use rs_pfcp::ie::IeType;
     ///
-    /// let marking = DlFlowLevelMarking::new(18);
+    /// let marking = DlFlowLevelMarking::new(18).unwrap();
     /// let ie = marking.to_ie();
     /// assert_eq!(ie.ie_type, IeType::DlFlowLevelMarking);
     /// ```
@@ -167,12 +168,14 @@ impl DlFlowLevelMarking {
 
     /// Create marking for Expedited Forwarding (voice traffic)
     pub fn expedited_forwarding() -> Self {
-        Self::new(Self::EF)
+        DlFlowLevelMarking { dscp: Self::EF }
     }
 
     /// Create marking for Best Effort
     pub fn best_effort() -> Self {
-        Self::new(Self::BEST_EFFORT)
+        DlFlowLevelMarking {
+            dscp: Self::BEST_EFFORT,
+        }
     }
 }
 
@@ -182,25 +185,25 @@ mod tests {
 
     #[test]
     fn test_dl_flow_level_marking_new() {
-        let marking = DlFlowLevelMarking::new(10);
+        let marking = DlFlowLevelMarking::new(10).unwrap();
         assert_eq!(marking.dscp(), 10);
     }
 
     #[test]
     fn test_dl_flow_level_marking_dscp() {
-        let marking = DlFlowLevelMarking::new(46);
+        let marking = DlFlowLevelMarking::new(46).unwrap();
         assert_eq!(marking.dscp(), 46);
     }
 
     #[test]
-    #[should_panic(expected = "DSCP value 64 exceeds maximum 63")]
     fn test_dl_flow_level_marking_invalid_dscp() {
-        DlFlowLevelMarking::new(64);
+        let result = DlFlowLevelMarking::new(64);
+        assert!(matches!(result, Err(PfcpError::InvalidValue { .. })));
     }
 
     #[test]
     fn test_dl_flow_level_marking_marshal() {
-        let marking = DlFlowLevelMarking::new(10);
+        let marking = DlFlowLevelMarking::new(10).unwrap();
         let bytes = marking.marshal();
         assert_eq!(bytes.len(), 2);
         assert_eq!(bytes[0], 10 << 2); // DSCP left-shifted by 2
@@ -225,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_dl_flow_level_marking_round_trip() {
-        let original = DlFlowLevelMarking::new(26);
+        let original = DlFlowLevelMarking::new(26).unwrap();
         let marshaled = original.marshal();
         let unmarshaled = DlFlowLevelMarking::unmarshal(&marshaled).unwrap();
         assert_eq!(original, unmarshaled);
@@ -234,7 +237,7 @@ mod tests {
     #[test]
     fn test_dl_flow_level_marking_round_trip_various() {
         for dscp in [0, 8, 10, 18, 26, 34, 46, 63] {
-            let original = DlFlowLevelMarking::new(dscp);
+            let original = DlFlowLevelMarking::new(dscp).unwrap();
             let marshaled = original.marshal();
             let unmarshaled = DlFlowLevelMarking::unmarshal(&marshaled).unwrap();
             assert_eq!(original, unmarshaled, "Failed for DSCP {}", dscp);
@@ -243,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_dl_flow_level_marking_to_ie() {
-        let marking = DlFlowLevelMarking::new(18);
+        let marking = DlFlowLevelMarking::new(18).unwrap();
         let ie = marking.to_ie();
         assert_eq!(ie.ie_type, IeType::DlFlowLevelMarking);
         assert_eq!(ie.payload.len(), 2);
@@ -280,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_dl_flow_level_marking_clone() {
-        let marking1 = DlFlowLevelMarking::new(10);
+        let marking1 = DlFlowLevelMarking::new(10).unwrap();
         let marking2 = marking1;
         assert_eq!(marking1, marking2);
     }
@@ -288,11 +291,11 @@ mod tests {
     #[test]
     fn test_dl_flow_level_marking_boundary_values() {
         // Test minimum value
-        let min = DlFlowLevelMarking::new(0);
+        let min = DlFlowLevelMarking::new(0).unwrap();
         assert_eq!(min.dscp(), 0);
 
         // Test maximum value
-        let max = DlFlowLevelMarking::new(63);
+        let max = DlFlowLevelMarking::new(63).unwrap();
         assert_eq!(max.dscp(), 63);
     }
 
@@ -303,7 +306,7 @@ mod tests {
         assert_eq!(voice.dscp(), 46);
 
         // Scenario 2: Video streaming (AF41)
-        let video = DlFlowLevelMarking::new(DlFlowLevelMarking::AF41);
+        let video = DlFlowLevelMarking::new(DlFlowLevelMarking::AF41).unwrap();
         assert_eq!(video.dscp(), 34);
 
         // Scenario 3: Best effort data
@@ -311,7 +314,7 @@ mod tests {
         assert_eq!(data.dscp(), 0);
 
         // Scenario 4: Premium data (AF31)
-        let premium = DlFlowLevelMarking::new(DlFlowLevelMarking::AF31);
+        let premium = DlFlowLevelMarking::new(DlFlowLevelMarking::AF31).unwrap();
         assert_eq!(premium.dscp(), 26);
     }
 }

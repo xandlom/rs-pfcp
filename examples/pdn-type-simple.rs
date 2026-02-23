@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "   • {}: Type={}, Supports IPv4={}, IP-based={}",
             name,
-            u8::from(pdn_type.pdn_type.clone()),
+            u8::from(pdn_type.pdn_type),
             pdn_type.supports_ipv4(),
             pdn_type.is_ip_based()
         );
