@@ -5,6 +5,7 @@ use crate::error::PfcpError;
 pub mod activate_predefined_rules;
 pub mod activation_time;
 pub mod additional_usage_reports_information;
+pub mod aggregated_urr_id;
 pub mod alternative_smf_ip_address;
 pub mod apn_dnn;
 pub mod application_detection_information;
@@ -17,8 +18,10 @@ pub mod average_packet_delay;
 pub mod averaging_window;
 pub mod bar;
 pub mod bar_id;
+pub mod bridge_management_information_container;
 pub mod c_tag;
 pub mod cause;
+pub mod configured_time_domain;
 pub mod cp_function_features;
 pub mod cp_ip_address;
 pub mod cp_pfcp_entity_ip_address;
@@ -30,12 +33,15 @@ pub mod create_traffic_endpoint;
 pub mod create_urr;
 pub mod created_pdr;
 pub mod created_traffic_endpoint;
+pub mod cumulative_rate_ratio_measurement;
+pub mod cumulative_rate_ratio_threshold;
 pub mod data_network_access_identifier;
 pub mod data_status;
 pub mod deactivate_predefined_rules;
 pub mod deactivation_time;
 pub mod destination_interface;
 pub mod dl_buffering_duration;
+pub mod dl_buffering_suggested_packet_count;
 pub mod dl_data_packets_size;
 pub mod dl_flow_level_marking;
 pub mod dl_periodicity;
@@ -57,6 +63,7 @@ pub mod ethertype;
 pub mod event_quota;
 pub mod event_threshold;
 pub mod event_time_stamp;
+pub mod extended_dl_buffering_notification_policy;
 pub mod f_teid;
 pub mod failed_rule_id;
 pub mod far_id;
@@ -72,6 +79,7 @@ pub mod gate_status;
 pub mod gbr;
 pub mod graceful_release_period;
 pub mod group_id;
+pub mod gtpu_path_interface_type;
 pub mod gtpu_path_qos_control_information;
 pub mod header_enrichment;
 pub mod hplmn_s_nssai;
@@ -88,16 +96,21 @@ pub mod mar_id;
 pub mod maximum_packet_delay;
 pub mod mbr;
 pub mod mbs_session_identifier;
+pub mod mbs_unicast_parameters_id;
 pub mod mbsn4_resp_flags;
 pub mod mbsn4mb_req_flags;
 pub mod measurement_indication;
 pub mod measurement_information;
 pub mod measurement_method;
 pub mod measurement_period;
+pub mod media_transport_protocol;
+pub mod metadata;
 pub mod metric;
 pub mod minimum_packet_delay;
+pub mod minimum_wait_time;
 pub mod monitoring_time;
 pub mod mptcp_applicable_indication;
+pub mod mt_sdt_control_information;
 pub mod multiplier;
 pub mod n6_jitter_measurement;
 pub mod network_instance;
@@ -133,6 +146,7 @@ pub mod pfcpsr_req_flags;
 pub mod pfcpsrrsp_flags;
 pub mod pfd_contents;
 pub mod pfd_context;
+pub mod port_management_information_container;
 pub mod precedence;
 pub mod priority;
 pub mod proxying;
@@ -155,12 +169,17 @@ pub mod remove_qer;
 pub mod remove_traffic_endpoint;
 pub mod remove_urr;
 pub mod report_type;
+pub mod reporting_control_information;
 pub mod reporting_frequency;
 pub mod reporting_triggers;
 pub mod requested_access_availability_information;
 pub mod requested_clock_drift_information;
 pub mod requested_qos_monitoring;
 pub mod rqi;
+pub mod rtp_header_extension_id;
+pub mod rtp_header_extension_type;
+pub mod rtp_payload_format;
+pub mod rtp_payload_type;
 pub mod s_tag;
 pub mod sdf_filter;
 pub mod sequence_number;
@@ -182,20 +201,25 @@ pub mod suggested_buffering_packets_count;
 pub mod three_gpp_interface_type;
 pub mod time_of_first_packet;
 pub mod time_of_last_packet;
+pub mod time_offset_measurement;
+pub mod time_offset_threshold;
 pub mod time_quota;
 pub mod time_quota_mechanism;
 pub mod time_threshold;
 pub mod timer;
+pub mod tl_container;
 pub mod trace_information;
 pub mod traffic_endpoint_id;
 pub mod traffic_parameter_measurement_indication;
 pub mod transport_level_marking;
+pub mod transport_mode;
 pub mod tsn_bridge_id;
 pub mod tsn_time_domain_number;
 pub mod tunnel_password;
 pub mod ue_ip_address;
 pub mod ue_ip_address_pool_identity;
 pub mod ue_ip_address_usage_information;
+pub mod ue_level_measurements_configuration;
 pub mod ul_periodicity;
 pub mod up_function_features;
 pub mod update_bar;
@@ -220,6 +244,7 @@ pub mod user_id;
 pub mod user_plane_inactivity_timer;
 pub mod user_plane_path_recovery_report;
 pub mod validity_timer;
+pub mod vendor_specific_node_report_type;
 pub mod volume_measurement;
 pub mod volume_quota;
 pub mod weight;
@@ -1764,6 +1789,32 @@ impl_parse_ie!(
     usage_report_smr::UsageReportSmr,
     usage_report_sdr::UsageReportSdr,
     pdn_type::PdnType,
+    // Phase 4: Simple scalar, flag, and opaque-container IEs
+    aggregated_urr_id::AggregatedUrrId,
+    bridge_management_information_container::BridgeManagementInformationContainer,
+    configured_time_domain::ConfiguredTimeDomain,
+    cumulative_rate_ratio_measurement::CumulativeRateRatioMeasurement,
+    cumulative_rate_ratio_threshold::CumulativeRateRatioThreshold,
+    dl_buffering_suggested_packet_count::DlBufferingSuggestedPacketCount,
+    extended_dl_buffering_notification_policy::ExtendedDlBufferingNotificationPolicy,
+    gtpu_path_interface_type::GtpuPathInterfaceType,
+    mbs_unicast_parameters_id::MbsUnicastParametersId,
+    media_transport_protocol::MediaTransportProtocol,
+    metadata::Metadata,
+    minimum_wait_time::MinimumWaitTime,
+    mt_sdt_control_information::MtSdtControlInformation,
+    port_management_information_container::PortManagementInformationContainer,
+    reporting_control_information::ReportingControlInformation,
+    rtp_header_extension_id::RtpHeaderExtensionId,
+    rtp_header_extension_type::RtpHeaderExtensionType,
+    rtp_payload_format::RtpPayloadFormat,
+    rtp_payload_type::RtpPayloadType,
+    time_offset_measurement::TimeOffsetMeasurement,
+    time_offset_threshold::TimeOffsetThreshold,
+    tl_container::TlContainer,
+    transport_mode::TransportMode,
+    ue_level_measurements_configuration::UeLevelMeasurementsConfiguration,
+    vendor_specific_node_report_type::VendorSpecificNodeReportType,
 );
 
 #[cfg(test)]
