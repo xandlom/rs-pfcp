@@ -1,4 +1,4 @@
-// examples/usage_report_phase1_demo.rs
+// examples/usage_report_demo.rs
 
 use rs_pfcp::ie::duration_measurement::DurationMeasurement;
 use rs_pfcp::ie::sequence_number::SequenceNumber;
@@ -10,7 +10,7 @@ use rs_pfcp::ie::usage_report::UsageReportBuilder;
 use rs_pfcp::ie::volume_measurement::VolumeMeasurement;
 
 fn main() {
-    println!("=== PFCP Usage Report Phase 1 Demo ===\n");
+    println!("=== PFCP Usage Report Demo ===\n");
 
     // Example 1: Basic quota exhaustion report with volume measurement
     println!("1. Quota Exhaustion Report with Volume Measurement:");
@@ -70,7 +70,7 @@ fn main() {
     println!();
 
     // Example 4: Comprehensive usage report with all measurements
-    println!("4. Comprehensive Usage Report (All Phase 1 Measurements):");
+    println!("4. Comprehensive Usage Report (Volume, Duration, and Timing):");
     let comprehensive_report = UsageReportBuilder::new(UrrId::new(99))
         .sequence_number(SequenceNumber::new(255))
         .quota_exhausted()
@@ -211,7 +211,7 @@ fn main() {
     );
 
     println!("\n=== Demo Complete ===");
-    println!("Phase 1 implementation successfully demonstrates:");
+    println!("Demonstrated:");
     println!("• Volume measurements with traffic statistics");
     println!("• Duration measurements for session timing");
     println!("• Packet timing with 3GPP NTP timestamps");

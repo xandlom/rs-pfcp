@@ -1,21 +1,16 @@
-//! Performance Benchmarks for Phase 1-3 PFCP Features
-//!
-//! Benchmarks the new IEs and message operations implemented in phases 1-3
+//! Performance Benchmarks for Extended PFCP IEs
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rs_pfcp::ie::*;
 use rs_pfcp::message::{session_modification_request::SessionModificationRequestBuilder, Message};
 use std::net::Ipv4Addr;
 
-// Benchmark Phase 1-3 IE marshaling
+// Benchmark IE marshaling
 fn bench_new_ie_marshaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("new_ie_marshaling");
 
-    // Phase 1 IEs
     let query_urr = QueryUrr::new(12345);
     let traffic_endpoint = TrafficEndpointId::new(42);
-
-    // Phase 2 IEs
     let session_change = PfcpSessionChangeInfo::new(0x123456789ABCDEF0, 1);
     let smf_set_id = SmfSetId::new("smf-set-benchmark-001".to_string());
 
@@ -34,7 +29,7 @@ fn bench_new_ie_marshaling(c: &mut Criterion) {
     group.finish();
 }
 
-// Benchmark Phase 1-3 IE unmarshaling
+// Benchmark IE unmarshaling
 fn bench_new_ie_unmarshaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("new_ie_unmarshaling");
 

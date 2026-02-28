@@ -1,4 +1,4 @@
-// examples/usage_report_phase2_demo.rs
+// examples/usage_report_quota_demo.rs
 
 use rs_pfcp::ie::end_time::EndTime;
 use rs_pfcp::ie::quota_holding_time::QuotaHoldingTime;
@@ -10,7 +10,7 @@ use rs_pfcp::ie::usage_report::UsageReportBuilder;
 use rs_pfcp::ie::volume_quota::VolumeQuota;
 
 fn main() {
-    println!("=== rs-pfcp UsageReport Phase 2 Demo: Quota and Time IEs ===\n");
+    println!("=== PFCP Usage Report: Quota and Time IEs ===\n");
 
     // Example 1: Volume Quota Exhaustion Report
     println!("1. Volume Quota Exhaustion Report:");
@@ -177,17 +177,13 @@ fn main() {
     println!("   ✅ Monitoring window: with_monitoring_window() for start/end times");
     println!();
 
-    println!("🎉 Phase 2 Demo Complete!");
-    println!("=========================");
+    println!("=== Demo Complete ===");
     println!("✅ VolumeQuota IE (Type 73) - Flag-based volume thresholds");
     println!("✅ TimeQuota IE (Type 76) - Time-based enforcement");
     println!("✅ QuotaHoldingTime IE (Type 71) - Grace period management");
     println!("✅ StartTime IE (Type 77) - Monitoring window start");
     println!("✅ EndTime IE (Type 78) - Monitoring window end");
     println!("✅ Enhanced UsageReportBuilder with quota methods");
-    println!("✅ Production-ready 5G PFCP quota management");
-    println!();
-    println!("🔗 Ready for Phase 3: Extended IEs implementation");
 }
 
 fn format_duration(seconds: u32) -> String {
