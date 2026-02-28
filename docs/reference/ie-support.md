@@ -4,15 +4,15 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 
 ## Implementation Status Summary
 
-**Total IE Type Variants**: 274 (comprehensive 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 136 individual implementation files
-**Core IEs**: 120+ essential PFCP functionality
-**Test Coverage**: 1,712 comprehensive tests (all passing)
+**Total IE Type Variants**: 334 (comprehensive 3GPP TS 29.244 Release 18 coverage)
+**Implemented IE Modules**: 259 individual implementation files
+**Core IEs**: 259+ essential PFCP functionality
+**Test Coverage**: 3,023 comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ### Implementation Highlights
 - ✅ **All essential IEs implemented** for production deployments
-- ✅ **1,712 comprehensive tests** with 100% round-trip validation
+- ✅ **3,023 comprehensive tests** with 100% round-trip validation
 - ✅ **Zero warnings** in cargo fmt, clippy, and cargo doc builds
 - ✅ **3GPP compliant** F-TEID with CHOOSE/CHOOSE_ID flags
 - ✅ **Context-specific IEs** (e.g., UpdateBarWithinSessionReportResponse)
@@ -165,6 +165,51 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | UP Function Features                   | 43   | ✅ Yes  | UPF capability advertisement (43+ feature flags) |
 | CP Function Features                   | 89   | ✅ Yes  | SMF/CP capability advertisement (30+ feature flags) |
 
+## Phase 4 and Phase 5 Additions
+
+### Phase 4 — Simple Scalar, Flag, and Container IEs (25 IEs)
+| IE Name                                   | Type | Description |
+| ----------------------------------------- | ---- | ----------- |
+| Aggregated URR ID                         | 120  | URR grouping reference |
+| Bridge Management Information Container   | 266  | Opaque bridge management payload |
+| Configured Time Domain                    | 321  | CTDI flag for TSN time domain |
+| Cumulative Rate Ratio Measurement         | 210  | Signed i32 (ppb) cumulative rate |
+| Cumulative Rate Ratio Threshold           | 208  | Signed i32 (ppb) rate threshold |
+| DL Buffering Suggested Packet Count       | 48   | Variable 1–2 byte packet count |
+| Extended DL Buffering Notification Policy | 346  | EDBN flag |
+| GTP-U Path Interface Type                 | 241  | N9/N3 interface type flags |
+| MBS Unicast Parameters ID                 | 309  | u16 MBS unicast ID |
+| Media Transport Protocol                  | 233  | Unspecified/RTP/SRTP enum |
+| Metadata                                  | 322  | Opaque Vec<u8> metadata |
+| Minimum Wait Time                         | 246  | u32 seconds |
+| MT-SDT Control Information                | 347  | RDSI flag |
+| Port Management Information Container     | 202  | Opaque port management payload |
+| Reporting Control Information             | 389  | UELM flag |
+| RTP Header Extension ID                   | 343  | u8 extension ID |
+| RTP Header Extension Type                 | 342  | u8 type (1 = PDU Set Marking) |
+| RTP Payload Format                        | 345  | H264/H265 enum |
+| RTP Payload Type                          | 344  | u8 masked to 7 bits |
+| Time Offset Measurement                   | 209  | Signed i64 nanoseconds |
+| Time Offset Threshold                     | 207  | Signed i64 nanoseconds |
+| TL Container                              | 336  | Opaque Vec<u8> TL container |
+| Transport Mode                            | 333  | Datagram1/Datagram2/Streaming enum |
+| UE Level Measurements Configuration      | 353  | FiveGcMeasurements/TraceAnd5GcMeasurements |
+| Vendor Specific Node Report Type          | 320  | Enterprise ID + flags byte |
+
+### Phase 5 — Medium-Complexity Leaf IEs (10 IEs)
+| IE Name                          | Type | Description |
+| -------------------------------- | ---- | ----------- |
+| Access Availability Information  | 219  | Access type + availability status (1-byte flags) |
+| DSCP to PPI Mapping Information  | 317  | PPI nibble + variable DSCP codepoints |
+| Local Ingress Tunnel             | 308  | CH/V4/V6 flags + UDP port + optional IPs |
+| N6 Routing Information           | 351  | Src/dst IPv4/IPv6/port with 6-bit flags |
+| Packet Delay Thresholds          | 245  | DL/UL/RP flags + conditional u32 thresholds (ms) |
+| QoS Monitoring Measurement       | 248  | 8-bit flags + delay/congestion/data-rate fields |
+| Remote GTP-U Peer                | 103  | V4/V6/DI/NI/RTS flags + length-prefixed DI/NI |
+| Reporting Suggestion Information | 335  | Urgency nibble + optional u32 reporting time |
+| Reporting Thresholds             | 348  | DLCI/ULCI/DLDR/ULDR flags + u16/u64 thresholds |
+| Traffic Parameter Threshold      | 325  | DL flag + optional u32 jitter threshold |
+
 ## Key Implementation Features
 
 ### 🏆 3GPP TS 29.244 Release 18 Compliance
@@ -175,7 +220,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 - ✅ **3GPP compliant F-TEID** - CHOOSE/CHOOSE_ID flags for UPF allocation
 - ✅ **Release 18 features** - Network slicing, multi-access, enhanced QoS
 - ✅ **Context-specific IEs** - Proper usage in different message contexts
-- ✅ **Production-ready** - 1,712 comprehensive tests with 100% validation
+- ✅ **Production-ready** - 3,023 comprehensive tests with 100% validation
 
 ### F-TEID Implementation Highlights
 ```rust
@@ -219,7 +264,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 ## Architecture Excellence
 
 ### Comprehensive Test Coverage
-- **1,712 comprehensive tests** with 100% pass rate
+- **3,023 comprehensive tests** with 100% pass rate
 - **Round-trip serialization** validation for all IEs
 - **3GPP compliance testing** for critical IEs (F-TEID, Created PDR, etc.)
 - **Builder pattern validation** with comprehensive error checking
@@ -245,9 +290,9 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 
 This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
-- ✅ **120+ core IEs** across 136 implementation modules
+- ✅ **259+ IEs** across 259 implementation modules
 - ✅ **All 25 message types** with proper IE integration
-- ✅ **1,712 comprehensive tests** ensuring reliability
+- ✅ **3,023 comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling
 - ✅ **Builder patterns** for ergonomic API usage
 - ✅ **Rich debugging support** with YAML/JSON formatting

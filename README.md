@@ -16,9 +16,9 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 139+ Information Elements implemented with complete core session management
+- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 259+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Sub-microsecond binary protocol implementation
-- 🧪 **Battle Tested** - 2,800+ comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 3,023+ comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
@@ -65,7 +65,7 @@ let cause: Cause = msg.ies(IeType::Cause).next()?.parse()?;
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **139+ Information Elements** implemented (272+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **259+ Information Elements** implemented (334+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting, Ethernet PDU sessions
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
 
