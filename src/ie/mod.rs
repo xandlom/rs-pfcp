@@ -2,11 +2,15 @@
 
 use crate::error::PfcpError;
 
+pub mod access_availability_control_information;
 pub mod access_availability_information;
+pub mod access_availability_report;
 pub mod activate_predefined_rules;
 pub mod activation_time;
+pub mod additional_monitoring_time;
 pub mod additional_usage_reports_information;
 pub mod aggregated_urr_id;
+pub mod aggregated_urrs;
 pub mod alternative_smf_ip_address;
 pub mod apn_dnn;
 pub mod application_detection_information;
@@ -27,11 +31,13 @@ pub mod cp_function_features;
 pub mod cp_ip_address;
 pub mod cp_pfcp_entity_ip_address;
 pub mod create_bar;
+pub mod create_bridge_info_for_tsc;
 pub mod create_far;
 pub mod create_pdr;
 pub mod create_qer;
 pub mod create_traffic_endpoint;
 pub mod create_urr;
+pub mod created_bridge_info_for_tsc;
 pub mod created_pdr;
 pub mod created_traffic_endpoint;
 pub mod cumulative_rate_ratio_measurement;
@@ -47,13 +53,16 @@ pub mod dl_data_packets_size;
 pub mod dl_flow_level_marking;
 pub mod dl_periodicity;
 pub mod downlink_data_notification_delay;
+pub mod downlink_data_report;
 pub mod downlink_data_service_information;
 pub mod dropped_dl_traffic_threshold;
+pub mod dscp_to_ppi_control_information;
 pub mod dscp_to_ppi_mapping_information;
 pub mod dstt_port_number;
 pub mod duplicating_parameters;
 pub mod duration_measurement;
 pub mod end_time;
+pub mod error_indication_report;
 pub mod ethernet_context_information;
 pub mod ethernet_filter_id;
 pub mod ethernet_filter_properties;
@@ -87,7 +96,10 @@ pub mod header_enrichment;
 pub mod hplmn_s_nssai;
 pub mod inactivity_detection_time;
 pub mod ip_multicast_address;
+pub mod ip_multicast_addressing_info;
 pub mod ip_version;
+pub mod join_ip_multicast_information_within_usage_report;
+pub mod leave_ip_multicast_information_within_usage_report;
 pub mod linked_urr_id;
 pub mod load_control_information;
 pub mod local_ingress_tunnel;
@@ -132,12 +144,15 @@ pub mod overload_control_information;
 pub mod packet_delay_thresholds;
 pub mod packet_rate;
 pub mod packet_rate_status;
+pub mod packet_rate_status_report;
 pub mod packet_replication_and_detection_carry_on_information;
 pub mod paging_policy_indicator;
+pub mod partial_failure_information;
 pub mod path_failure_report;
 pub mod pdi;
 pub mod pdn_type;
 pub mod pdr_id;
+pub mod peer_up_restart_report;
 pub mod pfcp_association_release_request;
 pub mod pfcp_session_change_info;
 pub mod pfcp_session_retention_information;
@@ -171,8 +186,10 @@ pub mod redirect_information;
 pub mod remote_gtpu_peer;
 pub mod remove_bar;
 pub mod remove_far;
+pub mod remove_mar;
 pub mod remove_pdr;
 pub mod remove_qer;
+pub mod remove_srr;
 pub mod remove_traffic_endpoint;
 pub mod remove_urr;
 pub mod report_type;
@@ -192,6 +209,7 @@ pub mod rtp_payload_type;
 pub mod s_tag;
 pub mod sdf_filter;
 pub mod sequence_number;
+pub mod session_report;
 pub mod smf_set_id;
 pub mod snssai;
 pub mod source_interface;
@@ -228,6 +246,7 @@ pub mod tsn_time_domain_number;
 pub mod tunnel_password;
 pub mod ue_ip_address;
 pub mod ue_ip_address_pool_identity;
+pub mod ue_ip_address_pool_information;
 pub mod ue_ip_address_usage_information;
 pub mod ue_level_measurements_configuration;
 pub mod ul_periodicity;
@@ -241,6 +260,7 @@ pub mod update_pdr;
 pub mod update_qer;
 pub mod update_traffic_endpoint;
 pub mod update_urr;
+pub mod updated_pdr;
 pub mod ur_seqn;
 pub mod uri;
 pub mod urr_id;
@@ -1836,6 +1856,26 @@ impl_parse_ie!(
     reporting_suggestion_info::ReportingSuggestionInfo,
     reporting_thresholds::ReportingThresholds,
     traffic_parameter_threshold::TrafficParameterThreshold,
+    // Phase 6: Simple grouped IEs
+    access_availability_control_information::AccessAvailabilityControlInformation,
+    access_availability_report::AccessAvailabilityReport,
+    additional_monitoring_time::AdditionalMonitoringTime,
+    aggregated_urrs::AggregatedUrrs,
+    create_bridge_info_for_tsc::CreateBridgeInfoForTsc,
+    created_bridge_info_for_tsc::CreatedBridgeInfoForTsc,
+    downlink_data_report::DownlinkDataReport,
+    dscp_to_ppi_control_information::DscpToPpiControlInformation,
+    error_indication_report::ErrorIndicationReport,
+    ip_multicast_addressing_info::IpMulticastAddressingInfo,
+    join_ip_multicast_information_within_usage_report::JoinIpMulticastInformationWithinUsageReport,
+    leave_ip_multicast_information_within_usage_report::LeaveIpMulticastInformationWithinUsageReport,
+    partial_failure_information::PartialFailureInformation,
+    peer_up_restart_report::PeerUpRestartReport,
+    remove_mar::RemoveMar,
+    remove_srr::RemoveSrr,
+    session_report::SessionReport,
+    ue_ip_address_pool_information::UeIpAddressPoolInformation,
+    updated_pdr::UpdatedPdr,
 );
 
 #[cfg(test)]
