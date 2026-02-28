@@ -13,7 +13,13 @@ keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
 categories = ["network-programming", "parser-implementations"]
 rust-version = "1.87.0"
 exclude = [
-    "go-interop/",
+    "tests/",
+    "benches/",
+    "examples/",
+    "docs/",
+    "scripts/",
+    ".github/",
+    ".claude/",
 ]
 
 [package.metadata.docs.rs]

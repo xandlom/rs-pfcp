@@ -20,11 +20,13 @@ jobs:
         include:
           # Test MSRV on Ubuntu only to speed up CI
           - os: ubuntu-latest
-            rust: 1.90.0
-    
+            rust: 1.87.0
+
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@master
@@ -33,7 +35,7 @@ jobs:
         components: rustfmt
 
     - name: Cache Cargo registry
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -64,38 +66,14 @@ jobs:
         cargo build --example session-client
         cargo build --example session-server
         cargo build --example pcap-reader
+        cargo build --example ethernet-session-demo
         cargo build --example message-comparison
         cargo build --example error-handling-demo
-        cargo build --example ethernet-session-demo
+        cargo build --example comprehensive_pfcp_features
+        cargo build --example usage_report_demo
+        cargo build --example usage_report_quota_demo
         cargo build --example pdn-type-demo
         cargo build --example pdn-type-simple
-        cargo build --example usage_report_phase1_demo
-        cargo build --example usage_report_phase2_demo
-        cargo build --example comprehensive_pfcp_features
-        cargo build --example debug_parser
-        cargo build --example debug_ie_parser
-        cargo build --example header-length-test
-        cargo build --example test_real_messages
-
-    - name: Test examples compilation
-      run: |
-        cargo check --example heartbeat-client
-        cargo check --example heartbeat-server
-        cargo check --example session-client
-        cargo check --example session-server
-        cargo check --example pcap-reader
-        cargo check --example message-comparison
-        cargo check --example error-handling-demo
-        cargo check --example ethernet-session-demo
-        cargo check --example pdn-type-demo
-        cargo check --example pdn-type-simple
-        cargo check --example usage_report_phase1_demo
-        cargo check --example usage_report_phase2_demo
-        cargo check --example comprehensive_pfcp_features
-        cargo check --example debug_parser
-        cargo check --example debug_ie_parser
-        cargo check --example header-length-test
-        cargo check --example test_real_messages
 
     - name: Run standalone examples
       if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
@@ -103,21 +81,20 @@ jobs:
         cargo run --example message-comparison
         cargo run --example error-handling-demo
         cargo run --example ethernet-session-demo
+        cargo run --example comprehensive_pfcp_features
+        cargo run --example usage_report_demo
+        cargo run --example usage_report_quota_demo
         cargo run --example pdn-type-demo
         cargo run --example pdn-type-simple
-        cargo run --example usage_report_phase1_demo
-        cargo run --example usage_report_phase2_demo
-        cargo run --example comprehensive_pfcp_features
-        cargo run --example debug_parser
-        cargo run --example debug_ie_parser
-        cargo run --example header-length-test
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -125,7 +102,7 @@ jobs:
         components: clippy
 
     - name: Cache Cargo
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -143,13 +120,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
 
     - name: Cache Cargo
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -169,13 +148,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
 
     - name: Cache Cargo
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -189,52 +170,9 @@ jobs:
       run: |
         # Run all IE tests to ensure 3GPP TS 29.244 compliance
         cargo test ie:: --verbose
-        
+
         # Run message marshal/unmarshal roundtrip tests
         cargo test marshal_unmarshal --verbose
-        
+
         # Test binary protocol encoding/decoding
         cargo test test_.*_round_trip --verbose
-
-    - name: Test session report demo
-      run: |
-        # Test the session report demo script can execute
-        cd examples
-        chmod +x test_session_report.sh
-        timeout 30s ./test_session_report.sh lo || true
-
-  # network-tests:
-  #   name: Network Interface Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Checkout sources
-  #     uses: actions/checkout@v6
-
-  #   - name: Install Rust toolchain
-  #     uses: dtolnay/rust-toolchain@stable
-
-  #   - name: Cache Cargo
-  #     uses: actions/cache@v5
-  #     with:
-  #       path: |
-  #         ~/.cargo/registry
-  #         ~/.cargo/git
-  #         target
-  #       key: ubuntu-network-${{ hashFiles('Cargo.lock') }}
-  #       restore-keys: |
-  #         ubuntu-network-
-
-  #   - name: Test network interface detection
-  #     run: |
-  #       # Test that examples can detect network interfaces
-  #       cargo run --example heartbeat-server -- --help || true
-  #       cargo run --example session-server -- --help || true
-  #       
-  #       # Test loopback interface detection
-  #       ip link show lo
-  #       
-  #   - name: Test PFCP packet analysis
-  #     run: |
-  #       # Create a dummy pcap file and test pcap-reader
-  #       echo "Test pcap analysis functionality"
-  #       cargo run --example pcap-reader -- --help || true

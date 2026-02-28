@@ -309,35 +309,13 @@ cargo test --release -- --ignored bench_
 
 ### Cross-Language Interoperability Testing
 
-The `go-interop/` directory contains Go implementations using [go-pfcp](https://github.com/wmnsk/go-pfcp) to verify cross-compatibility between rs-pfcp (Rust) and other PFCP implementations.
+Go interoperability tests (using [go-pfcp](https://github.com/wmnsk/go-pfcp)) live in a separate repository:
+**[github.com/xandlom/go-pfcp-interop](https://github.com/xandlom/go-pfcp-interop)**
 
-**Quick Test:**
-```bash
-cd go-interop
-
-# Build Go components
-go mod tidy
-go build -o session-server session-server.go
-go build -o session-client session-client.go
-
-# Test Rust server with Go client
-./test-rust-server-go-client.sh
-
-# Test Go server with Rust client
-./test-go-server-rust-client.sh
-
-# Run all compatibility tests
-./test-all-compatibility.sh
-```
-
-**What's Tested:**
-- ✅ Association Setup/Release between Rust and Go implementations
-- ✅ Complete session lifecycle (establish, modify, report, delete)
-- ✅ PDR/FAR creation and F-TEID allocation
-- ✅ Usage reporting with quota exhaustion
-- ✅ Binary protocol compatibility and 3GPP TS 29.244 compliance
-
-See [`go-interop/README.md`](go-interop/README.md) for detailed setup, usage examples, and troubleshooting.
+It verifies cross-compatibility between rs-pfcp (Rust) and Go PFCP implementations:
+- Association Setup/Release between Rust and Go stacks
+- Complete session lifecycle (establish, modify, report, delete)
+- Binary protocol compatibility and 3GPP TS 29.244 compliance
 
 ## 🌟 Real-World Usage
 
