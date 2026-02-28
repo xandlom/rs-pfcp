@@ -13,12 +13,7 @@ keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
 categories = ["network-programming", "parser-implementations"]
 rust-version = "1.87.0"
 exclude = [
-    "go-interop/session-server",
-    "go-interop/session-client",
-    "go-interop/simple-server",
-    "go-interop/*.sh",
-    "benchmarks/data/results/",
-    "benchmarks/scripts/",
+    "go-interop/",
 ]
 
 [package.metadata.docs.rs]

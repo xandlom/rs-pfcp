@@ -1,2 +1,0 @@
-PASS
-ok  	pfcp-go-benchmarks	0.005s
