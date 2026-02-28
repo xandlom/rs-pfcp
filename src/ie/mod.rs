@@ -2,6 +2,7 @@
 
 use crate::error::PfcpError;
 
+pub mod access_availability_information;
 pub mod activate_predefined_rules;
 pub mod activation_time;
 pub mod additional_usage_reports_information;
@@ -48,6 +49,7 @@ pub mod dl_periodicity;
 pub mod downlink_data_notification_delay;
 pub mod downlink_data_service_information;
 pub mod dropped_dl_traffic_threshold;
+pub mod dscp_to_ppi_mapping_information;
 pub mod dstt_port_number;
 pub mod duplicating_parameters;
 pub mod duration_measurement;
@@ -88,6 +90,7 @@ pub mod ip_multicast_address;
 pub mod ip_version;
 pub mod linked_urr_id;
 pub mod load_control_information;
+pub mod local_ingress_tunnel;
 pub mod mac_address;
 pub mod mac_addresses_detected;
 pub mod mac_addresses_removed;
@@ -113,6 +116,7 @@ pub mod mptcp_applicable_indication;
 pub mod mt_sdt_control_information;
 pub mod multiplier;
 pub mod n6_jitter_measurement;
+pub mod n6_routing_information;
 pub mod network_instance;
 pub mod nf_instance_id;
 pub mod node_id;
@@ -125,6 +129,7 @@ pub mod offending_ie;
 pub mod outer_header_creation;
 pub mod outer_header_removal;
 pub mod overload_control_information;
+pub mod packet_delay_thresholds;
 pub mod packet_rate;
 pub mod packet_rate_status;
 pub mod packet_replication_and_detection_carry_on_information;
@@ -155,6 +160,7 @@ pub mod qer_correlation_id;
 pub mod qer_id;
 pub mod qer_indications;
 pub mod qfi;
+pub mod qos_monitoring_measurement;
 pub mod qos_report_trigger;
 pub mod query_urr;
 pub mod query_urr_reference;
@@ -162,6 +168,7 @@ pub mod quota_holding_time;
 pub mod quota_validity_time;
 pub mod recovery_time_stamp;
 pub mod redirect_information;
+pub mod remote_gtpu_peer;
 pub mod remove_bar;
 pub mod remove_far;
 pub mod remove_pdr;
@@ -171,6 +178,8 @@ pub mod remove_urr;
 pub mod report_type;
 pub mod reporting_control_information;
 pub mod reporting_frequency;
+pub mod reporting_suggestion_info;
+pub mod reporting_thresholds;
 pub mod reporting_triggers;
 pub mod requested_access_availability_information;
 pub mod requested_clock_drift_information;
@@ -211,6 +220,7 @@ pub mod tl_container;
 pub mod trace_information;
 pub mod traffic_endpoint_id;
 pub mod traffic_parameter_measurement_indication;
+pub mod traffic_parameter_threshold;
 pub mod transport_level_marking;
 pub mod transport_mode;
 pub mod tsn_bridge_id;
@@ -1815,6 +1825,17 @@ impl_parse_ie!(
     transport_mode::TransportMode,
     ue_level_measurements_configuration::UeLevelMeasurementsConfiguration,
     vendor_specific_node_report_type::VendorSpecificNodeReportType,
+    // Phase 5: Medium-complexity leaf IEs
+    access_availability_information::AccessAvailabilityInformation,
+    dscp_to_ppi_mapping_information::DscpToPpiMappingInformation,
+    local_ingress_tunnel::LocalIngressTunnel,
+    n6_routing_information::N6RoutingInformation,
+    packet_delay_thresholds::PacketDelayThresholds,
+    qos_monitoring_measurement::QosMonitoringMeasurement,
+    remote_gtpu_peer::RemoteGtpuPeer,
+    reporting_suggestion_info::ReportingSuggestionInfo,
+    reporting_thresholds::ReportingThresholds,
+    traffic_parameter_threshold::TrafficParameterThreshold,
 );
 
 #[cfg(test)]
