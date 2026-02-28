@@ -3,9 +3,6 @@ name: Performance Benchmarks
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-  # Allow manual triggering
   workflow_dispatch:
 
 env:
@@ -18,19 +15,21 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
 
     - name: Cache Cargo
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ubuntu-bench-${{ hashFiles('Cargo.lock') }}
+        key: ubuntu-bench-${{ hashFiles('Cargo.toml') }}
         restore-keys: |
           ubuntu-bench-
 
@@ -39,79 +38,19 @@ jobs:
 
     - name: Run benchmarks
       run: |
-        # Run benchmarks with reduced sample size for CI
         cargo bench --bench message_operations -- --sample-size 20
         cargo bench --bench ie_operations -- --sample-size 20
+        cargo bench --bench ie_performance -- --sample-size 20
 
-    - name: Store benchmark results
-      uses: actions/upload-artifact@v6
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-results
         path: target/criterion/
         retention-days: 30
 
-  benchmark-compare:
-    name: Compare Benchmarks (PR only)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-    - name: Checkout PR branch
-      uses: actions/checkout@v6
-
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Cache Cargo
-      uses: actions/cache@v5
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-bench-pr-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ubuntu-bench-
-
-    - name: Run PR benchmarks
-      run: |
-        cargo bench --bench message_operations -- --sample-size 20 --save-baseline pr
-        cargo bench --bench ie_operations -- --sample-size 20 --save-baseline pr
-
-    - name: Checkout base branch
-      uses: actions/checkout@v6
-      with:
-        ref: ${{ github.base_ref }}
-        clean: false
-
-    - name: Run base benchmarks
-      run: |
-        cargo bench --bench message_operations -- --sample-size 20 --save-baseline base
-        cargo bench --bench ie_operations -- --sample-size 20 --save-baseline base
-
-    - name: Compare benchmarks
-      run: |
-        echo "## Benchmark Comparison" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Comparing PR against base branch..." >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
-        # Install critcmp for comparison (optional, requires additional setup)
-        # For now, just note that results are available
-        echo "Benchmark results have been saved. To compare:" >> $GITHUB_STEP_SUMMARY
-        echo '```bash' >> $GITHUB_STEP_SUMMARY
-        echo "cargo bench -- --baseline base" >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
-
-    - name: Upload comparison results
-      uses: actions/upload-artifact@v6
-      with:
-        name: benchmark-comparison
-        path: target/criterion/
-        retention-days: 30
-
   benchmark-check:
-    name: Benchmark Compilation Check
+    name: Benchmark Compilation
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -119,69 +58,23 @@ jobs:
 
     steps:
     - name: Checkout sources
-      uses: actions/checkout@v6
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
 
     - name: Cache Cargo
-      uses: actions/cache@v5
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-bench-check-${{ hashFiles('Cargo.lock') }}
+        key: ${{ runner.os }}-bench-check-${{ hashFiles('Cargo.toml') }}
         restore-keys: |
           ${{ runner.os }}-bench-check-
 
     - name: Check benchmark compilation
       run: cargo bench --no-run --all-features
-
-  performance-regression:
-    name: Performance Regression Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-    - name: Checkout sources
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-
-    - name: Cache Cargo
-      uses: actions/cache@v5
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-regression-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ubuntu-regression-
-
-    - name: Run regression tests
-      run: |
-        echo "## Performance Regression Check" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
-        # Run quick smoke test benchmarks
-        cargo bench --bench message_operations -- --sample-size 10 heartbeat
-        cargo bench --bench ie_operations -- --sample-size 10 simple
-
-        echo "✅ Performance regression check passed" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Full benchmark results available in artifacts." >> $GITHUB_STEP_SUMMARY
-
-    - name: Check for performance issues
-      run: |
-        # This is a placeholder for actual regression detection
-        # In a real implementation, you would:
-        # 1. Compare current results with baseline
-        # 2. Check for significant regressions (e.g., >10% slowdown)
-        # 3. Fail the build if critical regressions are detected
-
-        echo "Performance check completed. Manual review of artifacts recommended."
