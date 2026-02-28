@@ -17,7 +17,7 @@ Thank you for your interest in contributing to rs-pfcp! This document provides g
 
 ### Prerequisites
 
-- Rust 1.90.0 or later (MSRV)
+- Rust 1.87.0 or later (MSRV)
 - Git
 - Familiarity with PFCP protocol (3GPP TS 29.244) helpful but not required
 

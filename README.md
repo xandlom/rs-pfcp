@@ -246,7 +246,7 @@ rs-pfcp is currently **pre-1.0** (version 0.3.x), meaning the API may change bet
 
 **Current Status:**
 - **Version**: 0.3.0
-- **MSRV**: Rust 1.90.0
+- **MSRV**: Rust 1.87.0
 - **Spec Compliance**: 3GPP TS 29.244 Release 18
 - **Stability**: Pre-1.0 (API evolving)
 
