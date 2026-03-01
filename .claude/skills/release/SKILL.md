@@ -32,10 +32,17 @@ version = "<version>"
 
 ### 2. Update CHANGELOG.md
 
-Read `CHANGELOG.md` to understand the existing format, then:
-- Rename `## [Unreleased]` to `## [<version>] - <today's date>`
-- Add a new empty `## [Unreleased]` section at the top
-- Ensure the diff link at the bottom is updated
+If `git-cliff` is installed, generate the changelog automatically:
+```bash
+git cliff --tag v<version> --output CHANGELOG.md
+```
+
+Otherwise update manually: rename `## [Unreleased]` to
+`## [<version>] - <today's date>`, add a new empty `## [Unreleased]`
+section at the top, and update the diff link at the bottom.
+
+The repo includes `cliff.toml` which configures the format and filters
+out chore/ci/deps commits automatically.
 
 ### 3. Final verification
 

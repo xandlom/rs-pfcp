@@ -41,8 +41,8 @@ jobs:
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
 
-    - name: Generate coverage (lcov)
-      run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+    - name: Generate coverage (lcov) and enforce threshold
+      run: cargo llvm-cov --all-features --lcov --output-path lcov.info --fail-under-lines 75
 
     - name: Upload to Codecov
       uses: codecov/codecov-action@v5

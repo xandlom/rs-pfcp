@@ -94,15 +94,17 @@ if ! cargo check --all-targets; then
 fi
 print_success "Cargo check passed"
 
-# 5. Test check (if tests exist and are quick)
-if cargo test --help >/dev/null 2>&1; then
-    print_status "Running quick tests..."
-    # Run tests with timeout to avoid long-running tests in pre-commit
+# 5. Test check - only when Rust source files are staged
+rust_staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.rs$' | wc -l)
+if [ "$rust_staged" -gt 0 ]; then
+    print_status "Running quick tests ($rust_staged Rust file(s) staged)..."
     if timeout 30s cargo test --lib --bins 2>/dev/null; then
         print_success "Quick tests passed"
     else
         print_warning "Tests took too long or failed - skipping (run 'cargo test' manually)"
     fi
+else
+    print_status "No Rust source changes - skipping tests"
 fi
 
 # 6. Check for large files

@@ -42,8 +42,8 @@ Brief description of the changes in this PR.
 
 ## Documentation Updates
 - [ ] Updated CLAUDE.md if development workflow changed
-- [ ] Updated PFCP_MESSAGES.md if messages were added/modified
-- [ ] Updated IE_SUPPORT.md if IEs were added/modified
+- [ ] Updated `docs/reference/messages.md` if messages were added/modified
+- [ ] Updated `docs/reference/ie-support.md` if IEs were added/modified
 - [ ] Added/updated code comments for complex protocol logic
 
 ## Additional Notes
