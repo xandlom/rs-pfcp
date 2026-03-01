@@ -16,10 +16,10 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 259+ Information Elements implemented with complete core session management
+- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 278+ Information Elements implemented with complete core session management
 - 🔥 **High Performance** - Sub-microsecond binary protocol implementation
-- 🧪 **Battle Tested** - 3,023+ comprehensive tests with full round-trip serialization validation
-- 🛠️ **Developer Friendly** - Ergonomic builder APIs with convenience methods and direct marshaling
+- 🧪 **Battle Tested** - 3,100+ comprehensive tests with full round-trip serialization validation
+- 🛠️ **Developer Friendly** - Ergonomic builder APIs, typed IE decoding via `Ie::parse::<T>()`, and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
 ### Ergonomic Builder API
@@ -65,7 +65,7 @@ let cause: Cause = msg.ies(IeType::Cause).next()?.parse()?;
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **259+ Information Elements** implemented (334+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **278+ Information Elements** implemented (334+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting, Ethernet PDU sessions
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
 
@@ -77,7 +77,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.3.0"
+rs-pfcp = "0.3.1"
 ```
 
 ### Basic Usage
@@ -188,7 +188,7 @@ cargo bench
 
 ```
 rs-pfcp/
-├── src/ie/              # Information Elements (139+ types)
+├── src/ie/              # Information Elements (278+ types)
 │   ├── f_teid.rs        # F-TEID with 3GPP compliant CHOOSE flags
 │   ├── pdn_type.rs      # PDN connection types (IPv4/IPv6/Non-IP)
 │   ├── snssai.rs        # 5G Network Slicing identifiers
@@ -245,7 +245,7 @@ rs-pfcp/
 rs-pfcp is currently **pre-1.0** (version 0.3.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
 
 **Current Status:**
-- **Version**: 0.3.0
+- **Version**: 0.3.1
 - **MSRV**: Rust 1.87.0
 - **Spec Compliance**: 3GPP TS 29.244 Release 18
 - **Stability**: Pre-1.0 (API evolving)
@@ -275,7 +275,7 @@ We provide migration guides for all breaking changes and deprecate features befo
 # Build the library
 cargo build
 
-# Run all tests (2,800+ tests)
+# Run all tests (3,100+ tests)
 cargo test
 
 # Run specific test category
