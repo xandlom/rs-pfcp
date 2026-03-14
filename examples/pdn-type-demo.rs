@@ -20,7 +20,7 @@ use rs_pfcp::message::{
     session_establishment_request::SessionEstablishmentRequestBuilder,
     session_establishment_response::SessionEstablishmentResponseBuilder,
     session_modification_request::SessionModificationRequestBuilder,
-    session_modification_response::SessionModificationResponse, Message,
+    session_modification_response::SessionModificationResponseBuilder, Message,
 };
 use std::net::Ipv4Addr;
 
@@ -60,8 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session_req = SessionEstablishmentRequestBuilder::new(0, 1001)
         .node_id(Ipv4Addr::new(192, 168, 1, 10))
         .fseid(0x123456789ABCDEF0, Ipv4Addr::new(10, 0, 0, 1))
-        .create_pdrs(vec![pdr.to_ie()])
-        .create_fars(vec![far.to_ie()])
+        .add_pdr(pdr)
+        .add_far(far)
         .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in request
         .build()?;
 
@@ -104,20 +104,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Demonstrate Session Modification Response with PDN Type confirmation
     println!("\n5. 📨 Session Modification Response with PDN Type confirmation:");
-    let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
 
-    let mod_resp = SessionModificationResponse::new(
-        0x987654321,
-        1002,
-        cause_ie,
-        None,
-        None,
-        None,
-        None,
-        Some(ipv4_pdn.clone()), // ✅ PDN Type included in response to confirm change
-        vec![],
-        vec![],
-    );
+    let mod_resp = SessionModificationResponseBuilder::accepted(0x987654321u64, 1002u32)
+        .pdn_type(ipv4_pdn.clone()) // ✅ PDN Type included in response to confirm change
+        .build();
 
     println!("   📥 Session Modification Response created with PDN Type confirmation: IPv4");
     println!(

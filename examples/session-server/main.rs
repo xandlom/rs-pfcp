@@ -476,9 +476,7 @@ fn handle_session_modification_request(
             return Ok(());
         }
     };
-    let res = SessionModificationResponseBuilder::new(seid, msg.sequence())
-        .cause_accepted()
-        .marshal();
+    let res = SessionModificationResponseBuilder::accepted(seid, msg.sequence()).marshal();
     ctx.socket.send_to(&res, ctx.src)?;
     Ok(())
 }
@@ -500,9 +498,7 @@ fn handle_session_deletion_request(
         ctx.sessions.remove(&seid);
     }
 
-    let res = SessionDeletionResponseBuilder::new(seid, msg.sequence())
-        .cause_accepted()
-        .marshal();
+    let res = SessionDeletionResponseBuilder::accepted(seid, msg.sequence()).marshal();
     ctx.socket.send_to(&res, ctx.src)?;
     Ok(())
 }

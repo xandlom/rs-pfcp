@@ -164,8 +164,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let establishment_req = SessionEstablishmentRequestBuilder::new(cp_seid, seq_num)
         .node_id(smf_ip)
         .fseid(cp_seid, smf_ip)
-        .create_pdrs(vec![pdr.to_ie()])
-        .create_fars(vec![far.to_ie()])
+        .add_pdr(pdr)
+        .add_far(far)
         .ethernet_pdu_session_information(eth_pdu_info_ie.clone())
         .ies(vec![inactivity_timer_ie])
         .build()?;
@@ -293,9 +293,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("4️⃣  Creating Session Modification Response");
     println!("{}", "-".repeat(60));
 
-    let mod_resp_bytes = SessionModificationResponseBuilder::new(up_seid, seq_num)
-        .cause_accepted()
-        .marshal();
+    let mod_resp_bytes = SessionModificationResponseBuilder::accepted(up_seid, seq_num).marshal();
 
     println!(
         "   ✅ Session Modification Response created ({} bytes)",

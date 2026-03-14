@@ -245,9 +245,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         let session_req_bytes = SessionEstablishmentRequestBuilder::new(seid, 2)
             .node_id(interface_ipv4)
             .fseid(0x0102030405060708u64 + seid, interface_ipv4)
-            .create_pdrs(vec![uplink_pdr.to_ie(), downlink_pdr.to_ie()])
-            .create_fars(vec![uplink_far.to_ie(), downlink_far.to_ie()])
-            .create_qers(vec![qer.to_ie()])
+            .add_pdr(uplink_pdr)
+            .add_pdr(downlink_pdr)
+            .add_far(uplink_far)
+            .add_far(downlink_far)
+            .add_qer(qer)
             .marshal()?;
         socket.send(&session_req_bytes)?;
         let (_len, _) = socket.recv_from(&mut buf)?;

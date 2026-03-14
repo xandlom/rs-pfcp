@@ -1,8 +1,12 @@
 //! Simple PDN Type IE Integration Demo
 
-use rs_pfcp::ie::cause::Cause;
-use rs_pfcp::ie::{pdn_type::PdnType, Ie, IeType};
-use rs_pfcp::message::{session_modification_response::SessionModificationResponse, Message};
+use rs_pfcp::ie::{pdn_type::PdnType, IeType};
+use rs_pfcp::message::{
+    session_modification_response::{
+        SessionModificationResponse, SessionModificationResponseBuilder,
+    },
+    Message,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 PDN Type IE Integration Demo - Simplified Version");
@@ -32,22 +36,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Show the key integration: PDN Type IE in Session Modification Response
     println!("\n2. ✅ Session Modification Response with PDN Type IE:");
-    let cause_ie = Ie::new(IeType::Cause, Cause::new(1.into()).marshal().to_vec());
 
-    // Before: SessionModificationResponse couldn't include PDN Type IE
-    // After: ✅ Now it can! This demonstrates the integration fix
-    let response = SessionModificationResponse::new(
-        0x123456789ABCDEF0,       // SEID
-        1001,                     // Sequence number
-        cause_ie,                 // Cause IE
-        None,                     // Offending IE
-        None,                     // Created PDR
-        None,                     // Load control information
-        None,                     // Overload control information
-        Some(ipv4v6_pdn.clone()), // ✅ PDN Type IE - THIS IS THE KEY FIX!
-        vec![],                   // Usage reports
-        vec![],                   // Additional IEs
-    );
+    // ✅ Builder pattern — no positional None arguments needed
+    let response = SessionModificationResponseBuilder::accepted(0x123456789ABCDEF0u64, 1001u32)
+        .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type IE
+        .build();
 
     println!("   📤 SessionModificationResponse created successfully");
     println!(
