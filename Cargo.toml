@@ -73,3 +73,7 @@ harness = false
 [[bench]]
 name = "ie_performance"
 harness = false
+
+[[bench]]
+name = "comparison_operations"
+harness = false
