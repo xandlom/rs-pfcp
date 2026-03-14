@@ -3,10 +3,12 @@
 use crate::error::PfcpError;
 use crate::ie::{
     inactivity_detection_time::InactivityDetectionTime, marshal_ies,
-    measurement_method::MeasurementMethod, monitoring_time::MonitoringTime,
-    reporting_triggers::ReportingTriggers, subsequent_time_threshold::SubsequentTimeThreshold,
-    subsequent_volume_threshold::SubsequentVolumeThreshold, time_threshold::TimeThreshold,
-    urr_id::UrrId, volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
+    measurement_method::MeasurementMethod, measurement_period::MeasurementPeriod,
+    monitoring_time::MonitoringTime, reporting_triggers::ReportingTriggers,
+    subsequent_time_threshold::SubsequentTimeThreshold,
+    subsequent_volume_threshold::SubsequentVolumeThreshold, time_quota::TimeQuota,
+    time_threshold::TimeThreshold, urr_id::UrrId, volume_quota::VolumeQuota,
+    volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
 };
 
 /// Represents the Create URR.
@@ -21,6 +23,15 @@ pub struct CreateUrr {
     pub subsequent_volume_threshold: Option<SubsequentVolumeThreshold>,
     pub subsequent_time_threshold: Option<SubsequentTimeThreshold>,
     pub inactivity_detection_time: Option<InactivityDetectionTime>,
+    /// Hard volume limit — UPF drops packets after quota is exhausted.
+    /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 73.
+    pub volume_quota: Option<VolumeQuota>,
+    /// Hard time limit — UPF terminates sessions after quota is exhausted.
+    /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 74.
+    pub time_quota: Option<TimeQuota>,
+    /// Periodic measurement reporting interval in seconds.
+    /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 64.
+    pub measurement_period: Option<MeasurementPeriod>,
 }
 
 impl CreateUrr {
@@ -47,6 +58,9 @@ impl CreateUrr {
             subsequent_volume_threshold,
             subsequent_time_threshold,
             inactivity_detection_time,
+            volume_quota: None,
+            time_quota: None,
+            measurement_period: None,
         }
     }
 
@@ -87,6 +101,19 @@ impl CreateUrr {
                 idt.marshal().to_vec(),
             ));
         }
+        if let Some(vq) = &self.volume_quota {
+            ies.push(Ie::new(
+                IeType::VolumeQuota,
+                vq.marshal()
+                    .expect("VolumeQuota marshal should not fail for a well-formed value"),
+            ));
+        }
+        if let Some(tq) = &self.time_quota {
+            ies.push(Ie::new(IeType::TimeQuota, tq.marshal()));
+        }
+        if let Some(mp) = &self.measurement_period {
+            ies.push(Ie::new(IeType::MeasurementPeriod, mp.marshal().to_vec()));
+        }
 
         marshal_ies(&ies)
     }
@@ -102,6 +129,9 @@ impl CreateUrr {
         let mut subsequent_volume_threshold = None;
         let mut subsequent_time_threshold = None;
         let mut inactivity_detection_time = None;
+        let mut volume_quota = None;
+        let mut time_quota = None;
+        let mut measurement_period = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -136,6 +166,15 @@ impl CreateUrr {
                     inactivity_detection_time =
                         Some(InactivityDetectionTime::unmarshal(&ie.payload)?);
                 }
+                IeType::VolumeQuota => {
+                    volume_quota = Some(VolumeQuota::unmarshal(&ie.payload)?);
+                }
+                IeType::TimeQuota => {
+                    time_quota = Some(TimeQuota::unmarshal(&ie.payload)?);
+                }
+                IeType::MeasurementPeriod => {
+                    measurement_period = Some(MeasurementPeriod::unmarshal(&ie.payload)?);
+                }
                 _ => (),
             }
         }
@@ -159,6 +198,9 @@ impl CreateUrr {
             subsequent_volume_threshold,
             subsequent_time_threshold,
             inactivity_detection_time,
+            volume_quota,
+            time_quota,
+            measurement_period,
         })
     }
 
@@ -213,6 +255,9 @@ pub struct CreateUrrBuilder {
     subsequent_volume_threshold: Option<SubsequentVolumeThreshold>,
     subsequent_time_threshold: Option<SubsequentTimeThreshold>,
     inactivity_detection_time: Option<InactivityDetectionTime>,
+    volume_quota: Option<VolumeQuota>,
+    time_quota: Option<TimeQuota>,
+    measurement_period: Option<MeasurementPeriod>,
 }
 
 impl CreateUrrBuilder {
@@ -349,6 +394,48 @@ impl CreateUrrBuilder {
         self
     }
 
+    /// Sets the volume quota — a hard limit after which the UPF drops packets.
+    ///
+    /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 73.
+    pub fn volume_quota(mut self, quota: VolumeQuota) -> Self {
+        self.volume_quota = Some(quota);
+        self
+    }
+
+    /// Convenience method: set a total volume quota in bytes.
+    pub fn volume_quota_bytes(mut self, bytes: u64) -> Self {
+        self.volume_quota = Some(VolumeQuota::new(0x01, Some(bytes), None, None));
+        self
+    }
+
+    /// Sets the time quota — a hard time limit after which the UPF terminates the session.
+    ///
+    /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 74.
+    pub fn time_quota(mut self, quota: TimeQuota) -> Self {
+        self.time_quota = Some(quota);
+        self
+    }
+
+    /// Convenience method: set a time quota in seconds.
+    pub fn time_quota_seconds(mut self, seconds: u32) -> Self {
+        self.time_quota = Some(TimeQuota::new(seconds));
+        self
+    }
+
+    /// Sets the measurement period for periodic reporting in seconds.
+    ///
+    /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 64.
+    pub fn measurement_period(mut self, period: MeasurementPeriod) -> Self {
+        self.measurement_period = Some(period);
+        self
+    }
+
+    /// Convenience method: set the measurement period from seconds.
+    pub fn measurement_period_seconds(mut self, seconds: u32) -> Self {
+        self.measurement_period = Some(MeasurementPeriod::new(seconds));
+        self
+    }
+
     /// Builds the Create URR IE with comprehensive validation.
     ///
     /// # Errors
@@ -399,6 +486,9 @@ impl CreateUrrBuilder {
             subsequent_volume_threshold: self.subsequent_volume_threshold,
             subsequent_time_threshold: self.subsequent_time_threshold,
             inactivity_detection_time: self.inactivity_detection_time,
+            volume_quota: self.volume_quota,
+            time_quota: self.time_quota,
+            measurement_period: self.measurement_period,
         })
     }
 
@@ -820,5 +910,56 @@ mod tests {
             .build();
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_volume_quota_round_trip() {
+        let urr = CreateUrrBuilder::new(UrrId::new(1))
+            .measurement_method(MeasurementMethod::new(false, false, true)) // event
+            .reporting_triggers(ReportingTriggers::new())
+            .volume_quota_bytes(5_000_000_000)
+            .build()
+            .unwrap();
+
+        assert!(urr.volume_quota.is_some());
+        let marshaled = urr.marshal();
+        let unmarshaled = CreateUrr::unmarshal(&marshaled).unwrap();
+        assert_eq!(urr, unmarshaled);
+        assert_eq!(
+            unmarshaled.volume_quota.unwrap().total_volume,
+            Some(5_000_000_000)
+        );
+    }
+
+    #[test]
+    fn test_time_quota_round_trip() {
+        let urr = CreateUrrBuilder::new(UrrId::new(1))
+            .measurement_method(MeasurementMethod::new(false, false, true)) // event
+            .reporting_triggers(ReportingTriggers::new())
+            .time_quota_seconds(7200)
+            .build()
+            .unwrap();
+
+        assert!(urr.time_quota.is_some());
+        let marshaled = urr.marshal();
+        let unmarshaled = CreateUrr::unmarshal(&marshaled).unwrap();
+        assert_eq!(urr, unmarshaled);
+        assert_eq!(unmarshaled.time_quota.unwrap().quota_seconds, 7200);
+    }
+
+    #[test]
+    fn test_measurement_period_round_trip() {
+        let urr = CreateUrrBuilder::new(UrrId::new(1))
+            .measurement_method(MeasurementMethod::new(false, false, true)) // event
+            .reporting_triggers(ReportingTriggers::new())
+            .measurement_period_seconds(60)
+            .build()
+            .unwrap();
+
+        assert!(urr.measurement_period.is_some());
+        let marshaled = urr.marshal();
+        let unmarshaled = CreateUrr::unmarshal(&marshaled).unwrap();
+        assert_eq!(urr, unmarshaled);
+        assert_eq!(unmarshaled.measurement_period.unwrap().value, 60);
     }
 }

@@ -266,6 +266,13 @@ pub struct SessionModificationResponseBuilder {
 }
 
 impl SessionModificationResponseBuilder {
+    /// Factory method: create a builder pre-configured with the accepted cause.
+    ///
+    /// Equivalent to `new(seid, seq).cause_accepted()`.
+    pub fn accepted(seid: impl Into<Seid>, sequence: impl Into<SequenceNumber>) -> Self {
+        Self::new(seid, sequence).cause_accepted()
+    }
+
     /// Creates a new SessionModificationResponse builder.
     pub fn new(seid: impl Into<Seid>, sequence: impl Into<SequenceNumber>) -> Self {
         Self {

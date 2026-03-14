@@ -515,6 +515,10 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    /// Builds the `SessionEstablishmentResponse`.
+    ///
+    /// Prefer calling `.marshal()` directly, which performs the same validation
+    /// and is consistent with other response builders that go straight to bytes.
     pub fn build(self) -> Result<SessionEstablishmentResponse, PfcpError> {
         let node_id = self.node_id.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::NodeId,

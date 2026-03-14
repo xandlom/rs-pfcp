@@ -8,6 +8,7 @@ use crate::ie::gbr::Gbr;
 use crate::ie::mbr::Mbr;
 use crate::ie::qer_correlation_id::QerCorrelationId;
 use crate::ie::qer_id::QerId;
+use crate::ie::qfi::Qfi;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,6 +18,9 @@ pub struct CreateQer {
     pub gate_status: Option<GateStatus>,
     pub mbr: Option<Mbr>,
     pub gbr: Option<Gbr>,
+    /// QoS Flow Identifier — maps this QER to a specific 5G QoS flow.
+    /// Per 3GPP TS 29.244 Table 7.5.4.3-1, IE Type 124.
+    pub qfi: Option<Qfi>,
 }
 
 impl CreateQer {
@@ -28,6 +32,7 @@ impl CreateQer {
             gate_status: None,
             mbr: None,
             gbr: None,
+            qfi: None,
         }
     }
 
@@ -50,6 +55,9 @@ impl CreateQer {
         if let Some(gbr) = &self.gbr {
             ies.push(Ie::new(IeType::Gbr, gbr.marshal().to_vec()));
         }
+        if let Some(qfi) = &self.qfi {
+            ies.push(Ie::new(IeType::Qfi, qfi.marshal().to_vec()));
+        }
 
         marshal_ies(&ies)
     }
@@ -61,6 +69,7 @@ impl CreateQer {
         let mut gate_status = None;
         let mut mbr = None;
         let mut gbr = None;
+        let mut qfi = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -80,6 +89,9 @@ impl CreateQer {
                 IeType::Gbr => {
                     gbr = Some(Gbr::unmarshal(&ie.payload)?);
                 }
+                IeType::Qfi => {
+                    qfi = Some(Qfi::unmarshal(&ie.payload)?);
+                }
                 _ => (),
             }
         }
@@ -95,6 +107,7 @@ impl CreateQer {
             gate_status,
             mbr,
             gbr,
+            qfi,
         })
     }
 
@@ -142,6 +155,7 @@ pub struct CreateQerBuilder {
     gate_status: Option<GateStatus>,
     mbr: Option<Mbr>,
     gbr: Option<Gbr>,
+    qfi: Option<Qfi>,
 }
 
 impl CreateQerBuilder {
@@ -191,6 +205,14 @@ impl CreateQerBuilder {
         self
     }
 
+    /// Sets the QoS Flow Identifier, mapping this QER to a specific 5G QoS flow.
+    ///
+    /// Per 3GPP TS 29.244 Table 7.5.4.3-1, IE Type 124.
+    pub fn qfi(mut self, qfi: Qfi) -> Self {
+        self.qfi = Some(qfi);
+        self
+    }
+
     /// Builds the Create QER with validation.
     ///
     /// # Errors
@@ -209,6 +231,7 @@ impl CreateQerBuilder {
             gate_status: self.gate_status,
             mbr: self.mbr,
             gbr: self.gbr,
+            qfi: self.qfi,
         })
     }
 
@@ -347,6 +370,7 @@ mod tests {
             gate_status: Some(gate_status),
             mbr: Some(mbr),
             gbr: Some(gbr),
+            qfi: None,
         };
 
         let marshaled = qer.marshal();
@@ -634,5 +658,27 @@ mod tests {
             .expect("Failed to build QER in comprehensive test");
 
         assert_eq!(qer.qer_id, qer_id);
+    }
+
+    #[test]
+    fn test_qfi_round_trip() {
+        use crate::ie::qfi::Qfi;
+        let qer_id = QerId::new(1);
+        let qfi = Qfi::new(9).unwrap();
+        let original = CreateQerBuilder::new(qer_id)
+            .gate_status(GateStatus::new(
+                GateStatusValue::Open,
+                GateStatusValue::Open,
+            ))
+            .qfi(qfi)
+            .build()
+            .unwrap();
+
+        assert_eq!(original.qfi, Some(qfi));
+
+        let marshaled = original.marshal();
+        let unmarshaled = CreateQer::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.qfi, Some(qfi));
     }
 }

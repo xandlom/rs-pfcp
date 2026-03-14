@@ -540,6 +540,38 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    /// Adds a single PDR, converting it to an IE internally.
+    ///
+    /// Avoids constructing an intermediate `vec![pdr.to_ie()]`.
+    pub fn add_pdr(mut self, pdr: crate::ie::create_pdr::CreatePdr) -> Self {
+        self.create_pdrs.push(pdr.to_ie());
+        self
+    }
+
+    /// Adds a single FAR, converting it to an IE internally.
+    ///
+    /// Avoids constructing an intermediate `vec![far.to_ie()]`.
+    pub fn add_far(mut self, far: crate::ie::create_far::CreateFar) -> Self {
+        self.create_fars.push(far.to_ie());
+        self
+    }
+
+    /// Adds a single URR, converting it to an IE internally.
+    ///
+    /// Avoids constructing an intermediate `vec![urr.to_ie()]`.
+    pub fn add_urr(mut self, urr: crate::ie::create_urr::CreateUrr) -> Self {
+        self.create_urrs.push(urr.to_ie());
+        self
+    }
+
+    /// Adds a single QER, converting it to an IE internally.
+    ///
+    /// Avoids constructing an intermediate `vec![qer.to_ie()]`.
+    pub fn add_qer(mut self, qer: crate::ie::create_qer::CreateQer) -> Self {
+        self.create_qers.push(qer.to_ie());
+        self
+    }
+
     pub fn create_bars(mut self, create_bars: Vec<Ie>) -> Self {
         self.create_bars = create_bars;
         self

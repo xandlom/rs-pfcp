@@ -129,7 +129,10 @@ impl From<u8> for MsgType {
 }
 
 /// A trait representing a PFCP message.
-pub trait Message {
+///
+/// All concrete message types implement `Send + Sync`, making `Box<dyn Message>`
+/// safe to use across thread boundaries and `.await` points in async runtimes.
+pub trait Message: Send + Sync {
     /// Marshals the message into a new `Vec<u8>`.
     ///
     /// This is the standard marshaling method that allocates a new vector.
@@ -366,7 +369,11 @@ impl Message for Generic {
     }
 }
 
-// A simple parse function. In a real implementation, this would be more complex.
+/// Parse a PFCP message from raw bytes.
+///
+/// Returns a `Box<dyn Message + Send + Sync>`, making the result safe to use
+/// across thread boundaries and `.await` points in async runtimes without
+/// `unsafe` transmutes.
 pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, PfcpError> {
     let header = header::Header::unmarshal(data)?;
     match header.message_type {
