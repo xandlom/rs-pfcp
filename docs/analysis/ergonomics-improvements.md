@@ -381,27 +381,153 @@ HeartbeatResponseBuilder::new(sequence)
 
 ---
 
+## Additional Findings from picoup-rust Feedback (Round 2)
+
+After receiving the recommendations doc, the picoup-rust team provided three additional pain points confirmed by their codebase.
+
+---
+
+### Friction Point 7: `message::parse()` returns `Box<dyn Message>` without `Send + Sync`
+
+The `Message` trait does not carry `Send + Sync` bounds. In async runtimes (Tokio), parsed messages cannot cross `.await` points without a workaround. picoup-rust currently patches this with `unsafe` `transmute` at 6 call sites in their handler:
+
+```rust
+/// This is safe because all concrete Message types implement Send
+fn make_send(msg: Box<dyn Message>) -> Box<dyn Message + Send> {
+    unsafe { std::mem::transmute(msg) }
+}
+```
+
+All 25 concrete message types are `Send + Sync` today (they only hold owned data: `Vec<u8>`, `u32`, `u64`, `Option<Ie>`, etc.). The `Message` trait itself has no reason to exclude these bounds. If a future type were accidentally not `Send`, the current code would be UB with no compiler error.
+
+**Proposed change:** Add `Send + Sync` as supertraits on `Message`, and update `parse()` return type.
+
+```rust
+// Before
+pub trait Message { ... }
+pub fn parse(data: &[u8]) -> Result<Box<dyn Message>, PfcpError>
+
+// After
+pub trait Message: Send + Sync { ... }
+pub fn parse(data: &[u8]) -> Result<Box<dyn Message + Send + Sync>, PfcpError>
+```
+
+**Backward compatibility:** Technically breaking — any external type implementing `Message` must now be `Send + Sync`. In practice, all implementations in the wild are almost certainly already `Send + Sync`. The unsafe workaround in picoup-rust is evidence that this is a real gap, not a theoretical one.
+
+---
+
+### Friction Point 8: `CreateQer` missing `qfi` field (IE Type 124)
+
+The `Qfi` struct and `IeType::Qfi` already exist in rs-pfcp. However `CreateQer` does not expose a `qfi` field, so callers cannot set the QoS Flow Identifier for a QER. picoup-rust is hardcoding QFI=9:
+
+```rust
+// converter.rs
+// Extract QFI (default to 9 as CreateQer doesn't have QFI field in rs-pfcp)
+let qfi = QFI::new(9).ok_or_else(|| anyhow!("Invalid default QFI"))?;
+```
+
+Without QFI, a UPF cannot map QERs to specific 5G QoS flows, which is required for QFI-based traffic prioritization (e.g., real-time vs. best-effort queues). This is specified in 3GPP TS 29.244 Table 7.5.4.3-1.
+
+**Proposed change:** Add `qfi: Option<Qfi>` to `CreateQer` and expose it in `CreateQerBuilder`.
+
+```rust
+// CreateQer struct addition
+pub struct CreateQer {
+    pub qer_id: QerId,
+    pub qer_correlation_id: Option<QerCorrelationId>,
+    pub gate_status: Option<GateStatus>,
+    pub mbr: Option<Mbr>,
+    pub gbr: Option<Gbr>,
+    pub qfi: Option<Qfi>,       // NEW — IE Type 124
+}
+
+// CreateQerBuilder addition
+impl CreateQerBuilder {
+    pub fn qfi(self, qfi: Qfi) -> Self { ... }
+}
+```
+
+**Backward compatibility:** Additive struct field (default `None`). Existing marshal/unmarshal is unaffected unless the field is set. Tests need updating for new round-trip coverage.
+
+---
+
+### Friction Point 9: `CreateUrr` missing `volume_quota`, `time_quota`, `measurement_period`
+
+All three IE types and their structs already exist in rs-pfcp (`VolumeQuota`, `TimeQuota`, `MeasurementPeriod`) but are not wired into `CreateUrr`. picoup-rust has placeholder comments:
+
+```rust
+// Note: rs-pfcp doesn't have volume_quota in CreateURR
+let volume_quota = None; // Placeholder — would come from different IE
+
+// Note: rs-pfcp doesn't have time_quota in CreateURR
+let time_quota = None; // Placeholder
+```
+
+Impact:
+- **`volume_quota` (IE Type 73):** Hard volume cap — UPF drops packets after exhaustion. Without it, only soft thresholds (report and continue) are possible.
+- **`time_quota` (IE Type 74):** Hard time cap — required for time-limited prepaid sessions.
+- **`measurement_period` (IE Type 64):** Configures the periodic reporting interval. Currently the SMF cannot set this via PFCP even though picoup-rust supports periodic reporting internally.
+
+All three are listed in 3GPP TS 29.244 Table 7.5.2.6-1 as optional IEs within Create URR.
+
+**Proposed change:** Add all three to `CreateUrr` struct and `CreateUrrBuilder`.
+
+```rust
+// CreateUrr struct additions
+pub struct CreateUrr {
+    // existing fields...
+    pub volume_quota: Option<VolumeQuota>,          // NEW — IE Type 73
+    pub time_quota: Option<TimeQuota>,              // NEW — IE Type 74
+    pub measurement_period: Option<MeasurementPeriod>, // NEW — IE Type 64
+}
+
+// CreateUrrBuilder additions
+impl CreateUrrBuilder {
+    pub fn volume_quota(self, quota: VolumeQuota) -> Self { ... }
+    pub fn time_quota(self, quota: TimeQuota) -> Self { ... }
+    pub fn measurement_period(self, period: MeasurementPeriod) -> Self { ... }
+
+    // Convenience: accept raw values instead of structs
+    pub fn volume_quota_bytes(self, total: u64) -> Self { ... }
+    pub fn time_quota_seconds(self, seconds: u32) -> Self { ... }
+    pub fn measurement_period_seconds(self, seconds: u32) -> Self { ... }
+}
+```
+
+**Backward compatibility:** Additive struct fields (default `None`). All existing call sites compile unchanged.
+
+---
+
 ## Implementation Sequence
 
 Implement in this order:
 
-1. **`SessionModificationResponseBuilder`** (Change 1)
-   Highest impact: 10-arg positional constructor + 2 sites of manual cause wrapping. Straightforward to implement; the response struct is well-defined.
+1. **`Message: Send + Sync` bounds + `parse()` return type** (Friction 7)
+   Eliminates unsafe code in picoup-rust. All 25 concrete types already satisfy the bounds so this is mechanical. Breaking change — do this first to isolate it in a minor version bump.
 
-2. **`SessionDeletionResponseBuilder`** (Change 2)
-   Same rationale as above. The 13-arg constructor is the worst offender in the codebase.
+2. **`CreateQer::qfi` field + builder method** (Friction 8)
+   Additive, self-contained. The `Qfi` type already exists. One struct field, one builder method, marshal/unmarshal update, new tests.
 
-3. **`AssociationReleaseResponseBuilder`** (Change 3)
-   Completes the association message family. Small scope; the association builder pattern is already established so this is mostly pattern-matching.
+3. **`CreateUrr` missing quotas + period** (Friction 9)
+   Additive. Three fields, three builder methods plus convenience variants. The IE types all exist. More test surface but straightforward.
 
-4. **`HeartbeatResponseBuilder`** (Change 6)
-   Small scope, fixes an obvious asymmetry with `HeartbeatRequestBuilder`. Good developer experience signal.
+4. **`SessionModificationResponseBuilder`** (Change 1)
+   Highest impact among builder changes: 10-arg positional constructor + 2 sites of manual cause wrapping.
 
-5. **`.marshal()` terminal on `SessionEstablishmentResponseBuilder`** (Change 5)
-   Requires touching an existing builder. Do this after adding the new builders so the pattern is well-established and the change is clearly motivated.
+5. **`SessionDeletionResponseBuilder`** (Change 2)
+   Same rationale. The 13-arg constructor is the worst offender.
 
-6. **Single-item add methods on `SessionEstablishmentRequestBuilder`** (Change 4)
-   Last because it requires typed parameters (`CreatePdr`, `CreateFar`, etc.) which means the add methods have a dependency on the grouped IE structs being stable. Also, the current batch API works — this is a convenience improvement, not a pain elimination.
+6. **`AssociationReleaseResponseBuilder`** (Change 3)
+   Completes the association message family. Small scope.
+
+7. **`HeartbeatResponseBuilder`** (Change 6)
+   Fixes an obvious asymmetry with `HeartbeatRequestBuilder`.
+
+8. **`.marshal()` terminal on `SessionEstablishmentResponseBuilder`** (Change 5)
+   Requires touching an existing builder. Do after new builders establish the pattern.
+
+9. **Single-item add methods on `SessionEstablishmentRequestBuilder`** (Change 4)
+   Convenience improvement. Do last — current batch API works.
 
 ---
 
