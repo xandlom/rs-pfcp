@@ -105,19 +105,14 @@ pub fn execute_comparison(
 
     // Generate diff if requested
     let diff = if options.generate_diff {
-        let result = ComparisonResult {
-            left_type: left.msg_type(),
-            right_type: right.msg_type(),
-            is_match,
-            header_match: header_match.clone(),
-            ie_matches: ie_matches.clone(),
-            ie_mismatches: ie_mismatches.clone(),
-            left_only_ies: left_only_ies.clone(),
-            right_only_ies: right_only_ies.clone(),
-            diff: None,
-            stats: stats.clone(),
-        };
-        Some(MessageDiff::from_result(&result))
+        Some(MessageDiff::from_parts(
+            left.msg_type(),
+            right.msg_type(),
+            header_match,
+            &ie_mismatches,
+            &left_only_ies,
+            &right_only_ies,
+        ))
     } else {
         None
     };

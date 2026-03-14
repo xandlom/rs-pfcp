@@ -13,7 +13,7 @@ pub struct UserId {
 }
 
 /// User ID type values as defined in 3GPP TS 29.244.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum UserIdType {
     /// IMSI (International Mobile Subscriber Identity)
@@ -113,7 +113,9 @@ impl UserId {
     pub fn as_string(&self) -> Option<String> {
         match self.user_id_type {
             UserIdType::Nai | UserIdType::Supi | UserIdType::Gpsi => {
-                String::from_utf8(self.user_id_value.clone()).ok()
+                std::str::from_utf8(&self.user_id_value)
+                    .map(|s| s.to_string())
+                    .ok()
             }
             _ => None,
         }
@@ -132,7 +134,7 @@ impl UserId {
     /// Marshals the User ID into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
         let mut data = Vec::new();
-        data.push(u8::from(self.user_id_type.clone()));
+        data.push(u8::from(self.user_id_type));
         data.extend_from_slice(&self.user_id_value);
         data
     }

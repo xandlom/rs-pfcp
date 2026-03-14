@@ -1323,13 +1323,15 @@ impl Ie {
     }
 
     pub fn as_string(&self) -> Result<String, PfcpError> {
-        String::from_utf8(self.payload.clone()).map_err(|e| {
-            PfcpError::invalid_value(
-                "IE payload",
-                format!("{:?}", self.ie_type),
-                format!("Invalid UTF-8: {}", e),
-            )
-        })
+        std::str::from_utf8(&self.payload)
+            .map(|s| s.to_string())
+            .map_err(|e| {
+                PfcpError::invalid_value(
+                    "IE payload",
+                    format!("{:?}", self.ie_type),
+                    format!("Invalid UTF-8: {}", e),
+                )
+            })
     }
 
     pub fn as_ies(&mut self) -> Result<&[Ie], PfcpError> {

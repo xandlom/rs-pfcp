@@ -52,32 +52,54 @@ impl MessageDiff {
     /// Converts a `ComparisonResult` into a `MessageDiff` by extracting
     /// all mismatches and formatting them as differences.
     pub fn from_result(result: &super::result::ComparisonResult) -> Self {
-        let mut diff = Self::new(result.left_type, result.right_type);
+        Self::from_parts(
+            result.left_type,
+            result.right_type,
+            result.header_match,
+            &result.ie_mismatches,
+            &result.left_only_ies,
+            &result.right_only_ies,
+        )
+    }
+
+    /// Create diff from individual comparison components.
+    ///
+    /// Used internally to build a diff without requiring a fully constructed
+    /// `ComparisonResult`, avoiding unnecessary clones.
+    pub(super) fn from_parts(
+        left_type: MsgType,
+        right_type: MsgType,
+        header_match: super::result::HeaderMatch,
+        ie_mismatches: &[super::result::IeMismatch],
+        left_only_ies: &[crate::ie::IeType],
+        right_only_ies: &[crate::ie::IeType],
+    ) -> Self {
+        let mut diff = Self::new(left_type, right_type);
 
         // Add header differences
-        if !result.header_match.is_complete_match() {
-            if !result.header_match.message_type_match {
+        if !header_match.is_complete_match() {
+            if !header_match.message_type_match {
                 diff.differences.push(Difference::HeaderField {
                     field: HeaderField::MessageType,
-                    left_value: format!("{:?}", result.left_type),
-                    right_value: format!("{:?}", result.right_type),
+                    left_value: format!("{:?}", left_type),
+                    right_value: format!("{:?}", right_type),
                 });
             }
-            if result.header_match.sequence_match == Some(false) {
+            if header_match.sequence_match == Some(false) {
                 diff.differences.push(Difference::HeaderField {
                     field: HeaderField::Sequence,
                     left_value: "differs".to_string(),
                     right_value: "differs".to_string(),
                 });
             }
-            if result.header_match.seid_match == Some(false) {
+            if header_match.seid_match == Some(false) {
                 diff.differences.push(Difference::HeaderField {
                     field: HeaderField::Seid,
                     left_value: "differs".to_string(),
                     right_value: "differs".to_string(),
                 });
             }
-            if result.header_match.priority_match == Some(false) {
+            if header_match.priority_match == Some(false) {
                 diff.differences.push(Difference::HeaderField {
                     field: HeaderField::Priority,
                     left_value: "differs".to_string(),
@@ -87,7 +109,7 @@ impl MessageDiff {
         }
 
         // Add IE mismatches
-        for mismatch in &result.ie_mismatches {
+        for mismatch in ie_mismatches {
             match &mismatch.reason {
                 super::result::MismatchReason::ValueMismatch => {
                     let left_hex = mismatch
@@ -137,7 +159,7 @@ impl MessageDiff {
         }
 
         // Add left-only IEs
-        for ie_type in &result.left_only_ies {
+        for ie_type in left_only_ies {
             diff.differences.push(Difference::LeftOnly {
                 ie_type: *ie_type,
                 context: vec![],
@@ -145,7 +167,7 @@ impl MessageDiff {
         }
 
         // Add right-only IEs
-        for ie_type in &result.right_only_ies {
+        for ie_type in right_only_ies {
             diff.differences.push(Difference::RightOnly {
                 ie_type: *ie_type,
                 context: vec![],

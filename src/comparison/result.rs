@@ -194,7 +194,7 @@ impl ComparisonResult {
 /// Header comparison result.
 ///
 /// Indicates which header fields matched and which didn't.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct HeaderMatch {
     /// Message type match status (always checked)
     pub message_type_match: bool,
@@ -363,7 +363,7 @@ impl std::fmt::Display for MismatchReason {
 /// Statistics about the comparison.
 ///
 /// Tracks how many IEs were compared and what the outcomes were.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct ComparisonStats {
     /// Total number of IEs compared
     pub total_ies_compared: usize,

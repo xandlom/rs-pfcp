@@ -57,8 +57,9 @@ impl OverloadControlInformation {
         let mut offset = 0;
         while offset < payload.len() {
             let ie = Ie::unmarshal(&payload[offset..])?;
-            ies.push(ie.clone());
-            offset += ie.len() as usize;
+            let ie_len = ie.len() as usize;
+            ies.push(ie);
+            offset += ie_len;
         }
 
         let sequence_number = ies
