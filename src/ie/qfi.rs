@@ -29,7 +29,7 @@ const QFI_MAX: u8 = 63;
 /// use rs_pfcp::ie::qfi::Qfi;
 ///
 /// // Create QFI for a specific QoS flow
-/// let qfi = Qfi::new(5).unwrap();
+/// let qfi = Qfi::of(5); // const-friendly, no .unwrap() needed
 /// assert_eq!(qfi.value(), 5);
 ///
 /// // Validate QFI range
@@ -48,10 +48,29 @@ pub struct Qfi {
 }
 
 impl Qfi {
-    /// Create a new QFI
+    /// Create a QFI from a literal value known to be in range at compile time.
     ///
-    /// # Arguments
-    /// * `value` - QFI value (must be 0-63)
+    /// Panics at compile time (for `const` contexts) or at runtime if `value > 63`.
+    /// Prefer this over `new()` when the value is a constant.
+    ///
+    /// # Panics
+    /// Panics if `value > 63`.
+    ///
+    /// # Example
+    /// ```
+    /// use rs_pfcp::ie::qfi::Qfi;
+    ///
+    /// let qfi = Qfi::of(9); // no .unwrap() needed
+    /// assert_eq!(qfi.value(), 9);
+    /// ```
+    pub const fn of(value: u8) -> Self {
+        assert!(value <= QFI_MAX, "QFI value must be in range 0-63");
+        Qfi { qfi: value }
+    }
+
+    /// Create a new QFI, returning an error if the value exceeds 63.
+    ///
+    /// Use [`Qfi::of`] instead when the value is a known constant.
     ///
     /// # Errors
     /// Returns error if value > 63 (exceeds 6-bit range)

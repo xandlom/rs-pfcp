@@ -45,6 +45,7 @@ use rs_pfcp::ie::{
     pdr_id::PdrId,
     precedence::Precedence,
     qer_id::QerId,
+    qfi::Qfi,
     report_type::ReportType,
     ue_ip_address::UeIpAddress,
     update_far::UpdateFarBuilder,
@@ -234,10 +235,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             .build()
             .unwrap();
 
-        // Create QER for traffic control with rate limiting
+        // Create QER for traffic control with rate limiting and QFI for 5G QoS flow mapping
         let qer = CreateQerBuilder::new(QerId::new(1))
             .rate_limit(10_000_000, 50_000_000) // 10Mbps up, 50Mbps down
             .guaranteed_rate(1_000_000, 5_000_000) // 1Mbps up, 5Mbps down guaranteed
+            .qfi(Qfi::of(9)) // Map to 5G QoS Flow 9
             .build()
             .unwrap();
 
@@ -415,13 +417,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .unwrap();
             println!("✅ SGi-LAN PDI created for enterprise scenarios");
 
-            // Example 5: Complex QER with both rate limiting and guaranteed rates
+            // Example 5: Complex QER with rate limiting, guaranteed rates, and QFI (5G)
+            // QFI (QoS Flow Identifier) maps a QER to a specific 5G QoS flow per
+            // 3GPP TS 29.244 Table 7.5.4.3-1 (IE Type 124, 6-bit value 1–63)
             let _premium_qer = CreateQerBuilder::new(QerId::new(300))
                 .rate_limit(100_000_000, 500_000_000) // 100Mbps up, 500Mbps down
                 .guaranteed_rate(50_000_000, 250_000_000) // 50% guaranteed
+                .qfi(Qfi::of(5)) // Map to 5G QoS Flow 5 (e.g. GBR video)
                 .build()
                 .unwrap();
-            println!("✅ Premium QER created with guaranteed bandwidth");
+            println!("✅ Premium QER created with guaranteed bandwidth and QFI=5 (5G QoS flow)");
 
             // Example 6: UpdateFar to modify existing forwarding behavior
             let _update_far_dest = UpdateFarBuilder::new(FarId::new(1))
@@ -495,7 +500,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("   • F-TEID Builder: Explicit IPs and CHOOSE flag handling");
     println!("   • PDI Builder: Common packet detection patterns");
     println!("   • CreatePdr Builder: Packet Detection Rules with validation");
-    println!("   • CreateQer Builder: QoS enforcement with rate limiting");
+    println!("   • CreateQer Builder: QoS enforcement with rate limiting and QFI (5G QoS flows)");
     println!("   • CreateFar Builder: Traffic forwarding with validation");
     println!("   • Advanced scenarios: Buffering, network instances, dual-stack");
     println!("   • v0.2.3 IntoIe tuples: (teid, ip).into_ie() for ergonomic IE creation");
