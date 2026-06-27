@@ -19,12 +19,11 @@ pub struct SessionModificationResponse {
     pub partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
     pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 126 - Additional Usage Reports Information - When Query URR present/QAURR flag set and more reports to follow
     pub created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 128 - Created/Updated Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
-    // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
-    // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
+    // TODO: [IE Type 200] TSC Management Information (Modification Response) - no file yet (200=TscManagementInformationWithinSessionModificationResponse) [TODO said 266]
+    // TODO: [IE Type 221] ATSSS Control Parameters - no file yet (221=AtsssControlParameters) [TODO said 186]
     pub updated_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 256 - Updated PDR - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
-    // TODO: [IE Type 264] Packet Rate Status Report - C - Multiple instances, Grouped IE (Sxb/N4 only) - Immediate packet rate status if requested
-    // TODO: [IE Type 272] Partial Failure Information - C - Multiple instances, Grouped IE - When cause indicates partial acceptance
-    // TODO: [IE Type 299] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Per clause 5.34.1
+    // TODO: [IE Type 264] Packet Rate Status Report (Modification Response) - no file yet (264=PacketRateStatusReportWithinSessionModificationResponse)
+    // TODO: [IE Type 311] MBS Session N4 Information - no file yet (311=MbsSessionN4Information) [TODO said 299]
     pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.5.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }

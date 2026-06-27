@@ -21,11 +21,11 @@ pub struct SessionEstablishmentResponse {
     created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 128 - Created Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
     fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 65 - Multiple instances - PGW-U/SGW-U/UPF FQ-CSID (Sxa/Sxb/N4 only, not Sxc/N4mb)
     created_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 195 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 205]
-    // TODO: [IE Type 221] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required [TODO said 186]
-    // TODO: [IE Type 268] RDS configuration information - O - (Sxb/N4 only, not Sxa/Sxc/N4mb) - RDS configuration UP supports
-    // TODO: [IE Type 279] Created L2TP Session - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.3.1-3
-    // TODO: [IE Type 317] MBS Session N4mb Information - C - Grouped IE (N4mb only) - When any child IE needed
-    // TODO: [IE Type 311] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only) - Per clause 5.34.1 [TODO said 299]
+    // TODO: [IE Type 221] ATSSS Control Parameters - no file yet (221=AtsssControlParameters) [TODO said 186]
+    // TODO: [IE Type 262] RDS configuration information - no file yet (262=RdsConfigurationInformation) [TODO said 268]
+    // TODO: [IE Type 279] Created L2TP Session - no file yet (279=CreatedL2tpSession)
+    // TODO: [IE Type 303] MBS Session N4mb Information - no file yet (303=MbsSessionN4mbInformation) [TODO said 317]
+    // TODO: [IE Type 311] MBS Session N4 Information - no file yet (311=MbsSessionN4Information) [TODO said 299]
     tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 336 - Multiple instances (N4 only) - From UPF/CN-TL to SMF/CUC in response
     pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.3.1-1 - May be legacy/vendor-specific
     ies: Vec<Ie>,

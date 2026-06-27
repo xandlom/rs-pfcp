@@ -33,17 +33,17 @@ pub struct SessionEstablishmentRequest {
     pub recovery_time_stamp: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 96 - CP function start time (not N4mb)
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
     pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO (N4 only) [TODO said 242]
-    // TODO: [IE Type 181] Provide RDS configuration information - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb)
+    // TODO: [IE Type 261] Provide RDS configuration information - no file yet (261=ProvideRdsConfigurationInformation) [TODO said 181]
     pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 275 - RAT Type - Current RAT type for statistics (not N4mb, not for MA PDU)
     // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
     // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
     pub group_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 291 - Group identifier (Sxb/N4 only) [TODO said 297]
-    // TODO: [IE Type 326] MBS Session N4mb Control Information - M - Grouped IE (N4mb only) - Identifies MBS session/Area Session ID
+    // TODO: [IE Type 300] MBS Session N4mb Control Information - no file yet (300=MbsSessionN4mbControlInformation) [TODO said 326]
     // TODO: [IE Type 310] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only) - Associate PDU with MBS [TODO said 296]
     pub dscp_to_ppi_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 316 - Grouped IE (N4 only) [TODO said 291]
     pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
-    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - For streaming trace reporting (309 is MbsUnicastParametersId - check spec)
-    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement config (330 is MpquicControlInformation - check spec)
+    // TODO: [IE Type 309] TraceCollectionEntityUri not in enum yet (309=MbsUnicastParametersId - check spec)
+    pub ue_level_measurements_configuration: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 353 - UE Level Measurements Configuration (N4 only) [TODO said 330]
     pub cp_function_features: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.2.1-1 - May be legacy/vendor-specific
     pub ethernet_pdu_session_information: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.2.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
@@ -130,6 +130,9 @@ impl Message for SessionEstablishmentRequest {
         for ie in &self.tl_containers {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.ue_level_measurements_configuration {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -208,6 +211,9 @@ impl Message for SessionEstablishmentRequest {
         for ie in &self.tl_containers {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.ue_level_measurements_configuration {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -241,6 +247,7 @@ impl Message for SessionEstablishmentRequest {
         let mut group_id = None;
         let mut dscp_to_ppi_control_information = None;
         let mut tl_containers = Vec::new();
+        let mut ue_level_measurements_configuration = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -275,6 +282,9 @@ impl Message for SessionEstablishmentRequest {
                 IeType::GroupId => group_id = Some(ie),
                 IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
                 IeType::TlContainer => tl_containers.push(ie),
+                IeType::UeLevelMeasurementsConfiguration => {
+                    ue_level_measurements_configuration = Some(ie)
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -330,6 +340,7 @@ impl Message for SessionEstablishmentRequest {
             group_id,
             dscp_to_ppi_control_information,
             tl_containers,
+            ue_level_measurements_configuration,
             ies,
         })
     }
@@ -395,6 +406,9 @@ impl Message for SessionEstablishmentRequest {
                 IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
             }
             IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
+            IeType::UeLevelMeasurementsConfiguration => {
+                IeIter::single(self.ue_level_measurements_configuration.as_ref(), ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -454,6 +468,9 @@ impl Message for SessionEstablishmentRequest {
             result.push(ie);
         }
         result.extend(self.tl_containers.iter());
+        if let Some(ref ie) = self.ue_level_measurements_configuration {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -488,6 +505,7 @@ pub struct SessionEstablishmentRequestBuilder {
     group_id: Option<Ie>,
     dscp_to_ppi_control_information: Option<Ie>,
     tl_containers: Vec<Ie>,
+    ue_level_measurements_configuration: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -521,6 +539,7 @@ impl SessionEstablishmentRequestBuilder {
             group_id: None,
             dscp_to_ppi_control_information: None,
             tl_containers: Vec::new(),
+            ue_level_measurements_configuration: None,
             ies: Vec::new(),
         }
     }
@@ -819,6 +838,11 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn ue_level_measurements_configuration(mut self, ie: Ie) -> Self {
+        self.ue_level_measurements_configuration = Some(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -920,6 +944,9 @@ impl SessionEstablishmentRequestBuilder {
         for ie in &self.tl_containers {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.ue_level_measurements_configuration {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -958,6 +985,7 @@ impl SessionEstablishmentRequestBuilder {
             group_id: self.group_id,
             dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
             tl_containers: self.tl_containers,
+            ue_level_measurements_configuration: self.ue_level_measurements_configuration,
             ies: self.ies,
         })
     }
@@ -1814,5 +1842,30 @@ mod tests {
         assert!(parsed.group_id.is_some());
         assert!(parsed.dscp_to_ppi_control_information.is_some());
         assert_eq!(parsed.tl_containers.len(), 1);
+    }
+
+    #[test]
+    fn test_ue_level_measurements_configuration_roundtrip() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let ulmc_ie = Ie::new(IeType::UeLevelMeasurementsConfiguration, vec![0x01, 0x02]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xABCDEF, 100)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x1234, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .ue_level_measurements_configuration(ulmc_ie.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.ue_level_measurements_configuration, Some(ulmc_ie));
+
+        let bytes = msg.marshal();
+        let parsed = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
+        assert!(parsed.ue_level_measurements_configuration.is_some());
+        assert_eq!(
+            msg.ue_level_measurements_configuration,
+            parsed.ue_level_measurements_configuration
+        );
     }
 }

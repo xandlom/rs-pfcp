@@ -89,6 +89,7 @@ fn create_session_request(
         group_id: None,
         dscp_to_ppi_control_information: None,
         tl_containers: vec![],
+        ue_level_measurements_configuration: None,
         ies: vec![],
     }
 }

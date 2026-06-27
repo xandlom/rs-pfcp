@@ -161,6 +161,7 @@ fn test_session_establishment_happy_path_with_all_mandatory_ies() {
         group_id: None,
         dscp_to_ppi_control_information: None,
         tl_containers: vec![],
+        ue_level_measurements_configuration: None,
         ies: vec![],
     };
 
@@ -537,6 +538,7 @@ fn test_session_establishment_multiple_pdrs_fars() {
         group_id: None,
         dscp_to_ppi_control_information: None,
         tl_containers: vec![],
+        ue_level_measurements_configuration: None,
         ies: vec![],
     };
 
