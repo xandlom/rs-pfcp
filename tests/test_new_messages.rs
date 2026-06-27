@@ -32,6 +32,7 @@ fn test_all_new_pfcp_messages() {
         None,
         None,
         Vec::new(),
+        Vec::new(),
     );
     let marshaled = msg1.marshal();
     let parsed = parse(&marshaled).unwrap();

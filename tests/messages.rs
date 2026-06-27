@@ -803,6 +803,7 @@ fn test_association_update_response_marshal_unmarshal() {
         Some(up_features_ie),
         None,
         Vec::new(),
+        Vec::new(),
     );
 
     let marshaled = response.marshal();
@@ -860,8 +861,15 @@ fn test_association_update_response_parse_integration() {
     let node_id_ie = Ie::new(IeType::NodeId, node_id_payload);
     let cause_ie = Ie::new(IeType::Cause, vec![0x01]); // RequestAccepted
 
-    let response =
-        AssociationUpdateResponse::new(0xABCDEF, node_id_ie, cause_ie, None, None, Vec::new());
+    let response = AssociationUpdateResponse::new(
+        0xABCDEF,
+        node_id_ie,
+        cause_ie,
+        None,
+        None,
+        Vec::new(),
+        Vec::new(),
+    );
     let marshaled = response.marshal();
 
     // Parse it back using the generic parse function

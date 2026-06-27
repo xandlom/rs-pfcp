@@ -14,7 +14,7 @@ pub struct AssociationUpdateResponse {
     pub cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 19
     pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 43
     pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 89
-    // TODO: [IE Type 267] UE IP Address Usage Information - O - Multiple instances, Grouped IE with 7 child IEs, see Table 7.4.4.3.1-1 (Sxb/N4 only)
+    pub ue_ip_address_usage_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 267 - Multiple instances, Grouped IE (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 
@@ -26,6 +26,7 @@ impl AssociationUpdateResponse {
         cause: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
+        ue_ip_address_usage_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len() + cause.len();
@@ -33,6 +34,9 @@ impl AssociationUpdateResponse {
             payload_len += ie.len();
         }
         if let Some(ref ie) = cp_function_features {
+            payload_len += ie.len();
+        }
+        for ie in &ue_ip_address_usage_information {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -48,6 +52,7 @@ impl AssociationUpdateResponse {
             cause,
             up_function_features,
             cp_function_features,
+            ue_ip_address_usage_information,
             ies,
         }
     }
@@ -75,6 +80,9 @@ impl Message for AssociationUpdateResponse {
         if let Some(ref ie) = self.cp_function_features {
             ie.marshal_into(buf);
         }
+        for ie in &self.ue_ip_address_usage_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -88,6 +96,9 @@ impl Message for AssociationUpdateResponse {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ue_ip_address_usage_information {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -105,6 +116,7 @@ impl Message for AssociationUpdateResponse {
         let mut cause = None;
         let mut up_function_features = None;
         let mut cp_function_features = None;
+        let mut ue_ip_address_usage_information = Vec::new();
         let mut ies = Vec::new();
 
         let mut cursor = header.len() as usize;
@@ -116,6 +128,7 @@ impl Message for AssociationUpdateResponse {
                 IeType::Cause => cause = Some(ie),
                 IeType::UpFunctionFeatures => up_function_features = Some(ie),
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
+                IeType::UeIpAddressUsageInformation => ue_ip_address_usage_information.push(ie),
                 _ => ies.push(ie),
             }
             cursor += ie_len;
@@ -138,6 +151,7 @@ impl Message for AssociationUpdateResponse {
             cause,
             up_function_features,
             cp_function_features,
+            ue_ip_address_usage_information,
             ies,
         })
     }
@@ -170,6 +184,9 @@ impl Message for AssociationUpdateResponse {
             IeType::CpFunctionFeatures => {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
+            IeType::UeIpAddressUsageInformation => {
+                IeIter::multiple(&self.ue_ip_address_usage_information, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -182,6 +199,7 @@ impl Message for AssociationUpdateResponse {
         if let Some(ref ie) = self.cp_function_features {
             result.push(ie);
         }
+        result.extend(self.ue_ip_address_usage_information.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -207,8 +225,15 @@ mod tests {
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
         );
 
-        let original =
-            AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None, Vec::new());
+        let original = AssociationUpdateResponse::new(
+            123,
+            node_id_ie,
+            cause_ie,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+        );
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
 
@@ -254,6 +279,7 @@ mod tests {
             Some(up_features_ie),
             Some(cp_features_ie),
             Vec::new(),
+            Vec::new(),
         );
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
@@ -285,8 +311,15 @@ mod tests {
             Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
         );
 
-        let message =
-            AssociationUpdateResponse::new(123, node_id_ie, cause_ie, None, None, Vec::new());
+        let message = AssociationUpdateResponse::new(
+            123,
+            node_id_ie,
+            cause_ie,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+        );
 
         assert!(message.ies(IeType::NodeId).next().is_some());
         assert!(message.ies(IeType::Cause).next().is_some());
@@ -303,6 +336,7 @@ pub struct AssociationUpdateResponseBuilder {
     cause: Option<Ie>,
     up_function_features: Option<Ie>,
     cp_function_features: Option<Ie>,
+    ue_ip_address_usage_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -315,6 +349,7 @@ impl AssociationUpdateResponseBuilder {
             cause: None,
             up_function_features: None,
             cp_function_features: None,
+            ue_ip_address_usage_information: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -393,6 +428,12 @@ impl AssociationUpdateResponseBuilder {
         self
     }
 
+    /// Adds a UE IP Address Usage Information IE (optional, multiple allowed, Sxb/N4 only).
+    pub fn ue_ip_address_usage_information(mut self, ie: Ie) -> Self {
+        self.ue_ip_address_usage_information.push(ie);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -423,6 +464,7 @@ impl AssociationUpdateResponseBuilder {
             cause,
             self.up_function_features,
             self.cp_function_features,
+            self.ue_ip_address_usage_information,
             self.ies,
         )
     }
@@ -445,6 +487,7 @@ impl AssociationUpdateResponseBuilder {
             cause,
             self.up_function_features,
             self.cp_function_features,
+            self.ue_ip_address_usage_information,
             self.ies,
         ))
     }
@@ -696,6 +739,29 @@ mod builder_tests {
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
 
+        assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_association_update_response_ue_ip_usage_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+        let cause_ie = Ie::new(
+            IeType::Cause,
+            Cause::new(CauseValue::RequestAccepted).marshal().to_vec(),
+        );
+        let ue_usage_ie = Ie::new(IeType::UeIpAddressUsageInformation, vec![0x01, 0x02, 0x03]);
+
+        let original = AssociationUpdateResponseBuilder::new(11111)
+            .node_id(node_id_ie)
+            .cause_ie(cause_ie)
+            .ue_ip_address_usage_information(ue_usage_ie)
+            .build();
+
+        assert_eq!(original.ue_ip_address_usage_information.len(), 1);
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationUpdateResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(original, unmarshaled);
     }
 }

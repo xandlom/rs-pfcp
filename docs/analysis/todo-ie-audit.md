@@ -22,6 +22,9 @@ Several TODO comments have incorrect IE type numbers. The table below shows what
 | `session_modification_request.rs` | 297 | Group Id | **291** |
 | `session_modification_response.rs` | 299 | MBS Session N4 Information | **311** |
 | `session_establishment_response.rs` | 299 | MBS Session N4 Information | **311** |
+| `session_establishment_request.rs` | 204 | Create Bridge Info For TSC | **194** |
+| `session_establishment_request.rs` | 291 | DSCP to PPI Control Information | **316** |
+| `session_modification_request.rs` | 291 | DSCP to PPI Control Information | **316** |
 
 ## IEs ready to wire into messages (file exists, just needs message field)
 
@@ -36,7 +39,9 @@ relevant message files.
 | 187 | `UserPlanePathRecoveryReport` | `user_plane_path_recovery_report.rs` | `node_report_request` |
 | 188 | `IpMulticastAddressingInfo` | `ip_multicast_addressing_info.rs` | `session_establishment_request`, `session_modification_request` |
 | 204 | `RequestedClockDriftInformation` | `requested_clock_drift_information.rs` | `association_setup_request`, `association_update_request` |
+| 194 | `CreateBridgeInfoForTsc` | `create_bridge_info_for_tsc.rs` | `session_establishment_request` |
 | 211 | `RemoveSrr` | `remove_srr.rs` | `session_modification_request` |
+| 316 | `DscpToPpiControlInformation` | `dscp_to_ppi_control_information.rs` | `session_establishment_request`, `session_modification_request` |
 | 238 | `GtpuPathQosControlInformation` | `gtpu_path_qos_control_information.rs` | `association_setup_request`, `association_update_request` |
 | 267 | `UeIpAddressUsageInformation` | `ue_ip_address_usage_information.rs` | `association_update_request`, `association_update_response` |
 | 291 | `GroupId` | `group_id.rs` | `session_establishment_request`, `session_modification_request` |
