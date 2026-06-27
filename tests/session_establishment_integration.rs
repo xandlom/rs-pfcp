@@ -154,6 +154,7 @@ fn test_session_establishment_happy_path_with_all_mandatory_ies() {
         s_nssai: None,
         cp_function_features: None,
         ethernet_pdu_session_information: None,
+        rat_type: None,
         ies: vec![],
     };
 
@@ -523,6 +524,7 @@ fn test_session_establishment_multiple_pdrs_fars() {
         s_nssai: None,
         cp_function_features: None,
         ethernet_pdu_session_information: None,
+        rat_type: None,
         ies: vec![],
     };
 

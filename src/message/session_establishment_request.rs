@@ -38,7 +38,7 @@ pub struct SessionEstablishmentRequest {
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
     // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session, from V-SMF to V-UPF
     // TODO: [IE Type 181] Provide RDS configuration information - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb)
-    // TODO: [IE Type 275] RAT Type - O - Current RAT type for statistics (not N4mb, not for MA PDU)
+    pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 275 - RAT Type - Current RAT type for statistics (not N4mb, not for MA PDU)
     // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
     // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
     // TODO: [IE Type 297] Group Id - O - Group identifier (Sxb/N4 only, not Sxa/Sxc/N4mb) - See clause 5.22
@@ -113,6 +113,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.ethernet_pdu_session_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.rat_type {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -170,6 +173,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.ethernet_pdu_session_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.rat_type {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -196,6 +202,7 @@ impl Message for SessionEstablishmentRequest {
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
         let mut ethernet_pdu_session_information = None;
+        let mut rat_type = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -223,6 +230,7 @@ impl Message for SessionEstablishmentRequest {
                 IeType::EthernetPduSessionInformation => {
                     ethernet_pdu_session_information = Some(ie)
                 }
+                IeType::RatType => rat_type = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -271,6 +279,7 @@ impl Message for SessionEstablishmentRequest {
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
             ethernet_pdu_session_information,
+            rat_type,
             ies,
         })
     }
@@ -325,6 +334,7 @@ impl Message for SessionEstablishmentRequest {
             IeType::EthernetPduSessionInformation => {
                 IeIter::single(self.ethernet_pdu_session_information.as_ref(), ie_type)
             }
+            IeType::RatType => IeIter::single(self.rat_type.as_ref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -367,6 +377,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.ethernet_pdu_session_information {
             result.push(ie);
         }
+        if let Some(ref ie) = self.rat_type {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -394,6 +407,7 @@ pub struct SessionEstablishmentRequestBuilder {
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
     ethernet_pdu_session_information: Option<Ie>,
+    rat_type: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -420,6 +434,7 @@ impl SessionEstablishmentRequestBuilder {
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
             ethernet_pdu_session_information: None,
+            rat_type: None,
             ies: Vec::new(),
         }
     }
@@ -683,6 +698,11 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn rat_type(mut self, rat_type: Ie) -> Self {
+        self.rat_type = Some(rat_type);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -763,6 +783,9 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.ethernet_pdu_session_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.rat_type {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -794,6 +817,7 @@ impl SessionEstablishmentRequestBuilder {
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
             ethernet_pdu_session_information: self.ethernet_pdu_session_information,
+            rat_type: self.rat_type,
             ies: self.ies,
         })
     }

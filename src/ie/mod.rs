@@ -181,6 +181,7 @@ pub mod query_urr;
 pub mod query_urr_reference;
 pub mod quota_holding_time;
 pub mod quota_validity_time;
+pub mod rat_type;
 pub mod recovery_time_stamp;
 pub mod redirect_information;
 pub mod remote_gtpu_peer;

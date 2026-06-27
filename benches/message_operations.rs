@@ -82,6 +82,7 @@ fn create_session_request(
         user_plane_inactivity_timer: None,
         pfcpsm_req_flags: None,
         ethernet_pdu_session_information: None,
+        rat_type: None,
         ies: vec![],
     }
 }

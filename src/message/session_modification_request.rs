@@ -53,7 +53,7 @@ pub struct SessionModificationRequest {
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
     // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session if not sent during establishment
     pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
-    // TODO: [IE Type 275] RAT Type - O - (Sxa/Sxb/N4 only, not Sxc/N4mb) - New RAT type when RAT changes (not for MA PDU)
+    pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 275 - RAT Type - New RAT type when RAT changes (not N4mb, not for MA PDU)
     // TODO: [IE Type 297] Group Id - C - (Sxb/N4 only, not Sxa/Sxc/N4mb) - New group identifier when changed, replaces previous
     // TODO: [IE Type 296] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Associate/update MBS
     // TODO: [IE Type 291] DSCP to PPI Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Replaces previous value
@@ -208,6 +208,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.ethernet_context_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.rat_type {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -346,6 +349,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.ethernet_context_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.rat_type {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -385,6 +391,7 @@ impl Message for SessionModificationRequest {
         let mut query_urrs = None;
         let mut node_id = None;
         let mut ethernet_context_information = None;
+        let mut rat_type = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -429,6 +436,7 @@ impl Message for SessionModificationRequest {
                 IeType::QueryUrr => query_urrs.get_or_insert(Vec::new()).push(ie),
                 IeType::NodeId => node_id = Some(ie),
                 IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
+                IeType::RatType => rat_type = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -467,6 +475,7 @@ impl Message for SessionModificationRequest {
             query_urrs,
             node_id,
             ethernet_context_information,
+            rat_type,
             ies,
         })
     }
@@ -565,6 +574,7 @@ impl Message for SessionModificationRequest {
             IeType::EthernetContextInformation => {
                 IeIter::single(self.ethernet_context_information.as_ref(), ie_type)
             }
+            IeType::RatType => IeIter::single(self.rat_type.as_ref(), ie_type),
             IeType::Snssai => IeIter::single(self.s_nssai.as_ref(), ie_type),
             IeType::ApnDnn => IeIter::single(self.apn_dnn.as_ref(), ie_type),
             IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
@@ -672,6 +682,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.ethernet_context_information {
             result.push(ie);
         }
+        if let Some(ref ie) = self.rat_type {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -712,6 +725,7 @@ pub struct SessionModificationRequestBuilder {
     query_urrs: Option<Vec<Ie>>,
     node_id: Option<Ie>,
     ethernet_context_information: Option<Ie>,
+    rat_type: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -751,6 +765,7 @@ impl SessionModificationRequestBuilder {
             query_urrs: None,
             node_id: None,
             ethernet_context_information: None,
+            rat_type: None,
             ies: Vec::new(),
         }
     }
@@ -1100,6 +1115,11 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn rat_type(mut self, rat_type: Ie) -> Self {
+        self.rat_type = Some(rat_type);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -1238,6 +1258,9 @@ impl SessionModificationRequestBuilder {
         if let Some(ie) = &self.ethernet_context_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.rat_type {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -1281,6 +1304,7 @@ impl SessionModificationRequestBuilder {
             query_urrs: self.query_urrs,
             node_id: self.node_id,
             ethernet_context_information: self.ethernet_context_information,
+            rat_type: self.rat_type,
             ies: self.ies,
         }
     }
