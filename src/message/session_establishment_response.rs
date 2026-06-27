@@ -18,8 +18,8 @@ pub struct SessionEstablishmentResponse {
     overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 54 - Grouped IE (during overload condition)
     failed_rule_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
     partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
+    created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 128 - Created Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
     // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
-    // TODO: [IE Type 129] Created Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
     // TODO: [IE Type 205] Created Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
     // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
     // TODO: [IE Type 268] RDS configuration information - O - (Sxb/N4 only, not Sxa/Sxc/N4mb) - RDS configuration UP supports
@@ -141,6 +141,11 @@ impl SessionEstablishmentResponse {
     pub fn overload_control_information_ie(&self) -> Option<&Ie> {
         self.overload_control_information.as_ref()
     }
+
+    /// Returns a slice of created traffic endpoint IEs.
+    pub fn created_traffic_endpoints(&self) -> &[Ie] {
+        &self.created_traffic_endpoints
+    }
 }
 
 impl Message for SessionEstablishmentResponse {
@@ -177,6 +182,9 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.partial_failure_information {
             ie.marshal_into(buf);
         }
+        for ie in &self.created_traffic_endpoints {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -208,6 +216,9 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.partial_failure_information {
             size += ie.len() as usize;
         }
+        for ie in &self.created_traffic_endpoints {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -226,6 +237,7 @@ impl Message for SessionEstablishmentResponse {
         let mut overload_control_information = None;
         let mut failed_rule_id = None;
         let mut partial_failure_information = Vec::new();
+        let mut created_traffic_endpoints = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -243,6 +255,7 @@ impl Message for SessionEstablishmentResponse {
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 IeType::FailedRuleId => failed_rule_id = Some(ie),
                 IeType::PartialFailureInformation => partial_failure_information.push(ie),
+                IeType::CreatedTrafficEndpoint => created_traffic_endpoints.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -272,6 +285,7 @@ impl Message for SessionEstablishmentResponse {
             overload_control_information,
             failed_rule_id,
             partial_failure_information,
+            created_traffic_endpoints,
             ies,
         })
     }
@@ -316,6 +330,9 @@ impl Message for SessionEstablishmentResponse {
             IeType::PartialFailureInformation => {
                 IeIter::multiple(&self.partial_failure_information, ie_type)
             }
+            IeType::CreatedTrafficEndpoint => {
+                IeIter::multiple(&self.created_traffic_endpoints, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -339,6 +356,7 @@ impl Message for SessionEstablishmentResponse {
             result.push(ie);
         }
         result.extend(self.partial_failure_information.iter());
+        result.extend(self.created_traffic_endpoints.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -358,6 +376,7 @@ pub struct SessionEstablishmentResponseBuilder {
     overload_control_information: Option<Ie>,
     failed_rule_id: Option<Ie>,
     partial_failure_information: Vec<Ie>,
+    created_traffic_endpoints: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -391,6 +410,7 @@ impl SessionEstablishmentResponseBuilder {
             overload_control_information: None,
             failed_rule_id: None,
             partial_failure_information: Vec::new(),
+            created_traffic_endpoints: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -438,6 +458,7 @@ impl SessionEstablishmentResponseBuilder {
             overload_control_information: None,
             failed_rule_id: None,
             partial_failure_information: Vec::new(),
+            created_traffic_endpoints: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -552,6 +573,11 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    pub fn created_traffic_endpoint(mut self, ie: Ie) -> Self {
+        self.created_traffic_endpoints.push(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -600,6 +626,9 @@ impl SessionEstablishmentResponseBuilder {
         for ie in &self.partial_failure_information {
             payload_len += ie.len();
         }
+        for ie in &self.created_traffic_endpoints {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -624,6 +653,7 @@ impl SessionEstablishmentResponseBuilder {
             overload_control_information: self.overload_control_information,
             failed_rule_id: self.failed_rule_id,
             partial_failure_information: self.partial_failure_information,
+            created_traffic_endpoints: self.created_traffic_endpoints,
             ies: self.ies,
         })
     }
