@@ -572,6 +572,25 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    /// Adds a single BAR, converting it to an IE internally.
+    ///
+    /// Avoids constructing an intermediate `vec![bar.to_ie()]`.
+    pub fn add_bar(mut self, bar: crate::ie::create_bar::CreateBar) -> Self {
+        self.create_bars.push(bar.to_ie());
+        self
+    }
+
+    /// Adds a single traffic endpoint, converting it to an IE internally.
+    ///
+    /// Avoids constructing an intermediate `vec![te.to_ie()]`.
+    pub fn add_traffic_endpoint(
+        mut self,
+        te: crate::ie::create_traffic_endpoint::CreateTrafficEndpoint,
+    ) -> Self {
+        self.create_traffic_endpoints.push(te.to_ie());
+        self
+    }
+
     pub fn create_bars(mut self, create_bars: Vec<Ie>) -> Self {
         self.create_bars = create_bars;
         self
@@ -1532,5 +1551,64 @@ mod tests {
         assert_eq!(msg.create_urrs.len(), 0);
         assert_eq!(msg.create_qers.len(), 0);
         assert_eq!(msg.create_bars.len(), 0);
+    }
+
+    #[test]
+    fn test_add_bar_typed() {
+        use crate::ie::bar_id::BarId;
+        use crate::ie::create_bar::CreateBar;
+
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let bar = CreateBar::new(BarId::new(1), None);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xAAAA, 2200)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xBBBB, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .add_bar(bar)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_bars.len(), 1);
+    }
+
+    #[test]
+    fn test_add_traffic_endpoint_typed() {
+        use crate::ie::create_traffic_endpoint::{CreateTrafficEndpoint, TrafficEndpointId};
+
+        let (pdrs, fars) = create_minimal_pdr_far();
+        let te = CreateTrafficEndpoint::new(TrafficEndpointId::new(1));
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xCCCC, 2300)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xDDDD, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .add_traffic_endpoint(te)
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_traffic_endpoints.len(), 1);
+    }
+
+    #[test]
+    fn test_add_bar_multiple_accumulates() {
+        use crate::ie::bar_id::BarId;
+        use crate::ie::create_bar::CreateBar;
+
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xEEEE, 2400)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0xFFFF, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .add_bar(CreateBar::new(BarId::new(1), None))
+            .add_bar(CreateBar::new(BarId::new(2), None))
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_bars.len(), 2);
     }
 }
