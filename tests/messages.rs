@@ -386,6 +386,7 @@ fn test_session_modification_response_marshal_unmarshal() {
         pdn_type: None,
         usage_reports: vec![],
         failed_rule_id: None,
+        partial_failure_information: vec![],
         ies: vec![],
     };
 

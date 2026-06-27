@@ -16,6 +16,7 @@ pub struct SessionModificationResponse {
     pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 54 - Grouped IE (during overload condition)
     pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 78 - Multiple instances, Grouped IE - When query requested or URR removed
     pub failed_rule_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
+    pub partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
     // TODO: [IE Type 110] Additional Usage Reports Information - C - When Query URR present/QAURR flag set and more reports follow
     // TODO: [IE Type 129] Created/Updated Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
     // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
@@ -60,6 +61,9 @@ impl Message for SessionModificationResponse {
         if let Some(ref ie) = self.failed_rule_id {
             ie.marshal_into(buf);
         }
+        for ie in &self.partial_failure_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -89,6 +93,9 @@ impl Message for SessionModificationResponse {
         if let Some(ref ie) = self.failed_rule_id {
             size += ie.len() as usize;
         }
+        for ie in &self.partial_failure_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -105,6 +112,7 @@ impl Message for SessionModificationResponse {
         let mut pdn_type = None;
         let mut usage_reports = Vec::new();
         let mut failed_rule_id = None;
+        let mut partial_failure_information = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -120,6 +128,7 @@ impl Message for SessionModificationResponse {
                 IeType::PdnType => pdn_type = Some(ie),
                 IeType::UsageReportWithinSessionModificationResponse => usage_reports.push(ie),
                 IeType::FailedRuleId => failed_rule_id = Some(ie),
+                IeType::PartialFailureInformation => partial_failure_information.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -139,6 +148,7 @@ impl Message for SessionModificationResponse {
             pdn_type,
             usage_reports,
             failed_rule_id,
+            partial_failure_information,
             ies,
         })
     }
@@ -181,6 +191,9 @@ impl Message for SessionModificationResponse {
                 IeIter::multiple(&self.usage_reports, ie_type)
             }
             IeType::FailedRuleId => IeIter::single(self.failed_rule_id.as_ref(), ie_type),
+            IeType::PartialFailureInformation => {
+                IeIter::multiple(&self.partial_failure_information, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -206,6 +219,7 @@ impl Message for SessionModificationResponse {
         if let Some(ref ie) = self.failed_rule_id {
             result.push(ie);
         }
+        result.extend(self.partial_failure_information.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -224,6 +238,7 @@ impl SessionModificationResponse {
         pdn_type: Option<Ie>,
         usage_reports: Vec<Ie>,
         failed_rule_id: Option<Ie>,
+        partial_failure_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
@@ -249,6 +264,9 @@ impl SessionModificationResponse {
         if let Some(ie) = &failed_rule_id {
             payload_len += ie.len();
         }
+        for ie in &partial_failure_information {
+            payload_len += ie.len();
+        }
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -263,6 +281,7 @@ impl SessionModificationResponse {
             pdn_type,
             usage_reports,
             failed_rule_id,
+            partial_failure_information,
             ies,
         }
     }
@@ -281,6 +300,7 @@ pub struct SessionModificationResponseBuilder {
     pdn_type: Option<Ie>,
     usage_reports: Vec<Ie>,
     failed_rule_id: Option<Ie>,
+    partial_failure_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -305,6 +325,7 @@ impl SessionModificationResponseBuilder {
             pdn_type: None,
             usage_reports: Vec::new(),
             failed_rule_id: None,
+            partial_failure_information: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -397,6 +418,12 @@ impl SessionModificationResponseBuilder {
         self
     }
 
+    /// Adds a Partial Failure Information IE (optional, multiple instances).
+    pub fn partial_failure_information(mut self, ie: Ie) -> Self {
+        self.partial_failure_information.push(ie);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -429,6 +456,7 @@ impl SessionModificationResponseBuilder {
             self.pdn_type,
             self.usage_reports,
             self.failed_rule_id,
+            self.partial_failure_information,
             self.ies,
         )
     }
@@ -453,6 +481,7 @@ impl SessionModificationResponseBuilder {
             self.pdn_type,
             self.usage_reports,
             self.failed_rule_id,
+            self.partial_failure_information,
             self.ies,
         ))
     }
