@@ -14,8 +14,8 @@ pub struct AssociationUpdateRequest {
     pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 43
     pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 89
     pub pfcp_association_release_request: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 111 - PFCP Association Release Request - When UP function requests CP to release association
-    // TODO: [IE Type 112] Graceful Release Period - C - Conditional, when UP function requests graceful release
-    // TODO: [IE Type 162] PFCPAUReq-Flags - O - Flags IE with PARPS flag for association release preparation
+    pub graceful_release_period: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 112 - Graceful Release Period - When UP function requests graceful release
+    pub pfcpau_req_flags: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 162 - PFCPAUReq-Flags - PARPS flag for association release preparation
     // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
     // TODO: [IE Type 180] SMF Set ID - O - When MPAS feature supported and FQDN changes (N4/N4mb only)
     // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances, Grouped IE, null length stops reporting (N4 only)
@@ -49,6 +49,12 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.pfcp_association_release_request {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.graceful_release_period {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.pfcpau_req_flags {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ue_ip_address_pool_information {
             ie.marshal_into(buf);
         }
@@ -69,6 +75,12 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.pfcp_association_release_request {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.graceful_release_period {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcpau_req_flags {
+            size += ie.len() as usize;
+        }
         for ie in &self.ue_ip_address_pool_information {
             size += ie.len() as usize;
         }
@@ -87,6 +99,8 @@ impl Message for AssociationUpdateRequest {
         let mut up_function_features = None;
         let mut cp_function_features = None;
         let mut pfcp_association_release_request = None;
+        let mut graceful_release_period = None;
+        let mut pfcpau_req_flags = None;
         let mut ue_ip_address_pool_information = Vec::new();
         let mut ies = Vec::new();
 
@@ -101,6 +115,8 @@ impl Message for AssociationUpdateRequest {
                 IeType::PfcpAssociationReleaseRequest => {
                     pfcp_association_release_request = Some(ie)
                 }
+                IeType::GracefulReleasePeriod => graceful_release_period = Some(ie),
+                IeType::PfcpauReqFlags => pfcpau_req_flags = Some(ie),
                 IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
                 _ => ies.push(ie),
             }
@@ -117,6 +133,8 @@ impl Message for AssociationUpdateRequest {
             up_function_features,
             cp_function_features,
             pfcp_association_release_request,
+            graceful_release_period,
+            pfcpau_req_flags,
             ue_ip_address_pool_information,
             ies,
         })
@@ -152,6 +170,10 @@ impl Message for AssociationUpdateRequest {
             IeType::PfcpAssociationReleaseRequest => {
                 IeIter::single(self.pfcp_association_release_request.as_ref(), ie_type)
             }
+            IeType::GracefulReleasePeriod => {
+                IeIter::single(self.graceful_release_period.as_ref(), ie_type)
+            }
+            IeType::PfcpauReqFlags => IeIter::single(self.pfcpau_req_flags.as_ref(), ie_type),
             IeType::UeIpAddressPoolInformation => {
                 IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
             }
@@ -170,6 +192,12 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.pfcp_association_release_request {
             result.push(ie);
         }
+        if let Some(ref ie) = self.graceful_release_period {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.pfcpau_req_flags {
+            result.push(ie);
+        }
         result.extend(self.ue_ip_address_pool_information.iter());
         result.extend(self.ies.iter());
         result
@@ -178,12 +206,15 @@ impl Message for AssociationUpdateRequest {
 
 impl AssociationUpdateRequest {
     /// Creates a new AssociationUpdateRequest message.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         seq: impl Into<SequenceNumber>,
         node_id: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
         pfcp_association_release_request: Option<Ie>,
+        graceful_release_period: Option<Ie>,
+        pfcpau_req_flags: Option<Ie>,
         ue_ip_address_pool_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
@@ -195,6 +226,12 @@ impl AssociationUpdateRequest {
             payload_len += ie.len();
         }
         if let Some(ref ie) = pfcp_association_release_request {
+            payload_len += ie.len();
+        }
+        if let Some(ref ie) = graceful_release_period {
+            payload_len += ie.len();
+        }
+        if let Some(ref ie) = pfcpau_req_flags {
             payload_len += ie.len();
         }
         for ie in &ue_ip_address_pool_information {
@@ -213,6 +250,8 @@ impl AssociationUpdateRequest {
             up_function_features,
             cp_function_features,
             pfcp_association_release_request,
+            graceful_release_period,
+            pfcpau_req_flags,
             ue_ip_address_pool_information,
             ies,
         }
@@ -227,6 +266,8 @@ pub struct AssociationUpdateRequestBuilder {
     up_function_features: Option<Ie>,
     cp_function_features: Option<Ie>,
     pfcp_association_release_request: Option<Ie>,
+    graceful_release_period: Option<Ie>,
+    pfcpau_req_flags: Option<Ie>,
     ue_ip_address_pool_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
@@ -240,6 +281,8 @@ impl AssociationUpdateRequestBuilder {
             up_function_features: None,
             cp_function_features: None,
             pfcp_association_release_request: None,
+            graceful_release_period: None,
+            pfcpau_req_flags: None,
             ue_ip_address_pool_information: Vec::new(),
             ies: Vec::new(),
         }
@@ -266,6 +309,18 @@ impl AssociationUpdateRequestBuilder {
     /// Sets the PFCP Association Release Request IE (conditional).
     pub fn pfcp_association_release_request(mut self, ie: Ie) -> Self {
         self.pfcp_association_release_request = Some(ie);
+        self
+    }
+
+    /// Sets the Graceful Release Period IE (conditional).
+    pub fn graceful_release_period(mut self, ie: Ie) -> Self {
+        self.graceful_release_period = Some(ie);
+        self
+    }
+
+    /// Sets the PFCPAUReq-Flags IE (optional).
+    pub fn pfcpau_req_flags(mut self, ie: Ie) -> Self {
+        self.pfcpau_req_flags = Some(ie);
         self
     }
 
@@ -302,6 +357,8 @@ impl AssociationUpdateRequestBuilder {
             self.up_function_features,
             self.cp_function_features,
             self.pfcp_association_release_request,
+            self.graceful_release_period,
+            self.pfcpau_req_flags,
             self.ue_ip_address_pool_information,
             self.ies,
         )
@@ -322,6 +379,8 @@ impl AssociationUpdateRequestBuilder {
             self.up_function_features,
             self.cp_function_features,
             self.pfcp_association_release_request,
+            self.graceful_release_period,
+            self.pfcpau_req_flags,
             self.ue_ip_address_pool_information,
             self.ies,
         ))
