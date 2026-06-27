@@ -801,8 +801,22 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_remove_pdr(mut self, pdr: crate::ie::remove_pdr::RemovePdr) -> Self {
+        self.remove_pdrs
+            .get_or_insert_with(Vec::new)
+            .push(pdr.to_ie());
+        self
+    }
+
     pub fn remove_fars(mut self, remove_fars: Vec<Ie>) -> Self {
         self.remove_fars = Some(remove_fars);
+        self
+    }
+
+    pub fn add_remove_far(mut self, far: crate::ie::remove_far::RemoveFar) -> Self {
+        self.remove_fars
+            .get_or_insert_with(Vec::new)
+            .push(far.to_ie());
         self
     }
 
@@ -811,8 +825,22 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_remove_urr(mut self, urr: crate::ie::remove_urr::RemoveUrr) -> Self {
+        self.remove_urrs
+            .get_or_insert_with(Vec::new)
+            .push(urr.to_ie());
+        self
+    }
+
     pub fn remove_qers(mut self, remove_qers: Vec<Ie>) -> Self {
         self.remove_qers = Some(remove_qers);
+        self
+    }
+
+    pub fn add_remove_qer(mut self, qer: crate::ie::remove_qer::RemoveQer) -> Self {
+        self.remove_qers
+            .get_or_insert_with(Vec::new)
+            .push(qer.to_ie());
         self
     }
 
@@ -821,8 +849,25 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_remove_bar(mut self, bar: crate::ie::remove_bar::RemoveBar) -> Self {
+        self.remove_bars
+            .get_or_insert_with(Vec::new)
+            .push(bar.to_ie());
+        self
+    }
+
     pub fn remove_traffic_endpoints(mut self, remove_traffic_endpoints: Vec<Ie>) -> Self {
         self.remove_traffic_endpoints = Some(remove_traffic_endpoints);
+        self
+    }
+
+    pub fn add_remove_traffic_endpoint(
+        mut self,
+        te: crate::ie::remove_traffic_endpoint::RemoveTrafficEndpoint,
+    ) -> Self {
+        self.remove_traffic_endpoints
+            .get_or_insert_with(Vec::new)
+            .push(te.to_ie());
         self
     }
 
@@ -831,8 +876,22 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_pdr(mut self, pdr: crate::ie::create_pdr::CreatePdr) -> Self {
+        self.create_pdrs
+            .get_or_insert_with(Vec::new)
+            .push(pdr.to_ie());
+        self
+    }
+
     pub fn create_fars(mut self, create_fars: Vec<Ie>) -> Self {
         self.create_fars = Some(create_fars);
+        self
+    }
+
+    pub fn add_far(mut self, far: crate::ie::create_far::CreateFar) -> Self {
+        self.create_fars
+            .get_or_insert_with(Vec::new)
+            .push(far.to_ie());
         self
     }
 
@@ -841,8 +900,22 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_urr(mut self, urr: crate::ie::create_urr::CreateUrr) -> Self {
+        self.create_urrs
+            .get_or_insert_with(Vec::new)
+            .push(urr.to_ie());
+        self
+    }
+
     pub fn create_qers(mut self, create_qers: Vec<Ie>) -> Self {
         self.create_qers = Some(create_qers);
+        self
+    }
+
+    pub fn add_qer(mut self, qer: crate::ie::create_qer::CreateQer) -> Self {
+        self.create_qers
+            .get_or_insert_with(Vec::new)
+            .push(qer.to_ie());
         self
     }
 
@@ -851,8 +924,25 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_bar(mut self, bar: crate::ie::create_bar::CreateBar) -> Self {
+        self.create_bars
+            .get_or_insert_with(Vec::new)
+            .push(bar.to_ie());
+        self
+    }
+
     pub fn create_traffic_endpoints(mut self, create_traffic_endpoints: Vec<Ie>) -> Self {
         self.create_traffic_endpoints = Some(create_traffic_endpoints);
+        self
+    }
+
+    pub fn add_traffic_endpoint(
+        mut self,
+        te: crate::ie::create_traffic_endpoint::CreateTrafficEndpoint,
+    ) -> Self {
+        self.create_traffic_endpoints
+            .get_or_insert_with(Vec::new)
+            .push(te.to_ie());
         self
     }
 
@@ -861,8 +951,22 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_update_pdr(mut self, pdr: crate::ie::update_pdr::UpdatePdr) -> Self {
+        self.update_pdrs
+            .get_or_insert_with(Vec::new)
+            .push(pdr.to_ie());
+        self
+    }
+
     pub fn update_fars(mut self, update_fars: Vec<Ie>) -> Self {
         self.update_fars = Some(update_fars);
+        self
+    }
+
+    pub fn add_update_far(mut self, far: crate::ie::update_far::UpdateFar) -> Self {
+        self.update_fars
+            .get_or_insert_with(Vec::new)
+            .push(far.to_ie());
         self
     }
 
@@ -871,8 +975,22 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_update_urr(mut self, urr: crate::ie::update_urr::UpdateUrr) -> Self {
+        self.update_urrs
+            .get_or_insert_with(Vec::new)
+            .push(urr.to_ie());
+        self
+    }
+
     pub fn update_qers(mut self, update_qers: Vec<Ie>) -> Self {
         self.update_qers = Some(update_qers);
+        self
+    }
+
+    pub fn add_update_qer(mut self, qer: crate::ie::update_qer::UpdateQer) -> Self {
+        self.update_qers
+            .get_or_insert_with(Vec::new)
+            .push(qer.to_ie());
         self
     }
 
@@ -881,8 +999,25 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_update_bar(mut self, bar: crate::ie::update_bar::UpdateBar) -> Self {
+        self.update_bars
+            .get_or_insert_with(Vec::new)
+            .push(bar.to_ie());
+        self
+    }
+
     pub fn update_traffic_endpoints(mut self, update_traffic_endpoints: Vec<Ie>) -> Self {
         self.update_traffic_endpoints = Some(update_traffic_endpoints);
+        self
+    }
+
+    pub fn add_update_traffic_endpoint(
+        mut self,
+        te: crate::ie::update_traffic_endpoint::UpdateTrafficEndpoint,
+    ) -> Self {
+        self.update_traffic_endpoints
+            .get_or_insert_with(Vec::new)
+            .push(te.to_ie());
         self
     }
 
@@ -1754,5 +1889,237 @@ mod tests {
             .build();
 
         assert!(msg.create_bars.is_some());
+    }
+
+    // ========================================================================
+    // Typed add_* builder tests
+    // ========================================================================
+
+    #[test]
+    fn test_add_pdr_typed() {
+        use crate::ie::create_pdr::CreatePdrBuilder;
+        use crate::ie::pdi::PdiBuilder;
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::precedence::Precedence;
+        use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+
+        let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+            .build()
+            .unwrap();
+        let pdr = CreatePdrBuilder::new(PdrId::new(1))
+            .precedence(Precedence::new(100))
+            .pdi(pdi)
+            .build()
+            .unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x1111, 2000)
+            .add_pdr(pdr)
+            .build();
+
+        assert_eq!(msg.create_pdrs.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_far_typed() {
+        use crate::ie::apply_action::ApplyAction;
+        use crate::ie::create_far::CreateFarBuilder;
+        use crate::ie::far_id::FarId;
+
+        let far = CreateFarBuilder::new(FarId::new(1))
+            .apply_action(ApplyAction::new(0))
+            .build()
+            .unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x2222, 2001)
+            .add_far(far)
+            .build();
+
+        assert_eq!(msg.create_fars.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_urr_typed() {
+        use crate::ie::create_urr::CreateUrrBuilder;
+        use crate::ie::measurement_method::MeasurementMethod;
+        use crate::ie::reporting_triggers::ReportingTriggers;
+        use crate::ie::urr_id::UrrId;
+
+        let urr = CreateUrrBuilder::new(UrrId::new(1))
+            .measurement_method(MeasurementMethod::new(false, true, false))
+            .reporting_triggers(ReportingTriggers::new())
+            .volume_threshold_bytes(1_000_000)
+            .build()
+            .unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x3333, 2002)
+            .add_urr(urr)
+            .build();
+
+        assert_eq!(msg.create_urrs.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_qer_typed() {
+        use crate::ie::create_qer::CreateQerBuilder;
+        use crate::ie::qer_id::QerId;
+
+        let qer = CreateQerBuilder::new(QerId::new(1)).build().unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x4444, 2003)
+            .add_qer(qer)
+            .build();
+
+        assert_eq!(msg.create_qers.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_bar_typed() {
+        use crate::ie::bar_id::BarId;
+        use crate::ie::create_bar::CreateBar;
+
+        let bar = CreateBar::new(BarId::new(1), None);
+        let msg = SessionModificationRequestBuilder::new(0x5555, 2004)
+            .add_bar(bar)
+            .build();
+
+        assert_eq!(msg.create_bars.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_traffic_endpoint_typed() {
+        use crate::ie::create_traffic_endpoint::{CreateTrafficEndpoint, TrafficEndpointId};
+
+        let te = CreateTrafficEndpoint::new(TrafficEndpointId::new(1));
+        let msg = SessionModificationRequestBuilder::new(0x6666, 2005)
+            .add_traffic_endpoint(te)
+            .build();
+
+        assert_eq!(msg.create_traffic_endpoints.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_update_pdr_typed() {
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::update_pdr::UpdatePdrBuilder;
+
+        let pdr = UpdatePdrBuilder::new(PdrId::new(1)).build().unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x7777, 2006)
+            .add_update_pdr(pdr)
+            .build();
+
+        assert_eq!(msg.update_pdrs.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_update_far_typed() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::update_far::UpdateFarBuilder;
+
+        let far = UpdateFarBuilder::new(FarId::new(1)).build().unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x8888, 2007)
+            .add_update_far(far)
+            .build();
+
+        assert_eq!(msg.update_fars.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_update_urr_typed() {
+        use crate::ie::update_urr::UpdateUrrBuilder;
+        use crate::ie::urr_id::UrrId;
+
+        let urr = UpdateUrrBuilder::new(UrrId::new(1)).build().unwrap();
+        let msg = SessionModificationRequestBuilder::new(0x9999, 2008)
+            .add_update_urr(urr)
+            .build();
+
+        assert_eq!(msg.update_urrs.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_update_qer_typed() {
+        use crate::ie::qer_id::QerId;
+        use crate::ie::update_qer::UpdateQerBuilder;
+
+        let qer = UpdateQerBuilder::new(QerId::new(1)).build().unwrap();
+        let msg = SessionModificationRequestBuilder::new(0xAAAA, 2009)
+            .add_update_qer(qer)
+            .build();
+
+        assert_eq!(msg.update_qers.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_update_bar_typed() {
+        use crate::ie::bar_id::BarId;
+        use crate::ie::update_bar::UpdateBar;
+
+        let bar = UpdateBar::new(BarId::new(1), None);
+        let msg = SessionModificationRequestBuilder::new(0xBBBB, 2010)
+            .add_update_bar(bar)
+            .build();
+
+        assert_eq!(msg.update_bars.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_update_traffic_endpoint_typed() {
+        use crate::ie::create_traffic_endpoint::TrafficEndpointId;
+        use crate::ie::update_traffic_endpoint::UpdateTrafficEndpoint;
+
+        let te = UpdateTrafficEndpoint::new(TrafficEndpointId::new(1));
+        let msg = SessionModificationRequestBuilder::new(0xCCCC, 2011)
+            .add_update_traffic_endpoint(te)
+            .build();
+
+        assert_eq!(msg.update_traffic_endpoints.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_remove_pdr_typed() {
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::remove_pdr::RemovePdr;
+
+        let pdr = RemovePdr::new(PdrId::new(1));
+        let msg = SessionModificationRequestBuilder::new(0xDDDD, 2012)
+            .add_remove_pdr(pdr)
+            .build();
+
+        assert_eq!(msg.remove_pdrs.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_remove_far_typed() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::remove_far::RemoveFar;
+
+        let far = RemoveFar::new(FarId::new(1));
+        let msg = SessionModificationRequestBuilder::new(0xEEEE, 2013)
+            .add_remove_far(far)
+            .build();
+
+        assert_eq!(msg.remove_fars.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_remove_bar_typed() {
+        use crate::ie::bar_id::BarId;
+        use crate::ie::remove_bar::RemoveBar;
+
+        let bar = RemoveBar::new(BarId::new(1));
+        let msg = SessionModificationRequestBuilder::new(0xFFFF, 2014)
+            .add_remove_bar(bar)
+            .build();
+
+        assert_eq!(msg.remove_bars.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_add_typed_accumulates() {
+        use crate::ie::bar_id::BarId;
+        use crate::ie::create_bar::CreateBar;
+
+        let msg = SessionModificationRequestBuilder::new(0x1234, 2015)
+            .add_bar(CreateBar::new(BarId::new(1), None))
+            .add_bar(CreateBar::new(BarId::new(2), None))
+            .build();
+
+        assert_eq!(msg.create_bars.as_ref().unwrap().len(), 2);
     }
 }
