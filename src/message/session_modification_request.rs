@@ -34,28 +34,28 @@ pub struct SessionModificationRequest {
     pub user_plane_inactivity_timer: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 117 - When needs to be changed (Sxb/Sxc/N4/N4mb only)
     pub query_urr_reference: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 125 - Reference identifying the query request, returned in usage reports
     pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 152 - Trace instructions, null length to deactivate (not N4mb)
-    // TODO: [IE Type 168] Remove MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
-    // TODO: [IE Type 170] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    pub remove_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 168 - Multiple instances, Grouped IE (N4 only) - For MA PDU session
+    // TODO: [IE Type 169] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For new MA PDR
     pub node_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 60 - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
-    // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
-    // TODO: [IE Type 211] Remove SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
-    // TODO: [IE Type 208] Create SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
-    // TODO: [IE Type 212] Update SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
-    // TODO: [IE Type 179] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session, replaces previous
+    // TODO: [IE Type 199] TSC Management Information (Modification Request) - C - Multiple instances, Grouped IE (N4 only) - TSC management info
+    pub remove_srrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 211 - Multiple instances, Grouped IE (N4 only) - Session-level reporting
+    // TODO: [IE Type 212] Create SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
+    // TODO: [IE Type 213] Update SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
+    // TODO: [IE Type 220] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session, replaces previous
     pub ethernet_context_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 254 - Grouped IE (N4 only) - MAC addresses during anchor relocation
-    // TODO: [IE Type 188] Access Availability Information - O - Multiple instances (N4 only, not Sxa/Sxb/Sxc/N4mb) - Access transiently unavailable/available
+    pub access_availability_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 219 - Multiple instances (N4 only) - Access transiently unavailable/available
     // TODO: [IE Type 263] Query Packet Rate Status - C - Multiple instances, Grouped IE (Sxb/N4 only) - Request immediate packet rate status
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
-    // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session if not sent during establishment
+    pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO if not sent during establishment (N4 only)
     pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
     pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 275 - RAT Type - New RAT type when RAT changes (not N4mb, not for MA PDU)
-    // TODO: [IE Type 297] Group Id - C - (Sxb/N4 only, not Sxa/Sxc/N4mb) - New group identifier when changed, replaces previous
-    // TODO: [IE Type 296] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Associate/update MBS
-    // TODO: [IE Type 291] DSCP to PPI Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Replaces previous value
-    // TODO: [IE Type 336] TL-Container - C - Multiple instances (N4 only, not Sxa/Sxb/Sxc/N4mb) - From SMF/CUC to UPF/CN-TL
-    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - Streaming trace reporting, overrides IP in Trace Info
-    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement, null length to stop
+    pub group_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 291 - Group identifier when changed (Sxb/N4 only)
+    // TODO: [IE Type 310] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only) - Associate/update MBS
+    pub dscp_to_ppi_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 316 - Grouped IE (N4 only) - Replaces previous value
+    pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
+    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - Streaming trace reporting, overrides IP in Trace Info (309 is MbsUnicastParametersId - check spec)
+    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement, null length to stop (330 is MpquicControlInformation - check spec)
     pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
     pub user_id: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
     pub recovery_time_stamp: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
@@ -204,13 +204,34 @@ impl Message for SessionModificationRequest {
         for ie in &self.fq_csids {
             ie.marshal_into(buf);
         }
+        for ie in &self.remove_mars {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.node_id {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.remove_srrs {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.ethernet_context_information {
             ie.marshal_into(buf);
         }
+        for ie in &self.access_availability_information {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.hplmn_s_nssai {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.rat_type {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.group_id {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.dscp_to_ppi_control_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.tl_containers {
             ie.marshal_into(buf);
         }
         for ie in &self.ies {
@@ -351,13 +372,34 @@ impl Message for SessionModificationRequest {
         for ie in &self.fq_csids {
             size += ie.len() as usize;
         }
+        for ie in &self.remove_mars {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.node_id {
+            size += ie.len() as usize;
+        }
+        for ie in &self.remove_srrs {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.ethernet_context_information {
             size += ie.len() as usize;
         }
+        for ie in &self.access_availability_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.hplmn_s_nssai {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.rat_type {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.group_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.dscp_to_ppi_control_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.tl_containers {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -399,9 +441,16 @@ impl Message for SessionModificationRequest {
         let mut pfcpsm_req_flags = None;
         let mut query_urrs = None;
         let mut fq_csids = Vec::new();
+        let mut remove_mars = Vec::new();
         let mut node_id = None;
+        let mut remove_srrs = Vec::new();
         let mut ethernet_context_information = None;
+        let mut access_availability_information = Vec::new();
+        let mut hplmn_s_nssai = None;
         let mut rat_type = None;
+        let mut group_id = None;
+        let mut dscp_to_ppi_control_information = None;
+        let mut tl_containers = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -446,9 +495,16 @@ impl Message for SessionModificationRequest {
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
                 IeType::QueryUrr => query_urrs.get_or_insert(Vec::new()).push(ie),
                 IeType::FqCsid => fq_csids.push(ie),
+                IeType::RemoveMar => remove_mars.push(ie),
                 IeType::NodeId => node_id = Some(ie),
+                IeType::RemoveSrr => remove_srrs.push(ie),
                 IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
+                IeType::AccessAvailabilityInformation => access_availability_information.push(ie),
+                IeType::HplmnSNssai => hplmn_s_nssai = Some(ie),
                 IeType::RatType => rat_type = Some(ie),
+                IeType::GroupId => group_id = Some(ie),
+                IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
+                IeType::TlContainer => tl_containers.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -487,9 +543,16 @@ impl Message for SessionModificationRequest {
             pfcpsm_req_flags,
             query_urrs,
             fq_csids,
+            remove_mars,
             node_id,
+            remove_srrs,
             ethernet_context_information,
+            access_availability_information,
+            hplmn_s_nssai,
             rat_type,
+            group_id,
+            dscp_to_ppi_control_information,
+            tl_containers,
             ies,
         })
     }
@@ -599,6 +662,17 @@ impl Message for SessionModificationRequest {
             IeType::CpFunctionFeatures => {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
+            IeType::RemoveMar => IeIter::multiple(&self.remove_mars, ie_type),
+            IeType::RemoveSrr => IeIter::multiple(&self.remove_srrs, ie_type),
+            IeType::AccessAvailabilityInformation => {
+                IeIter::multiple(&self.access_availability_information, ie_type)
+            }
+            IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_ref(), ie_type),
+            IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
+            IeType::DscpToPpiControlInformation => {
+                IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
+            }
+            IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -696,15 +770,28 @@ impl Message for SessionModificationRequest {
             result.extend(vec.iter());
         }
         result.extend(self.fq_csids.iter());
+        result.extend(self.remove_mars.iter());
         if let Some(ref ie) = self.node_id {
             result.push(ie);
         }
+        result.extend(self.remove_srrs.iter());
         if let Some(ref ie) = self.ethernet_context_information {
+            result.push(ie);
+        }
+        result.extend(self.access_availability_information.iter());
+        if let Some(ref ie) = self.hplmn_s_nssai {
             result.push(ie);
         }
         if let Some(ref ie) = self.rat_type {
             result.push(ie);
         }
+        if let Some(ref ie) = self.group_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.dscp_to_ppi_control_information {
+            result.push(ie);
+        }
+        result.extend(self.tl_containers.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -745,9 +832,16 @@ pub struct SessionModificationRequestBuilder {
     pfcpsm_req_flags: Option<Ie>,
     query_urrs: Option<Vec<Ie>>,
     fq_csids: Vec<Ie>,
+    remove_mars: Vec<Ie>,
     node_id: Option<Ie>,
+    remove_srrs: Vec<Ie>,
     ethernet_context_information: Option<Ie>,
+    access_availability_information: Vec<Ie>,
+    hplmn_s_nssai: Option<Ie>,
     rat_type: Option<Ie>,
+    group_id: Option<Ie>,
+    dscp_to_ppi_control_information: Option<Ie>,
+    tl_containers: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -787,9 +881,16 @@ impl SessionModificationRequestBuilder {
             pfcpsm_req_flags: None,
             query_urrs: None,
             fq_csids: Vec::new(),
+            remove_mars: Vec::new(),
             node_id: None,
+            remove_srrs: Vec::new(),
             ethernet_context_information: None,
+            access_availability_information: Vec::new(),
+            hplmn_s_nssai: None,
             rat_type: None,
+            group_id: None,
+            dscp_to_ppi_control_information: None,
+            tl_containers: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -1154,6 +1255,41 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn remove_mar(mut self, ie: Ie) -> Self {
+        self.remove_mars.push(ie);
+        self
+    }
+
+    pub fn remove_srr(mut self, ie: Ie) -> Self {
+        self.remove_srrs.push(ie);
+        self
+    }
+
+    pub fn access_availability_information(mut self, ie: Ie) -> Self {
+        self.access_availability_information.push(ie);
+        self
+    }
+
+    pub fn hplmn_s_nssai(mut self, ie: Ie) -> Self {
+        self.hplmn_s_nssai = Some(ie);
+        self
+    }
+
+    pub fn group_id(mut self, ie: Ie) -> Self {
+        self.group_id = Some(ie);
+        self
+    }
+
+    pub fn dscp_to_ppi_control_information(mut self, ie: Ie) -> Self {
+        self.dscp_to_ppi_control_information = Some(ie);
+        self
+    }
+
+    pub fn tl_container(mut self, ie: Ie) -> Self {
+        self.tl_containers.push(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -1292,13 +1428,34 @@ impl SessionModificationRequestBuilder {
         for ie in &self.fq_csids {
             payload_len += ie.len();
         }
+        for ie in &self.remove_mars {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.node_id {
+            payload_len += ie.len();
+        }
+        for ie in &self.remove_srrs {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.ethernet_context_information {
             payload_len += ie.len();
         }
+        for ie in &self.access_availability_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.hplmn_s_nssai {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.rat_type {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.group_id {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.dscp_to_ppi_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.tl_containers {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -1344,9 +1501,16 @@ impl SessionModificationRequestBuilder {
             pfcpsm_req_flags: self.pfcpsm_req_flags,
             query_urrs: self.query_urrs,
             fq_csids: self.fq_csids,
+            remove_mars: self.remove_mars,
             node_id: self.node_id,
+            remove_srrs: self.remove_srrs,
             ethernet_context_information: self.ethernet_context_information,
+            access_availability_information: self.access_availability_information,
+            hplmn_s_nssai: self.hplmn_s_nssai,
             rat_type: self.rat_type,
+            group_id: self.group_id,
+            dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
+            tl_containers: self.tl_containers,
             ies: self.ies,
         }
     }
@@ -2187,5 +2351,49 @@ mod tests {
             .build();
 
         assert_eq!(msg.create_bars.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_session_modification_request_new_ies_roundtrip() {
+        let remove_mar_ie = Ie::new(IeType::RemoveMar, vec![0x01, 0x02]);
+        let remove_srr_ie = Ie::new(IeType::RemoveSrr, vec![0x03]);
+        let access_avail_ie = Ie::new(IeType::AccessAvailabilityInformation, vec![0x04]);
+        let hplmn_ie = Ie::new(IeType::HplmnSNssai, vec![0x01, 0x02, 0x03, 0x04]);
+        let group_id_ie = Ie::new(IeType::GroupId, vec![0x05]);
+        let dscp_ie = Ie::new(IeType::DscpToPpiControlInformation, vec![0x06]);
+        let tl_container_ie = Ie::new(IeType::TlContainer, vec![0x07, 0x08]);
+
+        let msg = SessionModificationRequestBuilder::new(0xABCDEF, 42)
+            .remove_mar(remove_mar_ie.clone())
+            .remove_srr(remove_srr_ie.clone())
+            .access_availability_information(access_avail_ie.clone())
+            .hplmn_s_nssai(hplmn_ie.clone())
+            .group_id(group_id_ie.clone())
+            .dscp_to_ppi_control_information(dscp_ie.clone())
+            .tl_container(tl_container_ie.clone())
+            .build();
+
+        assert_eq!(msg.remove_mars.len(), 1);
+        assert_eq!(msg.remove_mars[0], remove_mar_ie);
+        assert_eq!(msg.remove_srrs.len(), 1);
+        assert_eq!(msg.remove_srrs[0], remove_srr_ie);
+        assert_eq!(msg.access_availability_information.len(), 1);
+        assert_eq!(msg.access_availability_information[0], access_avail_ie);
+        assert_eq!(msg.hplmn_s_nssai, Some(hplmn_ie));
+        assert_eq!(msg.group_id, Some(group_id_ie));
+        assert_eq!(msg.dscp_to_ppi_control_information, Some(dscp_ie));
+        assert_eq!(msg.tl_containers.len(), 1);
+        assert_eq!(msg.tl_containers[0], tl_container_ie);
+
+        let bytes = msg.marshal();
+        let parsed = SessionModificationRequest::unmarshal(&bytes).unwrap();
+
+        assert_eq!(parsed.remove_mars.len(), 1);
+        assert_eq!(parsed.remove_srrs.len(), 1);
+        assert_eq!(parsed.access_availability_information.len(), 1);
+        assert!(parsed.hplmn_s_nssai.is_some());
+        assert!(parsed.group_id.is_some());
+        assert!(parsed.dscp_to_ppi_control_information.is_some());
+        assert_eq!(parsed.tl_containers.len(), 1);
     }
 }
