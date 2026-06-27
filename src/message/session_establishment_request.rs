@@ -27,23 +27,23 @@ pub struct SessionEstablishmentRequest {
     pub apn_dnn: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 22 - Access Point Name / Data Network Name
     // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 138 - PFCPSEReq-Flags (RESTI/SUMPC/HRSBOM)
-    // TODO: [IE Type 204] Create Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
-    // TODO: [IE Type 208] Create SRR - O - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For session-level reporting
-    // TODO: [IE Type 179] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    pub create_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 194 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 204]
+    // TODO: [IE Type 212] Create SRR - O - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For session-level reporting
+    // TODO: [IE Type 220] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     pub recovery_time_stamp: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 96 - CP function start time (not N4mb)
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
-    // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session, from V-SMF to V-UPF
+    pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO (N4 only) [TODO said 242]
     // TODO: [IE Type 181] Provide RDS configuration information - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb)
     pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 275 - RAT Type - Current RAT type for statistics (not N4mb, not for MA PDU)
     // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
     // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
-    // TODO: [IE Type 297] Group Id - O - Group identifier (Sxb/N4 only, not Sxa/Sxc/N4mb) - See clause 5.22
+    pub group_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 291 - Group identifier (Sxb/N4 only) [TODO said 297]
     // TODO: [IE Type 326] MBS Session N4mb Control Information - M - Grouped IE (N4mb only) - Identifies MBS session/Area Session ID
-    // TODO: [IE Type 296] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Associate PDU with MBS
-    // TODO: [IE Type 291] DSCP to PPI Control Information - O - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For PPI insertion
-    // TODO: [IE Type 336] TL-Container - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - From SMF/CUC to UPF/CN-TL
-    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - For streaming trace reporting
-    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement config
+    // TODO: [IE Type 310] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only) - Associate PDU with MBS [TODO said 296]
+    pub dscp_to_ppi_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 316 - Grouped IE (N4 only) [TODO said 291]
+    pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
+    // TODO: [IE Type 309] Trace Collection Entity URI - O - URI type (not N4mb) - For streaming trace reporting (309 is MbsUnicastParametersId - check spec)
+    // TODO: [IE Type 330] UE Level Measurements Configuration - O - (N4 only, not Sxa/Sxb/Sxc/N4mb) - 5GC UE measurement config (330 is MpquicControlInformation - check spec)
     pub cp_function_features: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.2.1-1 - May be legacy/vendor-specific
     pub ethernet_pdu_session_information: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.2.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
@@ -109,10 +109,25 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.create_bridge_info_for_tsc {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.hplmn_s_nssai {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.ethernet_pdu_session_information {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.rat_type {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.group_id {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.dscp_to_ppi_control_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.tl_containers {
             ie.marshal_into(buf);
         }
         for ie in &self.ies {
@@ -172,10 +187,25 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.create_bridge_info_for_tsc {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.hplmn_s_nssai {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.ethernet_pdu_session_information {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.rat_type {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.group_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.dscp_to_ppi_control_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.tl_containers {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -204,8 +234,13 @@ impl Message for SessionEstablishmentRequest {
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
+        let mut create_bridge_info_for_tsc = None;
+        let mut hplmn_s_nssai = None;
         let mut ethernet_pdu_session_information = None;
         let mut rat_type = None;
+        let mut group_id = None;
+        let mut dscp_to_ppi_control_information = None;
+        let mut tl_containers = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -231,10 +266,15 @@ impl Message for SessionEstablishmentRequest {
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
+                IeType::CreateBridgeInfoForTsc => create_bridge_info_for_tsc = Some(ie),
+                IeType::HplmnSNssai => hplmn_s_nssai = Some(ie),
                 IeType::EthernetPduSessionInformation => {
                     ethernet_pdu_session_information = Some(ie)
                 }
                 IeType::RatType => rat_type = Some(ie),
+                IeType::GroupId => group_id = Some(ie),
+                IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
+                IeType::TlContainer => tl_containers.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -283,8 +323,13 @@ impl Message for SessionEstablishmentRequest {
             apn_dnn,
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
+            create_bridge_info_for_tsc,
+            hplmn_s_nssai,
             ethernet_pdu_session_information,
             rat_type,
+            group_id,
+            dscp_to_ppi_control_information,
+            tl_containers,
             ies,
         })
     }
@@ -337,10 +382,19 @@ impl Message for SessionEstablishmentRequest {
             IeType::CpFunctionFeatures => {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
+            IeType::CreateBridgeInfoForTsc => {
+                IeIter::single(self.create_bridge_info_for_tsc.as_ref(), ie_type)
+            }
+            IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_ref(), ie_type),
             IeType::EthernetPduSessionInformation => {
                 IeIter::single(self.ethernet_pdu_session_information.as_ref(), ie_type)
             }
             IeType::RatType => IeIter::single(self.rat_type.as_ref(), ie_type),
+            IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
+            IeType::DscpToPpiControlInformation => {
+                IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
+            }
+            IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -381,12 +435,25 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
+        if let Some(ref ie) = self.create_bridge_info_for_tsc {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.hplmn_s_nssai {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.ethernet_pdu_session_information {
             result.push(ie);
         }
         if let Some(ref ie) = self.rat_type {
             result.push(ie);
         }
+        if let Some(ref ie) = self.group_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.dscp_to_ppi_control_information {
+            result.push(ie);
+        }
+        result.extend(self.tl_containers.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -414,8 +481,13 @@ pub struct SessionEstablishmentRequestBuilder {
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
+    create_bridge_info_for_tsc: Option<Ie>,
+    hplmn_s_nssai: Option<Ie>,
     ethernet_pdu_session_information: Option<Ie>,
     rat_type: Option<Ie>,
+    group_id: Option<Ie>,
+    dscp_to_ppi_control_information: Option<Ie>,
+    tl_containers: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -442,8 +514,13 @@ impl SessionEstablishmentRequestBuilder {
             apn_dnn: None,
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
+            create_bridge_info_for_tsc: None,
+            hplmn_s_nssai: None,
             ethernet_pdu_session_information: None,
             rat_type: None,
+            group_id: None,
+            dscp_to_ppi_control_information: None,
+            tl_containers: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -717,6 +794,31 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn create_bridge_info_for_tsc(mut self, ie: Ie) -> Self {
+        self.create_bridge_info_for_tsc = Some(ie);
+        self
+    }
+
+    pub fn hplmn_s_nssai(mut self, ie: Ie) -> Self {
+        self.hplmn_s_nssai = Some(ie);
+        self
+    }
+
+    pub fn group_id(mut self, ie: Ie) -> Self {
+        self.group_id = Some(ie);
+        self
+    }
+
+    pub fn dscp_to_ppi_control_information(mut self, ie: Ie) -> Self {
+        self.dscp_to_ppi_control_information = Some(ie);
+        self
+    }
+
+    pub fn tl_container(mut self, ie: Ie) -> Self {
+        self.tl_containers.push(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -797,10 +899,25 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.create_bridge_info_for_tsc {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.hplmn_s_nssai {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.ethernet_pdu_session_information {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.rat_type {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.group_id {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.dscp_to_ppi_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.tl_containers {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -834,8 +951,13 @@ impl SessionEstablishmentRequestBuilder {
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
+            create_bridge_info_for_tsc: self.create_bridge_info_for_tsc,
+            hplmn_s_nssai: self.hplmn_s_nssai,
             ethernet_pdu_session_information: self.ethernet_pdu_session_information,
             rat_type: self.rat_type,
+            group_id: self.group_id,
+            dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
+            tl_containers: self.tl_containers,
             ies: self.ies,
         })
     }
@@ -1652,5 +1774,45 @@ mod tests {
             .unwrap();
 
         assert_eq!(msg.create_bars.len(), 2);
+    }
+
+    #[test]
+    fn test_session_establishment_request_new_ies_roundtrip() {
+        let (pdrs, fars) = create_minimal_pdr_far();
+
+        let bridge_ie = Ie::new(IeType::CreateBridgeInfoForTsc, vec![0x01, 0x02]);
+        let hplmn_ie = Ie::new(IeType::HplmnSNssai, vec![0x01, 0x02, 0x03, 0x04]);
+        let group_id_ie = Ie::new(IeType::GroupId, vec![0x05]);
+        let dscp_ie = Ie::new(IeType::DscpToPpiControlInformation, vec![0x06]);
+        let tl_container_ie = Ie::new(IeType::TlContainer, vec![0x07, 0x08]);
+
+        let msg = SessionEstablishmentRequestBuilder::new(0xABCDEF, 99)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x1234, std::net::Ipv4Addr::new(10, 0, 0, 2))
+            .create_pdrs(pdrs)
+            .create_fars(fars)
+            .create_bridge_info_for_tsc(bridge_ie.clone())
+            .hplmn_s_nssai(hplmn_ie.clone())
+            .group_id(group_id_ie.clone())
+            .dscp_to_ppi_control_information(dscp_ie.clone())
+            .tl_container(tl_container_ie.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.create_bridge_info_for_tsc, Some(bridge_ie));
+        assert_eq!(msg.hplmn_s_nssai, Some(hplmn_ie));
+        assert_eq!(msg.group_id, Some(group_id_ie));
+        assert_eq!(msg.dscp_to_ppi_control_information, Some(dscp_ie));
+        assert_eq!(msg.tl_containers.len(), 1);
+        assert_eq!(msg.tl_containers[0], tl_container_ie);
+
+        let bytes = msg.marshal();
+        let parsed = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
+
+        assert!(parsed.create_bridge_info_for_tsc.is_some());
+        assert!(parsed.hplmn_s_nssai.is_some());
+        assert!(parsed.group_id.is_some());
+        assert!(parsed.dscp_to_ppi_control_information.is_some());
+        assert_eq!(parsed.tl_containers.len(), 1);
     }
 }

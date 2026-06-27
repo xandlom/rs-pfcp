@@ -151,11 +151,16 @@ fn test_session_establishment_happy_path_with_all_mandatory_ies() {
         trace_information: None,
         apn_dnn: None,
         pfcpsm_req_flags: None,
+        create_bridge_info_for_tsc: None,
+        hplmn_s_nssai: None,
         recovery_time_stamp: None,
         s_nssai: None,
         cp_function_features: None,
         ethernet_pdu_session_information: None,
         rat_type: None,
+        group_id: None,
+        dscp_to_ppi_control_information: None,
+        tl_containers: vec![],
         ies: vec![],
     };
 
@@ -522,11 +527,16 @@ fn test_session_establishment_multiple_pdrs_fars() {
         trace_information: None,
         apn_dnn: None,
         pfcpsm_req_flags: None,
+        create_bridge_info_for_tsc: None,
+        hplmn_s_nssai: None,
         recovery_time_stamp: None,
         s_nssai: None,
         cp_function_features: None,
         ethernet_pdu_session_information: None,
         rat_type: None,
+        group_id: None,
+        dscp_to_ppi_control_information: None,
+        tl_containers: vec![],
         ies: vec![],
     };
 

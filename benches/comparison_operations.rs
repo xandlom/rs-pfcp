@@ -61,8 +61,13 @@ fn create_session_request(
         apn_dnn: None,
         user_plane_inactivity_timer: None,
         pfcpsm_req_flags: None,
+        create_bridge_info_for_tsc: None,
+        hplmn_s_nssai: None,
         ethernet_pdu_session_information: None,
         rat_type: None,
+        group_id: None,
+        dscp_to_ppi_control_information: None,
+        tl_containers: vec![],
         ies: vec![],
     }
 }
