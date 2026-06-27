@@ -19,7 +19,7 @@ pub struct SessionEstablishmentResponse {
     failed_rule_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
     partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
     created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 128 - Created Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
-    // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
+    fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 65 - Multiple instances - PGW-U/SGW-U/UPF FQ-CSID (Sxa/Sxb/N4 only, not Sxc/N4mb)
     // TODO: [IE Type 205] Created Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
     // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
     // TODO: [IE Type 268] RDS configuration information - O - (Sxb/N4 only, not Sxa/Sxc/N4mb) - RDS configuration UP supports
@@ -146,6 +146,11 @@ impl SessionEstablishmentResponse {
     pub fn created_traffic_endpoints(&self) -> &[Ie] {
         &self.created_traffic_endpoints
     }
+
+    /// Returns a slice of FQ-CSID IEs.
+    pub fn fq_csids(&self) -> &[Ie] {
+        &self.fq_csids
+    }
 }
 
 impl Message for SessionEstablishmentResponse {
@@ -185,6 +190,9 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.created_traffic_endpoints {
             ie.marshal_into(buf);
         }
+        for ie in &self.fq_csids {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -219,6 +227,9 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.created_traffic_endpoints {
             size += ie.len() as usize;
         }
+        for ie in &self.fq_csids {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -238,6 +249,7 @@ impl Message for SessionEstablishmentResponse {
         let mut failed_rule_id = None;
         let mut partial_failure_information = Vec::new();
         let mut created_traffic_endpoints = Vec::new();
+        let mut fq_csids = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -256,6 +268,7 @@ impl Message for SessionEstablishmentResponse {
                 IeType::FailedRuleId => failed_rule_id = Some(ie),
                 IeType::PartialFailureInformation => partial_failure_information.push(ie),
                 IeType::CreatedTrafficEndpoint => created_traffic_endpoints.push(ie),
+                IeType::FqCsid => fq_csids.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -286,6 +299,7 @@ impl Message for SessionEstablishmentResponse {
             failed_rule_id,
             partial_failure_information,
             created_traffic_endpoints,
+            fq_csids,
             ies,
         })
     }
@@ -333,6 +347,7 @@ impl Message for SessionEstablishmentResponse {
             IeType::CreatedTrafficEndpoint => {
                 IeIter::multiple(&self.created_traffic_endpoints, ie_type)
             }
+            IeType::FqCsid => IeIter::multiple(&self.fq_csids, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -357,6 +372,7 @@ impl Message for SessionEstablishmentResponse {
         }
         result.extend(self.partial_failure_information.iter());
         result.extend(self.created_traffic_endpoints.iter());
+        result.extend(self.fq_csids.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -377,6 +393,7 @@ pub struct SessionEstablishmentResponseBuilder {
     failed_rule_id: Option<Ie>,
     partial_failure_information: Vec<Ie>,
     created_traffic_endpoints: Vec<Ie>,
+    fq_csids: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -411,6 +428,7 @@ impl SessionEstablishmentResponseBuilder {
             failed_rule_id: None,
             partial_failure_information: Vec::new(),
             created_traffic_endpoints: Vec::new(),
+            fq_csids: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -459,6 +477,7 @@ impl SessionEstablishmentResponseBuilder {
             failed_rule_id: None,
             partial_failure_information: Vec::new(),
             created_traffic_endpoints: Vec::new(),
+            fq_csids: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -578,6 +597,11 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    pub fn fq_csid(mut self, ie: Ie) -> Self {
+        self.fq_csids.push(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -629,6 +653,9 @@ impl SessionEstablishmentResponseBuilder {
         for ie in &self.created_traffic_endpoints {
             payload_len += ie.len();
         }
+        for ie in &self.fq_csids {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -654,6 +681,7 @@ impl SessionEstablishmentResponseBuilder {
             failed_rule_id: self.failed_rule_id,
             partial_failure_information: self.partial_failure_information,
             created_traffic_endpoints: self.created_traffic_endpoints,
+            fq_csids: self.fq_csids,
             ies: self.ies,
         })
     }

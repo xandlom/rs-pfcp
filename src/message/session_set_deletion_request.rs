@@ -13,13 +13,8 @@ use crate::types::{Seid, SequenceNumber};
 pub struct SessionSetDeletionRequest {
     pub header: Header,
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.6.1-1 - IE Type 60 - Node identity of originating node (Sxa/Sxb/N4 only, not Sxc/N4mb)
-    pub fseid_set: Option<Ie>, // Note: Currently accepts F-SEID (Type 57), but spec defines FQ-CSID (Type 65) for session sets
-    // TODO: [IE Type 65] SGW-C FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxa/Sxb only)
-    // TODO: [IE Type 65] PGW-C/SMF FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 and clause 4.6 of 3GPP TS 23.527 (Sxa/Sxb/N4 only)
-    // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 and clause 4.6 of 3GPP TS 23.527 (Sxa/Sxb/N4 only)
-    // TODO: [IE Type 65] TWAN FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxb only)
-    // TODO: [IE Type 65] ePDG FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxb only)
-    // TODO: [IE Type 65] MME FQ-CSID - C - Per clause 23 of 3GPP TS 23.007 (Sxa/Sxb only)
+    pub fseid_set: Option<Ie>, // Note: F-SEID (Type 57) for backward compat; spec defines FQ-CSID (Type 65) for session sets via fq_csids field
+    pub fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.6.1-1 - IE Type 65 - Multiple instances - SGW-C/PGW-C/PGW-U/TWAN/ePDG/MME FQ-CSID (Sxa/Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 
@@ -29,10 +24,14 @@ impl SessionSetDeletionRequest {
         seq: impl Into<SequenceNumber>,
         node_id: Ie,
         fseid_set: Option<Ie>,
+        fq_csids: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len();
         if let Some(ref ie) = fseid_set {
+            payload_len += ie.len();
+        }
+        for ie in &fq_csids {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -46,6 +45,7 @@ impl SessionSetDeletionRequest {
             header,
             node_id,
             fseid_set,
+            fq_csids,
             ies,
         }
     }
@@ -57,6 +57,7 @@ pub struct SessionSetDeletionRequestBuilder {
     sequence: SequenceNumber,
     node_id: Option<Ie>,
     fseid_set: Option<Ie>,
+    fq_csids: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -67,6 +68,7 @@ impl SessionSetDeletionRequestBuilder {
             sequence: sequence.into(),
             node_id: None,
             fseid_set: None,
+            fq_csids: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -80,6 +82,12 @@ impl SessionSetDeletionRequestBuilder {
     /// Sets the F-SEID Set (optional).
     pub fn fseid_set(mut self, fseid_set: Ie) -> Self {
         self.fseid_set = Some(fseid_set);
+        self
+    }
+
+    /// Adds an FQ-CSID IE (optional, multiple allowed).
+    pub fn fq_csid(mut self, ie: Ie) -> Self {
+        self.fq_csids.push(ie);
         self
     }
 
@@ -99,7 +107,13 @@ impl SessionSetDeletionRequestBuilder {
     /// Panics if required fields are missing.
     pub fn build(self) -> SessionSetDeletionRequest {
         let node_id = self.node_id.expect("Node ID is required");
-        SessionSetDeletionRequest::new(self.sequence, node_id, self.fseid_set, self.ies)
+        SessionSetDeletionRequest::new(
+            self.sequence,
+            node_id,
+            self.fseid_set,
+            self.fq_csids,
+            self.ies,
+        )
     }
 
     /// Tries to build the Session Set Deletion Request message.
@@ -116,6 +130,7 @@ impl SessionSetDeletionRequestBuilder {
             self.sequence,
             node_id,
             self.fseid_set,
+            self.fq_csids,
             self.ies,
         ))
     }
@@ -139,6 +154,9 @@ impl Message for SessionSetDeletionRequest {
         if let Some(ref ie) = self.fseid_set {
             ie.marshal_into(buf);
         }
+        for ie in &self.fq_csids {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -148,6 +166,9 @@ impl Message for SessionSetDeletionRequest {
         let mut size = self.header.len() as usize;
         size += self.node_id.len() as usize;
         if let Some(ref ie) = self.fseid_set {
+            size += ie.len() as usize;
+        }
+        for ie in &self.fq_csids {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -163,6 +184,7 @@ impl Message for SessionSetDeletionRequest {
         let header = Header::unmarshal(buf)?;
         let mut node_id = None;
         let mut fseid_set = None;
+        let mut fq_csids = Vec::new();
         let mut ies = Vec::new();
 
         let mut cursor = header.len() as usize;
@@ -172,6 +194,7 @@ impl Message for SessionSetDeletionRequest {
             match ie.ie_type {
                 IeType::NodeId => node_id = Some(ie),
                 IeType::Fseid => fseid_set = Some(ie), // F-SEID for session set identification
+                IeType::FqCsid => fq_csids.push(ie),
                 _ => ies.push(ie),
             }
             cursor += ie_len;
@@ -187,6 +210,7 @@ impl Message for SessionSetDeletionRequest {
             header,
             node_id,
             fseid_set,
+            fq_csids,
             ies,
         })
     }
@@ -213,6 +237,7 @@ impl Message for SessionSetDeletionRequest {
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::Fseid => IeIter::single(self.fseid_set.as_ref(), ie_type),
+            IeType::FqCsid => IeIter::multiple(&self.fq_csids, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -222,6 +247,7 @@ impl Message for SessionSetDeletionRequest {
         if let Some(ref ie) = self.fseid_set {
             result.push(ie);
         }
+        result.extend(self.fq_csids.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -240,7 +266,8 @@ mod tests {
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
         );
 
-        let original = SessionSetDeletionRequest::new(123, node_id_ie, None, Vec::new());
+        let original =
+            SessionSetDeletionRequest::new(123, node_id_ie, None, Vec::new(), Vec::new());
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 
@@ -274,7 +301,8 @@ mod tests {
         };
         let fseid_ie = Ie::new(IeType::Fseid, fseid_data);
 
-        let original = SessionSetDeletionRequest::new(456, node_id_ie, Some(fseid_ie), Vec::new());
+        let original =
+            SessionSetDeletionRequest::new(456, node_id_ie, Some(fseid_ie), Vec::new(), Vec::new());
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 
@@ -295,7 +323,8 @@ mod tests {
             Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02, 0x03]),
         ];
 
-        let original = SessionSetDeletionRequest::new(789, node_id_ie, None, additional_ies);
+        let original =
+            SessionSetDeletionRequest::new(789, node_id_ie, None, Vec::new(), additional_ies);
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 
@@ -321,7 +350,7 @@ mod tests {
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
         );
 
-        let message = SessionSetDeletionRequest::new(123, node_id_ie, None, Vec::new());
+        let message = SessionSetDeletionRequest::new(123, node_id_ie, None, Vec::new(), Vec::new());
 
         assert!(message.ies(IeType::NodeId).next().is_some());
         assert!(message.ies(IeType::Fseid).next().is_none());
@@ -335,7 +364,7 @@ mod tests {
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
         );
 
-        let message = SessionSetDeletionRequest::new(999, node_id_ie, None, Vec::new());
+        let message = SessionSetDeletionRequest::new(999, node_id_ie, None, Vec::new(), Vec::new());
 
         assert_eq!(message.msg_type(), MsgType::SessionSetDeletionRequest);
         assert_eq!(*message.sequence(), 999);
@@ -352,7 +381,8 @@ mod tests {
                 .to_vec(),
         );
 
-        let original = SessionSetDeletionRequest::new(888, node_id_ie, None, Vec::new());
+        let original =
+            SessionSetDeletionRequest::new(888, node_id_ie, None, Vec::new(), Vec::new());
         let marshaled = original.marshal();
         let unmarshaled = SessionSetDeletionRequest::unmarshal(&marshaled).unwrap();
 

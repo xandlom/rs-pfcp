@@ -20,11 +20,7 @@ pub struct SessionEstablishmentRequest {
     pub create_bars: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 85 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
     pub create_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 131 - Multiple instances, Grouped IE
     pub pdn_type: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 113 - IP/non-IP/Ethernet PDN connection/PDU session
-    // TODO: [IE Type 65] SGW-C FQ-CSID - C - Multiple instances (Sxa/Sxb only, not Sxc/N4/N4mb) - Per clause 23 of 3GPP TS 23.007
-    // TODO: [IE Type 65] MME FQ-CSID - C - Multiple instances (Sxa/Sxb only, not Sxc/N4/N4mb) - When received on S11/S5/S8
-    // TODO: [IE Type 65] PGW-C/SMF FQ-CSID - C - Multiple instances (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
-    // TODO: [IE Type 65] ePDG FQ-CSID - C - Multiple instances (Sxb only) - Per clause 23 of 3GPP TS 23.007
-    // TODO: [IE Type 65] TWAN FQ-CSID - C - Multiple instances (Sxb only) - Per clause 23 of 3GPP TS 23.007
+    pub fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 65 - Multiple instances - SGW-C/MME/PGW-C/ePDG/TWAN FQ-CSID (Sxa/Sxb/N4 only, per clause 23 of 3GPP TS 23.007)
     pub user_plane_inactivity_timer: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 117 - Duration to send inactivity report (Sxb/Sxc/N4/N4mb only)
     pub user_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 141 - Only if UP in trusted environment (not N4mb)
     pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 152 - Trace instructions (not N4mb)
@@ -84,6 +80,9 @@ impl Message for SessionEstablishmentRequest {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.pdn_type {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.fq_csids {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.user_id {
@@ -146,6 +145,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pdn_type {
             size += ie.len() as usize;
         }
+        for ie in &self.fq_csids {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.user_id {
             size += ie.len() as usize;
         }
@@ -193,6 +195,7 @@ impl Message for SessionEstablishmentRequest {
         let mut create_bars = Vec::new();
         let mut create_traffic_endpoints = Vec::new();
         let mut pdn_type = None;
+        let mut fq_csids = Vec::new();
         let mut user_id = None;
         let mut s_nssai = None;
         let mut trace_information = None;
@@ -219,6 +222,7 @@ impl Message for SessionEstablishmentRequest {
                 IeType::CreateBar => create_bars.push(ie),
                 IeType::CreateTrafficEndpoint => create_traffic_endpoints.push(ie),
                 IeType::PdnType => pdn_type = Some(ie),
+                IeType::FqCsid => fq_csids.push(ie),
                 IeType::UserId => user_id = Some(ie),
                 IeType::Snssai => s_nssai = Some(ie),
                 IeType::TraceInformation => trace_information = Some(ie),
@@ -270,6 +274,7 @@ impl Message for SessionEstablishmentRequest {
             create_bars,
             create_traffic_endpoints,
             pdn_type,
+            fq_csids,
             user_id,
             s_nssai,
             trace_information,
@@ -319,6 +324,7 @@ impl Message for SessionEstablishmentRequest {
                 IeIter::multiple(&self.create_traffic_endpoints, ie_type)
             }
             IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
+            IeType::FqCsid => IeIter::multiple(&self.fq_csids, ie_type),
             IeType::UserPlaneInactivityTimer => {
                 IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
             }
@@ -350,6 +356,7 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pdn_type {
             result.push(ie);
         }
+        result.extend(self.fq_csids.iter());
         if let Some(ref ie) = self.user_id {
             result.push(ie);
         }
@@ -398,6 +405,7 @@ pub struct SessionEstablishmentRequestBuilder {
     create_bars: Vec<Ie>,
     create_traffic_endpoints: Vec<Ie>,
     pdn_type: Option<Ie>,
+    fq_csids: Vec<Ie>,
     user_id: Option<Ie>,
     s_nssai: Option<Ie>,
     trace_information: Option<Ie>,
@@ -425,6 +433,7 @@ impl SessionEstablishmentRequestBuilder {
             create_bars: Vec::new(),
             create_traffic_endpoints: Vec::new(),
             pdn_type: None,
+            fq_csids: Vec::new(),
             user_id: None,
             s_nssai: None,
             trace_information: None,
@@ -621,6 +630,11 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn fq_csid(mut self, ie: Ie) -> Self {
+        self.fq_csids.push(ie);
+        self
+    }
+
     pub fn user_id(mut self, user_id: Ie) -> Self {
         self.user_id = Some(user_id);
         self
@@ -756,6 +770,9 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.pdn_type {
             payload_len += ie.len();
         }
+        for ie in &self.fq_csids {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.user_id {
             payload_len += ie.len();
         }
@@ -808,6 +825,7 @@ impl SessionEstablishmentRequestBuilder {
             create_bars: self.create_bars,
             create_traffic_endpoints: self.create_traffic_endpoints,
             pdn_type: self.pdn_type,
+            fq_csids: self.fq_csids,
             user_id: self.user_id,
             s_nssai: self.s_nssai,
             trace_information: self.trace_information,

@@ -52,6 +52,7 @@ fn create_session_request(
         create_bars: vec![],
         create_traffic_endpoints: vec![],
         pdn_type: None,
+        fq_csids: vec![],
         user_id: None,
         s_nssai: None,
         trace_information: None,
