@@ -20,13 +20,13 @@ pub struct SessionEstablishmentResponse {
     partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
     created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 128 - Created Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
     fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 65 - Multiple instances - PGW-U/SGW-U/UPF FQ-CSID (Sxa/Sxb/N4 only, not Sxc/N4mb)
-    // TODO: [IE Type 205] Created Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
-    // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
+    created_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 195 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 205]
+    // TODO: [IE Type 221] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required [TODO said 186]
     // TODO: [IE Type 268] RDS configuration information - O - (Sxb/N4 only, not Sxa/Sxc/N4mb) - RDS configuration UP supports
     // TODO: [IE Type 279] Created L2TP Session - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.3.1-3
     // TODO: [IE Type 317] MBS Session N4mb Information - C - Grouped IE (N4mb only) - When any child IE needed
-    // TODO: [IE Type 299] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Per clause 5.34.1
-    // TODO: [IE Type 336] TL-Container - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - From UPF/CN-TL to SMF/CUC in response
+    // TODO: [IE Type 311] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only) - Per clause 5.34.1 [TODO said 299]
+    tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 336 - Multiple instances (N4 only) - From UPF/CN-TL to SMF/CUC in response
     pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.3.1-1 - May be legacy/vendor-specific
     ies: Vec<Ie>,
 }
@@ -193,6 +193,12 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.fq_csids {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.created_bridge_info_for_tsc {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.tl_containers {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -230,6 +236,12 @@ impl Message for SessionEstablishmentResponse {
         for ie in &self.fq_csids {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.created_bridge_info_for_tsc {
+            size += ie.len() as usize;
+        }
+        for ie in &self.tl_containers {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -250,6 +262,8 @@ impl Message for SessionEstablishmentResponse {
         let mut partial_failure_information = Vec::new();
         let mut created_traffic_endpoints = Vec::new();
         let mut fq_csids = Vec::new();
+        let mut created_bridge_info_for_tsc = None;
+        let mut tl_containers = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -269,6 +283,8 @@ impl Message for SessionEstablishmentResponse {
                 IeType::PartialFailureInformation => partial_failure_information.push(ie),
                 IeType::CreatedTrafficEndpoint => created_traffic_endpoints.push(ie),
                 IeType::FqCsid => fq_csids.push(ie),
+                IeType::CreatedBridgeInfoForTsc => created_bridge_info_for_tsc = Some(ie),
+                IeType::TlContainer => tl_containers.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -300,6 +316,8 @@ impl Message for SessionEstablishmentResponse {
             partial_failure_information,
             created_traffic_endpoints,
             fq_csids,
+            created_bridge_info_for_tsc,
+            tl_containers,
             ies,
         })
     }
@@ -348,6 +366,10 @@ impl Message for SessionEstablishmentResponse {
                 IeIter::multiple(&self.created_traffic_endpoints, ie_type)
             }
             IeType::FqCsid => IeIter::multiple(&self.fq_csids, ie_type),
+            IeType::CreatedBridgeInfoForTsc => {
+                IeIter::single(self.created_bridge_info_for_tsc.as_ref(), ie_type)
+            }
+            IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -373,6 +395,10 @@ impl Message for SessionEstablishmentResponse {
         result.extend(self.partial_failure_information.iter());
         result.extend(self.created_traffic_endpoints.iter());
         result.extend(self.fq_csids.iter());
+        if let Some(ref ie) = self.created_bridge_info_for_tsc {
+            result.push(ie);
+        }
+        result.extend(self.tl_containers.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -394,6 +420,8 @@ pub struct SessionEstablishmentResponseBuilder {
     partial_failure_information: Vec<Ie>,
     created_traffic_endpoints: Vec<Ie>,
     fq_csids: Vec<Ie>,
+    created_bridge_info_for_tsc: Option<Ie>,
+    tl_containers: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -429,6 +457,8 @@ impl SessionEstablishmentResponseBuilder {
             partial_failure_information: Vec::new(),
             created_traffic_endpoints: Vec::new(),
             fq_csids: Vec::new(),
+            created_bridge_info_for_tsc: None,
+            tl_containers: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -478,6 +508,8 @@ impl SessionEstablishmentResponseBuilder {
             partial_failure_information: Vec::new(),
             created_traffic_endpoints: Vec::new(),
             fq_csids: Vec::new(),
+            created_bridge_info_for_tsc: None,
+            tl_containers: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -602,6 +634,16 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    pub fn created_bridge_info_for_tsc(mut self, ie: Ie) -> Self {
+        self.created_bridge_info_for_tsc = Some(ie);
+        self
+    }
+
+    pub fn tl_container(mut self, ie: Ie) -> Self {
+        self.tl_containers.push(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -656,6 +698,12 @@ impl SessionEstablishmentResponseBuilder {
         for ie in &self.fq_csids {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.created_bridge_info_for_tsc {
+            payload_len += ie.len();
+        }
+        for ie in &self.tl_containers {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -682,6 +730,8 @@ impl SessionEstablishmentResponseBuilder {
             partial_failure_information: self.partial_failure_information,
             created_traffic_endpoints: self.created_traffic_endpoints,
             fq_csids: self.fq_csids,
+            created_bridge_info_for_tsc: self.created_bridge_info_for_tsc,
+            tl_containers: self.tl_containers,
             ies: self.ies,
         })
     }
@@ -1177,5 +1227,29 @@ mod tests {
             .unwrap();
 
         assert_eq!(msg.created_pdrs().len(), 0);
+    }
+
+    #[test]
+    fn test_session_establishment_response_new_ies_roundtrip() {
+        let bridge_ie = Ie::new(IeType::CreatedBridgeInfoForTsc, vec![0x01, 0x02]);
+        let tl_container_ie = Ie::new(IeType::TlContainer, vec![0x03, 0x04]);
+
+        let msg = SessionEstablishmentResponseBuilder::accepted(0xABCD, 55)
+            .node_id_ie(test_node_id())
+            .fseid(0x1234, Ipv4Addr::new(10, 0, 0, 1))
+            .created_bridge_info_for_tsc(bridge_ie.clone())
+            .tl_container(tl_container_ie.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(msg.created_bridge_info_for_tsc, Some(bridge_ie));
+        assert_eq!(msg.tl_containers.len(), 1);
+        assert_eq!(msg.tl_containers[0], tl_container_ie);
+
+        let bytes = msg.marshal();
+        let parsed = SessionEstablishmentResponse::unmarshal(&bytes).unwrap();
+
+        assert!(parsed.created_bridge_info_for_tsc.is_some());
+        assert_eq!(parsed.tl_containers.len(), 1);
     }
 }
