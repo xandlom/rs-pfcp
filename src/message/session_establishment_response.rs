@@ -16,8 +16,8 @@ pub struct SessionEstablishmentResponse {
     created_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 16 - Multiple instances, Grouped IE
     load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
     overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 54 - Grouped IE (during overload condition)
+    failed_rule_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
     // TODO: [IE Type 65] PGW-U/SGW-U/UPF FQ-CSID - C - (Sxa/Sxb/N4 only, not Sxc/N4mb) - Per clause 23 of 3GPP TS 23.007
-    // TODO: [IE Type 114] Failed Rule ID - C - When cause indicates rule creation/modification failure
     // TODO: [IE Type 129] Created Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
     // TODO: [IE Type 205] Created Bridge/Router Info - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For TSN/TSCTS/DetNet
     // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
@@ -171,6 +171,9 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.overload_control_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.failed_rule_id {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -196,6 +199,9 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.overload_control_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.failed_rule_id {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -212,6 +218,7 @@ impl Message for SessionEstablishmentResponse {
         let mut pdn_type = None;
         let mut load_control_information = None;
         let mut overload_control_information = None;
+        let mut failed_rule_id = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -227,6 +234,7 @@ impl Message for SessionEstablishmentResponse {
                 IeType::PdnType => pdn_type = Some(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
+                IeType::FailedRuleId => failed_rule_id = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -254,6 +262,7 @@ impl Message for SessionEstablishmentResponse {
             pdn_type,
             load_control_information,
             overload_control_information,
+            failed_rule_id,
             ies,
         })
     }
@@ -294,6 +303,7 @@ impl Message for SessionEstablishmentResponse {
             IeType::OverloadControlInformation => {
                 IeIter::single(self.overload_control_information.as_ref(), ie_type)
             }
+            IeType::FailedRuleId => IeIter::single(self.failed_rule_id.as_ref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -313,6 +323,9 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.overload_control_information {
             result.push(ie);
         }
+        if let Some(ref ie) = self.failed_rule_id {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -330,6 +343,7 @@ pub struct SessionEstablishmentResponseBuilder {
     pdn_type: Option<Ie>,
     load_control_information: Option<Ie>,
     overload_control_information: Option<Ie>,
+    failed_rule_id: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -361,6 +375,7 @@ impl SessionEstablishmentResponseBuilder {
             pdn_type: None,
             load_control_information: None,
             overload_control_information: None,
+            failed_rule_id: None,
             ies: Vec::new(),
         }
     }
@@ -406,6 +421,7 @@ impl SessionEstablishmentResponseBuilder {
             pdn_type: None,
             load_control_information: None,
             overload_control_information: None,
+            failed_rule_id: None,
             ies: Vec::new(),
         }
     }
@@ -510,6 +526,11 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    pub fn failed_rule_id(mut self, ie: Ie) -> Self {
+        self.failed_rule_id = Some(ie);
+        self
+    }
+
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -552,6 +573,9 @@ impl SessionEstablishmentResponseBuilder {
         if let Some(ie) = &self.overload_control_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.failed_rule_id {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -574,6 +598,7 @@ impl SessionEstablishmentResponseBuilder {
             pdn_type: self.pdn_type,
             load_control_information: self.load_control_information,
             overload_control_information: self.overload_control_information,
+            failed_rule_id: self.failed_rule_id,
             ies: self.ies,
         })
     }

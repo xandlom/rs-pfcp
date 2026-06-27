@@ -385,6 +385,7 @@ fn test_session_modification_response_marshal_unmarshal() {
         overload_control_information: None,
         pdn_type: None,
         usage_reports: vec![],
+        failed_rule_id: None,
         ies: vec![],
     };
 
