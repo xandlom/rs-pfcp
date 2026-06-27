@@ -53,7 +53,7 @@ pub struct SessionModificationRequest {
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
     // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session if not sent during establishment
     pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
-    // TODO: [IE Type 82] RAT Type - M - (Sxa/Sxb/N4 only, not Sxc/N4mb) - New RAT type when RAT changes (not for MA PDU)
+    // TODO: [IE Type 275] RAT Type - O - (Sxa/Sxb/N4 only, not Sxc/N4mb) - New RAT type when RAT changes (not for MA PDU)
     // TODO: [IE Type 297] Group Id - C - (Sxb/N4 only, not Sxa/Sxc/N4mb) - New group identifier when changed, replaces previous
     // TODO: [IE Type 296] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Associate/update MBS
     // TODO: [IE Type 291] DSCP to PPI Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Replaces previous value

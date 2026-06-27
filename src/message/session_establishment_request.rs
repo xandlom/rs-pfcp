@@ -38,7 +38,7 @@ pub struct SessionEstablishmentRequest {
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
     // TODO: [IE Type 242] HPLMN S-NSSAI - C - (N4 only, not Sxa/Sxb/Sxc/N4mb) - For HR-SBO PDU session, from V-SMF to V-UPF
     // TODO: [IE Type 181] Provide RDS configuration information - O - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb)
-    // TODO: [IE Type 82] RAT Type - O - Current RAT type for statistics (not N4mb, not for MA PDU)
+    // TODO: [IE Type 275] RAT Type - O - Current RAT type for statistics (not N4mb, not for MA PDU)
     // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
     // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
     // TODO: [IE Type 297] Group Id - O - Group identifier (Sxb/N4 only, not Sxa/Sxc/N4mb) - See clause 5.22
