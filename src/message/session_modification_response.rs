@@ -17,7 +17,7 @@ pub struct SessionModificationResponse {
     pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 78 - Multiple instances, Grouped IE - When query requested or URR removed
     pub failed_rule_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
     pub partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
-    // TODO: [IE Type 110] Additional Usage Reports Information - C - When Query URR present/QAURR flag set and more reports follow
+    pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 126 - Additional Usage Reports Information - When Query URR present/QAURR flag set and more reports to follow
     // TODO: [IE Type 129] Created/Updated Traffic Endpoint - C - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
     // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
     // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
@@ -64,6 +64,9 @@ impl Message for SessionModificationResponse {
         for ie in &self.partial_failure_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -96,6 +99,9 @@ impl Message for SessionModificationResponse {
         for ie in &self.partial_failure_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -113,6 +119,7 @@ impl Message for SessionModificationResponse {
         let mut usage_reports = Vec::new();
         let mut failed_rule_id = None;
         let mut partial_failure_information = Vec::new();
+        let mut additional_usage_reports_information = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -129,6 +136,9 @@ impl Message for SessionModificationResponse {
                 IeType::UsageReportWithinSessionModificationResponse => usage_reports.push(ie),
                 IeType::FailedRuleId => failed_rule_id = Some(ie),
                 IeType::PartialFailureInformation => partial_failure_information.push(ie),
+                IeType::AdditionalUsageReportsInformation => {
+                    additional_usage_reports_information = Some(ie)
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -149,6 +159,7 @@ impl Message for SessionModificationResponse {
             usage_reports,
             failed_rule_id,
             partial_failure_information,
+            additional_usage_reports_information,
             ies,
         })
     }
@@ -194,6 +205,9 @@ impl Message for SessionModificationResponse {
             IeType::PartialFailureInformation => {
                 IeIter::multiple(&self.partial_failure_information, ie_type)
             }
+            IeType::AdditionalUsageReportsInformation => {
+                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -220,6 +234,9 @@ impl Message for SessionModificationResponse {
             result.push(ie);
         }
         result.extend(self.partial_failure_information.iter());
+        if let Some(ref ie) = self.additional_usage_reports_information {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -239,6 +256,7 @@ impl SessionModificationResponse {
         usage_reports: Vec<Ie>,
         failed_rule_id: Option<Ie>,
         partial_failure_information: Vec<Ie>,
+        additional_usage_reports_information: Option<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
@@ -267,6 +285,9 @@ impl SessionModificationResponse {
         for ie in &partial_failure_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &additional_usage_reports_information {
+            payload_len += ie.len();
+        }
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -282,6 +303,7 @@ impl SessionModificationResponse {
             usage_reports,
             failed_rule_id,
             partial_failure_information,
+            additional_usage_reports_information,
             ies,
         }
     }
@@ -301,6 +323,7 @@ pub struct SessionModificationResponseBuilder {
     usage_reports: Vec<Ie>,
     failed_rule_id: Option<Ie>,
     partial_failure_information: Vec<Ie>,
+    additional_usage_reports_information: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -326,6 +349,7 @@ impl SessionModificationResponseBuilder {
             usage_reports: Vec::new(),
             failed_rule_id: None,
             partial_failure_information: Vec::new(),
+            additional_usage_reports_information: None,
             ies: Vec::new(),
         }
     }
@@ -424,6 +448,12 @@ impl SessionModificationResponseBuilder {
         self
     }
 
+    /// Sets the Additional Usage Reports Information IE (optional).
+    pub fn additional_usage_reports_information(mut self, ie: Ie) -> Self {
+        self.additional_usage_reports_information = Some(ie);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -457,6 +487,7 @@ impl SessionModificationResponseBuilder {
             self.usage_reports,
             self.failed_rule_id,
             self.partial_failure_information,
+            self.additional_usage_reports_information,
             self.ies,
         )
     }
@@ -482,6 +513,7 @@ impl SessionModificationResponseBuilder {
             self.usage_reports,
             self.failed_rule_id,
             self.partial_failure_information,
+            self.additional_usage_reports_information,
             self.ies,
         ))
     }
