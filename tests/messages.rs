@@ -187,6 +187,7 @@ fn test_association_update_request_marshal_unmarshal() {
         node_id: node_id_ie.clone(),
         up_function_features: Some(up_features_ie.clone()),
         cp_function_features: Some(cp_features_ie.clone()),
+        pfcp_association_release_request: None,
         ue_ip_address_pool_information: vec![],
         ies: vec![],
     };

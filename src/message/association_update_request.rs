@@ -13,7 +13,7 @@ pub struct AssociationUpdateRequest {
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 60
     pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 43
     pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 89
-    // TODO: [IE Type 111] PFCP Association Release Request - C - Conditional, when UP function requests CP to release association
+    pub pfcp_association_release_request: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 111 - PFCP Association Release Request - When UP function requests CP to release association
     // TODO: [IE Type 112] Graceful Release Period - C - Conditional, when UP function requests graceful release
     // TODO: [IE Type 162] PFCPAUReq-Flags - O - Flags IE with PARPS flag for association release preparation
     // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
@@ -46,6 +46,9 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.cp_function_features {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.pfcp_association_release_request {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ue_ip_address_pool_information {
             ie.marshal_into(buf);
         }
@@ -61,6 +64,9 @@ impl Message for AssociationUpdateRequest {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.pfcp_association_release_request {
             size += ie.len() as usize;
         }
         for ie in &self.ue_ip_address_pool_information {
@@ -80,6 +86,7 @@ impl Message for AssociationUpdateRequest {
         let mut node_id = None;
         let mut up_function_features = None;
         let mut cp_function_features = None;
+        let mut pfcp_association_release_request = None;
         let mut ue_ip_address_pool_information = Vec::new();
         let mut ies = Vec::new();
 
@@ -91,6 +98,9 @@ impl Message for AssociationUpdateRequest {
                 IeType::NodeId => node_id = Some(ie),
                 IeType::UpFunctionFeatures => up_function_features = Some(ie),
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
+                IeType::PfcpAssociationReleaseRequest => {
+                    pfcp_association_release_request = Some(ie)
+                }
                 IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
                 _ => ies.push(ie),
             }
@@ -106,6 +116,7 @@ impl Message for AssociationUpdateRequest {
             })?,
             up_function_features,
             cp_function_features,
+            pfcp_association_release_request,
             ue_ip_address_pool_information,
             ies,
         })
@@ -138,6 +149,9 @@ impl Message for AssociationUpdateRequest {
             IeType::CpFunctionFeatures => {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
+            IeType::PfcpAssociationReleaseRequest => {
+                IeIter::single(self.pfcp_association_release_request.as_ref(), ie_type)
+            }
             IeType::UeIpAddressPoolInformation => {
                 IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
             }
@@ -153,6 +167,9 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.cp_function_features {
             result.push(ie);
         }
+        if let Some(ref ie) = self.pfcp_association_release_request {
+            result.push(ie);
+        }
         result.extend(self.ue_ip_address_pool_information.iter());
         result.extend(self.ies.iter());
         result
@@ -166,6 +183,7 @@ impl AssociationUpdateRequest {
         node_id: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
+        pfcp_association_release_request: Option<Ie>,
         ue_ip_address_pool_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
@@ -174,6 +192,9 @@ impl AssociationUpdateRequest {
             payload_len += ie.len();
         }
         if let Some(ref ie) = cp_function_features {
+            payload_len += ie.len();
+        }
+        if let Some(ref ie) = pfcp_association_release_request {
             payload_len += ie.len();
         }
         for ie in &ue_ip_address_pool_information {
@@ -191,6 +212,7 @@ impl AssociationUpdateRequest {
             node_id,
             up_function_features,
             cp_function_features,
+            pfcp_association_release_request,
             ue_ip_address_pool_information,
             ies,
         }
@@ -204,6 +226,7 @@ pub struct AssociationUpdateRequestBuilder {
     node_id: Option<Ie>,
     up_function_features: Option<Ie>,
     cp_function_features: Option<Ie>,
+    pfcp_association_release_request: Option<Ie>,
     ue_ip_address_pool_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
@@ -216,6 +239,7 @@ impl AssociationUpdateRequestBuilder {
             node_id: None,
             up_function_features: None,
             cp_function_features: None,
+            pfcp_association_release_request: None,
             ue_ip_address_pool_information: Vec::new(),
             ies: Vec::new(),
         }
@@ -236,6 +260,12 @@ impl AssociationUpdateRequestBuilder {
     /// Sets the CP function features IE (optional).
     pub fn cp_function_features(mut self, cp_function_features: Ie) -> Self {
         self.cp_function_features = Some(cp_function_features);
+        self
+    }
+
+    /// Sets the PFCP Association Release Request IE (conditional).
+    pub fn pfcp_association_release_request(mut self, ie: Ie) -> Self {
+        self.pfcp_association_release_request = Some(ie);
         self
     }
 
@@ -271,6 +301,7 @@ impl AssociationUpdateRequestBuilder {
             node_id,
             self.up_function_features,
             self.cp_function_features,
+            self.pfcp_association_release_request,
             self.ue_ip_address_pool_information,
             self.ies,
         )
@@ -290,6 +321,7 @@ impl AssociationUpdateRequestBuilder {
             node_id,
             self.up_function_features,
             self.cp_function_features,
+            self.pfcp_association_release_request,
             self.ue_ip_address_pool_information,
             self.ies,
         ))
