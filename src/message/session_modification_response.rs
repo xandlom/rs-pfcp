@@ -21,7 +21,7 @@ pub struct SessionModificationResponse {
     pub created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 128 - Created/Updated Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
     // TODO: [IE Type 266] TSC Management Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - TSC management info
     // TODO: [IE Type 186] ATSSS Control Parameters - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - When ATSSS functionality required
-    // TODO: [IE Type 112] Updated PDR - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
+    pub updated_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 256 - Updated PDR - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
     // TODO: [IE Type 264] Packet Rate Status Report - C - Multiple instances, Grouped IE (Sxb/N4 only) - Immediate packet rate status if requested
     // TODO: [IE Type 272] Partial Failure Information - C - Multiple instances, Grouped IE - When cause indicates partial acceptance
     // TODO: [IE Type 299] MBS Session N4 Information - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Per clause 5.34.1
@@ -70,6 +70,9 @@ impl Message for SessionModificationResponse {
         for ie in &self.created_traffic_endpoints {
             ie.marshal_into(buf);
         }
+        for ie in &self.updated_pdrs {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -108,6 +111,9 @@ impl Message for SessionModificationResponse {
         for ie in &self.created_traffic_endpoints {
             size += ie.len() as usize;
         }
+        for ie in &self.updated_pdrs {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -127,6 +133,7 @@ impl Message for SessionModificationResponse {
         let mut partial_failure_information = Vec::new();
         let mut additional_usage_reports_information = None;
         let mut created_traffic_endpoints = Vec::new();
+        let mut updated_pdrs = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -147,6 +154,7 @@ impl Message for SessionModificationResponse {
                     additional_usage_reports_information = Some(ie)
                 }
                 IeType::CreatedTrafficEndpoint => created_traffic_endpoints.push(ie),
+                IeType::UpdatedPdr => updated_pdrs.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -169,6 +177,7 @@ impl Message for SessionModificationResponse {
             partial_failure_information,
             additional_usage_reports_information,
             created_traffic_endpoints,
+            updated_pdrs,
             ies,
         })
     }
@@ -220,6 +229,7 @@ impl Message for SessionModificationResponse {
             IeType::CreatedTrafficEndpoint => {
                 IeIter::multiple(&self.created_traffic_endpoints, ie_type)
             }
+            IeType::UpdatedPdr => IeIter::multiple(&self.updated_pdrs, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -250,6 +260,7 @@ impl Message for SessionModificationResponse {
             result.push(ie);
         }
         result.extend(self.created_traffic_endpoints.iter());
+        result.extend(self.updated_pdrs.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -271,6 +282,7 @@ impl SessionModificationResponse {
         partial_failure_information: Vec<Ie>,
         additional_usage_reports_information: Option<Ie>,
         created_traffic_endpoints: Vec<Ie>,
+        updated_pdrs: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut header = Header::new(MsgType::SessionModificationResponse, true, seid, seq);
@@ -305,6 +317,9 @@ impl SessionModificationResponse {
         for ie in &created_traffic_endpoints {
             payload_len += ie.len();
         }
+        for ie in &updated_pdrs {
+            payload_len += ie.len();
+        }
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -322,6 +337,7 @@ impl SessionModificationResponse {
             partial_failure_information,
             additional_usage_reports_information,
             created_traffic_endpoints,
+            updated_pdrs,
             ies,
         }
     }
@@ -343,6 +359,7 @@ pub struct SessionModificationResponseBuilder {
     partial_failure_information: Vec<Ie>,
     additional_usage_reports_information: Option<Ie>,
     created_traffic_endpoints: Vec<Ie>,
+    updated_pdrs: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -370,6 +387,7 @@ impl SessionModificationResponseBuilder {
             partial_failure_information: Vec::new(),
             additional_usage_reports_information: None,
             created_traffic_endpoints: Vec::new(),
+            updated_pdrs: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -480,6 +498,12 @@ impl SessionModificationResponseBuilder {
         self
     }
 
+    /// Adds an Updated PDR IE (optional, multiple allowed, Sxb/N4 only).
+    pub fn updated_pdr(mut self, ie: Ie) -> Self {
+        self.updated_pdrs.push(ie);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -515,6 +539,7 @@ impl SessionModificationResponseBuilder {
             self.partial_failure_information,
             self.additional_usage_reports_information,
             self.created_traffic_endpoints,
+            self.updated_pdrs,
             self.ies,
         )
     }
@@ -542,6 +567,7 @@ impl SessionModificationResponseBuilder {
             self.partial_failure_information,
             self.additional_usage_reports_information,
             self.created_traffic_endpoints,
+            self.updated_pdrs,
             self.ies,
         ))
     }

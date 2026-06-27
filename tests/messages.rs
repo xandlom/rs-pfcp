@@ -392,6 +392,7 @@ fn test_session_modification_response_marshal_unmarshal() {
         partial_failure_information: vec![],
         additional_usage_reports_information: None,
         created_traffic_endpoints: vec![],
+        updated_pdrs: vec![],
         ies: vec![],
     };
 
