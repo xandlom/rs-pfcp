@@ -21,7 +21,8 @@ pub struct AssociationSetupResponse {
     pub gtpu_path_qos_control_information: Vec<Ie>, // C - Multiple - IE Type 238 (N4 only)
     pub nf_instance_id: Option<Ie>, // O - IE Type 253 - When sent by 5G UP function (N4/N4mb only)
     pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.2-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
-    // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances allowed, Grouped IE (N4 only)
+    // TODO: [IE Type 205] Clock Drift Report - no file yet (205=ClockDriftReport, Grouped IE, N4 only)
+    // TODO: [IE Type 203] Clock Drift Control Information - no file yet (203=ClockDriftControlInformation)
     pub ies: Vec<Ie>,
 }
 

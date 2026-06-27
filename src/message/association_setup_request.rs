@@ -21,7 +21,8 @@ pub struct AssociationSetupRequest {
     pub nf_instance_id: Option<Ie>, // O - IE Type 253 - When sent by 5G UP function (N4/N4mb only)
     pub pfcpas_req_flags: Option<Ie>, // O - IE Type 259 - UUPSI flag for IPUPS support (N4 only)
     pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.1-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
-    // TODO: [IE Type 203] Clock Drift Control Information - O - Multiple instances allowed, Grouped IE (N4 only)
+    pub requested_clock_drift_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.1-1 - IE Type 204 - Grouped IE (N4 only) [TODO said 203]
+    // TODO: [IE Type 203] Clock Drift Control Information - no file yet (203=ClockDriftControlInformation)
     pub ies: Vec<Ie>, // For any other IEs
 }
 
@@ -68,6 +69,9 @@ impl Message for AssociationSetupRequest {
         for ie in &self.ue_ip_address_pool_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.requested_clock_drift_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -104,6 +108,9 @@ impl Message for AssociationSetupRequest {
         for ie in &self.ue_ip_address_pool_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.requested_clock_drift_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -126,6 +133,7 @@ impl Message for AssociationSetupRequest {
         let mut nf_instance_id = None;
         let mut pfcpas_req_flags = None;
         let mut ue_ip_address_pool_information = Vec::new();
+        let mut requested_clock_drift_information = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -146,6 +154,9 @@ impl Message for AssociationSetupRequest {
                 IeType::NfInstanceId => nf_instance_id = Some(ie),
                 IeType::PfcpasReqFlags => pfcpas_req_flags = Some(ie),
                 IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
+                IeType::RequestedClockDriftInformation => {
+                    requested_clock_drift_information = Some(ie)
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -174,6 +185,7 @@ impl Message for AssociationSetupRequest {
             nf_instance_id,
             pfcpas_req_flags,
             ue_ip_address_pool_information,
+            requested_clock_drift_information,
             ies,
         })
     }
@@ -221,6 +233,9 @@ impl Message for AssociationSetupRequest {
             IeType::UeIpAddressPoolInformation => {
                 IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
             }
+            IeType::RequestedClockDriftInformation => {
+                IeIter::single(self.requested_clock_drift_information.as_ref(), ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -248,6 +263,9 @@ impl Message for AssociationSetupRequest {
             result.push(ie);
         }
         result.extend(self.ue_ip_address_pool_information.iter());
+        if let Some(ref ie) = self.requested_clock_drift_information {
+            result.push(ie);
+        }
         result.extend(self.ies.iter());
         result
     }
@@ -268,6 +286,7 @@ impl AssociationSetupRequest {
         nf_instance_id: Option<Ie>,
         pfcpas_req_flags: Option<Ie>,
         ue_ip_address_pool_information: Vec<Ie>,
+        requested_clock_drift_information: Option<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len() + recovery_time_stamp.len();
@@ -298,6 +317,9 @@ impl AssociationSetupRequest {
         for ie in &ue_ip_address_pool_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &requested_clock_drift_information {
+            payload_len += ie.len();
+        }
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -316,6 +338,7 @@ impl AssociationSetupRequest {
             nf_instance_id,
             pfcpas_req_flags,
             ue_ip_address_pool_information,
+            requested_clock_drift_information,
             ies,
         }
     }
@@ -336,6 +359,7 @@ pub struct AssociationSetupRequestBuilder {
     nf_instance_id: Option<Ie>,
     pfcpas_req_flags: Option<Ie>,
     ue_ip_address_pool_information: Vec<Ie>,
+    requested_clock_drift_information: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -355,6 +379,7 @@ impl AssociationSetupRequestBuilder {
             nf_instance_id: None,
             pfcpas_req_flags: None,
             ue_ip_address_pool_information: Vec::new(),
+            requested_clock_drift_information: None,
             ies: Vec::new(),
         }
     }
@@ -519,6 +544,11 @@ impl AssociationSetupRequestBuilder {
         self
     }
 
+    pub fn requested_clock_drift_information(mut self, ie: Ie) -> Self {
+        self.requested_clock_drift_information = Some(ie);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -556,6 +586,7 @@ impl AssociationSetupRequestBuilder {
             self.nf_instance_id,
             self.pfcpas_req_flags,
             self.ue_ip_address_pool_information,
+            self.requested_clock_drift_information,
             self.ies,
         )
     }
@@ -608,6 +639,7 @@ impl AssociationSetupRequestBuilder {
             self.nf_instance_id,
             self.pfcpas_req_flags,
             self.ue_ip_address_pool_information,
+            self.requested_clock_drift_information,
             self.ies,
         ))
     }
@@ -1284,6 +1316,25 @@ mod tests {
         assert_eq!(request.ies(IeType::SmfSetId).next(), Some(&smf_set));
         assert_eq!(request.ies(IeType::NfInstanceId).next(), Some(&nf_id));
         assert_eq!(request.ies(IeType::PfcpasReqFlags).next(), Some(&flags));
+    }
+
+    #[test]
+    fn test_requested_clock_drift_information_roundtrip() {
+        use std::net::Ipv4Addr;
+        let ie = Ie::new(IeType::RequestedClockDriftInformation, vec![0x01, 0x02]);
+
+        let original = AssociationSetupRequestBuilder::new(27000)
+            .node_id(Ipv4Addr::new(10, 0, 0, 1))
+            .recovery_time_stamp(SystemTime::now())
+            .requested_clock_drift_information(ie.clone())
+            .build();
+
+        assert_eq!(original.requested_clock_drift_information, Some(ie));
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationSetupRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert!(unmarshaled.requested_clock_drift_information.is_some());
     }
 
     #[test]

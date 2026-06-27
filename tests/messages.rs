@@ -130,6 +130,7 @@ fn test_association_setup_response_from_request() {
         None,
         None,
         vec![],
+        None,
         vec![],
     );
 
@@ -192,6 +193,7 @@ fn test_association_update_request_marshal_unmarshal() {
         pfcpau_req_flags: None,
         alternative_smf_ip_addresses: vec![],
         smf_set_id: None,
+        requested_clock_drift_information: None,
         ue_ip_address_pool_information: vec![],
         gtpu_path_qos_control_information: vec![],
         ue_ip_address_usage_information: vec![],

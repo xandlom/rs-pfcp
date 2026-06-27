@@ -18,7 +18,8 @@ pub struct AssociationUpdateRequest {
     pub pfcpau_req_flags: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 162 - PFCPAUReq-Flags - PARPS flag for association release preparation
     pub alternative_smf_ip_addresses: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 178 - Alternative SMF IP Address - Multiple instances (N4/N4mb only)
     pub smf_set_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 180 - SMF Set ID - When MPAS feature supported and FQDN changes (N4/N4mb only)
-    // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances, Grouped IE, null length stops reporting (N4 only)
+    pub requested_clock_drift_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 204 - Grouped IE (N4 only) - null length stops reporting [TODO said 203]
+    // TODO: [IE Type 203] Clock Drift Control Information - no file yet (203=ClockDriftControlInformation)
     pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
     pub gtpu_path_qos_control_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 238 - GTP-U Path QoS Control Information - Multiple instances, null length stops monitoring (N4 only)
     pub ue_ip_address_usage_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 267 - UE IP Address Usage Information - Multiple instances, Grouped IE (Sxb/N4 only)
@@ -61,6 +62,9 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.smf_set_id {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.requested_clock_drift_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ue_ip_address_pool_information {
             ie.marshal_into(buf);
         }
@@ -99,6 +103,9 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.smf_set_id {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.requested_clock_drift_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.ue_ip_address_pool_information {
             size += ie.len() as usize;
         }
@@ -127,6 +134,7 @@ impl Message for AssociationUpdateRequest {
         let mut pfcpau_req_flags = None;
         let mut alternative_smf_ip_addresses = Vec::new();
         let mut smf_set_id = None;
+        let mut requested_clock_drift_information = None;
         let mut ue_ip_address_pool_information = Vec::new();
         let mut gtpu_path_qos_control_information = Vec::new();
         let mut ue_ip_address_usage_information = Vec::new();
@@ -147,6 +155,9 @@ impl Message for AssociationUpdateRequest {
                 IeType::PfcpauReqFlags => pfcpau_req_flags = Some(ie),
                 IeType::AlternativeSmfIpAddress => alternative_smf_ip_addresses.push(ie),
                 IeType::SmfSetId => smf_set_id = Some(ie),
+                IeType::RequestedClockDriftInformation => {
+                    requested_clock_drift_information = Some(ie)
+                }
                 IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
                 IeType::GtpuPathQosControlInformation => gtpu_path_qos_control_information.push(ie),
                 IeType::UeIpAddressUsageInformation => ue_ip_address_usage_information.push(ie),
@@ -169,6 +180,7 @@ impl Message for AssociationUpdateRequest {
             pfcpau_req_flags,
             alternative_smf_ip_addresses,
             smf_set_id,
+            requested_clock_drift_information,
             ue_ip_address_pool_information,
             gtpu_path_qos_control_information,
             ue_ip_address_usage_information,
@@ -214,6 +226,9 @@ impl Message for AssociationUpdateRequest {
                 IeIter::multiple(&self.alternative_smf_ip_addresses, ie_type)
             }
             IeType::SmfSetId => IeIter::single(self.smf_set_id.as_ref(), ie_type),
+            IeType::RequestedClockDriftInformation => {
+                IeIter::single(self.requested_clock_drift_information.as_ref(), ie_type)
+            }
             IeType::UeIpAddressPoolInformation => {
                 IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
             }
@@ -248,6 +263,9 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.smf_set_id {
             result.push(ie);
         }
+        if let Some(ref ie) = self.requested_clock_drift_information {
+            result.push(ie);
+        }
         result.extend(self.ue_ip_address_pool_information.iter());
         result.extend(self.gtpu_path_qos_control_information.iter());
         result.extend(self.ue_ip_address_usage_information.iter());
@@ -269,6 +287,7 @@ impl AssociationUpdateRequest {
         pfcpau_req_flags: Option<Ie>,
         alternative_smf_ip_addresses: Vec<Ie>,
         smf_set_id: Option<Ie>,
+        requested_clock_drift_information: Option<Ie>,
         ue_ip_address_pool_information: Vec<Ie>,
         gtpu_path_qos_control_information: Vec<Ie>,
         ue_ip_address_usage_information: Vec<Ie>,
@@ -294,6 +313,9 @@ impl AssociationUpdateRequest {
             payload_len += ie.len();
         }
         if let Some(ref ie) = smf_set_id {
+            payload_len += ie.len();
+        }
+        if let Some(ref ie) = requested_clock_drift_information {
             payload_len += ie.len();
         }
         for ie in &ue_ip_address_pool_information {
@@ -322,6 +344,7 @@ impl AssociationUpdateRequest {
             pfcpau_req_flags,
             alternative_smf_ip_addresses,
             smf_set_id,
+            requested_clock_drift_information,
             ue_ip_address_pool_information,
             gtpu_path_qos_control_information,
             ue_ip_address_usage_information,
@@ -342,6 +365,7 @@ pub struct AssociationUpdateRequestBuilder {
     pfcpau_req_flags: Option<Ie>,
     alternative_smf_ip_addresses: Vec<Ie>,
     smf_set_id: Option<Ie>,
+    requested_clock_drift_information: Option<Ie>,
     ue_ip_address_pool_information: Vec<Ie>,
     gtpu_path_qos_control_information: Vec<Ie>,
     ue_ip_address_usage_information: Vec<Ie>,
@@ -361,6 +385,7 @@ impl AssociationUpdateRequestBuilder {
             pfcpau_req_flags: None,
             alternative_smf_ip_addresses: Vec::new(),
             smf_set_id: None,
+            requested_clock_drift_information: None,
             ue_ip_address_pool_information: Vec::new(),
             gtpu_path_qos_control_information: Vec::new(),
             ue_ip_address_usage_information: Vec::new(),
@@ -416,6 +441,11 @@ impl AssociationUpdateRequestBuilder {
         self
     }
 
+    pub fn requested_clock_drift_information(mut self, ie: Ie) -> Self {
+        self.requested_clock_drift_information = Some(ie);
+        self
+    }
+
     /// Adds a UE IP Address Pool Information IE (optional, multiple allowed, Sxb/N4 only).
     pub fn ue_ip_address_pool_information(mut self, ie: Ie) -> Self {
         self.ue_ip_address_pool_information.push(ie);
@@ -465,6 +495,7 @@ impl AssociationUpdateRequestBuilder {
             self.pfcpau_req_flags,
             self.alternative_smf_ip_addresses,
             self.smf_set_id,
+            self.requested_clock_drift_information,
             self.ue_ip_address_pool_information,
             self.gtpu_path_qos_control_information,
             self.ue_ip_address_usage_information,
@@ -491,6 +522,7 @@ impl AssociationUpdateRequestBuilder {
             self.pfcpau_req_flags,
             self.alternative_smf_ip_addresses,
             self.smf_set_id,
+            self.requested_clock_drift_information,
             self.ue_ip_address_pool_information,
             self.gtpu_path_qos_control_information,
             self.ue_ip_address_usage_information,
@@ -684,5 +716,24 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_requested_clock_drift_information_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+        let rcdi_ie = Ie::new(IeType::RequestedClockDriftInformation, vec![0x01, 0x02]);
+
+        let original = AssociationUpdateRequestBuilder::new(99000)
+            .node_id(node_id_ie)
+            .requested_clock_drift_information(rcdi_ie.clone())
+            .build();
+
+        assert_eq!(original.requested_clock_drift_information, Some(rcdi_ie));
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationUpdateRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert!(unmarshaled.requested_clock_drift_information.is_some());
     }
 }
