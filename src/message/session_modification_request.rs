@@ -36,7 +36,7 @@ pub struct SessionModificationRequest {
     // TODO: [IE Type 65] ePDG FQ-CSID - C - (Sxb only) - Per clause 23 of 3GPP TS 23.007
     // TODO: [IE Type 65] TWAN FQ-CSID - C - (Sxb only) - Per clause 23 of 3GPP TS 23.007
     pub user_plane_inactivity_timer: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 117 - When needs to be changed (Sxb/Sxc/N4/N4mb only)
-    // TODO: [IE Type 177] Query URR Reference - O - Reference identifying query request, returned in usage reports
+    pub query_urr_reference: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 125 - Reference identifying the query request, returned in usage reports
     pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 152 - Trace instructions, null length to deactivate (not N4mb)
     // TODO: [IE Type 168] Remove MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     // TODO: [IE Type 170] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
@@ -194,6 +194,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.user_plane_inactivity_timer {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.query_urr_reference {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.pfcpsm_req_flags {
             ie.marshal_into(buf);
         }
@@ -335,6 +338,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.user_plane_inactivity_timer {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.query_urr_reference {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.pfcpsm_req_flags {
             size += ie.len() as usize;
         }
@@ -387,6 +393,7 @@ impl Message for SessionModificationRequest {
         let mut cp_function_features = None;
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
+        let mut query_urr_reference = None;
         let mut pfcpsm_req_flags = None;
         let mut query_urrs = None;
         let mut node_id = None;
@@ -432,6 +439,7 @@ impl Message for SessionModificationRequest {
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
+                IeType::QueryUrrReference => query_urr_reference = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
                 IeType::QueryUrr => query_urrs.get_or_insert(Vec::new()).push(ie),
                 IeType::NodeId => node_id = Some(ie),
@@ -471,6 +479,7 @@ impl Message for SessionModificationRequest {
             cp_function_features,
             apn_dnn,
             user_plane_inactivity_timer,
+            query_urr_reference,
             pfcpsm_req_flags,
             query_urrs,
             node_id,
@@ -569,6 +578,7 @@ impl Message for SessionModificationRequest {
             IeType::UserPlaneInactivityTimer => {
                 IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
             }
+            IeType::QueryUrrReference => IeIter::single(self.query_urr_reference.as_ref(), ie_type),
             IeType::TraceInformation => IeIter::single(self.trace_information.as_ref(), ie_type),
             IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
             IeType::EthernetContextInformation => {
@@ -670,6 +680,9 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.user_plane_inactivity_timer {
             result.push(ie);
         }
+        if let Some(ref ie) = self.query_urr_reference {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
@@ -721,6 +734,7 @@ pub struct SessionModificationRequestBuilder {
     cp_function_features: Option<Ie>,
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
+    query_urr_reference: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
     query_urrs: Option<Vec<Ie>>,
     node_id: Option<Ie>,
@@ -761,6 +775,7 @@ impl SessionModificationRequestBuilder {
             cp_function_features: None,
             apn_dnn: None,
             user_plane_inactivity_timer: None,
+            query_urr_reference: None,
             pfcpsm_req_flags: None,
             query_urrs: None,
             node_id: None,
@@ -1095,6 +1110,11 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn query_urr_reference(mut self, ie: Ie) -> Self {
+        self.query_urr_reference = Some(ie);
+        self
+    }
+
     pub fn pfcpsm_req_flags(mut self, pfcpsm_req_flags: Ie) -> Self {
         self.pfcpsm_req_flags = Some(pfcpsm_req_flags);
         self
@@ -1244,6 +1264,9 @@ impl SessionModificationRequestBuilder {
         if let Some(ie) = &self.user_plane_inactivity_timer {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.query_urr_reference {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
@@ -1300,6 +1323,7 @@ impl SessionModificationRequestBuilder {
             cp_function_features: self.cp_function_features,
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
+            query_urr_reference: self.query_urr_reference,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
             query_urrs: self.query_urrs,
             node_id: self.node_id,
