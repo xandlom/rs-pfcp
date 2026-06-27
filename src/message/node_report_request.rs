@@ -15,21 +15,25 @@ pub struct NodeReportRequest {
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 60
     pub node_report_type: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 101 (TODO: Should be mandatory, not Optional - bitmask determines report type)
     pub user_plane_path_failure_report: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 102 - Grouped IE, Multiple instances, when UPFR bit=1 in Node Report Type
-    // TODO: [IE Type 187] User Plane Path Recovery Report - C - Multiple instances allowed, Grouped IE, when UPRR bit=1 in Node Report Type, see Table 7.4.5.1.2-1
+    pub user_plane_path_recovery_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 187 - Multiple instances, Grouped IE, when UPRR bit=1 in Node Report Type
     // TODO: [IE Type 205] Clock Drift Report - C - Multiple instances allowed, Grouped IE, when CDR bit=1 (N4 only, not Sxc), see Table 7.4.5.1.3-1
     // TODO: [IE Type 239] GTP-U Path QoS Report - C - Multiple instances allowed, Grouped IE, when GPQR bit=1 (N4 only), contains nested QoS Information (Type 240)
-    // TODO: [IE Type 315] Peer UP Restart Report - C - Grouped IE, when PURR bit=1 in Node Report Type, see Table 7.4.5.1.4-1
-    // TODO: [IE Type 320] Vendor-Specific Node Report Type - O - Multiple instances allowed, Grouped IE with Vendor ID + proprietary info
+    pub peer_up_restart_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 315 - Grouped IE, when PURR bit=1 in Node Report Type
+    pub vendor_specific_node_report_types: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 320 - Multiple instances, Grouped IE with Vendor ID + proprietary info
     pub ies: Vec<Ie>,
 }
 
 impl NodeReportRequest {
     /// Creates a new Node Report Request message.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         seq: impl Into<SequenceNumber>,
         node_id: Ie,
         node_report_type: Option<Ie>,
         user_plane_path_failure_report: Option<Ie>,
+        user_plane_path_recovery_reports: Vec<Ie>,
+        peer_up_restart_reports: Vec<Ie>,
+        vendor_specific_node_report_types: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len();
@@ -37,6 +41,15 @@ impl NodeReportRequest {
             payload_len += ie.len();
         }
         if let Some(ref ie) = user_plane_path_failure_report {
+            payload_len += ie.len();
+        }
+        for ie in &user_plane_path_recovery_reports {
+            payload_len += ie.len();
+        }
+        for ie in &peer_up_restart_reports {
+            payload_len += ie.len();
+        }
+        for ie in &vendor_specific_node_report_types {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -51,6 +64,9 @@ impl NodeReportRequest {
             node_id,
             node_report_type,
             user_plane_path_failure_report,
+            user_plane_path_recovery_reports,
+            peer_up_restart_reports,
+            vendor_specific_node_report_types,
             ies,
         }
     }
@@ -77,6 +93,15 @@ impl Message for NodeReportRequest {
         if let Some(ref ie) = self.user_plane_path_failure_report {
             ie.marshal_into(buf);
         }
+        for ie in &self.user_plane_path_recovery_reports {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.peer_up_restart_reports {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.vendor_specific_node_report_types {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -89,6 +114,15 @@ impl Message for NodeReportRequest {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.user_plane_path_failure_report {
+            size += ie.len() as usize;
+        }
+        for ie in &self.user_plane_path_recovery_reports {
+            size += ie.len() as usize;
+        }
+        for ie in &self.peer_up_restart_reports {
+            size += ie.len() as usize;
+        }
+        for ie in &self.vendor_specific_node_report_types {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -105,6 +139,9 @@ impl Message for NodeReportRequest {
         let mut node_id = None;
         let mut node_report_type = None;
         let mut user_plane_path_failure_report = None;
+        let mut user_plane_path_recovery_reports = Vec::new();
+        let mut peer_up_restart_reports = Vec::new();
+        let mut vendor_specific_node_report_types = Vec::new();
         let mut ies = Vec::new();
 
         let mut cursor = header.len() as usize;
@@ -115,6 +152,9 @@ impl Message for NodeReportRequest {
                 IeType::NodeId => node_id = Some(ie),
                 IeType::ReportType => node_report_type = Some(ie),
                 IeType::UserPlanePathFailureReport => user_plane_path_failure_report = Some(ie),
+                IeType::UserPlanePathRecoveryReport => user_plane_path_recovery_reports.push(ie),
+                IeType::PeerUpRestartReport => peer_up_restart_reports.push(ie),
+                IeType::VendorSpecificNodeReportType => vendor_specific_node_report_types.push(ie),
                 _ => ies.push(ie),
             }
             cursor += ie_len;
@@ -131,6 +171,9 @@ impl Message for NodeReportRequest {
             node_id,
             node_report_type,
             user_plane_path_failure_report,
+            user_plane_path_recovery_reports,
+            peer_up_restart_reports,
+            vendor_specific_node_report_types,
             ies,
         })
     }
@@ -160,6 +203,13 @@ impl Message for NodeReportRequest {
             IeType::UserPlanePathFailureReport => {
                 IeIter::single(self.user_plane_path_failure_report.as_ref(), ie_type)
             }
+            IeType::UserPlanePathRecoveryReport => {
+                IeIter::multiple(&self.user_plane_path_recovery_reports, ie_type)
+            }
+            IeType::PeerUpRestartReport => IeIter::multiple(&self.peer_up_restart_reports, ie_type),
+            IeType::VendorSpecificNodeReportType => {
+                IeIter::multiple(&self.vendor_specific_node_report_types, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -172,6 +222,9 @@ impl Message for NodeReportRequest {
         if let Some(ref ie) = self.user_plane_path_failure_report {
             result.push(ie);
         }
+        result.extend(self.user_plane_path_recovery_reports.iter());
+        result.extend(self.peer_up_restart_reports.iter());
+        result.extend(self.vendor_specific_node_report_types.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -184,6 +237,9 @@ pub struct NodeReportRequestBuilder {
     node_id: Option<Ie>,
     node_report_type: Option<Ie>,
     user_plane_path_failure_report: Option<Ie>,
+    user_plane_path_recovery_reports: Vec<Ie>,
+    peer_up_restart_reports: Vec<Ie>,
+    vendor_specific_node_report_types: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -195,6 +251,9 @@ impl NodeReportRequestBuilder {
             node_id: None,
             node_report_type: None,
             user_plane_path_failure_report: None,
+            user_plane_path_recovery_reports: Vec::new(),
+            peer_up_restart_reports: Vec::new(),
+            vendor_specific_node_report_types: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -214,6 +273,24 @@ impl NodeReportRequestBuilder {
     /// Sets the user plane path failure report IE (optional).
     pub fn user_plane_path_failure_report(mut self, user_plane_path_failure_report: Ie) -> Self {
         self.user_plane_path_failure_report = Some(user_plane_path_failure_report);
+        self
+    }
+
+    /// Adds a User Plane Path Recovery Report IE (conditional, multiple allowed).
+    pub fn user_plane_path_recovery_report(mut self, ie: Ie) -> Self {
+        self.user_plane_path_recovery_reports.push(ie);
+        self
+    }
+
+    /// Adds a Peer UP Restart Report IE (conditional, multiple allowed).
+    pub fn peer_up_restart_report(mut self, ie: Ie) -> Self {
+        self.peer_up_restart_reports.push(ie);
+        self
+    }
+
+    /// Adds a Vendor-Specific Node Report Type IE (optional, multiple allowed).
+    pub fn vendor_specific_node_report_type(mut self, ie: Ie) -> Self {
+        self.vendor_specific_node_report_types.push(ie);
         self
     }
 
@@ -243,6 +320,9 @@ impl NodeReportRequestBuilder {
             node_id,
             self.node_report_type,
             self.user_plane_path_failure_report,
+            self.user_plane_path_recovery_reports,
+            self.peer_up_restart_reports,
+            self.vendor_specific_node_report_types,
             self.ies,
         )
     }
@@ -261,6 +341,9 @@ impl NodeReportRequestBuilder {
             node_id,
             self.node_report_type,
             self.user_plane_path_failure_report,
+            self.user_plane_path_recovery_reports,
+            self.peer_up_restart_reports,
+            self.vendor_specific_node_report_types,
             self.ies,
         ))
     }
@@ -279,7 +362,16 @@ mod tests {
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
         );
 
-        let original = NodeReportRequest::new(123, node_id_ie, None, None, Vec::new());
+        let original = NodeReportRequest::new(
+            123,
+            node_id_ie,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
 
@@ -314,6 +406,9 @@ mod tests {
             Some(report_type_ie),
             Some(path_failure_ie),
             Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
         );
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
@@ -334,7 +429,16 @@ mod tests {
             Ie::new(IeType::Unknown, vec![0xFF, 0xFF]),
         ];
 
-        let original = NodeReportRequest::new(789, node_id_ie, None, None, additional_ies);
+        let original = NodeReportRequest::new(
+            789,
+            node_id_ie,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            additional_ies,
+        );
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
 
@@ -361,8 +465,16 @@ mod tests {
         );
         let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // ERIR
 
-        let message =
-            NodeReportRequest::new(123, node_id_ie, Some(report_type_ie), None, Vec::new());
+        let message = NodeReportRequest::new(
+            123,
+            node_id_ie,
+            Some(report_type_ie),
+            None,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
 
         assert!(message.ies(IeType::NodeId).next().is_some());
         assert!(message.ies(IeType::ReportType).next().is_some());
@@ -380,7 +492,16 @@ mod tests {
             NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
         );
 
-        let message = NodeReportRequest::new(999, node_id_ie, None, None, Vec::new());
+        let message = NodeReportRequest::new(
+            999,
+            node_id_ie,
+            None,
+            None,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
 
         assert_eq!(message.msg_type(), MsgType::NodeReportRequest);
         assert_eq!(*message.sequence(), 999);
@@ -542,6 +663,30 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
 
+        assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_node_report_request_new_ies_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+        let recovery_ie = Ie::new(IeType::UserPlanePathRecoveryReport, vec![0x01, 0x02]);
+        let restart_ie = Ie::new(IeType::PeerUpRestartReport, vec![0x03, 0x04]);
+        let vendor_ie = Ie::new(IeType::VendorSpecificNodeReportType, vec![0x05, 0x06]);
+
+        let original = NodeReportRequestBuilder::new(11111)
+            .node_id(node_id_ie)
+            .user_plane_path_recovery_report(recovery_ie)
+            .peer_up_restart_report(restart_ie)
+            .vendor_specific_node_report_type(vendor_ie)
+            .build();
+
+        assert_eq!(original.user_plane_path_recovery_reports.len(), 1);
+        assert_eq!(original.peer_up_restart_reports.len(), 1);
+        assert_eq!(original.vendor_specific_node_report_types.len(), 1);
+
+        let marshaled = original.marshal();
+        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(original, unmarshaled);
     }
 }

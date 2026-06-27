@@ -16,12 +16,12 @@ pub struct AssociationUpdateRequest {
     pub pfcp_association_release_request: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 111 - PFCP Association Release Request - When UP function requests CP to release association
     pub graceful_release_period: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 112 - Graceful Release Period - When UP function requests graceful release
     pub pfcpau_req_flags: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 162 - PFCPAUReq-Flags - PARPS flag for association release preparation
-    // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
-    // TODO: [IE Type 180] SMF Set ID - O - When MPAS feature supported and FQDN changes (N4/N4mb only)
+    pub alternative_smf_ip_addresses: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 178 - Alternative SMF IP Address - Multiple instances (N4/N4mb only)
+    pub smf_set_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 180 - SMF Set ID - When MPAS feature supported and FQDN changes (N4/N4mb only)
     // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances, Grouped IE, null length stops reporting (N4 only)
     pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
-    // TODO: [IE Type 238] GTP-U Path QoS Control Information - C - Multiple instances, Grouped IE, null length stops monitoring (N4 only)
-    // TODO: [IE Type 267] UE IP Address Usage Information - O - Multiple instances, Grouped IE with 7 child IEs, see Table 7.4.4.3.1-1 (Sxb/N4 only)
+    pub gtpu_path_qos_control_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 238 - GTP-U Path QoS Control Information - Multiple instances, null length stops monitoring (N4 only)
+    pub ue_ip_address_usage_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 267 - UE IP Address Usage Information - Multiple instances, Grouped IE (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 
@@ -55,7 +55,19 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.pfcpau_req_flags {
             ie.marshal_into(buf);
         }
+        for ie in &self.alternative_smf_ip_addresses {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.smf_set_id {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ue_ip_address_pool_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.gtpu_path_qos_control_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.ue_ip_address_usage_information {
             ie.marshal_into(buf);
         }
         for ie in &self.ies {
@@ -81,7 +93,19 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.pfcpau_req_flags {
             size += ie.len() as usize;
         }
+        for ie in &self.alternative_smf_ip_addresses {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.smf_set_id {
+            size += ie.len() as usize;
+        }
         for ie in &self.ue_ip_address_pool_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.gtpu_path_qos_control_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ue_ip_address_usage_information {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -101,7 +125,11 @@ impl Message for AssociationUpdateRequest {
         let mut pfcp_association_release_request = None;
         let mut graceful_release_period = None;
         let mut pfcpau_req_flags = None;
+        let mut alternative_smf_ip_addresses = Vec::new();
+        let mut smf_set_id = None;
         let mut ue_ip_address_pool_information = Vec::new();
+        let mut gtpu_path_qos_control_information = Vec::new();
+        let mut ue_ip_address_usage_information = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -117,7 +145,11 @@ impl Message for AssociationUpdateRequest {
                 }
                 IeType::GracefulReleasePeriod => graceful_release_period = Some(ie),
                 IeType::PfcpauReqFlags => pfcpau_req_flags = Some(ie),
+                IeType::AlternativeSmfIpAddress => alternative_smf_ip_addresses.push(ie),
+                IeType::SmfSetId => smf_set_id = Some(ie),
                 IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
+                IeType::GtpuPathQosControlInformation => gtpu_path_qos_control_information.push(ie),
+                IeType::UeIpAddressUsageInformation => ue_ip_address_usage_information.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -135,7 +167,11 @@ impl Message for AssociationUpdateRequest {
             pfcp_association_release_request,
             graceful_release_period,
             pfcpau_req_flags,
+            alternative_smf_ip_addresses,
+            smf_set_id,
             ue_ip_address_pool_information,
+            gtpu_path_qos_control_information,
+            ue_ip_address_usage_information,
             ies,
         })
     }
@@ -174,8 +210,18 @@ impl Message for AssociationUpdateRequest {
                 IeIter::single(self.graceful_release_period.as_ref(), ie_type)
             }
             IeType::PfcpauReqFlags => IeIter::single(self.pfcpau_req_flags.as_ref(), ie_type),
+            IeType::AlternativeSmfIpAddress => {
+                IeIter::multiple(&self.alternative_smf_ip_addresses, ie_type)
+            }
+            IeType::SmfSetId => IeIter::single(self.smf_set_id.as_ref(), ie_type),
             IeType::UeIpAddressPoolInformation => {
                 IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
+            }
+            IeType::GtpuPathQosControlInformation => {
+                IeIter::multiple(&self.gtpu_path_qos_control_information, ie_type)
+            }
+            IeType::UeIpAddressUsageInformation => {
+                IeIter::multiple(&self.ue_ip_address_usage_information, ie_type)
             }
             _ => IeIter::generic(&self.ies, ie_type),
         }
@@ -198,7 +244,13 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.pfcpau_req_flags {
             result.push(ie);
         }
+        result.extend(self.alternative_smf_ip_addresses.iter());
+        if let Some(ref ie) = self.smf_set_id {
+            result.push(ie);
+        }
         result.extend(self.ue_ip_address_pool_information.iter());
+        result.extend(self.gtpu_path_qos_control_information.iter());
+        result.extend(self.ue_ip_address_usage_information.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -215,7 +267,11 @@ impl AssociationUpdateRequest {
         pfcp_association_release_request: Option<Ie>,
         graceful_release_period: Option<Ie>,
         pfcpau_req_flags: Option<Ie>,
+        alternative_smf_ip_addresses: Vec<Ie>,
+        smf_set_id: Option<Ie>,
         ue_ip_address_pool_information: Vec<Ie>,
+        gtpu_path_qos_control_information: Vec<Ie>,
+        ue_ip_address_usage_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len();
@@ -234,7 +290,19 @@ impl AssociationUpdateRequest {
         if let Some(ref ie) = pfcpau_req_flags {
             payload_len += ie.len();
         }
+        for ie in &alternative_smf_ip_addresses {
+            payload_len += ie.len();
+        }
+        if let Some(ref ie) = smf_set_id {
+            payload_len += ie.len();
+        }
         for ie in &ue_ip_address_pool_information {
+            payload_len += ie.len();
+        }
+        for ie in &gtpu_path_qos_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &ue_ip_address_usage_information {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -252,7 +320,11 @@ impl AssociationUpdateRequest {
             pfcp_association_release_request,
             graceful_release_period,
             pfcpau_req_flags,
+            alternative_smf_ip_addresses,
+            smf_set_id,
             ue_ip_address_pool_information,
+            gtpu_path_qos_control_information,
+            ue_ip_address_usage_information,
             ies,
         }
     }
@@ -268,7 +340,11 @@ pub struct AssociationUpdateRequestBuilder {
     pfcp_association_release_request: Option<Ie>,
     graceful_release_period: Option<Ie>,
     pfcpau_req_flags: Option<Ie>,
+    alternative_smf_ip_addresses: Vec<Ie>,
+    smf_set_id: Option<Ie>,
     ue_ip_address_pool_information: Vec<Ie>,
+    gtpu_path_qos_control_information: Vec<Ie>,
+    ue_ip_address_usage_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -283,7 +359,11 @@ impl AssociationUpdateRequestBuilder {
             pfcp_association_release_request: None,
             graceful_release_period: None,
             pfcpau_req_flags: None,
+            alternative_smf_ip_addresses: Vec::new(),
+            smf_set_id: None,
             ue_ip_address_pool_information: Vec::new(),
+            gtpu_path_qos_control_information: Vec::new(),
+            ue_ip_address_usage_information: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -324,9 +404,33 @@ impl AssociationUpdateRequestBuilder {
         self
     }
 
+    /// Adds an Alternative SMF IP Address IE (optional, multiple allowed, N4/N4mb only).
+    pub fn alternative_smf_ip_address(mut self, ie: Ie) -> Self {
+        self.alternative_smf_ip_addresses.push(ie);
+        self
+    }
+
+    /// Sets the SMF Set ID IE (optional, N4/N4mb only).
+    pub fn smf_set_id(mut self, ie: Ie) -> Self {
+        self.smf_set_id = Some(ie);
+        self
+    }
+
     /// Adds a UE IP Address Pool Information IE (optional, multiple allowed, Sxb/N4 only).
     pub fn ue_ip_address_pool_information(mut self, ie: Ie) -> Self {
         self.ue_ip_address_pool_information.push(ie);
+        self
+    }
+
+    /// Adds a GTP-U Path QoS Control Information IE (conditional, multiple allowed, N4 only).
+    pub fn gtpu_path_qos_control_information(mut self, ie: Ie) -> Self {
+        self.gtpu_path_qos_control_information.push(ie);
+        self
+    }
+
+    /// Adds a UE IP Address Usage Information IE (optional, multiple allowed, Sxb/N4 only).
+    pub fn ue_ip_address_usage_information(mut self, ie: Ie) -> Self {
+        self.ue_ip_address_usage_information.push(ie);
         self
     }
 
@@ -359,7 +463,11 @@ impl AssociationUpdateRequestBuilder {
             self.pfcp_association_release_request,
             self.graceful_release_period,
             self.pfcpau_req_flags,
+            self.alternative_smf_ip_addresses,
+            self.smf_set_id,
             self.ue_ip_address_pool_information,
+            self.gtpu_path_qos_control_information,
+            self.ue_ip_address_usage_information,
             self.ies,
         )
     }
@@ -381,7 +489,11 @@ impl AssociationUpdateRequestBuilder {
             self.pfcp_association_release_request,
             self.graceful_release_period,
             self.pfcpau_req_flags,
+            self.alternative_smf_ip_addresses,
+            self.smf_set_id,
             self.ue_ip_address_pool_information,
+            self.gtpu_path_qos_control_information,
+            self.ue_ip_address_usage_information,
             self.ies,
         ))
     }
@@ -541,6 +653,36 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateRequest::unmarshal(&marshaled).unwrap();
 
+        assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_association_update_request_new_ies_roundtrip() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
+        let alt_smf_ie = Ie::new(
+            IeType::AlternativeSmfIpAddress,
+            vec![0x01, 0xC0, 0xA8, 0x01, 0x01],
+        );
+        let smf_set_id_ie = Ie::new(IeType::SmfSetId, vec![0x02, 0x03]);
+        let gtpu_qos_ie = Ie::new(IeType::GtpuPathQosControlInformation, vec![0x04, 0x05]);
+        let ue_usage_ie = Ie::new(IeType::UeIpAddressUsageInformation, vec![0x06, 0x07]);
+
+        let original = AssociationUpdateRequestBuilder::new(12345)
+            .node_id(node_id_ie)
+            .alternative_smf_ip_address(alt_smf_ie)
+            .smf_set_id(smf_set_id_ie)
+            .gtpu_path_qos_control_information(gtpu_qos_ie)
+            .ue_ip_address_usage_information(ue_usage_ie)
+            .build();
+
+        assert_eq!(original.alternative_smf_ip_addresses.len(), 1);
+        assert!(original.smf_set_id.is_some());
+        assert_eq!(original.gtpu_path_qos_control_information.len(), 1);
+        assert_eq!(original.ue_ip_address_usage_information.len(), 1);
+
+        let marshaled = original.marshal();
+        let unmarshaled = AssociationUpdateRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(original, unmarshaled);
     }
 }
