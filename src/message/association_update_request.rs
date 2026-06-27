@@ -19,7 +19,7 @@ pub struct AssociationUpdateRequest {
     // TODO: [IE Type 178] Alternative SMF IP Address - O - Multiple instances allowed (N4/N4mb only)
     // TODO: [IE Type 180] SMF Set ID - O - When MPAS feature supported and FQDN changes (N4/N4mb only)
     // TODO: [IE Type 203] Clock Drift Control Information - C - Multiple instances, Grouped IE, null length stops reporting (N4 only)
-    // TODO: [IE Type 233] UE IP address Pool Information - O - Multiple instances allowed (Sxb/N4 only)
+    pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
     // TODO: [IE Type 238] GTP-U Path QoS Control Information - C - Multiple instances, Grouped IE, null length stops monitoring (N4 only)
     // TODO: [IE Type 267] UE IP Address Usage Information - O - Multiple instances, Grouped IE with 7 child IEs, see Table 7.4.4.3.1-1 (Sxb/N4 only)
     pub ies: Vec<Ie>,
@@ -46,6 +46,9 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.cp_function_features {
             ie.marshal_into(buf);
         }
+        for ie in &self.ue_ip_address_pool_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -58,6 +61,9 @@ impl Message for AssociationUpdateRequest {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.cp_function_features {
+            size += ie.len() as usize;
+        }
+        for ie in &self.ue_ip_address_pool_information {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -74,6 +80,7 @@ impl Message for AssociationUpdateRequest {
         let mut node_id = None;
         let mut up_function_features = None;
         let mut cp_function_features = None;
+        let mut ue_ip_address_pool_information = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -84,6 +91,7 @@ impl Message for AssociationUpdateRequest {
                 IeType::NodeId => node_id = Some(ie),
                 IeType::UpFunctionFeatures => up_function_features = Some(ie),
                 IeType::CpFunctionFeatures => cp_function_features = Some(ie),
+                IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -98,6 +106,7 @@ impl Message for AssociationUpdateRequest {
             })?,
             up_function_features,
             cp_function_features,
+            ue_ip_address_pool_information,
             ies,
         })
     }
@@ -129,6 +138,9 @@ impl Message for AssociationUpdateRequest {
             IeType::CpFunctionFeatures => {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
+            IeType::UeIpAddressPoolInformation => {
+                IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -141,6 +153,7 @@ impl Message for AssociationUpdateRequest {
         if let Some(ref ie) = self.cp_function_features {
             result.push(ie);
         }
+        result.extend(self.ue_ip_address_pool_information.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -153,6 +166,7 @@ impl AssociationUpdateRequest {
         node_id: Ie,
         up_function_features: Option<Ie>,
         cp_function_features: Option<Ie>,
+        ue_ip_address_pool_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len();
@@ -160,6 +174,9 @@ impl AssociationUpdateRequest {
             payload_len += ie.len();
         }
         if let Some(ref ie) = cp_function_features {
+            payload_len += ie.len();
+        }
+        for ie in &ue_ip_address_pool_information {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -174,6 +191,7 @@ impl AssociationUpdateRequest {
             node_id,
             up_function_features,
             cp_function_features,
+            ue_ip_address_pool_information,
             ies,
         }
     }
@@ -186,6 +204,7 @@ pub struct AssociationUpdateRequestBuilder {
     node_id: Option<Ie>,
     up_function_features: Option<Ie>,
     cp_function_features: Option<Ie>,
+    ue_ip_address_pool_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -197,6 +216,7 @@ impl AssociationUpdateRequestBuilder {
             node_id: None,
             up_function_features: None,
             cp_function_features: None,
+            ue_ip_address_pool_information: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -216,6 +236,12 @@ impl AssociationUpdateRequestBuilder {
     /// Sets the CP function features IE (optional).
     pub fn cp_function_features(mut self, cp_function_features: Ie) -> Self {
         self.cp_function_features = Some(cp_function_features);
+        self
+    }
+
+    /// Adds a UE IP Address Pool Information IE (optional, multiple allowed, Sxb/N4 only).
+    pub fn ue_ip_address_pool_information(mut self, ie: Ie) -> Self {
+        self.ue_ip_address_pool_information.push(ie);
         self
     }
 
@@ -245,6 +271,7 @@ impl AssociationUpdateRequestBuilder {
             node_id,
             self.up_function_features,
             self.cp_function_features,
+            self.ue_ip_address_pool_information,
             self.ies,
         )
     }
@@ -263,6 +290,7 @@ impl AssociationUpdateRequestBuilder {
             node_id,
             self.up_function_features,
             self.cp_function_features,
+            self.ue_ip_address_pool_information,
             self.ies,
         ))
     }

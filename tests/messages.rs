@@ -91,6 +91,7 @@ fn test_association_setup_response_marshal_unmarshal() {
         pfcpas_rsp_flags: None,
         gtpu_path_qos_control_information: vec![],
         nf_instance_id: None,
+        ue_ip_address_pool_information: vec![],
         ies: vec![],
     };
 
@@ -129,6 +130,7 @@ fn test_association_setup_response_from_request() {
         None,
         None,
         vec![],
+        vec![],
     );
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
@@ -153,6 +155,7 @@ fn test_association_setup_response_from_request() {
         pfcpas_rsp_flags: None,
         gtpu_path_qos_control_information: vec![],
         nf_instance_id: None,
+        ue_ip_address_pool_information: vec![],
         ies: vec![],
     };
 
@@ -184,6 +187,7 @@ fn test_association_update_request_marshal_unmarshal() {
         node_id: node_id_ie.clone(),
         up_function_features: Some(up_features_ie.clone()),
         cp_function_features: Some(cp_features_ie.clone()),
+        ue_ip_address_pool_information: vec![],
         ies: vec![],
     };
 

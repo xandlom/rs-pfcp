@@ -20,7 +20,7 @@ pub struct AssociationSetupRequest {
     pub gtpu_path_qos_control_information: Vec<Ie>, // C - Multiple - IE Type 238 (N4 only)
     pub nf_instance_id: Option<Ie>, // O - IE Type 253 - When sent by 5G UP function (N4/N4mb only)
     pub pfcpas_req_flags: Option<Ie>, // O - IE Type 259 - UUPSI flag for IPUPS support (N4 only)
-    // TODO: [IE Type 233] UE IP address Pool Information - O - Multiple instances allowed (Sxb/N4 only)
+    pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.1-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
     // TODO: [IE Type 203] Clock Drift Control Information - O - Multiple instances allowed, Grouped IE (N4 only)
     pub ies: Vec<Ie>, // For any other IEs
 }
@@ -65,6 +65,9 @@ impl Message for AssociationSetupRequest {
         if let Some(ref ie) = self.pfcpas_req_flags {
             ie.marshal_into(buf);
         }
+        for ie in &self.ue_ip_address_pool_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -98,6 +101,9 @@ impl Message for AssociationSetupRequest {
         if let Some(ref ie) = self.pfcpas_req_flags {
             size += ie.len() as usize;
         }
+        for ie in &self.ue_ip_address_pool_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -119,6 +125,7 @@ impl Message for AssociationSetupRequest {
         let mut gtpu_path_qos_control_information = Vec::new();
         let mut nf_instance_id = None;
         let mut pfcpas_req_flags = None;
+        let mut ue_ip_address_pool_information = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -138,6 +145,7 @@ impl Message for AssociationSetupRequest {
                 IeType::GtpuPathQosControlInformation => gtpu_path_qos_control_information.push(ie),
                 IeType::NfInstanceId => nf_instance_id = Some(ie),
                 IeType::PfcpasReqFlags => pfcpas_req_flags = Some(ie),
+                IeType::UeIpAddressPoolInformation => ue_ip_address_pool_information.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -165,6 +173,7 @@ impl Message for AssociationSetupRequest {
             gtpu_path_qos_control_information,
             nf_instance_id,
             pfcpas_req_flags,
+            ue_ip_address_pool_information,
             ies,
         })
     }
@@ -209,6 +218,9 @@ impl Message for AssociationSetupRequest {
             }
             IeType::NfInstanceId => IeIter::single(self.nf_instance_id.as_ref(), ie_type),
             IeType::PfcpasReqFlags => IeIter::single(self.pfcpas_req_flags.as_ref(), ie_type),
+            IeType::UeIpAddressPoolInformation => {
+                IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -235,6 +247,7 @@ impl Message for AssociationSetupRequest {
         if let Some(ref ie) = self.pfcpas_req_flags {
             result.push(ie);
         }
+        result.extend(self.ue_ip_address_pool_information.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -254,6 +267,7 @@ impl AssociationSetupRequest {
         gtpu_path_qos_control_information: Vec<Ie>,
         nf_instance_id: Option<Ie>,
         pfcpas_req_flags: Option<Ie>,
+        ue_ip_address_pool_information: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = node_id.len() + recovery_time_stamp.len();
@@ -281,6 +295,9 @@ impl AssociationSetupRequest {
         if let Some(ie) = &pfcpas_req_flags {
             payload_len += ie.len();
         }
+        for ie in &ue_ip_address_pool_information {
+            payload_len += ie.len();
+        }
         for ie in &ies {
             payload_len += ie.len();
         }
@@ -298,6 +315,7 @@ impl AssociationSetupRequest {
             gtpu_path_qos_control_information,
             nf_instance_id,
             pfcpas_req_flags,
+            ue_ip_address_pool_information,
             ies,
         }
     }
@@ -317,6 +335,7 @@ pub struct AssociationSetupRequestBuilder {
     gtpu_path_qos_control_information: Vec<Ie>,
     nf_instance_id: Option<Ie>,
     pfcpas_req_flags: Option<Ie>,
+    ue_ip_address_pool_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -335,6 +354,7 @@ impl AssociationSetupRequestBuilder {
             gtpu_path_qos_control_information: Vec::new(),
             nf_instance_id: None,
             pfcpas_req_flags: None,
+            ue_ip_address_pool_information: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -493,6 +513,12 @@ impl AssociationSetupRequestBuilder {
         self
     }
 
+    /// Adds a UE IP Address Pool Information IE (optional, multiple allowed).
+    pub fn ue_ip_address_pool_information(mut self, ie: Ie) -> Self {
+        self.ue_ip_address_pool_information.push(ie);
+        self
+    }
+
     /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
@@ -529,6 +555,7 @@ impl AssociationSetupRequestBuilder {
             self.gtpu_path_qos_control_information,
             self.nf_instance_id,
             self.pfcpas_req_flags,
+            self.ue_ip_address_pool_information,
             self.ies,
         )
     }
@@ -580,6 +607,7 @@ impl AssociationSetupRequestBuilder {
             self.gtpu_path_qos_control_information,
             self.nf_instance_id,
             self.pfcpas_req_flags,
+            self.ue_ip_address_pool_information,
             self.ies,
         ))
     }
