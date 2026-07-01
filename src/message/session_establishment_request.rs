@@ -33,7 +33,7 @@ pub struct SessionEstablishmentRequest {
     pub recovery_time_stamp: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 96 - CP function start time (not N4mb)
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
     pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO (N4 only) [TODO said 242]
-    // TODO: [IE Type 261] Provide RDS configuration information - no file yet (261=ProvideRdsConfigurationInformation) [TODO said 181]
+    pub provide_rds_configuration_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 261 - Grouped IE (Sxb/N4 only) - Provides RDS configuration
     pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 275 - RAT Type - Current RAT type for statistics (not N4mb, not for MA PDU)
     // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
     // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
@@ -124,6 +124,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.rat_type {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.provide_rds_configuration_information {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.group_id {
             ie.marshal_into(buf);
         }
@@ -208,6 +211,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.rat_type {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.provide_rds_configuration_information {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.group_id {
             size += ie.len() as usize;
         }
@@ -251,6 +257,7 @@ impl Message for SessionEstablishmentRequest {
         let mut hplmn_s_nssai = None;
         let mut ethernet_pdu_session_information = None;
         let mut rat_type = None;
+        let mut provide_rds_configuration_information = None;
         let mut group_id = None;
         let mut dscp_to_ppi_control_information = None;
         let mut tl_containers = Vec::new();
@@ -287,6 +294,9 @@ impl Message for SessionEstablishmentRequest {
                     ethernet_pdu_session_information = Some(ie)
                 }
                 IeType::RatType => rat_type = Some(ie),
+                IeType::ProvideRdsConfigurationInformation => {
+                    provide_rds_configuration_information = Some(ie)
+                }
                 IeType::GroupId => group_id = Some(ie),
                 IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
                 IeType::TlContainer => tl_containers.push(ie),
@@ -346,6 +356,7 @@ impl Message for SessionEstablishmentRequest {
             hplmn_s_nssai,
             ethernet_pdu_session_information,
             rat_type,
+            provide_rds_configuration_information,
             group_id,
             dscp_to_ppi_control_information,
             tl_containers,
@@ -411,6 +422,9 @@ impl Message for SessionEstablishmentRequest {
                 IeIter::single(self.ethernet_pdu_session_information.as_ref(), ie_type)
             }
             IeType::RatType => IeIter::single(self.rat_type.as_ref(), ie_type),
+            IeType::ProvideRdsConfigurationInformation => {
+                IeIter::single(self.provide_rds_configuration_information.as_ref(), ie_type)
+            }
             IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
             IeType::DscpToPpiControlInformation => {
                 IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
@@ -472,6 +486,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.rat_type {
             result.push(ie);
         }
+        if let Some(ref ie) = self.provide_rds_configuration_information {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.group_id {
             result.push(ie);
         }
@@ -514,6 +531,7 @@ pub struct SessionEstablishmentRequestBuilder {
     hplmn_s_nssai: Option<Ie>,
     ethernet_pdu_session_information: Option<Ie>,
     rat_type: Option<Ie>,
+    provide_rds_configuration_information: Option<Ie>,
     group_id: Option<Ie>,
     dscp_to_ppi_control_information: Option<Ie>,
     tl_containers: Vec<Ie>,
@@ -549,6 +567,7 @@ impl SessionEstablishmentRequestBuilder {
             hplmn_s_nssai: None,
             ethernet_pdu_session_information: None,
             rat_type: None,
+            provide_rds_configuration_information: None,
             group_id: None,
             dscp_to_ppi_control_information: None,
             tl_containers: Vec::new(),
@@ -826,6 +845,11 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn provide_rds_configuration_information(mut self, ie: Ie) -> Self {
+        self.provide_rds_configuration_information = Some(ie);
+        self
+    }
+
     pub fn create_bridge_info_for_tsc(mut self, ie: Ie) -> Self {
         self.create_bridge_info_for_tsc = Some(ie);
         self
@@ -961,6 +985,9 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.rat_type {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.provide_rds_configuration_information {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.group_id {
             payload_len += ie.len();
         }
@@ -1009,6 +1036,7 @@ impl SessionEstablishmentRequestBuilder {
             hplmn_s_nssai: self.hplmn_s_nssai,
             ethernet_pdu_session_information: self.ethernet_pdu_session_information,
             rat_type: self.rat_type,
+            provide_rds_configuration_information: self.provide_rds_configuration_information,
             group_id: self.group_id,
             dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
             tl_containers: self.tl_containers,

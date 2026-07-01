@@ -63,6 +63,7 @@ fn create_session_request(
         pfcpsm_req_flags: None,
         create_bridge_info_for_tsc: None,
         create_srrs: vec![],
+        provide_rds_configuration_information: None,
         hplmn_s_nssai: None,
         ethernet_pdu_session_information: None,
         rat_type: None,

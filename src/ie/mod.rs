@@ -174,6 +174,7 @@ pub mod pfd_context;
 pub mod port_management_information_container;
 pub mod precedence;
 pub mod priority;
+pub mod provide_rds_configuration_information;
 pub mod proxying;
 pub mod qer_control_indications;
 pub mod qer_correlation_id;
@@ -189,6 +190,7 @@ pub mod query_urr_reference;
 pub mod quota_holding_time;
 pub mod quota_validity_time;
 pub mod rat_type;
+pub mod rds_configuration_information;
 pub mod recovery_time_stamp;
 pub mod redirect_information;
 pub mod remote_gtpu_peer;
@@ -1822,6 +1824,8 @@ impl_parse_ie!(
     clock_drift_report::ClockDriftReport,
     gtpu_path_qos_report::GtpuPathQosReport,
     qos_information_in_gtpu_path_qos_report::QosInformationInGtpuPathQosReport,
+    provide_rds_configuration_information::ProvideRdsConfigurationInformation,
+    rds_configuration_information::RdsConfigurationInformation,
     create_pdr::CreatePdr,
     create_far::CreateFar,
     create_srr::CreateSrr,
