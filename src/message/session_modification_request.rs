@@ -35,8 +35,8 @@ pub struct SessionModificationRequest {
     pub query_urr_reference: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 125 - Reference identifying the query request, returned in usage reports
     pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 152 - Trace instructions, null length to deactivate (not N4mb)
     pub remove_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 168 - Multiple instances, Grouped IE (N4 only) - For MA PDU session
-    // TODO: [IE Type 169] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
-    // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For new MA PDR
+    pub update_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 169 - Multiple instances, Grouped IE (N4 only) - For MA PDU session
+    pub create_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 165 - Multiple instances, Grouped IE (N4 only) - For new MA PDR
     pub node_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 60 - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
     pub tsc_management_information: Vec<Ie>, // C - Multiple - IE Type 199 - Grouped IE, TSC management info (N4 only)
     pub remove_srrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 211 - Multiple instances, Grouped IE (N4 only) - Session-level reporting
@@ -205,6 +205,12 @@ impl Message for SessionModificationRequest {
             ie.marshal_into(buf);
         }
         for ie in &self.remove_mars {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.update_mars {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.create_mars {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.node_id {
@@ -390,6 +396,12 @@ impl Message for SessionModificationRequest {
         for ie in &self.remove_mars {
             size += ie.len() as usize;
         }
+        for ie in &self.update_mars {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_mars {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.node_id {
             size += ie.len() as usize;
         }
@@ -472,6 +484,8 @@ impl Message for SessionModificationRequest {
         let mut query_urrs = None;
         let mut fq_csids = Vec::new();
         let mut remove_mars = Vec::new();
+        let mut update_mars = Vec::new();
+        let mut create_mars = Vec::new();
         let mut node_id = None;
         let mut tsc_management_information = Vec::new();
         let mut remove_srrs = Vec::new();
@@ -531,6 +545,8 @@ impl Message for SessionModificationRequest {
                 IeType::QueryUrr => query_urrs.get_or_insert(Vec::new()).push(ie),
                 IeType::FqCsid => fq_csids.push(ie),
                 IeType::RemoveMar => remove_mars.push(ie),
+                IeType::UpdateMar => update_mars.push(ie),
+                IeType::CreateMar => create_mars.push(ie),
                 IeType::NodeId => node_id = Some(ie),
                 IeType::TscManagementInformationWithinSessionModificationRequest => {
                     tsc_management_information.push(ie)
@@ -590,6 +606,8 @@ impl Message for SessionModificationRequest {
             query_urrs,
             fq_csids,
             remove_mars,
+            update_mars,
+            create_mars,
             node_id,
             tsc_management_information,
             remove_srrs,
@@ -714,6 +732,8 @@ impl Message for SessionModificationRequest {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
             IeType::RemoveMar => IeIter::multiple(&self.remove_mars, ie_type),
+            IeType::UpdateMar => IeIter::multiple(&self.update_mars, ie_type),
+            IeType::CreateMar => IeIter::multiple(&self.create_mars, ie_type),
             IeType::TscManagementInformationWithinSessionModificationRequest => {
                 IeIter::multiple(&self.tsc_management_information, ie_type)
             }
@@ -833,6 +853,8 @@ impl Message for SessionModificationRequest {
         }
         result.extend(self.fq_csids.iter());
         result.extend(self.remove_mars.iter());
+        result.extend(self.update_mars.iter());
+        result.extend(self.create_mars.iter());
         if let Some(ref ie) = self.node_id {
             result.push(ie);
         }
@@ -902,6 +924,8 @@ pub struct SessionModificationRequestBuilder {
     query_urrs: Option<Vec<Ie>>,
     fq_csids: Vec<Ie>,
     remove_mars: Vec<Ie>,
+    update_mars: Vec<Ie>,
+    create_mars: Vec<Ie>,
     node_id: Option<Ie>,
     tsc_management_information: Vec<Ie>,
     remove_srrs: Vec<Ie>,
@@ -956,6 +980,8 @@ impl SessionModificationRequestBuilder {
             query_urrs: None,
             fq_csids: Vec::new(),
             remove_mars: Vec::new(),
+            update_mars: Vec::new(),
+            create_mars: Vec::new(),
             node_id: None,
             tsc_management_information: Vec::new(),
             remove_srrs: Vec::new(),
@@ -1339,6 +1365,26 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn add_update_mar(mut self, mar: crate::ie::update_mar::UpdateMar) -> Self {
+        self.update_mars.push(mar.to_ie());
+        self
+    }
+
+    pub fn update_mar(mut self, ie: Ie) -> Self {
+        self.update_mars.push(ie);
+        self
+    }
+
+    pub fn add_create_mar(mut self, mar: crate::ie::create_mar::CreateMar) -> Self {
+        self.create_mars.push(mar.to_ie());
+        self
+    }
+
+    pub fn create_mar(mut self, ie: Ie) -> Self {
+        self.create_mars.push(ie);
+        self
+    }
+
     pub fn remove_srr(mut self, ie: Ie) -> Self {
         self.remove_srrs.push(ie);
         self
@@ -1545,6 +1591,12 @@ impl SessionModificationRequestBuilder {
         for ie in &self.remove_mars {
             payload_len += ie.len();
         }
+        for ie in &self.update_mars {
+            payload_len += ie.len();
+        }
+        for ie in &self.create_mars {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.node_id {
             payload_len += ie.len();
         }
@@ -1631,6 +1683,8 @@ impl SessionModificationRequestBuilder {
             query_urrs: self.query_urrs,
             fq_csids: self.fq_csids,
             remove_mars: self.remove_mars,
+            update_mars: self.update_mars,
+            create_mars: self.create_mars,
             node_id: self.node_id,
             tsc_management_information: self.tsc_management_information,
             remove_srrs: self.remove_srrs,

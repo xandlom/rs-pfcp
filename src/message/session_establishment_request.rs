@@ -25,7 +25,7 @@ pub struct SessionEstablishmentRequest {
     pub user_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 141 - Only if UP in trusted environment (not N4mb)
     pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 152 - Trace instructions (not N4mb)
     pub apn_dnn: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 22 - Access Point Name / Data Network Name
-    // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    pub create_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 165 - Multiple instances, Grouped IE (N4 only) - For MA PDU session
     pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 138 - PFCPSEReq-Flags (RESTI/SUMPC/HRSBOM)
     pub create_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 194 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 204]
     pub create_srrs: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 212 - Multiple instances, Grouped IE (N4 only) - Session Reporting Rules
@@ -107,6 +107,9 @@ impl Message for SessionEstablishmentRequest {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.pfcpsm_req_flags {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.create_mars {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.create_bridge_info_for_tsc {
@@ -196,6 +199,9 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             size += ie.len() as usize;
         }
+        for ie in &self.create_mars {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.create_bridge_info_for_tsc {
             size += ie.len() as usize;
         }
@@ -252,6 +258,7 @@ impl Message for SessionEstablishmentRequest {
         let mut apn_dnn = None;
         let mut user_plane_inactivity_timer = None;
         let mut pfcpsm_req_flags = None;
+        let mut create_mars = Vec::new();
         let mut create_bridge_info_for_tsc = None;
         let mut create_srrs = Vec::new();
         let mut hplmn_s_nssai = None;
@@ -287,6 +294,7 @@ impl Message for SessionEstablishmentRequest {
                 IeType::ApnDnn => apn_dnn = Some(ie),
                 IeType::UserPlaneInactivityTimer => user_plane_inactivity_timer = Some(ie),
                 IeType::PfcpsmReqFlags => pfcpsm_req_flags = Some(ie),
+                IeType::CreateMar => create_mars.push(ie),
                 IeType::CreateBridgeInfoForTsc => create_bridge_info_for_tsc = Some(ie),
                 IeType::CreateSrr => create_srrs.push(ie),
                 IeType::HplmnSNssai => hplmn_s_nssai = Some(ie),
@@ -351,6 +359,7 @@ impl Message for SessionEstablishmentRequest {
             apn_dnn,
             user_plane_inactivity_timer,
             pfcpsm_req_flags,
+            create_mars,
             create_bridge_info_for_tsc,
             create_srrs,
             hplmn_s_nssai,
@@ -408,6 +417,7 @@ impl Message for SessionEstablishmentRequest {
             IeType::TraceInformation => IeIter::single(self.trace_information.as_ref(), ie_type),
             IeType::ApnDnn => IeIter::single(self.apn_dnn.as_ref(), ie_type),
             IeType::PfcpsmReqFlags => IeIter::single(self.pfcpsm_req_flags.as_ref(), ie_type),
+            IeType::CreateMar => IeIter::multiple(&self.create_mars, ie_type),
             IeType::RecoveryTimeStamp => IeIter::single(self.recovery_time_stamp.as_ref(), ie_type),
             IeType::Snssai => IeIter::single(self.s_nssai.as_ref(), ie_type),
             IeType::CpFunctionFeatures => {
@@ -473,6 +483,7 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.pfcpsm_req_flags {
             result.push(ie);
         }
+        result.extend(self.create_mars.iter());
         if let Some(ref ie) = self.create_bridge_info_for_tsc {
             result.push(ie);
         }
@@ -526,6 +537,7 @@ pub struct SessionEstablishmentRequestBuilder {
     apn_dnn: Option<Ie>,
     user_plane_inactivity_timer: Option<Ie>,
     pfcpsm_req_flags: Option<Ie>,
+    create_mars: Vec<Ie>,
     create_bridge_info_for_tsc: Option<Ie>,
     create_srrs: Vec<Ie>,
     hplmn_s_nssai: Option<Ie>,
@@ -562,6 +574,7 @@ impl SessionEstablishmentRequestBuilder {
             apn_dnn: None,
             user_plane_inactivity_timer: None,
             pfcpsm_req_flags: None,
+            create_mars: Vec::new(),
             create_bridge_info_for_tsc: None,
             create_srrs: Vec::new(),
             hplmn_s_nssai: None,
@@ -855,6 +868,16 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn add_mar(mut self, mar: crate::ie::create_mar::CreateMar) -> Self {
+        self.create_mars.push(mar.to_ie());
+        self
+    }
+
+    pub fn create_mars(mut self, ies: Vec<Ie>) -> Self {
+        self.create_mars = ies;
+        self
+    }
+
     pub fn add_srr(mut self, srr: crate::ie::create_srr::CreateSrr) -> Self {
         self.create_srrs.push(srr.to_ie());
         self
@@ -970,6 +993,9 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.pfcpsm_req_flags {
             payload_len += ie.len();
         }
+        for ie in &self.create_mars {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.create_bridge_info_for_tsc {
             payload_len += ie.len();
         }
@@ -1031,6 +1057,7 @@ impl SessionEstablishmentRequestBuilder {
             apn_dnn: self.apn_dnn,
             user_plane_inactivity_timer: self.user_plane_inactivity_timer,
             pfcpsm_req_flags: self.pfcpsm_req_flags,
+            create_mars: self.create_mars,
             create_bridge_info_for_tsc: self.create_bridge_info_for_tsc,
             create_srrs: self.create_srrs,
             hplmn_s_nssai: self.hplmn_s_nssai,

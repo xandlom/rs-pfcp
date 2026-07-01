@@ -35,6 +35,7 @@ pub mod cp_pfcp_entity_ip_address;
 pub mod create_bar;
 pub mod create_bridge_info_for_tsc;
 pub mod create_far;
+pub mod create_mar;
 pub mod create_pdr;
 pub mod create_qer;
 pub mod create_srr;
@@ -137,6 +138,7 @@ pub mod network_instance;
 pub mod nf_instance_id;
 pub mod node_id;
 pub mod node_report_type;
+pub mod non_tgpp_access_forwarding_action_information;
 pub mod number_of_reports;
 pub mod number_of_ue_ip_addresses;
 pub mod nwtt_port_number;
@@ -235,6 +237,7 @@ pub mod subsequent_time_threshold;
 pub mod subsequent_volume_quota;
 pub mod subsequent_volume_threshold;
 pub mod suggested_buffering_packets_count;
+pub mod tgpp_access_forwarding_action_information;
 pub mod three_gpp_interface_type;
 pub mod time_of_first_packet;
 pub mod time_of_last_packet;
@@ -268,9 +271,12 @@ pub mod update_bar_within_session_report_response;
 pub mod update_duplicating_parameters;
 pub mod update_far;
 pub mod update_forwarding_parameters;
+pub mod update_mar;
+pub mod update_non_tgpp_access_forwarding_action_information;
 pub mod update_pdr;
 pub mod update_qer;
 pub mod update_srr;
+pub mod update_tgpp_access_forwarding_action_information;
 pub mod update_traffic_endpoint;
 pub mod update_urr;
 pub mod updated_pdr;
@@ -592,6 +598,8 @@ pub enum IeType {
     L2tpTunnelInformation = 276,
     L2tpSessionInformation = 277,
     CreatedL2tpSession = 279,
+    Thresholds = 288,
+    SteeringModeIndicator = 289,
     PfcpSessionChangeInfo = 290,
     GroupId = 291,
     CpIpAddress = 292,
@@ -932,6 +940,8 @@ impl From<u16> for IeType {
             276 => IeType::L2tpTunnelInformation,
             277 => IeType::L2tpSessionInformation,
             279 => IeType::CreatedL2tpSession,
+            288 => IeType::Thresholds,
+            289 => IeType::SteeringModeIndicator,
             290 => IeType::PfcpSessionChangeInfo,
             291 => IeType::GroupId,
             292 => IeType::CpIpAddress,
@@ -1828,8 +1838,14 @@ impl_parse_ie!(
     rds_configuration_information::RdsConfigurationInformation,
     create_pdr::CreatePdr,
     create_far::CreateFar,
+    create_mar::CreateMar,
     create_srr::CreateSrr,
+    update_mar::UpdateMar,
     update_srr::UpdateSrr,
+    tgpp_access_forwarding_action_information::TgppAccessForwardingActionInformation,
+    non_tgpp_access_forwarding_action_information::NonTgppAccessForwardingActionInformation,
+    update_tgpp_access_forwarding_action_information::UpdateTgppAccessForwardingActionInformation,
+    update_non_tgpp_access_forwarding_action_information::UpdateNonTgppAccessForwardingActionInformation,
     tsc_management_information_within_session_modification_request::TscManagementInformationWithinSessionModificationRequest,
     tsc_management_information_within_session_modification_response::TscManagementInformationWithinSessionModificationResponse,
     query_packet_rate_status_within_session_modification_request::QueryPacketRateStatusWithinSessionModificationRequest,

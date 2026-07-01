@@ -32,7 +32,7 @@ Ordered by dependency depth — implement groups in sequence A → B → G → C
      QosInformationInGtpuPathQosReport (C, Multiple)
    - Wire into: `node_report_request.rs`
 
-**Status:** TODO
+**Status:** ✅ Done (GtpuPathQosReport + QosInformationInGtpuPathQosReport implemented, wired into NodeReportRequest)
 
 ---
 
@@ -42,7 +42,7 @@ Check 3GPP TS 29.244 for child IE structure, then implement:
 - **ProvideRdsConfigurationInformation** (IE 261) → wire into SessionEstReq
 - **RdsConfigurationInformation** (IE 262) → wire into SessionEstResp
 
-**Status:** TODO
+**Status:** ✅ Done (RdsConfigurationInformation is a simple 1-byte flag IE; ProvideRdsConfigurationInformation is grouped; wired into SessionEstReq/SessionEstResp)
 
 ---
 

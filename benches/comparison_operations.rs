@@ -61,6 +61,7 @@ fn create_session_request(
         apn_dnn: None,
         user_plane_inactivity_timer: None,
         pfcpsm_req_flags: None,
+        create_mars: vec![],
         create_bridge_info_for_tsc: None,
         create_srrs: vec![],
         provide_rds_configuration_information: None,
