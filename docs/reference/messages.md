@@ -31,7 +31,7 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 - **Purpose**: Establish association between control and user plane nodes
 - **Implementation**: `AssociationSetupRequest`
 - **Builder**: `AssociationSetupRequestBuilder`
-- **Key IEs**: Node ID, Recovery Time Stamp, User Plane IP Resource Information
+- **Key IEs**: Node ID, Recovery Time Stamp, User Plane IP Resource Information, Clock Drift Control Information
 - **Usage**: First message in node association establishment
 - **Features**: Supports IPv4/IPv6 dual-stack configurations
 
@@ -39,14 +39,14 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 - **Purpose**: Response to association setup with local node capabilities
 - **Implementation**: `AssociationSetupResponse`
 - **Builder**: `AssociationSetupResponseBuilder`
-- **Key IEs**: Node ID, Cause, Recovery Time Stamp, CP Function Features
+- **Key IEs**: Node ID, Cause, Recovery Time Stamp, CP Function Features, Clock Drift Report
 - **Usage**: Confirms successful association or reports errors
 
 #### Association Update Request (Type 7) ✅
 - **Purpose**: Update existing association parameters
 - **Implementation**: `AssociationUpdateRequest`
 - **Builder**: `AssociationUpdateRequestBuilder`
-- **Key IEs**: Node ID, CP Function Features, Graceful Release Period
+- **Key IEs**: Node ID, CP Function Features, Graceful Release Period, Clock Drift Control Information
 - **Usage**: Modify association settings without re-establishment
 
 #### Association Update Response (Type 8) ✅
@@ -158,7 +158,7 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 - **Purpose**: Request node-level usage and status reports
 - **Implementation**: `NodeReportRequest`
 - **Builder**: `NodeReportRequestBuilder` for ergonomic construction
-- **Key IEs**: Node ID, Report Type, User Plane Path Failure Report
+- **Key IEs**: Node ID, Report Type, User Plane Path Failure Report, Clock Drift Report
 - **Usage**: Monitor node status, path failures, and resource usage
 
 #### Node Report Response (Type 13) ✅

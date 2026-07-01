@@ -5,14 +5,14 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 ## Implementation Status Summary
 
 **Total IE Type Variants**: 334 (comprehensive 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 259 individual implementation files
-**Core IEs**: 259+ essential PFCP functionality
-**Test Coverage**: 3,023 comprehensive tests (all passing)
+**Implemented IE Modules**: 281 individual implementation files
+**Core IEs**: 281+ essential PFCP functionality
+**Test Coverage**: 3,161 comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ### Implementation Highlights
 - ✅ **All essential IEs implemented** for production deployments
-- ✅ **3,023 comprehensive tests** with 100% round-trip validation
+- ✅ **3,161 comprehensive tests** with 100% round-trip validation
 - ✅ **Zero warnings** in cargo fmt, clippy, and cargo doc builds
 - ✅ **3GPP compliant** F-TEID with CHOOSE/CHOOSE_ID flags
 - ✅ **Context-specific IEs** (e.g., UpdateBarWithinSessionReportResponse)
@@ -210,6 +210,12 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Reporting Thresholds             | 348  | DLCI/ULCI/DLDR/ULDR flags + u16/u64 thresholds |
 | Traffic Parameter Threshold      | 325  | DL flag + optional u32 jitter threshold |
 
+### Phase 6 — Grouped IEs: Clock Drift (2 IEs)
+| IE Name                          | Type | Description |
+| -------------------------------- | ---- | ----------- |
+| Clock Drift Control Information  | 203  | Grouped IE: controls TSN clock drift monitoring (RequestedClockDriftInformation, TsnTimeDomainNumber, thresholds) |
+| Clock Drift Report               | 205  | Grouped IE: reports measured clock drift values (TsnTimeDomainNumber, TimeOffsetMeasurement, CumulativeRateRatioMeasurement) |
+
 ## Key Implementation Features
 
 ### 🏆 3GPP TS 29.244 Release 18 Compliance
@@ -220,7 +226,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 - ✅ **3GPP compliant F-TEID** - CHOOSE/CHOOSE_ID flags for UPF allocation
 - ✅ **Release 18 features** - Network slicing, multi-access, enhanced QoS
 - ✅ **Context-specific IEs** - Proper usage in different message contexts
-- ✅ **Production-ready** - 3,023 comprehensive tests with 100% validation
+- ✅ **Production-ready** - 3,161 comprehensive tests with 100% validation
 
 ### F-TEID Implementation Highlights
 ```rust
@@ -264,7 +270,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 ## Architecture Excellence
 
 ### Comprehensive Test Coverage
-- **3,023 comprehensive tests** with 100% pass rate
+- **3,161 comprehensive tests** with 100% pass rate
 - **Round-trip serialization** validation for all IEs
 - **3GPP compliance testing** for critical IEs (F-TEID, Created PDR, etc.)
 - **Builder pattern validation** with comprehensive error checking
@@ -290,9 +296,9 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 
 This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
-- ✅ **259+ IEs** across 259 implementation modules
+- ✅ **281+ IEs** across 281 implementation modules
 - ✅ **All 25 message types** with proper IE integration
-- ✅ **3,023 comprehensive tests** ensuring reliability
+- ✅ **3,161 comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling
 - ✅ **Builder patterns** for ergonomic API usage
 - ✅ **Rich debugging support** with YAML/JSON formatting
