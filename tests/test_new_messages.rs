@@ -57,6 +57,7 @@ fn test_all_new_pfcp_messages() {
         None,
         None,
         Vec::new(),
+        Vec::new(), // clock_drift_report
         Vec::new(),
         Vec::new(),
         Vec::new(),

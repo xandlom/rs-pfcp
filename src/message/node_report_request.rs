@@ -16,7 +16,7 @@ pub struct NodeReportRequest {
     pub node_report_type: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 101 (TODO: Should be mandatory, not Optional - bitmask determines report type)
     pub user_plane_path_failure_report: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 102 - Grouped IE, Multiple instances, when UPFR bit=1 in Node Report Type
     pub user_plane_path_recovery_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 187 - Multiple instances, Grouped IE, when UPRR bit=1 in Node Report Type
-    // TODO: [IE Type 205] Clock Drift Report - C - Multiple instances allowed, Grouped IE, when CDR bit=1 (N4 only, not Sxc), see Table 7.4.5.1.3-1
+    pub clock_drift_report: Vec<Ie>, // C - Multiple - IE Type 205 - Grouped IE, when CDR bit=1 (N4 only)
     // TODO: [IE Type 239] GTP-U Path QoS Report - C - Multiple instances allowed, Grouped IE, when GPQR bit=1 (N4 only), contains nested QoS Information (Type 240)
     pub peer_up_restart_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 315 - Grouped IE, when PURR bit=1 in Node Report Type
     pub vendor_specific_node_report_types: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 320 - Multiple instances, Grouped IE with Vendor ID + proprietary info
@@ -32,6 +32,7 @@ impl NodeReportRequest {
         node_report_type: Option<Ie>,
         user_plane_path_failure_report: Option<Ie>,
         user_plane_path_recovery_reports: Vec<Ie>,
+        clock_drift_report: Vec<Ie>,
         peer_up_restart_reports: Vec<Ie>,
         vendor_specific_node_report_types: Vec<Ie>,
         ies: Vec<Ie>,
@@ -44,6 +45,9 @@ impl NodeReportRequest {
             payload_len += ie.len();
         }
         for ie in &user_plane_path_recovery_reports {
+            payload_len += ie.len();
+        }
+        for ie in &clock_drift_report {
             payload_len += ie.len();
         }
         for ie in &peer_up_restart_reports {
@@ -65,6 +69,7 @@ impl NodeReportRequest {
             node_report_type,
             user_plane_path_failure_report,
             user_plane_path_recovery_reports,
+            clock_drift_report,
             peer_up_restart_reports,
             vendor_specific_node_report_types,
             ies,
@@ -96,6 +101,9 @@ impl Message for NodeReportRequest {
         for ie in &self.user_plane_path_recovery_reports {
             ie.marshal_into(buf);
         }
+        for ie in &self.clock_drift_report {
+            ie.marshal_into(buf);
+        }
         for ie in &self.peer_up_restart_reports {
             ie.marshal_into(buf);
         }
@@ -119,6 +127,9 @@ impl Message for NodeReportRequest {
         for ie in &self.user_plane_path_recovery_reports {
             size += ie.len() as usize;
         }
+        for ie in &self.clock_drift_report {
+            size += ie.len() as usize;
+        }
         for ie in &self.peer_up_restart_reports {
             size += ie.len() as usize;
         }
@@ -140,6 +151,7 @@ impl Message for NodeReportRequest {
         let mut node_report_type = None;
         let mut user_plane_path_failure_report = None;
         let mut user_plane_path_recovery_reports = Vec::new();
+        let mut clock_drift_report = Vec::new();
         let mut peer_up_restart_reports = Vec::new();
         let mut vendor_specific_node_report_types = Vec::new();
         let mut ies = Vec::new();
@@ -153,6 +165,7 @@ impl Message for NodeReportRequest {
                 IeType::ReportType => node_report_type = Some(ie),
                 IeType::UserPlanePathFailureReport => user_plane_path_failure_report = Some(ie),
                 IeType::UserPlanePathRecoveryReport => user_plane_path_recovery_reports.push(ie),
+                IeType::ClockDriftReport => clock_drift_report.push(ie),
                 IeType::PeerUpRestartReport => peer_up_restart_reports.push(ie),
                 IeType::VendorSpecificNodeReportType => vendor_specific_node_report_types.push(ie),
                 _ => ies.push(ie),
@@ -172,6 +185,7 @@ impl Message for NodeReportRequest {
             node_report_type,
             user_plane_path_failure_report,
             user_plane_path_recovery_reports,
+            clock_drift_report,
             peer_up_restart_reports,
             vendor_specific_node_report_types,
             ies,
@@ -206,6 +220,7 @@ impl Message for NodeReportRequest {
             IeType::UserPlanePathRecoveryReport => {
                 IeIter::multiple(&self.user_plane_path_recovery_reports, ie_type)
             }
+            IeType::ClockDriftReport => IeIter::multiple(&self.clock_drift_report, ie_type),
             IeType::PeerUpRestartReport => IeIter::multiple(&self.peer_up_restart_reports, ie_type),
             IeType::VendorSpecificNodeReportType => {
                 IeIter::multiple(&self.vendor_specific_node_report_types, ie_type)
@@ -223,6 +238,7 @@ impl Message for NodeReportRequest {
             result.push(ie);
         }
         result.extend(self.user_plane_path_recovery_reports.iter());
+        result.extend(self.clock_drift_report.iter());
         result.extend(self.peer_up_restart_reports.iter());
         result.extend(self.vendor_specific_node_report_types.iter());
         result.extend(self.ies.iter());
@@ -238,6 +254,7 @@ pub struct NodeReportRequestBuilder {
     node_report_type: Option<Ie>,
     user_plane_path_failure_report: Option<Ie>,
     user_plane_path_recovery_reports: Vec<Ie>,
+    clock_drift_report: Vec<Ie>,
     peer_up_restart_reports: Vec<Ie>,
     vendor_specific_node_report_types: Vec<Ie>,
     ies: Vec<Ie>,
@@ -252,6 +269,7 @@ impl NodeReportRequestBuilder {
             node_report_type: None,
             user_plane_path_failure_report: None,
             user_plane_path_recovery_reports: Vec::new(),
+            clock_drift_report: Vec::new(),
             peer_up_restart_reports: Vec::new(),
             vendor_specific_node_report_types: Vec::new(),
             ies: Vec::new(),
@@ -279,6 +297,12 @@ impl NodeReportRequestBuilder {
     /// Adds a User Plane Path Recovery Report IE (conditional, multiple allowed).
     pub fn user_plane_path_recovery_report(mut self, ie: Ie) -> Self {
         self.user_plane_path_recovery_reports.push(ie);
+        self
+    }
+
+    /// Adds a Clock Drift Report IE (conditional, multiple allowed, N4 only).
+    pub fn clock_drift_report(mut self, ie: Ie) -> Self {
+        self.clock_drift_report.push(ie);
         self
     }
 
@@ -321,6 +345,7 @@ impl NodeReportRequestBuilder {
             self.node_report_type,
             self.user_plane_path_failure_report,
             self.user_plane_path_recovery_reports,
+            self.clock_drift_report,
             self.peer_up_restart_reports,
             self.vendor_specific_node_report_types,
             self.ies,
@@ -342,6 +367,7 @@ impl NodeReportRequestBuilder {
             self.node_report_type,
             self.user_plane_path_failure_report,
             self.user_plane_path_recovery_reports,
+            self.clock_drift_report,
             self.peer_up_restart_reports,
             self.vendor_specific_node_report_types,
             self.ies,
@@ -367,6 +393,7 @@ mod tests {
             node_id_ie,
             None,
             None,
+            Vec::new(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
@@ -409,6 +436,7 @@ mod tests {
             Vec::new(),
             Vec::new(),
             Vec::new(),
+            Vec::new(),
         );
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
@@ -434,6 +462,7 @@ mod tests {
             node_id_ie,
             None,
             None,
+            Vec::new(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
@@ -474,6 +503,7 @@ mod tests {
             Vec::new(),
             Vec::new(),
             Vec::new(),
+            Vec::new(),
         );
 
         assert!(message.ies(IeType::NodeId).next().is_some());
@@ -497,6 +527,7 @@ mod tests {
             node_id_ie,
             None,
             None,
+            Vec::new(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
@@ -688,5 +719,29 @@ mod tests {
         let marshaled = original.marshal();
         let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
         assert_eq!(original, unmarshaled);
+    }
+
+    #[test]
+    fn test_clock_drift_report_roundtrip() {
+        let node_id_ie = Ie::new(
+            IeType::NodeId,
+            NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
+        );
+        let ie1 = Ie::new(IeType::ClockDriftReport, vec![0x01, 0x02]);
+        let ie2 = Ie::new(IeType::ClockDriftReport, vec![0x03, 0x04]);
+
+        let original = NodeReportRequestBuilder::new(50000)
+            .node_id(node_id_ie)
+            .clock_drift_report(ie1.clone())
+            .clock_drift_report(ie2.clone())
+            .build();
+
+        assert_eq!(original.clock_drift_report.len(), 2);
+
+        let marshaled = original.marshal();
+        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
+        assert_eq!(original, unmarshaled);
+        assert_eq!(unmarshaled.clock_drift_report.len(), 2);
+        assert_eq!(unmarshaled.ies(IeType::ClockDriftReport).count(), 2);
     }
 }

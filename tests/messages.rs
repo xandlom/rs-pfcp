@@ -92,6 +92,7 @@ fn test_association_setup_response_marshal_unmarshal() {
         gtpu_path_qos_control_information: vec![],
         nf_instance_id: None,
         ue_ip_address_pool_information: vec![],
+        clock_drift_report: vec![],
         ies: vec![],
     };
 
@@ -132,6 +133,7 @@ fn test_association_setup_response_from_request() {
         vec![],
         None,
         vec![],
+        vec![],
     );
 
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
@@ -157,6 +159,7 @@ fn test_association_setup_response_from_request() {
         gtpu_path_qos_control_information: vec![],
         nf_instance_id: None,
         ue_ip_address_pool_information: vec![],
+        clock_drift_report: vec![],
         ies: vec![],
     };
 
@@ -194,6 +197,7 @@ fn test_association_update_request_marshal_unmarshal() {
         alternative_smf_ip_addresses: vec![],
         smf_set_id: None,
         requested_clock_drift_information: None,
+        clock_drift_control_information: vec![],
         ue_ip_address_pool_information: vec![],
         gtpu_path_qos_control_information: vec![],
         ue_ip_address_usage_information: vec![],

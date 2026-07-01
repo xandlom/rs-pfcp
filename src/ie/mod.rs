@@ -26,6 +26,8 @@ pub mod bar_id;
 pub mod bridge_management_information_container;
 pub mod c_tag;
 pub mod cause;
+pub mod clock_drift_control_information;
+pub mod clock_drift_report;
 pub mod configured_time_domain;
 pub mod cp_function_features;
 pub mod cp_ip_address;
@@ -1808,6 +1810,8 @@ impl_parse_ie!(
     pfcpas_req_flags::PfcpasReqFlags,
     pfcpas_rsp_flags::PfcpasRspFlags,
     // Grouped IEs
+    clock_drift_control_information::ClockDriftControlInformation,
+    clock_drift_report::ClockDriftReport,
     create_pdr::CreatePdr,
     create_far::CreateFar,
     create_urr::CreateUrr,
