@@ -38,14 +38,14 @@ pub struct SessionModificationRequest {
     // TODO: [IE Type 169] Update MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
     // TODO: [IE Type 165] Create MAR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For new MA PDR
     pub node_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 60 - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
-    // TODO: [IE Type 199] TSC Management Information (Modification Request) - C - Multiple instances, Grouped IE (N4 only) - TSC management info
+    pub tsc_management_information: Vec<Ie>, // C - Multiple - IE Type 199 - Grouped IE, TSC management info (N4 only)
     pub remove_srrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 211 - Multiple instances, Grouped IE (N4 only) - Session-level reporting
-    // TODO: [IE Type 212] Create SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
-    // TODO: [IE Type 213] Update SRR - C - Multiple instances, Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - Session-level reporting
+    pub create_srrs: Vec<Ie>, // C - Multiple - IE Type 212 - Grouped IE, create session reporting rule (N4 only)
+    pub update_srrs: Vec<Ie>, // C - Multiple - IE Type 213 - Grouped IE, update session reporting rule (N4 only)
     // TODO: [IE Type 220] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session, replaces previous
     pub ethernet_context_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 254 - Grouped IE (N4 only) - MAC addresses during anchor relocation
     pub access_availability_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 219 - Multiple instances (N4 only) - Access transiently unavailable/available
-    // TODO: [IE Type 263] Query Packet Rate Status - C - Multiple instances, Grouped IE (Sxb/N4 only) - Request immediate packet rate status
+    pub query_packet_rate_statuses: Vec<Ie>, // C - Multiple - IE Type 263 - Grouped IE, request packet rate status (Sxb/N4 only)
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
     pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO if not sent during establishment (N4 only)
     pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
@@ -210,13 +210,25 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.node_id {
             ie.marshal_into(buf);
         }
+        for ie in &self.tsc_management_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.remove_srrs {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.create_srrs {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.update_srrs {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.ethernet_context_information {
             ie.marshal_into(buf);
         }
         for ie in &self.access_availability_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.query_packet_rate_statuses {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.hplmn_s_nssai {
@@ -381,13 +393,25 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.node_id {
             size += ie.len() as usize;
         }
+        for ie in &self.tsc_management_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.remove_srrs {
+            size += ie.len() as usize;
+        }
+        for ie in &self.create_srrs {
+            size += ie.len() as usize;
+        }
+        for ie in &self.update_srrs {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.ethernet_context_information {
             size += ie.len() as usize;
         }
         for ie in &self.access_availability_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.query_packet_rate_statuses {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.hplmn_s_nssai {
@@ -449,9 +473,13 @@ impl Message for SessionModificationRequest {
         let mut fq_csids = Vec::new();
         let mut remove_mars = Vec::new();
         let mut node_id = None;
+        let mut tsc_management_information = Vec::new();
         let mut remove_srrs = Vec::new();
+        let mut create_srrs = Vec::new();
+        let mut update_srrs = Vec::new();
         let mut ethernet_context_information = None;
         let mut access_availability_information = Vec::new();
+        let mut query_packet_rate_statuses = Vec::new();
         let mut hplmn_s_nssai = None;
         let mut rat_type = None;
         let mut group_id = None;
@@ -504,9 +532,17 @@ impl Message for SessionModificationRequest {
                 IeType::FqCsid => fq_csids.push(ie),
                 IeType::RemoveMar => remove_mars.push(ie),
                 IeType::NodeId => node_id = Some(ie),
+                IeType::TscManagementInformationWithinSessionModificationRequest => {
+                    tsc_management_information.push(ie)
+                }
                 IeType::RemoveSrr => remove_srrs.push(ie),
+                IeType::CreateSrr => create_srrs.push(ie),
+                IeType::UpdateSrr => update_srrs.push(ie),
                 IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
                 IeType::AccessAvailabilityInformation => access_availability_information.push(ie),
+                IeType::QueryPacketRateStatusWithinSessionModificationRequest => {
+                    query_packet_rate_statuses.push(ie)
+                }
                 IeType::HplmnSNssai => hplmn_s_nssai = Some(ie),
                 IeType::RatType => rat_type = Some(ie),
                 IeType::GroupId => group_id = Some(ie),
@@ -555,9 +591,13 @@ impl Message for SessionModificationRequest {
             fq_csids,
             remove_mars,
             node_id,
+            tsc_management_information,
             remove_srrs,
+            create_srrs,
+            update_srrs,
             ethernet_context_information,
             access_availability_information,
+            query_packet_rate_statuses,
             hplmn_s_nssai,
             rat_type,
             group_id,
@@ -674,9 +714,17 @@ impl Message for SessionModificationRequest {
                 IeIter::single(self.cp_function_features.as_ref(), ie_type)
             }
             IeType::RemoveMar => IeIter::multiple(&self.remove_mars, ie_type),
+            IeType::TscManagementInformationWithinSessionModificationRequest => {
+                IeIter::multiple(&self.tsc_management_information, ie_type)
+            }
             IeType::RemoveSrr => IeIter::multiple(&self.remove_srrs, ie_type),
+            IeType::CreateSrr => IeIter::multiple(&self.create_srrs, ie_type),
+            IeType::UpdateSrr => IeIter::multiple(&self.update_srrs, ie_type),
             IeType::AccessAvailabilityInformation => {
                 IeIter::multiple(&self.access_availability_information, ie_type)
+            }
+            IeType::QueryPacketRateStatusWithinSessionModificationRequest => {
+                IeIter::multiple(&self.query_packet_rate_statuses, ie_type)
             }
             IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_ref(), ie_type),
             IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
@@ -788,11 +836,15 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.node_id {
             result.push(ie);
         }
+        result.extend(self.tsc_management_information.iter());
         result.extend(self.remove_srrs.iter());
+        result.extend(self.create_srrs.iter());
+        result.extend(self.update_srrs.iter());
         if let Some(ref ie) = self.ethernet_context_information {
             result.push(ie);
         }
         result.extend(self.access_availability_information.iter());
+        result.extend(self.query_packet_rate_statuses.iter());
         if let Some(ref ie) = self.hplmn_s_nssai {
             result.push(ie);
         }
@@ -851,9 +903,13 @@ pub struct SessionModificationRequestBuilder {
     fq_csids: Vec<Ie>,
     remove_mars: Vec<Ie>,
     node_id: Option<Ie>,
+    tsc_management_information: Vec<Ie>,
     remove_srrs: Vec<Ie>,
+    create_srrs: Vec<Ie>,
+    update_srrs: Vec<Ie>,
     ethernet_context_information: Option<Ie>,
     access_availability_information: Vec<Ie>,
+    query_packet_rate_statuses: Vec<Ie>,
     hplmn_s_nssai: Option<Ie>,
     rat_type: Option<Ie>,
     group_id: Option<Ie>,
@@ -901,9 +957,13 @@ impl SessionModificationRequestBuilder {
             fq_csids: Vec::new(),
             remove_mars: Vec::new(),
             node_id: None,
+            tsc_management_information: Vec::new(),
             remove_srrs: Vec::new(),
+            create_srrs: Vec::new(),
+            update_srrs: Vec::new(),
             ethernet_context_information: None,
             access_availability_information: Vec::new(),
+            query_packet_rate_statuses: Vec::new(),
             hplmn_s_nssai: None,
             rat_type: None,
             group_id: None,
@@ -1284,6 +1344,36 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn tsc_management_information(mut self, ie: Ie) -> Self {
+        self.tsc_management_information.push(ie);
+        self
+    }
+
+    pub fn add_create_srr(mut self, srr: crate::ie::create_srr::CreateSrr) -> Self {
+        self.create_srrs.push(srr.to_ie());
+        self
+    }
+
+    pub fn create_srr(mut self, ie: Ie) -> Self {
+        self.create_srrs.push(ie);
+        self
+    }
+
+    pub fn add_update_srr(mut self, srr: crate::ie::update_srr::UpdateSrr) -> Self {
+        self.update_srrs.push(srr.to_ie());
+        self
+    }
+
+    pub fn update_srr(mut self, ie: Ie) -> Self {
+        self.update_srrs.push(ie);
+        self
+    }
+
+    pub fn query_packet_rate_status(mut self, ie: Ie) -> Self {
+        self.query_packet_rate_statuses.push(ie);
+        self
+    }
+
     pub fn access_availability_information(mut self, ie: Ie) -> Self {
         self.access_availability_information.push(ie);
         self
@@ -1458,13 +1548,25 @@ impl SessionModificationRequestBuilder {
         if let Some(ie) = &self.node_id {
             payload_len += ie.len();
         }
+        for ie in &self.tsc_management_information {
+            payload_len += ie.len();
+        }
         for ie in &self.remove_srrs {
+            payload_len += ie.len();
+        }
+        for ie in &self.create_srrs {
+            payload_len += ie.len();
+        }
+        for ie in &self.update_srrs {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.ethernet_context_information {
             payload_len += ie.len();
         }
         for ie in &self.access_availability_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.query_packet_rate_statuses {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.hplmn_s_nssai {
@@ -1530,9 +1632,13 @@ impl SessionModificationRequestBuilder {
             fq_csids: self.fq_csids,
             remove_mars: self.remove_mars,
             node_id: self.node_id,
+            tsc_management_information: self.tsc_management_information,
             remove_srrs: self.remove_srrs,
+            create_srrs: self.create_srrs,
+            update_srrs: self.update_srrs,
             ethernet_context_information: self.ethernet_context_information,
             access_availability_information: self.access_availability_information,
+            query_packet_rate_statuses: self.query_packet_rate_statuses,
             hplmn_s_nssai: self.hplmn_s_nssai,
             rat_type: self.rat_type,
             group_id: self.group_id,

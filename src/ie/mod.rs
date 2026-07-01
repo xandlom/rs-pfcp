@@ -37,6 +37,7 @@ pub mod create_bridge_info_for_tsc;
 pub mod create_far;
 pub mod create_pdr;
 pub mod create_qer;
+pub mod create_srr;
 pub mod create_traffic_endpoint;
 pub mod create_urr;
 pub mod created_bridge_info_for_tsc;
@@ -94,6 +95,7 @@ pub mod graceful_release_period;
 pub mod group_id;
 pub mod gtpu_path_interface_type;
 pub mod gtpu_path_qos_control_information;
+pub mod gtpu_path_qos_report;
 pub mod header_enrichment;
 pub mod hplmn_s_nssai;
 pub mod inactivity_detection_time;
@@ -147,6 +149,7 @@ pub mod packet_delay_thresholds;
 pub mod packet_rate;
 pub mod packet_rate_status;
 pub mod packet_rate_status_report;
+pub mod packet_rate_status_report_within_session_modification_response;
 pub mod packet_replication_and_detection_carry_on_information;
 pub mod paging_policy_indicator;
 pub mod partial_failure_information;
@@ -177,8 +180,10 @@ pub mod qer_correlation_id;
 pub mod qer_id;
 pub mod qer_indications;
 pub mod qfi;
+pub mod qos_information_in_gtpu_path_qos_report;
 pub mod qos_monitoring_measurement;
 pub mod qos_report_trigger;
+pub mod query_packet_rate_status_within_session_modification_request;
 pub mod query_urr;
 pub mod query_urr_reference;
 pub mod quota_holding_time;
@@ -244,6 +249,8 @@ pub mod traffic_parameter_measurement_indication;
 pub mod traffic_parameter_threshold;
 pub mod transport_level_marking;
 pub mod transport_mode;
+pub mod tsc_management_information_within_session_modification_request;
+pub mod tsc_management_information_within_session_modification_response;
 pub mod tsn_bridge_id;
 pub mod tsn_time_domain_number;
 pub mod tunnel_password;
@@ -261,6 +268,7 @@ pub mod update_far;
 pub mod update_forwarding_parameters;
 pub mod update_pdr;
 pub mod update_qer;
+pub mod update_srr;
 pub mod update_traffic_endpoint;
 pub mod update_urr;
 pub mod updated_pdr;
@@ -1812,8 +1820,16 @@ impl_parse_ie!(
     // Grouped IEs
     clock_drift_control_information::ClockDriftControlInformation,
     clock_drift_report::ClockDriftReport,
+    gtpu_path_qos_report::GtpuPathQosReport,
+    qos_information_in_gtpu_path_qos_report::QosInformationInGtpuPathQosReport,
     create_pdr::CreatePdr,
     create_far::CreateFar,
+    create_srr::CreateSrr,
+    update_srr::UpdateSrr,
+    tsc_management_information_within_session_modification_request::TscManagementInformationWithinSessionModificationRequest,
+    tsc_management_information_within_session_modification_response::TscManagementInformationWithinSessionModificationResponse,
+    query_packet_rate_status_within_session_modification_request::QueryPacketRateStatusWithinSessionModificationRequest,
+    packet_rate_status_report_within_session_modification_response::PacketRateStatusReportWithinSessionModificationResponse,
     create_urr::CreateUrr,
     create_qer::CreateQer,
     create_bar::CreateBar,

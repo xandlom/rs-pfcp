@@ -19,11 +19,11 @@ pub struct SessionModificationResponse {
     pub partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
     pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 126 - Additional Usage Reports Information - When Query URR present/QAURR flag set and more reports to follow
     pub created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 128 - Created/Updated Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
-    // TODO: [IE Type 200] TSC Management Information (Modification Response) - no file yet (200=TscManagementInformationWithinSessionModificationResponse) [TODO said 266]
-    // TODO: [IE Type 221] ATSSS Control Parameters - no file yet (221=AtsssControlParameters) [TODO said 186]
+    pub tsc_management_information: Vec<Ie>, // C - Multiple - IE Type 200 - Grouped IE, TSC management info (N4 only)
+    // TODO: [IE Type 221] ATSSS Control Parameters - no file yet (221=AtsssControlParameters)
     pub updated_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 256 - Updated PDR - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
-    // TODO: [IE Type 264] Packet Rate Status Report (Modification Response) - no file yet (264=PacketRateStatusReportWithinSessionModificationResponse)
-    // TODO: [IE Type 311] MBS Session N4 Information - no file yet (311=MbsSessionN4Information) [TODO said 299]
+    pub packet_rate_status_reports: Vec<Ie>, // C - Multiple - IE Type 264 - Grouped IE, packet rate status report (Sxb/N4 only)
+    // TODO: [IE Type 311] MBS Session N4 Information - no file yet (311=MbsSessionN4Information)
     pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.5.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
@@ -69,7 +69,13 @@ impl Message for SessionModificationResponse {
         for ie in &self.created_traffic_endpoints {
             ie.marshal_into(buf);
         }
+        for ie in &self.tsc_management_information {
+            ie.marshal_into(buf);
+        }
         for ie in &self.updated_pdrs {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.packet_rate_status_reports {
             ie.marshal_into(buf);
         }
         for ie in &self.ies {
@@ -110,7 +116,13 @@ impl Message for SessionModificationResponse {
         for ie in &self.created_traffic_endpoints {
             size += ie.len() as usize;
         }
+        for ie in &self.tsc_management_information {
+            size += ie.len() as usize;
+        }
         for ie in &self.updated_pdrs {
+            size += ie.len() as usize;
+        }
+        for ie in &self.packet_rate_status_reports {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -132,7 +144,9 @@ impl Message for SessionModificationResponse {
         let mut partial_failure_information = Vec::new();
         let mut additional_usage_reports_information = None;
         let mut created_traffic_endpoints = Vec::new();
+        let mut tsc_management_information = Vec::new();
         let mut updated_pdrs = Vec::new();
+        let mut packet_rate_status_reports = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -153,7 +167,13 @@ impl Message for SessionModificationResponse {
                     additional_usage_reports_information = Some(ie)
                 }
                 IeType::CreatedTrafficEndpoint => created_traffic_endpoints.push(ie),
+                IeType::TscManagementInformationWithinSessionModificationResponse => {
+                    tsc_management_information.push(ie)
+                }
                 IeType::UpdatedPdr => updated_pdrs.push(ie),
+                IeType::PacketRateStatusReportWithinSessionModificationResponse => {
+                    packet_rate_status_reports.push(ie)
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -176,7 +196,9 @@ impl Message for SessionModificationResponse {
             partial_failure_information,
             additional_usage_reports_information,
             created_traffic_endpoints,
+            tsc_management_information,
             updated_pdrs,
+            packet_rate_status_reports,
             ies,
         })
     }
@@ -228,7 +250,13 @@ impl Message for SessionModificationResponse {
             IeType::CreatedTrafficEndpoint => {
                 IeIter::multiple(&self.created_traffic_endpoints, ie_type)
             }
+            IeType::TscManagementInformationWithinSessionModificationResponse => {
+                IeIter::multiple(&self.tsc_management_information, ie_type)
+            }
             IeType::UpdatedPdr => IeIter::multiple(&self.updated_pdrs, ie_type),
+            IeType::PacketRateStatusReportWithinSessionModificationResponse => {
+                IeIter::multiple(&self.packet_rate_status_reports, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -259,7 +287,9 @@ impl Message for SessionModificationResponse {
             result.push(ie);
         }
         result.extend(self.created_traffic_endpoints.iter());
+        result.extend(self.tsc_management_information.iter());
         result.extend(self.updated_pdrs.iter());
+        result.extend(self.packet_rate_status_reports.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -336,7 +366,9 @@ impl SessionModificationResponse {
             partial_failure_information,
             additional_usage_reports_information,
             created_traffic_endpoints,
+            tsc_management_information: Vec::new(),
             updated_pdrs,
+            packet_rate_status_reports: Vec::new(),
             ies,
         }
     }
@@ -358,7 +390,9 @@ pub struct SessionModificationResponseBuilder {
     partial_failure_information: Vec<Ie>,
     additional_usage_reports_information: Option<Ie>,
     created_traffic_endpoints: Vec<Ie>,
+    tsc_management_information: Vec<Ie>,
     updated_pdrs: Vec<Ie>,
+    packet_rate_status_reports: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -386,7 +420,9 @@ impl SessionModificationResponseBuilder {
             partial_failure_information: Vec::new(),
             additional_usage_reports_information: None,
             created_traffic_endpoints: Vec::new(),
+            tsc_management_information: Vec::new(),
             updated_pdrs: Vec::new(),
+            packet_rate_status_reports: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -497,9 +533,21 @@ impl SessionModificationResponseBuilder {
         self
     }
 
+    /// Adds a TSC Management Information IE (IE 200, optional, multiple, N4 only).
+    pub fn tsc_management_information(mut self, ie: Ie) -> Self {
+        self.tsc_management_information.push(ie);
+        self
+    }
+
     /// Adds an Updated PDR IE (optional, multiple allowed, Sxb/N4 only).
     pub fn updated_pdr(mut self, ie: Ie) -> Self {
         self.updated_pdrs.push(ie);
+        self
+    }
+
+    /// Adds a Packet Rate Status Report IE (IE 264, optional, multiple, Sxb/N4 only).
+    pub fn packet_rate_status_report(mut self, ie: Ie) -> Self {
+        self.packet_rate_status_reports.push(ie);
         self
     }
 
@@ -520,27 +568,8 @@ impl SessionModificationResponseBuilder {
     /// # Panics
     /// Panics if the required cause IE is not set.
     pub fn build(self) -> SessionModificationResponse {
-        let cause = self
-            .cause
-            .expect("Cause IE is required for SessionModificationResponse");
-
-        SessionModificationResponse::new(
-            self.seid,
-            self.sequence,
-            cause,
-            self.offending_ie,
-            self.created_pdr,
-            self.load_control_information,
-            self.overload_control_information,
-            self.pdn_type,
-            self.usage_reports,
-            self.failed_rule_id,
-            self.partial_failure_information,
-            self.additional_usage_reports_information,
-            self.created_traffic_endpoints,
-            self.updated_pdrs,
-            self.ies,
-        )
+        self.try_build()
+            .expect("Cause IE is required for SessionModificationResponse")
     }
 
     /// Tries to build the SessionModificationResponse message.
@@ -552,23 +581,75 @@ impl SessionModificationResponseBuilder {
             .cause
             .ok_or("Cause IE is required for SessionModificationResponse")?;
 
-        Ok(SessionModificationResponse::new(
+        let mut header = Header::new(
+            MsgType::SessionModificationResponse,
+            true,
             self.seid,
             self.sequence,
+        );
+        let mut payload_len = cause.len();
+        if let Some(ie) = &self.offending_ie {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.created_pdr {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.load_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.overload_control_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.pdn_type {
+            payload_len += ie.len();
+        }
+        for ie in &self.usage_reports {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.failed_rule_id {
+            payload_len += ie.len();
+        }
+        for ie in &self.partial_failure_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.additional_usage_reports_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.created_traffic_endpoints {
+            payload_len += ie.len();
+        }
+        for ie in &self.tsc_management_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.updated_pdrs {
+            payload_len += ie.len();
+        }
+        for ie in &self.packet_rate_status_reports {
+            payload_len += ie.len();
+        }
+        for ie in &self.ies {
+            payload_len += ie.len();
+        }
+        header.length = payload_len + header.len() - 4;
+
+        Ok(SessionModificationResponse {
+            header,
             cause,
-            self.offending_ie,
-            self.created_pdr,
-            self.load_control_information,
-            self.overload_control_information,
-            self.pdn_type,
-            self.usage_reports,
-            self.failed_rule_id,
-            self.partial_failure_information,
-            self.additional_usage_reports_information,
-            self.created_traffic_endpoints,
-            self.updated_pdrs,
-            self.ies,
-        ))
+            offending_ie: self.offending_ie,
+            created_pdr: self.created_pdr,
+            load_control_information: self.load_control_information,
+            overload_control_information: self.overload_control_information,
+            pdn_type: self.pdn_type,
+            usage_reports: self.usage_reports,
+            failed_rule_id: self.failed_rule_id,
+            partial_failure_information: self.partial_failure_information,
+            additional_usage_reports_information: self.additional_usage_reports_information,
+            created_traffic_endpoints: self.created_traffic_endpoints,
+            tsc_management_information: self.tsc_management_information,
+            updated_pdrs: self.updated_pdrs,
+            packet_rate_status_reports: self.packet_rate_status_reports,
+            ies: self.ies,
+        })
     }
 
     /// Builds and marshals the SessionModificationResponse in one step.

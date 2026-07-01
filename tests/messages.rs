@@ -402,7 +402,9 @@ fn test_session_modification_response_marshal_unmarshal() {
         partial_failure_information: vec![],
         additional_usage_reports_information: None,
         created_traffic_endpoints: vec![],
+        tsc_management_information: vec![],
         updated_pdrs: vec![],
+        packet_rate_status_reports: vec![],
         ies: vec![],
     };
 

@@ -17,7 +17,7 @@ pub struct NodeReportRequest {
     pub user_plane_path_failure_report: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 102 - Grouped IE, Multiple instances, when UPFR bit=1 in Node Report Type
     pub user_plane_path_recovery_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 187 - Multiple instances, Grouped IE, when UPRR bit=1 in Node Report Type
     pub clock_drift_report: Vec<Ie>, // C - Multiple - IE Type 205 - Grouped IE, when CDR bit=1 (N4 only)
-    // TODO: [IE Type 239] GTP-U Path QoS Report - C - Multiple instances allowed, Grouped IE, when GPQR bit=1 (N4 only), contains nested QoS Information (Type 240)
+    pub gtpu_path_qos_reports: Vec<Ie>, // C - Multiple - IE Type 239 - Grouped IE, when GPQR bit=1 (N4 only)
     pub peer_up_restart_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 315 - Grouped IE, when PURR bit=1 in Node Report Type
     pub vendor_specific_node_report_types: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 320 - Multiple instances, Grouped IE with Vendor ID + proprietary info
     pub ies: Vec<Ie>,
@@ -70,6 +70,7 @@ impl NodeReportRequest {
             user_plane_path_failure_report,
             user_plane_path_recovery_reports,
             clock_drift_report,
+            gtpu_path_qos_reports: Vec::new(),
             peer_up_restart_reports,
             vendor_specific_node_report_types,
             ies,
@@ -104,6 +105,9 @@ impl Message for NodeReportRequest {
         for ie in &self.clock_drift_report {
             ie.marshal_into(buf);
         }
+        for ie in &self.gtpu_path_qos_reports {
+            ie.marshal_into(buf);
+        }
         for ie in &self.peer_up_restart_reports {
             ie.marshal_into(buf);
         }
@@ -130,6 +134,9 @@ impl Message for NodeReportRequest {
         for ie in &self.clock_drift_report {
             size += ie.len() as usize;
         }
+        for ie in &self.gtpu_path_qos_reports {
+            size += ie.len() as usize;
+        }
         for ie in &self.peer_up_restart_reports {
             size += ie.len() as usize;
         }
@@ -152,6 +159,7 @@ impl Message for NodeReportRequest {
         let mut user_plane_path_failure_report = None;
         let mut user_plane_path_recovery_reports = Vec::new();
         let mut clock_drift_report = Vec::new();
+        let mut gtpu_path_qos_reports = Vec::new();
         let mut peer_up_restart_reports = Vec::new();
         let mut vendor_specific_node_report_types = Vec::new();
         let mut ies = Vec::new();
@@ -166,6 +174,7 @@ impl Message for NodeReportRequest {
                 IeType::UserPlanePathFailureReport => user_plane_path_failure_report = Some(ie),
                 IeType::UserPlanePathRecoveryReport => user_plane_path_recovery_reports.push(ie),
                 IeType::ClockDriftReport => clock_drift_report.push(ie),
+                IeType::GtpuPathQosReport => gtpu_path_qos_reports.push(ie),
                 IeType::PeerUpRestartReport => peer_up_restart_reports.push(ie),
                 IeType::VendorSpecificNodeReportType => vendor_specific_node_report_types.push(ie),
                 _ => ies.push(ie),
@@ -186,6 +195,7 @@ impl Message for NodeReportRequest {
             user_plane_path_failure_report,
             user_plane_path_recovery_reports,
             clock_drift_report,
+            gtpu_path_qos_reports,
             peer_up_restart_reports,
             vendor_specific_node_report_types,
             ies,
@@ -221,6 +231,7 @@ impl Message for NodeReportRequest {
                 IeIter::multiple(&self.user_plane_path_recovery_reports, ie_type)
             }
             IeType::ClockDriftReport => IeIter::multiple(&self.clock_drift_report, ie_type),
+            IeType::GtpuPathQosReport => IeIter::multiple(&self.gtpu_path_qos_reports, ie_type),
             IeType::PeerUpRestartReport => IeIter::multiple(&self.peer_up_restart_reports, ie_type),
             IeType::VendorSpecificNodeReportType => {
                 IeIter::multiple(&self.vendor_specific_node_report_types, ie_type)
@@ -239,6 +250,7 @@ impl Message for NodeReportRequest {
         }
         result.extend(self.user_plane_path_recovery_reports.iter());
         result.extend(self.clock_drift_report.iter());
+        result.extend(self.gtpu_path_qos_reports.iter());
         result.extend(self.peer_up_restart_reports.iter());
         result.extend(self.vendor_specific_node_report_types.iter());
         result.extend(self.ies.iter());
@@ -255,6 +267,7 @@ pub struct NodeReportRequestBuilder {
     user_plane_path_failure_report: Option<Ie>,
     user_plane_path_recovery_reports: Vec<Ie>,
     clock_drift_report: Vec<Ie>,
+    gtpu_path_qos_reports: Vec<Ie>,
     peer_up_restart_reports: Vec<Ie>,
     vendor_specific_node_report_types: Vec<Ie>,
     ies: Vec<Ie>,
@@ -270,6 +283,7 @@ impl NodeReportRequestBuilder {
             user_plane_path_failure_report: None,
             user_plane_path_recovery_reports: Vec::new(),
             clock_drift_report: Vec::new(),
+            gtpu_path_qos_reports: Vec::new(),
             peer_up_restart_reports: Vec::new(),
             vendor_specific_node_report_types: Vec::new(),
             ies: Vec::new(),
@@ -306,6 +320,12 @@ impl NodeReportRequestBuilder {
         self
     }
 
+    /// Adds a GTP-U Path QoS Report IE (conditional, multiple allowed, N4 only, when GPQR=1).
+    pub fn gtpu_path_qos_report(mut self, ie: Ie) -> Self {
+        self.gtpu_path_qos_reports.push(ie);
+        self
+    }
+
     /// Adds a Peer UP Restart Report IE (conditional, multiple allowed).
     pub fn peer_up_restart_report(mut self, ie: Ie) -> Self {
         self.peer_up_restart_reports.push(ie);
@@ -335,21 +355,8 @@ impl NodeReportRequestBuilder {
     /// # Panics
     /// Panics if required node_id IE is not set.
     pub fn build(self) -> NodeReportRequest {
-        let node_id = self
-            .node_id
-            .expect("Node ID IE is required for NodeReportRequest");
-
-        NodeReportRequest::new(
-            self.sequence,
-            node_id,
-            self.node_report_type,
-            self.user_plane_path_failure_report,
-            self.user_plane_path_recovery_reports,
-            self.clock_drift_report,
-            self.peer_up_restart_reports,
-            self.vendor_specific_node_report_types,
-            self.ies,
-        )
+        self.try_build()
+            .expect("Node ID IE is required for NodeReportRequest")
     }
 
     /// Tries to build the NodeReportRequest message.
@@ -361,17 +368,47 @@ impl NodeReportRequestBuilder {
             .node_id
             .ok_or("Node ID IE is required for NodeReportRequest")?;
 
-        Ok(NodeReportRequest::new(
-            self.sequence,
+        let mut payload_len = node_id.len();
+        if let Some(ie) = &self.node_report_type {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.user_plane_path_failure_report {
+            payload_len += ie.len();
+        }
+        for ie in &self.user_plane_path_recovery_reports {
+            payload_len += ie.len();
+        }
+        for ie in &self.clock_drift_report {
+            payload_len += ie.len();
+        }
+        for ie in &self.gtpu_path_qos_reports {
+            payload_len += ie.len();
+        }
+        for ie in &self.peer_up_restart_reports {
+            payload_len += ie.len();
+        }
+        for ie in &self.vendor_specific_node_report_types {
+            payload_len += ie.len();
+        }
+        for ie in &self.ies {
+            payload_len += ie.len();
+        }
+
+        let mut header = Header::new(MsgType::NodeReportRequest, false, 0, self.sequence);
+        header.length = payload_len + (header.len() - 4);
+
+        Ok(NodeReportRequest {
+            header,
             node_id,
-            self.node_report_type,
-            self.user_plane_path_failure_report,
-            self.user_plane_path_recovery_reports,
-            self.clock_drift_report,
-            self.peer_up_restart_reports,
-            self.vendor_specific_node_report_types,
-            self.ies,
-        ))
+            node_report_type: self.node_report_type,
+            user_plane_path_failure_report: self.user_plane_path_failure_report,
+            user_plane_path_recovery_reports: self.user_plane_path_recovery_reports,
+            clock_drift_report: self.clock_drift_report,
+            gtpu_path_qos_reports: self.gtpu_path_qos_reports,
+            peer_up_restart_reports: self.peer_up_restart_reports,
+            vendor_specific_node_report_types: self.vendor_specific_node_report_types,
+            ies: self.ies,
+        })
     }
 }
 

@@ -83,6 +83,7 @@ fn create_session_request(
         user_plane_inactivity_timer: None,
         pfcpsm_req_flags: None,
         create_bridge_info_for_tsc: None,
+        create_srrs: vec![],
         hplmn_s_nssai: None,
         ethernet_pdu_session_information: None,
         rat_type: None,
