@@ -69,6 +69,8 @@ fn create_session_request(
         hplmn_s_nssai: None,
         ethernet_pdu_session_information: None,
         rat_type: None,
+        l2tp_tunnel_informations: vec![],
+        l2tp_session_information: None,
         group_id: None,
         mbs_session_n4mb_control_information: None,
         mbs_session_n4_control_information: vec![],

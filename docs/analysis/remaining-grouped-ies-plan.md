@@ -100,4 +100,7 @@ Targets:
 - **L2tpSessionInformation** (IE 277) → wire into SessionEstReq
 - **CreatedL2tpSession** (IE 279) → wire into SessionEstResp
 
-**Status:** TODO
+**Status:** ✅ DONE (9 child IE files: LnsAddress, TunnelPreference, CallingNumber, CalledNumber,
+L2tpSessionIndications, DnsServerAddress, NbnsServerAddress, MaximumReceiveUnit; 3 parent grouped
+IEs: L2tpTunnelInformation, L2tpSessionInformation, CreatedL2tpSession; wired into SessionEstReq
+and SessionEstResp)

@@ -23,7 +23,7 @@ pub struct SessionEstablishmentResponse {
     created_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 195 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 205]
     atsss_control_parameters: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 221 - Grouped IE (N4 only) - ATSSS allocation results
     rds_configuration_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 262 - RDS Configuration Information (Sxb/N4 only)
-    // TODO: [IE Type 279] Created L2TP Session - no file yet (279=CreatedL2tpSession)
+    created_l2tp_session: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 279 - Grouped IE (Sxb/N4 only)
     mbs_session_n4mb_information: Option<Ie>, // C - IE Type 303 - MBS Session N4mb Information (N4mb only)
     mbs_session_n4_information: Vec<Ie>,      // C - IE Type 311 - Multiple instances (N4 only)
     tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 336 - Multiple instances (N4 only) - From UPF/CN-TL to SMF/CUC in response
@@ -220,6 +220,9 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.rds_configuration_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.created_l2tp_session {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.mbs_session_n4mb_information {
             ie.marshal_into(buf);
         }
@@ -275,6 +278,9 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.rds_configuration_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.created_l2tp_session {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.mbs_session_n4mb_information {
             size += ie.len() as usize;
         }
@@ -307,6 +313,7 @@ impl Message for SessionEstablishmentResponse {
         let mut created_bridge_info_for_tsc = None;
         let mut atsss_control_parameters = None;
         let mut rds_configuration_information = None;
+        let mut created_l2tp_session = None;
         let mut mbs_session_n4mb_information = None;
         let mut mbs_session_n4_information = Vec::new();
         let mut tl_containers = Vec::new();
@@ -332,6 +339,7 @@ impl Message for SessionEstablishmentResponse {
                 IeType::CreatedBridgeInfoForTsc => created_bridge_info_for_tsc = Some(ie),
                 IeType::AtsssControlParameters => atsss_control_parameters = Some(ie),
                 IeType::RdsConfigurationInformation => rds_configuration_information = Some(ie),
+                IeType::CreatedL2tpSession => created_l2tp_session = Some(ie),
                 IeType::MbsSessionN4mbInformation => mbs_session_n4mb_information = Some(ie),
                 IeType::MbsSessionN4Information => mbs_session_n4_information.push(ie),
                 IeType::TlContainer => tl_containers.push(ie),
@@ -369,6 +377,7 @@ impl Message for SessionEstablishmentResponse {
             created_bridge_info_for_tsc,
             atsss_control_parameters,
             rds_configuration_information,
+            created_l2tp_session,
             mbs_session_n4mb_information,
             mbs_session_n4_information,
             tl_containers,
@@ -429,6 +438,9 @@ impl Message for SessionEstablishmentResponse {
             IeType::RdsConfigurationInformation => {
                 IeIter::single(self.rds_configuration_information.as_ref(), ie_type)
             }
+            IeType::CreatedL2tpSession => {
+                IeIter::single(self.created_l2tp_session.as_ref(), ie_type)
+            }
             IeType::MbsSessionN4mbInformation => {
                 IeIter::single(self.mbs_session_n4mb_information.as_ref(), ie_type)
             }
@@ -470,6 +482,9 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.rds_configuration_information {
             result.push(ie);
         }
+        if let Some(ref ie) = self.created_l2tp_session {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.mbs_session_n4mb_information {
             result.push(ie);
         }
@@ -499,6 +514,7 @@ pub struct SessionEstablishmentResponseBuilder {
     created_bridge_info_for_tsc: Option<Ie>,
     atsss_control_parameters: Option<Ie>,
     rds_configuration_information: Option<Ie>,
+    created_l2tp_session: Option<Ie>,
     mbs_session_n4mb_information: Option<Ie>,
     mbs_session_n4_information: Vec<Ie>,
     tl_containers: Vec<Ie>,
@@ -540,6 +556,7 @@ impl SessionEstablishmentResponseBuilder {
             created_bridge_info_for_tsc: None,
             atsss_control_parameters: None,
             rds_configuration_information: None,
+            created_l2tp_session: None,
             mbs_session_n4mb_information: None,
             mbs_session_n4_information: Vec::new(),
             tl_containers: Vec::new(),
@@ -595,6 +612,7 @@ impl SessionEstablishmentResponseBuilder {
             created_bridge_info_for_tsc: None,
             atsss_control_parameters: None,
             rds_configuration_information: None,
+            created_l2tp_session: None,
             mbs_session_n4mb_information: None,
             mbs_session_n4_information: Vec::new(),
             tl_containers: Vec::new(),
@@ -737,6 +755,11 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    pub fn created_l2tp_session(mut self, ie: Ie) -> Self {
+        self.created_l2tp_session = Some(ie);
+        self
+    }
+
     pub fn mbs_session_n4mb_information(mut self, ie: Ie) -> Self {
         self.mbs_session_n4mb_information = Some(ie);
         self
@@ -815,6 +838,9 @@ impl SessionEstablishmentResponseBuilder {
         if let Some(ie) = &self.rds_configuration_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.created_l2tp_session {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.mbs_session_n4mb_information {
             payload_len += ie.len();
         }
@@ -853,6 +879,7 @@ impl SessionEstablishmentResponseBuilder {
             created_bridge_info_for_tsc: self.created_bridge_info_for_tsc,
             atsss_control_parameters: self.atsss_control_parameters,
             rds_configuration_information: self.rds_configuration_information,
+            created_l2tp_session: self.created_l2tp_session,
             mbs_session_n4mb_information: self.mbs_session_n4mb_information,
             mbs_session_n4_information: self.mbs_session_n4_information,
             tl_containers: self.tl_containers,

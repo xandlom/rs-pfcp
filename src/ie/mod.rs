@@ -30,6 +30,8 @@ pub mod bar;
 pub mod bar_id;
 pub mod bridge_management_information_container;
 pub mod c_tag;
+pub mod called_number;
+pub mod calling_number;
 pub mod cause;
 pub mod clock_drift_control_information;
 pub mod clock_drift_report;
@@ -47,6 +49,7 @@ pub mod create_srr;
 pub mod create_traffic_endpoint;
 pub mod create_urr;
 pub mod created_bridge_info_for_tsc;
+pub mod created_l2tp_session;
 pub mod created_pdr;
 pub mod created_traffic_endpoint;
 pub mod cumulative_rate_ratio_measurement;
@@ -61,6 +64,7 @@ pub mod dl_buffering_suggested_packet_count;
 pub mod dl_data_packets_size;
 pub mod dl_flow_level_marking;
 pub mod dl_periodicity;
+pub mod dns_server_address;
 pub mod downlink_data_notification_delay;
 pub mod downlink_data_report;
 pub mod downlink_data_service_information;
@@ -109,9 +113,13 @@ pub mod ip_multicast_address;
 pub mod ip_multicast_addressing_info;
 pub mod ip_version;
 pub mod join_ip_multicast_information_within_usage_report;
+pub mod l2tp_session_indications;
+pub mod l2tp_session_information;
+pub mod l2tp_tunnel_information;
 pub mod leave_ip_multicast_information_within_usage_report;
 pub mod link_specific_multipath_ip_address;
 pub mod linked_urr_id;
+pub mod lns_address;
 pub mod load_control_information;
 pub mod local_ingress_tunnel;
 pub mod mac_address;
@@ -120,6 +128,7 @@ pub mod mac_addresses_removed;
 pub mod mapped_n6_ip_address;
 pub mod mar_id;
 pub mod maximum_packet_delay;
+pub mod maximum_receive_unit;
 pub mod mbr;
 pub mod mbs_multicast_parameters;
 pub mod mbs_session_identifier;
@@ -151,6 +160,7 @@ pub mod mt_sdt_control_information;
 pub mod multiplier;
 pub mod n6_jitter_measurement;
 pub mod n6_routing_information;
+pub mod nbns_server_address;
 pub mod network_instance;
 pub mod nf_instance_id;
 pub mod node_id;
@@ -281,6 +291,7 @@ pub mod tsc_management_information_within_session_modification_response;
 pub mod tsn_bridge_id;
 pub mod tsn_time_domain_number;
 pub mod tunnel_password;
+pub mod tunnel_preference;
 pub mod ue_ip_address;
 pub mod ue_ip_address_pool_identity;
 pub mod ue_ip_address_pool_information;
@@ -619,7 +630,16 @@ pub enum IeType {
     RatType = 275,
     L2tpTunnelInformation = 276,
     L2tpSessionInformation = 277,
+    L2tpUserAuthentication = 278,
     CreatedL2tpSession = 279,
+    LnsAddress = 280,
+    TunnelPreference = 281,
+    CallingNumber = 282,
+    CalledNumber = 283,
+    L2tpSessionIndications = 284,
+    DnsServerAddress = 285,
+    NbnsServerAddress = 286,
+    MaximumReceiveUnit = 287,
     Thresholds = 288,
     SteeringModeIndicator = 289,
     PfcpSessionChangeInfo = 290,
@@ -961,7 +981,16 @@ impl From<u16> for IeType {
             275 => IeType::RatType,
             276 => IeType::L2tpTunnelInformation,
             277 => IeType::L2tpSessionInformation,
+            278 => IeType::L2tpUserAuthentication,
             279 => IeType::CreatedL2tpSession,
+            280 => IeType::LnsAddress,
+            281 => IeType::TunnelPreference,
+            282 => IeType::CallingNumber,
+            283 => IeType::CalledNumber,
+            284 => IeType::L2tpSessionIndications,
+            285 => IeType::DnsServerAddress,
+            286 => IeType::NbnsServerAddress,
+            287 => IeType::MaximumReceiveUnit,
             288 => IeType::Thresholds,
             289 => IeType::SteeringModeIndicator,
             290 => IeType::PfcpSessionChangeInfo,
@@ -1913,6 +1942,19 @@ impl_parse_ie!(
     mbs_multicast_parameters::MbsMulticastParameters,
     add_mbs_unicast_parameters::AddMbsUnicastParameters,
     remove_mbs_unicast_parameters::RemoveMbsUnicastParameters,
+    // Group E: L2TP parent grouped IEs
+    l2tp_tunnel_information::L2tpTunnelInformation,
+    l2tp_session_information::L2tpSessionInformation,
+    created_l2tp_session::CreatedL2tpSession,
+    // Group E: L2TP child IEs
+    lns_address::LnsAddress,
+    tunnel_preference::TunnelPreference,
+    calling_number::CallingNumber,
+    called_number::CalledNumber,
+    l2tp_session_indications::L2tpSessionIndications,
+    dns_server_address::DnsServerAddress,
+    nbns_server_address::NbnsServerAddress,
+    maximum_receive_unit::MaximumReceiveUnit,
     // Phase 4: Simple scalar, flag, and opaque-container IEs
     aggregated_urr_id::AggregatedUrrId,
     bridge_management_information_container::BridgeManagementInformationContainer,

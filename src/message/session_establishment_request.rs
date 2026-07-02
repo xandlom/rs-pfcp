@@ -35,8 +35,8 @@ pub struct SessionEstablishmentRequest {
     pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO (N4 only) [TODO said 242]
     pub provide_rds_configuration_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 261 - Grouped IE (Sxb/N4 only) - Provides RDS configuration
     pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 275 - RAT Type - Current RAT type for statistics (not N4mb, not for MA PDU)
-    // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
-    // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
+    pub l2tp_tunnel_informations: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 276 - Multiple instances, Grouped IE (Sxb/N4 only)
+    pub l2tp_session_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 277 - Grouped IE (Sxb/N4 only)
     pub group_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 291 - Group identifier (Sxb/N4 only) [TODO said 297]
     pub mbs_session_n4mb_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 300 - MBS Session N4mb Control Information (N4mb only)
     pub mbs_session_n4_control_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 310 - Multiple instances, Grouped IE (N4 only)
@@ -128,6 +128,12 @@ impl Message for SessionEstablishmentRequest {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.rat_type {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.l2tp_tunnel_informations {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.l2tp_session_information {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.provide_rds_configuration_information {
@@ -229,6 +235,12 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.rat_type {
             size += ie.len() as usize;
         }
+        for ie in &self.l2tp_tunnel_informations {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.l2tp_session_information {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.provide_rds_configuration_information {
             size += ie.len() as usize;
         }
@@ -283,6 +295,8 @@ impl Message for SessionEstablishmentRequest {
         let mut hplmn_s_nssai = None;
         let mut ethernet_pdu_session_information = None;
         let mut rat_type = None;
+        let mut l2tp_tunnel_informations = Vec::new();
+        let mut l2tp_session_information = None;
         let mut provide_rds_configuration_information = None;
         let mut group_id = None;
         let mut mbs_session_n4mb_control_information = None;
@@ -326,6 +340,8 @@ impl Message for SessionEstablishmentRequest {
                     ethernet_pdu_session_information = Some(ie)
                 }
                 IeType::RatType => rat_type = Some(ie),
+                IeType::L2tpTunnelInformation => l2tp_tunnel_informations.push(ie),
+                IeType::L2tpSessionInformation => l2tp_session_information = Some(ie),
                 IeType::ProvideRdsConfigurationInformation => {
                     provide_rds_configuration_information = Some(ie)
                 }
@@ -396,6 +412,8 @@ impl Message for SessionEstablishmentRequest {
             hplmn_s_nssai,
             ethernet_pdu_session_information,
             rat_type,
+            l2tp_tunnel_informations,
+            l2tp_session_information,
             provide_rds_configuration_information,
             group_id,
             mbs_session_n4mb_control_information,
@@ -468,6 +486,12 @@ impl Message for SessionEstablishmentRequest {
                 IeIter::single(self.ethernet_pdu_session_information.as_ref(), ie_type)
             }
             IeType::RatType => IeIter::single(self.rat_type.as_ref(), ie_type),
+            IeType::L2tpTunnelInformation => {
+                IeIter::multiple(&self.l2tp_tunnel_informations, ie_type)
+            }
+            IeType::L2tpSessionInformation => {
+                IeIter::single(self.l2tp_session_information.as_ref(), ie_type)
+            }
             IeType::ProvideRdsConfigurationInformation => {
                 IeIter::single(self.provide_rds_configuration_information.as_ref(), ie_type)
             }
@@ -542,6 +566,10 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.rat_type {
             result.push(ie);
         }
+        result.extend(self.l2tp_tunnel_informations.iter());
+        if let Some(ref ie) = self.l2tp_session_information {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.provide_rds_configuration_information {
             result.push(ie);
         }
@@ -593,6 +621,8 @@ pub struct SessionEstablishmentRequestBuilder {
     hplmn_s_nssai: Option<Ie>,
     ethernet_pdu_session_information: Option<Ie>,
     rat_type: Option<Ie>,
+    l2tp_tunnel_informations: Vec<Ie>,
+    l2tp_session_information: Option<Ie>,
     provide_rds_configuration_information: Option<Ie>,
     group_id: Option<Ie>,
     mbs_session_n4mb_control_information: Option<Ie>,
@@ -633,6 +663,8 @@ impl SessionEstablishmentRequestBuilder {
             hplmn_s_nssai: None,
             ethernet_pdu_session_information: None,
             rat_type: None,
+            l2tp_tunnel_informations: Vec::new(),
+            l2tp_session_information: None,
             provide_rds_configuration_information: None,
             group_id: None,
             mbs_session_n4mb_control_information: None,
@@ -913,6 +945,16 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn add_l2tp_tunnel_information(mut self, ie: Ie) -> Self {
+        self.l2tp_tunnel_informations.push(ie);
+        self
+    }
+
+    pub fn l2tp_session_information(mut self, ie: Ie) -> Self {
+        self.l2tp_session_information = Some(ie);
+        self
+    }
+
     pub fn provide_rds_configuration_information(mut self, ie: Ie) -> Self {
         self.provide_rds_configuration_information = Some(ie);
         self
@@ -1084,6 +1126,12 @@ impl SessionEstablishmentRequestBuilder {
         if let Some(ie) = &self.rat_type {
             payload_len += ie.len();
         }
+        for ie in &self.l2tp_tunnel_informations {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.l2tp_session_information {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.provide_rds_configuration_information {
             payload_len += ie.len();
         }
@@ -1143,6 +1191,8 @@ impl SessionEstablishmentRequestBuilder {
             hplmn_s_nssai: self.hplmn_s_nssai,
             ethernet_pdu_session_information: self.ethernet_pdu_session_information,
             rat_type: self.rat_type,
+            l2tp_tunnel_informations: self.l2tp_tunnel_informations,
+            l2tp_session_information: self.l2tp_session_information,
             provide_rds_configuration_information: self.provide_rds_configuration_information,
             group_id: self.group_id,
             mbs_session_n4mb_control_information: self.mbs_session_n4mb_control_information,

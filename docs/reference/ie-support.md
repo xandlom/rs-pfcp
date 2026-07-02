@@ -5,14 +5,14 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 ## Implementation Status Summary
 
 **Total IE Type Variants**: 334 (comprehensive 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 303 individual implementation files
-**Core IEs**: 303+ essential PFCP functionality
-**Test Coverage**: 3,300 comprehensive tests (all passing)
+**Implemented IE Modules**: 312 individual implementation files
+**Core IEs**: 312+ essential PFCP functionality
+**Test Coverage**: 3,344 comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ### Implementation Highlights
 - ✅ **All essential IEs implemented** for production deployments
-- ✅ **3,300 comprehensive tests** with 100% round-trip validation
+- ✅ **3,344 comprehensive tests** with 100% round-trip validation
 - ✅ **Zero warnings** in cargo fmt, clippy, and cargo doc builds
 - ✅ **3GPP compliant** F-TEID with CHOOSE/CHOOSE_ID flags
 - ✅ **Context-specific IEs** (e.g., UpdateBarWithinSessionReportResponse)
@@ -246,6 +246,22 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | MBS Session N4 Control Information   | 310  | Grouped IE: associates PDU session with MBS on N4 (SessionEstReq, SessionModReq) |
 | MBS Session N4 Information           | 311  | Grouped IE: MBS session N4 allocation result (SessionEstResp, SessionModResp) |
 
+### Phase 9 — Grouped IEs: L2TP Session (9 IEs)
+
+| IE Name                    | Type | Notes |
+|---|---|---|
+| LNS Address                | 280  | IPv4 or IPv6 L2TP Network Server address |
+| Tunnel Preference          | 281  | 3-octet big-endian preference value |
+| Calling Number             | 282  | UTF-8 calling station ID from LAC |
+| Called Number              | 283  | UTF-8 called station ID from LAC |
+| L2TP Session Indications   | 284  | 1-byte flags: REUIA/REDSA/RENSA |
+| DNS Server Address         | 285  | IPv4 DNS server address for L2TP session |
+| NBNS Server Address        | 286  | IPv4 NBNS server address for L2TP session |
+| Maximum Receive Unit       | 287  | u16 MRU for L2TP session |
+| L2TP Tunnel Information    | 276  | Grouped IE: LNS address + tunnel params (SessionEstReq) |
+| L2TP Session Information   | 277  | Grouped IE: per-session L2TP params (SessionEstReq) |
+| Created L2TP Session       | 279  | Grouped IE: UPF-allocated L2TP session info (SessionEstResp) |
+
 ## Key Implementation Features
 
 ### 🏆 3GPP TS 29.244 Release 18 Compliance
@@ -256,7 +272,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 - ✅ **3GPP compliant F-TEID** - CHOOSE/CHOOSE_ID flags for UPF allocation
 - ✅ **Release 18 features** - Network slicing, multi-access, enhanced QoS
 - ✅ **Context-specific IEs** - Proper usage in different message contexts
-- ✅ **Production-ready** - 3,300 comprehensive tests with 100% validation
+- ✅ **Production-ready** - 3,344 comprehensive tests with 100% validation
 
 ### F-TEID Implementation Highlights
 ```rust
@@ -326,7 +342,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 
 This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
-- ✅ **303+ IEs** across 303 implementation modules
+- ✅ **312+ IEs** across 312 implementation modules
 - ✅ **All 25 message types** with proper IE integration
 - ✅ **3,161 comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling
