@@ -42,7 +42,7 @@ pub struct SessionModificationRequest {
     pub remove_srrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 211 - Multiple instances, Grouped IE (N4 only) - Session-level reporting
     pub create_srrs: Vec<Ie>, // C - Multiple - IE Type 212 - Grouped IE, create session reporting rule (N4 only)
     pub update_srrs: Vec<Ie>, // C - Multiple - IE Type 213 - Grouped IE, update session reporting rule (N4 only)
-    // TODO: [IE Type 220] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session, replaces previous
+    pub provide_atsss_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 220 - Grouped IE (N4 only) - For MA PDU session
     pub ethernet_context_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 254 - Grouped IE (N4 only) - MAC addresses during anchor relocation
     pub access_availability_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 219 - Multiple instances (N4 only) - Access transiently unavailable/available
     pub query_packet_rate_statuses: Vec<Ie>, // C - Multiple - IE Type 263 - Grouped IE, request packet rate status (Sxb/N4 only)
@@ -51,7 +51,7 @@ pub struct SessionModificationRequest {
     pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
     pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 275 - RAT Type - New RAT type when RAT changes (not N4mb, not for MA PDU)
     pub group_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 291 - Group identifier when changed (Sxb/N4 only)
-    // TODO: [IE Type 310] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only) - Associate/update MBS
+    pub mbs_session_n4_control_information: Vec<Ie>, // C - IE Type 310 - Multiple instances, Grouped IE (N4 only)
     pub dscp_to_ppi_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 316 - Grouped IE (N4 only) - Replaces previous value
     pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
     // TODO: [IE Type 309] TraceCollectionEntityUri not in enum yet (309=MbsUnicastParametersId - check spec)
@@ -228,6 +228,9 @@ impl Message for SessionModificationRequest {
         for ie in &self.update_srrs {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.provide_atsss_control_information {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.ethernet_context_information {
             ie.marshal_into(buf);
         }
@@ -244,6 +247,9 @@ impl Message for SessionModificationRequest {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.group_id {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.mbs_session_n4_control_information {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
@@ -417,6 +423,9 @@ impl Message for SessionModificationRequest {
         for ie in &self.update_srrs {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.provide_atsss_control_information {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.ethernet_context_information {
             size += ie.len() as usize;
         }
@@ -433,6 +442,9 @@ impl Message for SessionModificationRequest {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.group_id {
+            size += ie.len() as usize;
+        }
+        for ie in &self.mbs_session_n4_control_information {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
@@ -491,12 +503,14 @@ impl Message for SessionModificationRequest {
         let mut remove_srrs = Vec::new();
         let mut create_srrs = Vec::new();
         let mut update_srrs = Vec::new();
+        let mut provide_atsss_control_information = None;
         let mut ethernet_context_information = None;
         let mut access_availability_information = Vec::new();
         let mut query_packet_rate_statuses = Vec::new();
         let mut hplmn_s_nssai = None;
         let mut rat_type = None;
         let mut group_id = None;
+        let mut mbs_session_n4_control_information = Vec::new();
         let mut dscp_to_ppi_control_information = None;
         let mut tl_containers = Vec::new();
         let mut ue_level_measurements_configuration = None;
@@ -554,6 +568,9 @@ impl Message for SessionModificationRequest {
                 IeType::RemoveSrr => remove_srrs.push(ie),
                 IeType::CreateSrr => create_srrs.push(ie),
                 IeType::UpdateSrr => update_srrs.push(ie),
+                IeType::ProvideAtsssControlInformation => {
+                    provide_atsss_control_information = Some(ie)
+                }
                 IeType::EthernetContextInformation => ethernet_context_information = Some(ie),
                 IeType::AccessAvailabilityInformation => access_availability_information.push(ie),
                 IeType::QueryPacketRateStatusWithinSessionModificationRequest => {
@@ -562,6 +579,9 @@ impl Message for SessionModificationRequest {
                 IeType::HplmnSNssai => hplmn_s_nssai = Some(ie),
                 IeType::RatType => rat_type = Some(ie),
                 IeType::GroupId => group_id = Some(ie),
+                IeType::MbsSessionN4ControlInformation => {
+                    mbs_session_n4_control_information.push(ie)
+                }
                 IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
                 IeType::TlContainer => tl_containers.push(ie),
                 IeType::UeLevelMeasurementsConfiguration => {
@@ -613,12 +633,14 @@ impl Message for SessionModificationRequest {
             remove_srrs,
             create_srrs,
             update_srrs,
+            provide_atsss_control_information,
             ethernet_context_information,
             access_availability_information,
             query_packet_rate_statuses,
             hplmn_s_nssai,
             rat_type,
             group_id,
+            mbs_session_n4_control_information,
             dscp_to_ppi_control_information,
             tl_containers,
             ue_level_measurements_configuration,
@@ -740,6 +762,9 @@ impl Message for SessionModificationRequest {
             IeType::RemoveSrr => IeIter::multiple(&self.remove_srrs, ie_type),
             IeType::CreateSrr => IeIter::multiple(&self.create_srrs, ie_type),
             IeType::UpdateSrr => IeIter::multiple(&self.update_srrs, ie_type),
+            IeType::ProvideAtsssControlInformation => {
+                IeIter::single(self.provide_atsss_control_information.as_ref(), ie_type)
+            }
             IeType::AccessAvailabilityInformation => {
                 IeIter::multiple(&self.access_availability_information, ie_type)
             }
@@ -748,6 +773,9 @@ impl Message for SessionModificationRequest {
             }
             IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_ref(), ie_type),
             IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
+            IeType::MbsSessionN4ControlInformation => {
+                IeIter::multiple(&self.mbs_session_n4_control_information, ie_type)
+            }
             IeType::DscpToPpiControlInformation => {
                 IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
             }
@@ -862,6 +890,9 @@ impl Message for SessionModificationRequest {
         result.extend(self.remove_srrs.iter());
         result.extend(self.create_srrs.iter());
         result.extend(self.update_srrs.iter());
+        if let Some(ref ie) = self.provide_atsss_control_information {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.ethernet_context_information {
             result.push(ie);
         }
@@ -876,6 +907,7 @@ impl Message for SessionModificationRequest {
         if let Some(ref ie) = self.group_id {
             result.push(ie);
         }
+        result.extend(self.mbs_session_n4_control_information.iter());
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
             result.push(ie);
         }
@@ -931,12 +963,14 @@ pub struct SessionModificationRequestBuilder {
     remove_srrs: Vec<Ie>,
     create_srrs: Vec<Ie>,
     update_srrs: Vec<Ie>,
+    provide_atsss_control_information: Option<Ie>,
     ethernet_context_information: Option<Ie>,
     access_availability_information: Vec<Ie>,
     query_packet_rate_statuses: Vec<Ie>,
     hplmn_s_nssai: Option<Ie>,
     rat_type: Option<Ie>,
     group_id: Option<Ie>,
+    mbs_session_n4_control_information: Vec<Ie>,
     dscp_to_ppi_control_information: Option<Ie>,
     tl_containers: Vec<Ie>,
     ue_level_measurements_configuration: Option<Ie>,
@@ -987,12 +1021,14 @@ impl SessionModificationRequestBuilder {
             remove_srrs: Vec::new(),
             create_srrs: Vec::new(),
             update_srrs: Vec::new(),
+            provide_atsss_control_information: None,
             ethernet_context_information: None,
             access_availability_information: Vec::new(),
             query_packet_rate_statuses: Vec::new(),
             hplmn_s_nssai: None,
             rat_type: None,
             group_id: None,
+            mbs_session_n4_control_information: Vec::new(),
             dscp_to_ppi_control_information: None,
             tl_containers: Vec::new(),
             ue_level_measurements_configuration: None,
@@ -1415,6 +1451,11 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    pub fn provide_atsss_control_information(mut self, ie: Ie) -> Self {
+        self.provide_atsss_control_information = Some(ie);
+        self
+    }
+
     pub fn query_packet_rate_status(mut self, ie: Ie) -> Self {
         self.query_packet_rate_statuses.push(ie);
         self
@@ -1432,6 +1473,11 @@ impl SessionModificationRequestBuilder {
 
     pub fn group_id(mut self, ie: Ie) -> Self {
         self.group_id = Some(ie);
+        self
+    }
+
+    pub fn add_mbs_session_n4_control_information(mut self, ie: Ie) -> Self {
+        self.mbs_session_n4_control_information.push(ie);
         self
     }
 
@@ -1612,6 +1658,9 @@ impl SessionModificationRequestBuilder {
         for ie in &self.update_srrs {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.provide_atsss_control_information {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.ethernet_context_information {
             payload_len += ie.len();
         }
@@ -1628,6 +1677,9 @@ impl SessionModificationRequestBuilder {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.group_id {
+            payload_len += ie.len();
+        }
+        for ie in &self.mbs_session_n4_control_information {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.dscp_to_ppi_control_information {
@@ -1690,12 +1742,14 @@ impl SessionModificationRequestBuilder {
             remove_srrs: self.remove_srrs,
             create_srrs: self.create_srrs,
             update_srrs: self.update_srrs,
+            provide_atsss_control_information: self.provide_atsss_control_information,
             ethernet_context_information: self.ethernet_context_information,
             access_availability_information: self.access_availability_information,
             query_packet_rate_statuses: self.query_packet_rate_statuses,
             hplmn_s_nssai: self.hplmn_s_nssai,
             rat_type: self.rat_type,
             group_id: self.group_id,
+            mbs_session_n4_control_information: self.mbs_session_n4_control_information,
             dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
             tl_containers: self.tl_containers,
             ue_level_measurements_configuration: self.ue_level_measurements_configuration,

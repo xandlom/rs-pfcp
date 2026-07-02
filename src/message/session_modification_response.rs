@@ -20,10 +20,10 @@ pub struct SessionModificationResponse {
     pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 126 - Additional Usage Reports Information - When Query URR present/QAURR flag set and more reports to follow
     pub created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 128 - Created/Updated Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
     pub tsc_management_information: Vec<Ie>, // C - Multiple - IE Type 200 - Grouped IE, TSC management info (N4 only)
-    // TODO: [IE Type 221] ATSSS Control Parameters - no file yet (221=AtsssControlParameters)
+    pub atsss_control_parameters: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 221 - ATSSS Control Parameters - Grouped IE (N4 only, MA PDU sessions)
     pub updated_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 256 - Updated PDR - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
     pub packet_rate_status_reports: Vec<Ie>, // C - Multiple - IE Type 264 - Grouped IE, packet rate status report (Sxb/N4 only)
-    // TODO: [IE Type 311] MBS Session N4 Information - no file yet (311=MbsSessionN4Information)
+    pub mbs_session_n4_information: Vec<Ie>, // C - IE Type 311 - Multiple instances (N4 only)
     pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.5.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
@@ -72,10 +72,16 @@ impl Message for SessionModificationResponse {
         for ie in &self.tsc_management_information {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.atsss_control_parameters {
+            ie.marshal_into(buf);
+        }
         for ie in &self.updated_pdrs {
             ie.marshal_into(buf);
         }
         for ie in &self.packet_rate_status_reports {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.mbs_session_n4_information {
             ie.marshal_into(buf);
         }
         for ie in &self.ies {
@@ -119,10 +125,16 @@ impl Message for SessionModificationResponse {
         for ie in &self.tsc_management_information {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.atsss_control_parameters {
+            size += ie.len() as usize;
+        }
         for ie in &self.updated_pdrs {
             size += ie.len() as usize;
         }
         for ie in &self.packet_rate_status_reports {
+            size += ie.len() as usize;
+        }
+        for ie in &self.mbs_session_n4_information {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -145,8 +157,10 @@ impl Message for SessionModificationResponse {
         let mut additional_usage_reports_information = None;
         let mut created_traffic_endpoints = Vec::new();
         let mut tsc_management_information = Vec::new();
+        let mut atsss_control_parameters = None;
         let mut updated_pdrs = Vec::new();
         let mut packet_rate_status_reports = Vec::new();
+        let mut mbs_session_n4_information = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -170,10 +184,12 @@ impl Message for SessionModificationResponse {
                 IeType::TscManagementInformationWithinSessionModificationResponse => {
                     tsc_management_information.push(ie)
                 }
+                IeType::AtsssControlParameters => atsss_control_parameters = Some(ie),
                 IeType::UpdatedPdr => updated_pdrs.push(ie),
                 IeType::PacketRateStatusReportWithinSessionModificationResponse => {
                     packet_rate_status_reports.push(ie)
                 }
+                IeType::MbsSessionN4Information => mbs_session_n4_information.push(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -197,8 +213,10 @@ impl Message for SessionModificationResponse {
             additional_usage_reports_information,
             created_traffic_endpoints,
             tsc_management_information,
+            atsss_control_parameters,
             updated_pdrs,
             packet_rate_status_reports,
+            mbs_session_n4_information,
             ies,
         })
     }
@@ -253,9 +271,15 @@ impl Message for SessionModificationResponse {
             IeType::TscManagementInformationWithinSessionModificationResponse => {
                 IeIter::multiple(&self.tsc_management_information, ie_type)
             }
+            IeType::AtsssControlParameters => {
+                IeIter::single(self.atsss_control_parameters.as_ref(), ie_type)
+            }
             IeType::UpdatedPdr => IeIter::multiple(&self.updated_pdrs, ie_type),
             IeType::PacketRateStatusReportWithinSessionModificationResponse => {
                 IeIter::multiple(&self.packet_rate_status_reports, ie_type)
+            }
+            IeType::MbsSessionN4Information => {
+                IeIter::multiple(&self.mbs_session_n4_information, ie_type)
             }
             _ => IeIter::generic(&self.ies, ie_type),
         }
@@ -288,8 +312,12 @@ impl Message for SessionModificationResponse {
         }
         result.extend(self.created_traffic_endpoints.iter());
         result.extend(self.tsc_management_information.iter());
+        if let Some(ref ie) = self.atsss_control_parameters {
+            result.push(ie);
+        }
         result.extend(self.updated_pdrs.iter());
         result.extend(self.packet_rate_status_reports.iter());
+        result.extend(self.mbs_session_n4_information.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -367,8 +395,10 @@ impl SessionModificationResponse {
             additional_usage_reports_information,
             created_traffic_endpoints,
             tsc_management_information: Vec::new(),
+            atsss_control_parameters: None,
             updated_pdrs,
             packet_rate_status_reports: Vec::new(),
+            mbs_session_n4_information: Vec::new(),
             ies,
         }
     }
@@ -391,8 +421,10 @@ pub struct SessionModificationResponseBuilder {
     additional_usage_reports_information: Option<Ie>,
     created_traffic_endpoints: Vec<Ie>,
     tsc_management_information: Vec<Ie>,
+    atsss_control_parameters: Option<Ie>,
     updated_pdrs: Vec<Ie>,
     packet_rate_status_reports: Vec<Ie>,
+    mbs_session_n4_information: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -421,8 +453,10 @@ impl SessionModificationResponseBuilder {
             additional_usage_reports_information: None,
             created_traffic_endpoints: Vec::new(),
             tsc_management_information: Vec::new(),
+            atsss_control_parameters: None,
             updated_pdrs: Vec::new(),
             packet_rate_status_reports: Vec::new(),
+            mbs_session_n4_information: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -539,6 +573,12 @@ impl SessionModificationResponseBuilder {
         self
     }
 
+    /// Sets the ATSSS Control Parameters IE (IE 221, optional, N4 only, MA PDU sessions).
+    pub fn atsss_control_parameters(mut self, ie: Ie) -> Self {
+        self.atsss_control_parameters = Some(ie);
+        self
+    }
+
     /// Adds an Updated PDR IE (optional, multiple allowed, Sxb/N4 only).
     pub fn updated_pdr(mut self, ie: Ie) -> Self {
         self.updated_pdrs.push(ie);
@@ -548,6 +588,11 @@ impl SessionModificationResponseBuilder {
     /// Adds a Packet Rate Status Report IE (IE 264, optional, multiple, Sxb/N4 only).
     pub fn packet_rate_status_report(mut self, ie: Ie) -> Self {
         self.packet_rate_status_reports.push(ie);
+        self
+    }
+
+    pub fn add_mbs_session_n4_information(mut self, ie: Ie) -> Self {
+        self.mbs_session_n4_information.push(ie);
         self
     }
 
@@ -621,10 +666,16 @@ impl SessionModificationResponseBuilder {
         for ie in &self.tsc_management_information {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.atsss_control_parameters {
+            payload_len += ie.len();
+        }
         for ie in &self.updated_pdrs {
             payload_len += ie.len();
         }
         for ie in &self.packet_rate_status_reports {
+            payload_len += ie.len();
+        }
+        for ie in &self.mbs_session_n4_information {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -646,8 +697,10 @@ impl SessionModificationResponseBuilder {
             additional_usage_reports_information: self.additional_usage_reports_information,
             created_traffic_endpoints: self.created_traffic_endpoints,
             tsc_management_information: self.tsc_management_information,
+            atsss_control_parameters: self.atsss_control_parameters,
             updated_pdrs: self.updated_pdrs,
             packet_rate_status_reports: self.packet_rate_status_reports,
+            mbs_session_n4_information: self.mbs_session_n4_information,
             ies: self.ies,
         })
     }

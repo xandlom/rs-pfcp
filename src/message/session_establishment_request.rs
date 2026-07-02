@@ -29,7 +29,7 @@ pub struct SessionEstablishmentRequest {
     pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 138 - PFCPSEReq-Flags (RESTI/SUMPC/HRSBOM)
     pub create_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 194 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 204]
     pub create_srrs: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 212 - Multiple instances, Grouped IE (N4 only) - Session Reporting Rules
-    // TODO: [IE Type 220] Provide ATSSS Control Information - C - Grouped IE (N4 only, not Sxa/Sxb/Sxc/N4mb) - For MA PDU session
+    pub provide_atsss_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 220 - Grouped IE (N4 only) - For MA PDU session
     pub recovery_time_stamp: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 96 - CP function start time (not N4mb)
     pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session (N4/N4mb only)
     pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO (N4 only) [TODO said 242]
@@ -38,8 +38,8 @@ pub struct SessionEstablishmentRequest {
     // TODO: [IE Type 276] L2TP Tunnel Information - C - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-2
     // TODO: [IE Type 277] L2TP Session Information - C - Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - See Table 7.5.2.1-3
     pub group_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 291 - Group identifier (Sxb/N4 only) [TODO said 297]
-    // TODO: [IE Type 300] MBS Session N4mb Control Information - no file yet (300=MbsSessionN4mbControlInformation) [TODO said 326]
-    // TODO: [IE Type 310] MBS Session N4 Control Information - C - Multiple instances, Grouped IE (N4 only) - Associate PDU with MBS [TODO said 296]
+    pub mbs_session_n4mb_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 300 - MBS Session N4mb Control Information (N4mb only)
+    pub mbs_session_n4_control_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 310 - Multiple instances, Grouped IE (N4 only)
     pub dscp_to_ppi_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 316 - Grouped IE (N4 only) [TODO said 291]
     pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.2.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
     // TODO: [IE Type 309] TraceCollectionEntityUri not in enum yet (309=MbsUnicastParametersId - check spec)
@@ -118,6 +118,9 @@ impl Message for SessionEstablishmentRequest {
         for ie in &self.create_srrs {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.provide_atsss_control_information {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.hplmn_s_nssai {
             ie.marshal_into(buf);
         }
@@ -131,6 +134,12 @@ impl Message for SessionEstablishmentRequest {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.group_id {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.mbs_session_n4mb_control_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.mbs_session_n4_control_information {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
@@ -208,6 +217,9 @@ impl Message for SessionEstablishmentRequest {
         for ie in &self.create_srrs {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.provide_atsss_control_information {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.hplmn_s_nssai {
             size += ie.len() as usize;
         }
@@ -221,6 +233,12 @@ impl Message for SessionEstablishmentRequest {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.group_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.mbs_session_n4mb_control_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.mbs_session_n4_control_information {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
@@ -261,11 +279,14 @@ impl Message for SessionEstablishmentRequest {
         let mut create_mars = Vec::new();
         let mut create_bridge_info_for_tsc = None;
         let mut create_srrs = Vec::new();
+        let mut provide_atsss_control_information = None;
         let mut hplmn_s_nssai = None;
         let mut ethernet_pdu_session_information = None;
         let mut rat_type = None;
         let mut provide_rds_configuration_information = None;
         let mut group_id = None;
+        let mut mbs_session_n4mb_control_information = None;
+        let mut mbs_session_n4_control_information = Vec::new();
         let mut dscp_to_ppi_control_information = None;
         let mut tl_containers = Vec::new();
         let mut ue_level_measurements_configuration = None;
@@ -297,6 +318,9 @@ impl Message for SessionEstablishmentRequest {
                 IeType::CreateMar => create_mars.push(ie),
                 IeType::CreateBridgeInfoForTsc => create_bridge_info_for_tsc = Some(ie),
                 IeType::CreateSrr => create_srrs.push(ie),
+                IeType::ProvideAtsssControlInformation => {
+                    provide_atsss_control_information = Some(ie)
+                }
                 IeType::HplmnSNssai => hplmn_s_nssai = Some(ie),
                 IeType::EthernetPduSessionInformation => {
                     ethernet_pdu_session_information = Some(ie)
@@ -306,6 +330,12 @@ impl Message for SessionEstablishmentRequest {
                     provide_rds_configuration_information = Some(ie)
                 }
                 IeType::GroupId => group_id = Some(ie),
+                IeType::MbsSessionN4mbControlInformation => {
+                    mbs_session_n4mb_control_information = Some(ie)
+                }
+                IeType::MbsSessionN4ControlInformation => {
+                    mbs_session_n4_control_information.push(ie)
+                }
                 IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
                 IeType::TlContainer => tl_containers.push(ie),
                 IeType::UeLevelMeasurementsConfiguration => {
@@ -362,11 +392,14 @@ impl Message for SessionEstablishmentRequest {
             create_mars,
             create_bridge_info_for_tsc,
             create_srrs,
+            provide_atsss_control_information,
             hplmn_s_nssai,
             ethernet_pdu_session_information,
             rat_type,
             provide_rds_configuration_information,
             group_id,
+            mbs_session_n4mb_control_information,
+            mbs_session_n4_control_information,
             dscp_to_ppi_control_information,
             tl_containers,
             ue_level_measurements_configuration,
@@ -427,6 +460,9 @@ impl Message for SessionEstablishmentRequest {
                 IeIter::single(self.create_bridge_info_for_tsc.as_ref(), ie_type)
             }
             IeType::CreateSrr => IeIter::multiple(&self.create_srrs, ie_type),
+            IeType::ProvideAtsssControlInformation => {
+                IeIter::single(self.provide_atsss_control_information.as_ref(), ie_type)
+            }
             IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_ref(), ie_type),
             IeType::EthernetPduSessionInformation => {
                 IeIter::single(self.ethernet_pdu_session_information.as_ref(), ie_type)
@@ -436,6 +472,12 @@ impl Message for SessionEstablishmentRequest {
                 IeIter::single(self.provide_rds_configuration_information.as_ref(), ie_type)
             }
             IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
+            IeType::MbsSessionN4mbControlInformation => {
+                IeIter::single(self.mbs_session_n4mb_control_information.as_ref(), ie_type)
+            }
+            IeType::MbsSessionN4ControlInformation => {
+                IeIter::multiple(&self.mbs_session_n4_control_information, ie_type)
+            }
             IeType::DscpToPpiControlInformation => {
                 IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
             }
@@ -488,6 +530,9 @@ impl Message for SessionEstablishmentRequest {
             result.push(ie);
         }
         result.extend(self.create_srrs.iter());
+        if let Some(ref ie) = self.provide_atsss_control_information {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.hplmn_s_nssai {
             result.push(ie);
         }
@@ -503,6 +548,10 @@ impl Message for SessionEstablishmentRequest {
         if let Some(ref ie) = self.group_id {
             result.push(ie);
         }
+        if let Some(ref ie) = self.mbs_session_n4mb_control_information {
+            result.push(ie);
+        }
+        result.extend(self.mbs_session_n4_control_information.iter());
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
             result.push(ie);
         }
@@ -540,11 +589,14 @@ pub struct SessionEstablishmentRequestBuilder {
     create_mars: Vec<Ie>,
     create_bridge_info_for_tsc: Option<Ie>,
     create_srrs: Vec<Ie>,
+    provide_atsss_control_information: Option<Ie>,
     hplmn_s_nssai: Option<Ie>,
     ethernet_pdu_session_information: Option<Ie>,
     rat_type: Option<Ie>,
     provide_rds_configuration_information: Option<Ie>,
     group_id: Option<Ie>,
+    mbs_session_n4mb_control_information: Option<Ie>,
+    mbs_session_n4_control_information: Vec<Ie>,
     dscp_to_ppi_control_information: Option<Ie>,
     tl_containers: Vec<Ie>,
     ue_level_measurements_configuration: Option<Ie>,
@@ -577,11 +629,14 @@ impl SessionEstablishmentRequestBuilder {
             create_mars: Vec::new(),
             create_bridge_info_for_tsc: None,
             create_srrs: Vec::new(),
+            provide_atsss_control_information: None,
             hplmn_s_nssai: None,
             ethernet_pdu_session_information: None,
             rat_type: None,
             provide_rds_configuration_information: None,
             group_id: None,
+            mbs_session_n4mb_control_information: None,
+            mbs_session_n4_control_information: Vec::new(),
             dscp_to_ppi_control_information: None,
             tl_containers: Vec::new(),
             ue_level_measurements_configuration: None,
@@ -888,6 +943,11 @@ impl SessionEstablishmentRequestBuilder {
         self
     }
 
+    pub fn provide_atsss_control_information(mut self, ie: Ie) -> Self {
+        self.provide_atsss_control_information = Some(ie);
+        self
+    }
+
     pub fn hplmn_s_nssai(mut self, ie: Ie) -> Self {
         self.hplmn_s_nssai = Some(ie);
         self
@@ -895,6 +955,16 @@ impl SessionEstablishmentRequestBuilder {
 
     pub fn group_id(mut self, ie: Ie) -> Self {
         self.group_id = Some(ie);
+        self
+    }
+
+    pub fn mbs_session_n4mb_control_information(mut self, ie: Ie) -> Self {
+        self.mbs_session_n4mb_control_information = Some(ie);
+        self
+    }
+
+    pub fn add_mbs_session_n4_control_information(mut self, ie: Ie) -> Self {
+        self.mbs_session_n4_control_information.push(ie);
         self
     }
 
@@ -1002,6 +1072,9 @@ impl SessionEstablishmentRequestBuilder {
         for ie in &self.create_srrs {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.provide_atsss_control_information {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.hplmn_s_nssai {
             payload_len += ie.len();
         }
@@ -1015,6 +1088,12 @@ impl SessionEstablishmentRequestBuilder {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.group_id {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.mbs_session_n4mb_control_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.mbs_session_n4_control_information {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.dscp_to_ppi_control_information {
@@ -1060,11 +1139,14 @@ impl SessionEstablishmentRequestBuilder {
             create_mars: self.create_mars,
             create_bridge_info_for_tsc: self.create_bridge_info_for_tsc,
             create_srrs: self.create_srrs,
+            provide_atsss_control_information: self.provide_atsss_control_information,
             hplmn_s_nssai: self.hplmn_s_nssai,
             ethernet_pdu_session_information: self.ethernet_pdu_session_information,
             rat_type: self.rat_type,
             provide_rds_configuration_information: self.provide_rds_configuration_information,
             group_id: self.group_id,
+            mbs_session_n4mb_control_information: self.mbs_session_n4mb_control_information,
+            mbs_session_n4_control_information: self.mbs_session_n4_control_information,
             dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
             tl_containers: self.tl_containers,
             ue_level_measurements_configuration: self.ue_level_measurements_configuration,

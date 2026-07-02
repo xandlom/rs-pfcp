@@ -21,11 +21,11 @@ pub struct SessionEstablishmentResponse {
     created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 128 - Created Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP/Mapped N6 IP
     fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 65 - Multiple instances - PGW-U/SGW-U/UPF FQ-CSID (Sxa/Sxb/N4 only, not Sxc/N4mb)
     created_bridge_info_for_tsc: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 195 - Grouped IE (N4 only) - For TSN/TSCTS/DetNet [TODO said 205]
-    // TODO: [IE Type 221] ATSSS Control Parameters - no file yet (221=AtsssControlParameters) [TODO said 186]
+    atsss_control_parameters: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 221 - Grouped IE (N4 only) - ATSSS allocation results
     rds_configuration_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 262 - RDS Configuration Information (Sxb/N4 only)
     // TODO: [IE Type 279] Created L2TP Session - no file yet (279=CreatedL2tpSession)
-    // TODO: [IE Type 303] MBS Session N4mb Information - no file yet (303=MbsSessionN4mbInformation) [TODO said 317]
-    // TODO: [IE Type 311] MBS Session N4 Information - no file yet (311=MbsSessionN4Information) [TODO said 299]
+    mbs_session_n4mb_information: Option<Ie>, // C - IE Type 303 - MBS Session N4mb Information (N4mb only)
+    mbs_session_n4_information: Vec<Ie>,      // C - IE Type 311 - Multiple instances (N4 only)
     tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.3.1-1 - IE Type 336 - Multiple instances (N4 only) - From UPF/CN-TL to SMF/CUC in response
     pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.3.1-1 - May be legacy/vendor-specific
     ies: Vec<Ie>,
@@ -214,7 +214,16 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.created_bridge_info_for_tsc {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.atsss_control_parameters {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.rds_configuration_information {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.mbs_session_n4mb_information {
+            ie.marshal_into(buf);
+        }
+        for ie in &self.mbs_session_n4_information {
             ie.marshal_into(buf);
         }
         for ie in &self.tl_containers {
@@ -260,7 +269,16 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.created_bridge_info_for_tsc {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.atsss_control_parameters {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.rds_configuration_information {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.mbs_session_n4mb_information {
+            size += ie.len() as usize;
+        }
+        for ie in &self.mbs_session_n4_information {
             size += ie.len() as usize;
         }
         for ie in &self.tl_containers {
@@ -287,7 +305,10 @@ impl Message for SessionEstablishmentResponse {
         let mut created_traffic_endpoints = Vec::new();
         let mut fq_csids = Vec::new();
         let mut created_bridge_info_for_tsc = None;
+        let mut atsss_control_parameters = None;
         let mut rds_configuration_information = None;
+        let mut mbs_session_n4mb_information = None;
+        let mut mbs_session_n4_information = Vec::new();
         let mut tl_containers = Vec::new();
         let mut ies = Vec::new();
 
@@ -309,7 +330,10 @@ impl Message for SessionEstablishmentResponse {
                 IeType::CreatedTrafficEndpoint => created_traffic_endpoints.push(ie),
                 IeType::FqCsid => fq_csids.push(ie),
                 IeType::CreatedBridgeInfoForTsc => created_bridge_info_for_tsc = Some(ie),
+                IeType::AtsssControlParameters => atsss_control_parameters = Some(ie),
                 IeType::RdsConfigurationInformation => rds_configuration_information = Some(ie),
+                IeType::MbsSessionN4mbInformation => mbs_session_n4mb_information = Some(ie),
+                IeType::MbsSessionN4Information => mbs_session_n4_information.push(ie),
                 IeType::TlContainer => tl_containers.push(ie),
                 _ => ies.push(ie),
             }
@@ -343,7 +367,10 @@ impl Message for SessionEstablishmentResponse {
             created_traffic_endpoints,
             fq_csids,
             created_bridge_info_for_tsc,
+            atsss_control_parameters,
             rds_configuration_information,
+            mbs_session_n4mb_information,
+            mbs_session_n4_information,
             tl_containers,
             ies,
         })
@@ -396,8 +423,17 @@ impl Message for SessionEstablishmentResponse {
             IeType::CreatedBridgeInfoForTsc => {
                 IeIter::single(self.created_bridge_info_for_tsc.as_ref(), ie_type)
             }
+            IeType::AtsssControlParameters => {
+                IeIter::single(self.atsss_control_parameters.as_ref(), ie_type)
+            }
             IeType::RdsConfigurationInformation => {
                 IeIter::single(self.rds_configuration_information.as_ref(), ie_type)
+            }
+            IeType::MbsSessionN4mbInformation => {
+                IeIter::single(self.mbs_session_n4mb_information.as_ref(), ie_type)
+            }
+            IeType::MbsSessionN4Information => {
+                IeIter::multiple(&self.mbs_session_n4_information, ie_type)
             }
             IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
@@ -428,9 +464,16 @@ impl Message for SessionEstablishmentResponse {
         if let Some(ref ie) = self.created_bridge_info_for_tsc {
             result.push(ie);
         }
+        if let Some(ref ie) = self.atsss_control_parameters {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.rds_configuration_information {
             result.push(ie);
         }
+        if let Some(ref ie) = self.mbs_session_n4mb_information {
+            result.push(ie);
+        }
+        result.extend(self.mbs_session_n4_information.iter());
         result.extend(self.tl_containers.iter());
         result.extend(self.ies.iter());
         result
@@ -454,7 +497,10 @@ pub struct SessionEstablishmentResponseBuilder {
     created_traffic_endpoints: Vec<Ie>,
     fq_csids: Vec<Ie>,
     created_bridge_info_for_tsc: Option<Ie>,
+    atsss_control_parameters: Option<Ie>,
     rds_configuration_information: Option<Ie>,
+    mbs_session_n4mb_information: Option<Ie>,
+    mbs_session_n4_information: Vec<Ie>,
     tl_containers: Vec<Ie>,
     ies: Vec<Ie>,
 }
@@ -492,7 +538,10 @@ impl SessionEstablishmentResponseBuilder {
             created_traffic_endpoints: Vec::new(),
             fq_csids: Vec::new(),
             created_bridge_info_for_tsc: None,
+            atsss_control_parameters: None,
             rds_configuration_information: None,
+            mbs_session_n4mb_information: None,
+            mbs_session_n4_information: Vec::new(),
             tl_containers: Vec::new(),
             ies: Vec::new(),
         }
@@ -544,7 +593,10 @@ impl SessionEstablishmentResponseBuilder {
             created_traffic_endpoints: Vec::new(),
             fq_csids: Vec::new(),
             created_bridge_info_for_tsc: None,
+            atsss_control_parameters: None,
             rds_configuration_information: None,
+            mbs_session_n4mb_information: None,
+            mbs_session_n4_information: Vec::new(),
             tl_containers: Vec::new(),
             ies: Vec::new(),
         }
@@ -675,8 +727,23 @@ impl SessionEstablishmentResponseBuilder {
         self
     }
 
+    pub fn atsss_control_parameters(mut self, ie: Ie) -> Self {
+        self.atsss_control_parameters = Some(ie);
+        self
+    }
+
     pub fn rds_configuration_information(mut self, ie: Ie) -> Self {
         self.rds_configuration_information = Some(ie);
+        self
+    }
+
+    pub fn mbs_session_n4mb_information(mut self, ie: Ie) -> Self {
+        self.mbs_session_n4mb_information = Some(ie);
+        self
+    }
+
+    pub fn add_mbs_session_n4_information(mut self, ie: Ie) -> Self {
+        self.mbs_session_n4_information.push(ie);
         self
     }
 
@@ -742,7 +809,16 @@ impl SessionEstablishmentResponseBuilder {
         if let Some(ie) = &self.created_bridge_info_for_tsc {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.atsss_control_parameters {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.rds_configuration_information {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.mbs_session_n4mb_information {
+            payload_len += ie.len();
+        }
+        for ie in &self.mbs_session_n4_information {
             payload_len += ie.len();
         }
         for ie in &self.tl_containers {
@@ -775,7 +851,10 @@ impl SessionEstablishmentResponseBuilder {
             created_traffic_endpoints: self.created_traffic_endpoints,
             fq_csids: self.fq_csids,
             created_bridge_info_for_tsc: self.created_bridge_info_for_tsc,
+            atsss_control_parameters: self.atsss_control_parameters,
             rds_configuration_information: self.rds_configuration_information,
+            mbs_session_n4mb_information: self.mbs_session_n4mb_information,
+            mbs_session_n4_information: self.mbs_session_n4_information,
             tl_containers: self.tl_containers,
             ies: self.ies,
         })

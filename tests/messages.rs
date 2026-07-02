@@ -403,8 +403,10 @@ fn test_session_modification_response_marshal_unmarshal() {
         additional_usage_reports_information: None,
         created_traffic_endpoints: vec![],
         tsc_management_information: vec![],
+        atsss_control_parameters: None,
         updated_pdrs: vec![],
         packet_rate_status_reports: vec![],
+        mbs_session_n4_information: vec![],
         ies: vec![],
     };
 

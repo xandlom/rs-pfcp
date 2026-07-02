@@ -73,7 +73,7 @@ Check 3GPP TS 29.244 for child IE structure, then implement:
    **MptcpAddressInformation** (228), **AtsssLlInformation** (231)
 4. Implement **AtsssControlParameters** (IE 221) → wire into SessionEstResp, SessionModResp
 
-**Status:** TODO
+**Status:** DONE (all 15 IE files implemented, wired into SessionEstReq, SessionEstResp, SessionModReq, SessionModResp)
 
 ---
 
@@ -86,7 +86,7 @@ Check 3GPP TS 29.244 for child IE structure, then implement:
 4. Implement: **MbsSessionN4ControlInformation** (310) → wire into SessionEstReq, SessionModReq
 5. Implement: **MbsSessionN4Information** (311) → wire into SessionEstResp, SessionModResp
 
-**Status:** TODO
+**Status:** ✅ DONE (all 7 IE files implemented, wired into SessionEstReq, SessionEstResp, SessionModReq, SessionModResp)
 
 ---
 

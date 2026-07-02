@@ -7,6 +7,7 @@ pub mod access_availability_information;
 pub mod access_availability_report;
 pub mod activate_predefined_rules;
 pub mod activation_time;
+pub mod add_mbs_unicast_parameters;
 pub mod additional_monitoring_time;
 pub mod additional_usage_reports_information;
 pub mod aggregated_urr_id;
@@ -19,6 +20,10 @@ pub mod application_ids_pfds;
 pub mod application_instance_id;
 pub mod apply_action;
 pub mod area_session_id;
+pub mod atsss_control_parameters;
+pub mod atsss_ll_control_information;
+pub mod atsss_ll_information;
+pub mod atsss_ll_parameters;
 pub mod average_packet_delay;
 pub mod averaging_window;
 pub mod bar;
@@ -105,6 +110,7 @@ pub mod ip_multicast_addressing_info;
 pub mod ip_version;
 pub mod join_ip_multicast_information_within_usage_report;
 pub mod leave_ip_multicast_information_within_usage_report;
+pub mod link_specific_multipath_ip_address;
 pub mod linked_urr_id;
 pub mod load_control_information;
 pub mod local_ingress_tunnel;
@@ -115,7 +121,12 @@ pub mod mapped_n6_ip_address;
 pub mod mar_id;
 pub mod maximum_packet_delay;
 pub mod mbr;
+pub mod mbs_multicast_parameters;
 pub mod mbs_session_identifier;
+pub mod mbs_session_n4_control_information;
+pub mod mbs_session_n4_information;
+pub mod mbs_session_n4mb_control_information;
+pub mod mbs_session_n4mb_information;
 pub mod mbs_unicast_parameters_id;
 pub mod mbsn4_resp_flags;
 pub mod mbsn4mb_req_flags;
@@ -129,7 +140,13 @@ pub mod metric;
 pub mod minimum_packet_delay;
 pub mod minimum_wait_time;
 pub mod monitoring_time;
+pub mod mpquic_address_information;
+pub mod mpquic_control_information;
+pub mod mpquic_parameters;
+pub mod mptcp_address_information;
 pub mod mptcp_applicable_indication;
+pub mod mptcp_control_information;
+pub mod mptcp_parameters;
 pub mod mt_sdt_control_information;
 pub mod multiplier;
 pub mod n6_jitter_measurement;
@@ -173,9 +190,13 @@ pub mod pfcpsr_req_flags;
 pub mod pfcpsrrsp_flags;
 pub mod pfd_contents;
 pub mod pfd_context;
+pub mod pmf_address_information;
+pub mod pmf_control_information;
+pub mod pmf_parameters;
 pub mod port_management_information_container;
 pub mod precedence;
 pub mod priority;
+pub mod provide_atsss_control_information;
 pub mod provide_rds_configuration_information;
 pub mod proxying;
 pub mod qer_control_indications;
@@ -199,6 +220,7 @@ pub mod remote_gtpu_peer;
 pub mod remove_bar;
 pub mod remove_far;
 pub mod remove_mar;
+pub mod remove_mbs_unicast_parameters;
 pub mod remove_pdr;
 pub mod remove_qer;
 pub mod remove_srr;
@@ -1864,6 +1886,33 @@ impl_parse_ie!(
     usage_report_smr::UsageReportSmr,
     usage_report_sdr::UsageReportSdr,
     pdn_type::PdnType,
+    // Group D: ATSSS grouped IEs
+    provide_atsss_control_information::ProvideAtsssControlInformation,
+    atsss_control_parameters::AtsssControlParameters,
+    mptcp_parameters::MptcpParameters,
+    atsss_ll_parameters::AtsssLlParameters,
+    pmf_parameters::PmfParameters,
+    mpquic_parameters::MpquicParameters,
+    // Group D: ATSSS control flag IEs
+    mptcp_control_information::MptcpControlInformation,
+    atsss_ll_control_information::AtsssLlControlInformation,
+    pmf_control_information::PmfControlInformation,
+    mpquic_control_information::MpquicControlInformation,
+    // Group D: ATSSS result/address leaf IEs
+    atsss_ll_information::AtsssLlInformation,
+    mptcp_address_information::MptcpAddressInformation,
+    link_specific_multipath_ip_address::LinkSpecificMultipathIpAddress,
+    pmf_address_information::PmfAddressInformation,
+    mpquic_address_information::MpquicAddressInformation,
+    // Group F: MBS session-level grouped IEs
+    mbs_session_n4mb_control_information::MbsSessionN4mbControlInformation,
+    mbs_session_n4mb_information::MbsSessionN4mbInformation,
+    mbs_session_n4_control_information::MbsSessionN4ControlInformation,
+    mbs_session_n4_information::MbsSessionN4Information,
+    // Group F: MBS FAR child grouped IEs
+    mbs_multicast_parameters::MbsMulticastParameters,
+    add_mbs_unicast_parameters::AddMbsUnicastParameters,
+    remove_mbs_unicast_parameters::RemoveMbsUnicastParameters,
     // Phase 4: Simple scalar, flag, and opaque-container IEs
     aggregated_urr_id::AggregatedUrrId,
     bridge_management_information_container::BridgeManagementInformationContainer,
