@@ -4,15 +4,15 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 
 ## Implementation Status Summary
 
-**Total IE Type Variants**: 335 (comprehensive 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 328 individual implementation files
-**Core IEs**: 328+ essential PFCP functionality
-**Test Coverage**: 3,003 comprehensive tests (all passing)
+**Total IE Type Variants**: 342 (comprehensive 3GPP TS 29.244 Release 18 coverage)
+**Implemented IE Modules**: 338 individual implementation files
+**Core IEs**: 338+ essential PFCP functionality
+**Test Coverage**: 3,044 comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ### Implementation Highlights
 - ✅ **All essential IEs implemented** for production deployments
-- ✅ **3,003 comprehensive tests** with 100% round-trip validation
+- ✅ **3,044 comprehensive tests** with 100% round-trip validation
 - ✅ **Zero warnings** in cargo fmt, clippy, and cargo doc builds
 - ✅ **3GPP compliant** F-TEID with CHOOSE/CHOOSE_ID flags
 - ✅ **Context-specific IEs** (e.g., UpdateBarWithinSessionReportResponse)
@@ -293,7 +293,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | QoS Monitoring per QoS Flow Control Information   | 242  | Create SRR | Multiple QFIs + RequestedQosMonitoring + ReportingFrequency + optional thresholds/periods |
 | Traffic Parameter Measurement Control Information | 323  | Create SRR | Multiple QFIs + TrafficParameterMeasurementIndication + optional period/threshold |
 
-Also added `DirectReportingInformation = 295` to the `IeType` enum (no typed struct yet — child IEs not yet in enum); wired as `Option<Ie>` in Create SRR alongside the existing `ReportingControlInformation` (IE 389).
+Added `DirectReportingInformation = 295` to the `IeType` enum; typed struct added in Phase 11 (children 296–299 added to enum simultaneously).
 
 #### Group 5 — RTP Tree (bottom-up)
 | IE Name                              | Type | Wired into | Description |
@@ -301,6 +301,36 @@ Also added `DirectReportingInformation = 295` to the `IeType` enum (no typed str
 | RTP Header Extension Information     | 340  | Protocol Description | RTP header extension type/ID + additional information (all optional) |
 | RTP Payload Information              | 341  | Protocol Description | Multiple RTP payload types + optional format |
 | Protocol Description                 | 334  | PDI        | Media transport protocol + RTP header extension + RTP payload info |
+
+### Phase 11 — Final Rel-18 Gap Closure: 10 Missing IEs
+
+#### Simple variable-length IEs (opaque octets)
+| IE Name                    | Type | Description |
+| -------------------------- | ---- | ----------- |
+| Event Notification URI     | 296  | URI for UPF QoS event notifications to local NEF/AF (RFC 3986) |
+| Notification Correlation ID | 297 | Opaque correlation ID included in UPF event notifications |
+| Predefined Rules Name      | 299  | Name identifying predefined rule(s) in the UP function |
+| Offending IE Information   | 274  | 2-byte offending IE type + raw value bytes of the failing IE |
+
+#### Flags IEs
+| IE Name          | Type | Description |
+| ---------------- | ---- | ----------- |
+| Reporting Flags  | 298  | DUPL flag: duplicate event notifications over N4 in addition to URI |
+
+#### Complex flat IEs
+| IE Name                                    | Type | Description |
+| ------------------------------------------ | ---- | ----------- |
+| IP Address and Port Number Replacement     | 293  | Flags + optional dest/src IPv4/IPv6 addresses and port numbers |
+| DNS Query/Response Filter                  | 294  | Flags byte + Domain Name Pattern (JSON FqdnPatternMatchingRule) |
+| L2TP User Authentication                   | 278  | Proxy Authen Type + optional Name/Challenge/Response/ID fields |
+
+#### Grouped IEs
+| IE Name                          | Type | Children | Description |
+| -------------------------------- | ---- | -------- | ----------- |
+| User Plane Path Failure Report   | 102  | RemoteGtpuPeer (M, multiple) | Grouped IE in Node Report Request when UPFR bit set |
+| Direct Reporting Information     | 295  | EventNotificationUri (M), NotificationCorrelationId (C), ReportingFlags (C) | Per-SRR config for direct QoS monitoring event reporting to local NEF/AF |
+
+Also added IEs 274, 293, 294, 296, 297, 298, 299 to the `IeType` enum (previously missing).
 
 ## Key Implementation Features
 
@@ -312,7 +342,7 @@ Also added `DirectReportingInformation = 295` to the `IeType` enum (no typed str
 - ✅ **3GPP compliant F-TEID** - CHOOSE/CHOOSE_ID flags for UPF allocation
 - ✅ **Release 18 features** - Network slicing, multi-access, enhanced QoS
 - ✅ **Context-specific IEs** - Proper usage in different message contexts
-- ✅ **Production-ready** - 3,003 comprehensive tests with 100% validation
+- ✅ **Production-ready** - 3,044 comprehensive tests with 100% validation
 
 ### F-TEID Implementation Highlights
 ```rust
@@ -356,7 +386,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 ## Architecture Excellence
 
 ### Comprehensive Test Coverage
-- **3,003 comprehensive tests** with 100% pass rate
+- **3,044 comprehensive tests** with 100% pass rate
 - **Round-trip serialization** validation for all IEs
 - **3GPP compliance testing** for critical IEs (F-TEID, Created PDR, etc.)
 - **Builder pattern validation** with comprehensive error checking
@@ -384,7 +414,7 @@ This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
 - ✅ **328+ IEs** across 328 implementation modules
 - ✅ **All 25 message types** with proper IE integration
-- ✅ **3,003 comprehensive tests** ensuring reliability
+- ✅ **3,044 comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling
 - ✅ **Builder patterns** for ergonomic API usage
 - ✅ **Rich debugging support** with YAML/JSON formatting

@@ -59,11 +59,13 @@ pub mod data_status;
 pub mod deactivate_predefined_rules;
 pub mod deactivation_time;
 pub mod destination_interface;
+pub mod direct_reporting_information;
 pub mod dl_buffering_duration;
 pub mod dl_buffering_suggested_packet_count;
 pub mod dl_data_packets_size;
 pub mod dl_flow_level_marking;
 pub mod dl_periodicity;
+pub mod dns_query_response_filter;
 pub mod dns_server_address;
 pub mod downlink_data_notification_delay;
 pub mod downlink_data_report;
@@ -84,6 +86,7 @@ pub mod ethernet_packet_filter;
 pub mod ethernet_pdu_session_information;
 pub mod ethernet_traffic_information;
 pub mod ethertype;
+pub mod event_notification_uri;
 pub mod event_quota;
 pub mod event_threshold;
 pub mod event_time_stamp;
@@ -109,6 +112,7 @@ pub mod gtpu_path_qos_report;
 pub mod header_enrichment;
 pub mod hplmn_s_nssai;
 pub mod inactivity_detection_time;
+pub mod ip_address_and_port_number_replacement;
 pub mod ip_multicast_address;
 pub mod ip_multicast_addressing_info;
 pub mod ip_version;
@@ -116,6 +120,7 @@ pub mod join_ip_multicast_information_within_usage_report;
 pub mod l2tp_session_indications;
 pub mod l2tp_session_information;
 pub mod l2tp_tunnel_information;
+pub mod l2tp_user_authentication;
 pub mod leave_ip_multicast_information_within_usage_report;
 pub mod link_specific_multipath_ip_address;
 pub mod linked_urr_id;
@@ -168,11 +173,13 @@ pub mod nf_instance_id;
 pub mod node_id;
 pub mod node_report_type;
 pub mod non_tgpp_access_forwarding_action_information;
+pub mod notification_correlation_id;
 pub mod number_of_reports;
 pub mod number_of_ue_ip_addresses;
 pub mod nwtt_port_number;
 pub mod oci_flags;
 pub mod offending_ie;
+pub mod offending_ie_information;
 pub mod outer_header_creation;
 pub mod outer_header_removal;
 pub mod overload_control_information;
@@ -207,6 +214,7 @@ pub mod pmf_control_information;
 pub mod pmf_parameters;
 pub mod port_management_information_container;
 pub mod precedence;
+pub mod predefined_rules_name;
 pub mod priority;
 pub mod protocol_description;
 pub mod provide_atsss_control_information;
@@ -245,6 +253,7 @@ pub mod remove_traffic_endpoint;
 pub mod remove_urr;
 pub mod report_type;
 pub mod reporting_control_information;
+pub mod reporting_flags;
 pub mod reporting_frequency;
 pub mod reporting_suggestion_info;
 pub mod reporting_thresholds;
@@ -340,6 +349,7 @@ pub mod usage_report_srr;
 pub mod usage_report_trigger;
 pub mod user_id;
 pub mod user_plane_inactivity_timer;
+pub mod user_plane_path_failure_report;
 pub mod user_plane_path_recovery_report;
 pub mod validity_timer;
 pub mod vendor_specific_node_report_type;
@@ -643,6 +653,7 @@ pub enum IeType {
     RedundantTransmissionForwardingParameters = 270,
     TransportDelayReporting = 271,
     PartialFailureInformation = 272,
+    OffendingIeInformation = 274,
     RatType = 275,
     L2tpTunnelInformation = 276,
     L2tpSessionInformation = 277,
@@ -661,7 +672,13 @@ pub enum IeType {
     PfcpSessionChangeInfo = 290,
     GroupId = 291,
     CpIpAddress = 292,
+    IpAddressAndPortNumberReplacement = 293,
+    DnsQueryResponseFilter = 294,
     DirectReportingInformation = 295,
+    EventNotificationUri = 296,
+    NotificationCorrelationId = 297,
+    ReportingFlags = 298,
+    PredefinedRulesName = 299,
     MbsSessionN4mbControlInformation = 300,
     MbsMulticastParameters = 301,
     AddMbsUnicastParameters = 302,
@@ -995,6 +1012,7 @@ impl From<u16> for IeType {
             270 => IeType::RedundantTransmissionForwardingParameters,
             271 => IeType::TransportDelayReporting,
             272 => IeType::PartialFailureInformation,
+            274 => IeType::OffendingIeInformation,
             275 => IeType::RatType,
             276 => IeType::L2tpTunnelInformation,
             277 => IeType::L2tpSessionInformation,
@@ -1013,7 +1031,13 @@ impl From<u16> for IeType {
             290 => IeType::PfcpSessionChangeInfo,
             291 => IeType::GroupId,
             292 => IeType::CpIpAddress,
+            293 => IeType::IpAddressAndPortNumberReplacement,
+            294 => IeType::DnsQueryResponseFilter,
             295 => IeType::DirectReportingInformation,
+            296 => IeType::EventNotificationUri,
+            297 => IeType::NotificationCorrelationId,
+            298 => IeType::ReportingFlags,
+            299 => IeType::PredefinedRulesName,
             300 => IeType::MbsSessionN4mbControlInformation,
             301 => IeType::MbsMulticastParameters,
             302 => IeType::AddMbsUnicastParameters,
