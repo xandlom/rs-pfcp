@@ -23,6 +23,7 @@ pub struct CreatePdr {
     pub urr_id: Option<UrrId>,
     pub qer_id: Option<QerId>,
     pub activate_predefined_rules: Option<ActivatePredefinedRules>,
+    pub transport_delay_reporting: Option<Ie>,
 }
 
 impl CreatePdr {
@@ -46,6 +47,7 @@ impl CreatePdr {
             urr_id,
             qer_id,
             activate_predefined_rules,
+            transport_delay_reporting: None,
         }
     }
 
@@ -71,6 +73,9 @@ impl CreatePdr {
         if let Some(apr) = &self.activate_predefined_rules {
             ies.push(Ie::new(IeType::ActivatePredefinedRules, apr.marshal()));
         }
+        if let Some(ref tdr) = self.transport_delay_reporting {
+            ies.push(tdr.clone());
+        }
 
         marshal_ies(&ies)
     }
@@ -84,6 +89,7 @@ impl CreatePdr {
         let mut urr_id = None;
         let mut qer_id = None;
         let mut activate_predefined_rules = None;
+        let mut transport_delay_reporting = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -100,6 +106,9 @@ impl CreatePdr {
                 IeType::ActivatePredefinedRules => {
                     activate_predefined_rules =
                         Some(ActivatePredefinedRules::unmarshal(&ie.payload)?)
+                }
+                IeType::TransportDelayReporting => {
+                    transport_delay_reporting = Some(ie);
                 }
                 _ => (),
             }
@@ -123,6 +132,7 @@ impl CreatePdr {
             urr_id,
             qer_id,
             activate_predefined_rules,
+            transport_delay_reporting,
         })
     }
 
@@ -215,6 +225,7 @@ impl CreatePdrBuilder {
             urr_id: self.urr_id,
             qer_id: self.qer_id,
             activate_predefined_rules: self.activate_predefined_rules,
+            transport_delay_reporting: None,
         })
     }
 }

@@ -20,6 +20,7 @@ pub struct ForwardingParameters {
     pub proxying: Option<Proxying>,
     pub three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
     pub header_enrichment: Option<HeaderEnrichment>,
+    pub redundant_transmission_forwarding_parameters: Option<Ie>,
 }
 
 impl ForwardingParameters {
@@ -34,6 +35,7 @@ impl ForwardingParameters {
             proxying: None,
             three_gpp_interface_type: None,
             header_enrichment: None,
+            redundant_transmission_forwarding_parameters: None,
         }
     }
 
@@ -135,6 +137,9 @@ impl ForwardingParameters {
         if let Some(ref he) = self.header_enrichment {
             ies.push(he.to_ie());
         }
+        if let Some(ref rtfp) = self.redundant_transmission_forwarding_parameters {
+            ies.push(rtfp.clone());
+        }
 
         marshal_ies(&ies)
     }
@@ -149,6 +154,7 @@ impl ForwardingParameters {
         let mut proxying = None;
         let mut three_gpp_interface_type = None;
         let mut header_enrichment = None;
+        let mut redundant_transmission_forwarding_parameters = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -176,6 +182,9 @@ impl ForwardingParameters {
                 IeType::HeaderEnrichment => {
                     header_enrichment = Some(HeaderEnrichment::unmarshal(&ie.payload)?)
                 }
+                IeType::RedundantTransmissionForwardingParameters => {
+                    redundant_transmission_forwarding_parameters = Some(ie);
+                }
                 _ => (),
             }
         }
@@ -196,6 +205,7 @@ impl ForwardingParameters {
             proxying,
             three_gpp_interface_type,
             header_enrichment,
+            redundant_transmission_forwarding_parameters,
         })
     }
 

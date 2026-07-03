@@ -17,6 +17,7 @@ pub struct SessionReportRequest {
     pub overload_control_information: Option<Ie>,
     pub additional_usage_reports_information: Option<Ie>,
     pub pfcpsrreq_flags: Option<Ie>,
+    pub tsc_management_informations: Vec<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -51,6 +52,9 @@ impl Message for SessionReportRequest {
         if let Some(ref ie) = self.pfcpsrreq_flags {
             ie.marshal_into(buf);
         }
+        for ie in &self.tsc_management_informations {
+            ie.marshal_into(buf);
+        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -79,6 +83,9 @@ impl Message for SessionReportRequest {
         if let Some(ref ie) = self.pfcpsrreq_flags {
             size += ie.len() as usize;
         }
+        for ie in &self.tsc_management_informations {
+            size += ie.len() as usize;
+        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -94,6 +101,7 @@ impl Message for SessionReportRequest {
         let mut overload_control_information = None;
         let additional_usage_reports_information = None;
         let pfcpsrreq_flags = None;
+        let mut tsc_management_informations = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -106,6 +114,9 @@ impl Message for SessionReportRequest {
                 IeType::UsageReportWithinSessionReportRequest => usage_reports.push(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
+                IeType::TscManagementInformationWithinSessionReportRequest => {
+                    tsc_management_informations.push(ie);
+                }
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -120,6 +131,7 @@ impl Message for SessionReportRequest {
             overload_control_information,
             additional_usage_reports_information,
             pfcpsrreq_flags,
+            tsc_management_informations,
             ies,
         })
     }
@@ -164,6 +176,9 @@ impl Message for SessionReportRequest {
             IeType::AdditionalUsageReportsInformation => {
                 IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
             }
+            IeType::TscManagementInformationWithinSessionReportRequest => {
+                IeIter::multiple(&self.tsc_management_informations, ie_type)
+            }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -189,6 +204,7 @@ impl Message for SessionReportRequest {
         if let Some(ref ie) = self.pfcpsrreq_flags {
             result.push(ie);
         }
+        result.extend(self.tsc_management_informations.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -230,6 +246,7 @@ impl SessionReportRequest {
             overload_control_information: None,
             additional_usage_reports_information: None,
             pfcpsrreq_flags: None,
+            tsc_management_informations: Vec::new(),
             ies,
         }
     }
@@ -246,6 +263,7 @@ pub struct SessionReportRequestBuilder {
     overload_control_information: Option<Ie>,
     additional_usage_reports_information: Option<Ie>,
     pfcpsrreq_flags: Option<Ie>,
+    tsc_management_informations: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -261,8 +279,14 @@ impl SessionReportRequestBuilder {
             overload_control_information: None,
             additional_usage_reports_information: None,
             pfcpsrreq_flags: None,
+            tsc_management_informations: Vec::new(),
             ies: Vec::new(),
         }
+    }
+
+    pub fn tsc_management_information(mut self, ie: Ie) -> Self {
+        self.tsc_management_informations.push(ie);
+        self
     }
 
     pub fn report_type(mut self, report_type: Ie) -> Self {
@@ -331,6 +355,9 @@ impl SessionReportRequestBuilder {
         if let Some(ie) = &self.pfcpsrreq_flags {
             payload_len += ie.len();
         }
+        for ie in &self.tsc_management_informations {
+            payload_len += ie.len();
+        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -347,6 +374,7 @@ impl SessionReportRequestBuilder {
             overload_control_information: self.overload_control_information,
             additional_usage_reports_information: self.additional_usage_reports_information,
             pfcpsrreq_flags: self.pfcpsrreq_flags,
+            tsc_management_informations: self.tsc_management_informations,
             ies: self.ies,
         }
     }

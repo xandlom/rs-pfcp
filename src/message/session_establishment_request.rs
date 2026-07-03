@@ -1260,6 +1260,7 @@ mod tests {
             sdf_filter: None,
             application_id: None,
             ethernet_packet_filter: None,
+            redundant_transmission_parameters: None,
         };
 
         // Create minimal PDR

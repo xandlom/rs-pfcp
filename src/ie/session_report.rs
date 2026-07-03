@@ -9,15 +9,16 @@ use crate::ie::srr_id::SrrId;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 
 /// Session Report per 3GPP TS 29.244 §7.5.8.6-1.
-///
-/// Note: QoS Monitoring Report and Traffic Parameter Measurement Report
-/// (Phase 7 IEs) are silently ignored during unmarshal when present.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionReport {
     /// Session Reporting Rule IDs (mandatory, at least one).
     pub srr_ids: Vec<SrrId>,
     /// Access availability reports (optional, zero or more).
     pub access_availability_reports: Vec<AccessAvailabilityReport>,
+    /// QoS Monitoring Reports (conditional, zero or more).
+    pub qos_monitoring_reports: Vec<Ie>,
+    /// Traffic Parameter Measurement Reports (conditional, zero or more).
+    pub traffic_parameter_measurement_reports: Vec<Ie>,
 }
 
 impl SessionReport {
@@ -25,6 +26,8 @@ impl SessionReport {
         SessionReport {
             srr_ids,
             access_availability_reports: Vec::new(),
+            qos_monitoring_reports: Vec::new(),
+            traffic_parameter_measurement_reports: Vec::new(),
         }
     }
 
@@ -33,12 +36,20 @@ impl SessionReport {
         for report in &self.access_availability_reports {
             ies.push(report.to_ie());
         }
+        for ie in &self.qos_monitoring_reports {
+            ies.push(ie.clone());
+        }
+        for ie in &self.traffic_parameter_measurement_reports {
+            ies.push(ie.clone());
+        }
         marshal_ies(&ies)
     }
 
     pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut srr_ids = Vec::new();
         let mut access_availability_reports = Vec::new();
+        let mut qos_monitoring_reports = Vec::new();
+        let mut traffic_parameter_measurement_reports = Vec::new();
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -49,6 +60,12 @@ impl SessionReport {
                 IeType::AccessAvailabilityReport => {
                     access_availability_reports
                         .push(AccessAvailabilityReport::unmarshal(&ie.payload)?);
+                }
+                IeType::QosMonitoringReport => {
+                    qos_monitoring_reports.push(ie);
+                }
+                IeType::TrafficParameterMeasurementReport => {
+                    traffic_parameter_measurement_reports.push(ie);
                 }
                 _ => (),
             }
@@ -64,6 +81,8 @@ impl SessionReport {
         Ok(SessionReport {
             srr_ids,
             access_availability_reports,
+            qos_monitoring_reports,
+            traffic_parameter_measurement_reports,
         })
     }
 

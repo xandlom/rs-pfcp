@@ -19,6 +19,7 @@ pub struct Pdi {
     pub sdf_filter: Option<SdfFilter>,
     pub application_id: Option<String>,
     pub ethernet_packet_filter: Option<EthernetPacketFilter>,
+    pub redundant_transmission_parameters: Option<Ie>,
 }
 
 impl Pdi {
@@ -40,6 +41,7 @@ impl Pdi {
             sdf_filter,
             application_id,
             ethernet_packet_filter,
+            redundant_transmission_parameters: None,
         }
     }
 
@@ -65,6 +67,9 @@ impl Pdi {
         if let Some(eth_filter) = &self.ethernet_packet_filter {
             ies.push(eth_filter.to_ie());
         }
+        if let Some(ref rtp) = self.redundant_transmission_parameters {
+            ies.push(rtp.clone());
+        }
 
         marshal_ies(&ies)
     }
@@ -78,6 +83,7 @@ impl Pdi {
         let mut sdf_filter = None;
         let mut application_id = None;
         let mut ethernet_packet_filter = None;
+        let mut redundant_transmission_parameters = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -103,6 +109,9 @@ impl Pdi {
                 IeType::EthernetPacketFilter => {
                     ethernet_packet_filter = Some(EthernetPacketFilter::unmarshal(&ie.payload)?);
                 }
+                IeType::RedundantTransmissionParameters => {
+                    redundant_transmission_parameters = Some(ie);
+                }
                 _ => (),
             }
         }
@@ -118,6 +127,7 @@ impl Pdi {
             sdf_filter,
             application_id,
             ethernet_packet_filter,
+            redundant_transmission_parameters,
         })
     }
 
@@ -170,6 +180,7 @@ pub struct PdiBuilder {
     sdf_filter: Option<SdfFilter>,
     application_id: Option<String>,
     ethernet_packet_filter: Option<EthernetPacketFilter>,
+    redundant_transmission_parameters: Option<Ie>,
 }
 
 impl PdiBuilder {
@@ -252,6 +263,7 @@ impl PdiBuilder {
             sdf_filter: self.sdf_filter,
             application_id: self.application_id,
             ethernet_packet_filter: self.ethernet_packet_filter,
+            redundant_transmission_parameters: self.redundant_transmission_parameters,
         })
     }
 
