@@ -20,6 +20,8 @@ pub struct Pdi {
     pub application_id: Option<String>,
     pub ethernet_packet_filter: Option<EthernetPacketFilter>,
     pub redundant_transmission_parameters: Option<Ie>,
+    /// Protocol description for PDU-set/EDB marking (IE 334, optional).
+    pub protocol_description: Option<Ie>,
 }
 
 impl Pdi {
@@ -42,6 +44,7 @@ impl Pdi {
             application_id,
             ethernet_packet_filter,
             redundant_transmission_parameters: None,
+            protocol_description: None,
         }
     }
 
@@ -70,6 +73,9 @@ impl Pdi {
         if let Some(ref rtp) = self.redundant_transmission_parameters {
             ies.push(rtp.clone());
         }
+        if let Some(ref pd) = self.protocol_description {
+            ies.push(pd.clone());
+        }
 
         marshal_ies(&ies)
     }
@@ -84,6 +90,7 @@ impl Pdi {
         let mut application_id = None;
         let mut ethernet_packet_filter = None;
         let mut redundant_transmission_parameters = None;
+        let mut protocol_description = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -112,6 +119,9 @@ impl Pdi {
                 IeType::RedundantTransmissionParameters => {
                     redundant_transmission_parameters = Some(ie);
                 }
+                IeType::ProtocolDescription => {
+                    protocol_description = Some(ie);
+                }
                 _ => (),
             }
         }
@@ -128,6 +138,7 @@ impl Pdi {
             application_id,
             ethernet_packet_filter,
             redundant_transmission_parameters,
+            protocol_description,
         })
     }
 
@@ -181,6 +192,7 @@ pub struct PdiBuilder {
     application_id: Option<String>,
     ethernet_packet_filter: Option<EthernetPacketFilter>,
     redundant_transmission_parameters: Option<Ie>,
+    protocol_description: Option<Ie>,
 }
 
 impl PdiBuilder {
@@ -264,6 +276,7 @@ impl PdiBuilder {
             application_id: self.application_id,
             ethernet_packet_filter: self.ethernet_packet_filter,
             redundant_transmission_parameters: self.redundant_transmission_parameters,
+            protocol_description: self.protocol_description,
         })
     }
 

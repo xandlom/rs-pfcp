@@ -1261,6 +1261,7 @@ mod tests {
             application_id: None,
             ethernet_packet_filter: None,
             redundant_transmission_parameters: None,
+            protocol_description: None,
         };
 
         // Create minimal PDR
