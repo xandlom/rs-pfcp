@@ -4,15 +4,15 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 
 ## Implementation Status Summary
 
-**Total IE Type Variants**: 334 (comprehensive 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 312 individual implementation files
-**Core IEs**: 312+ essential PFCP functionality
-**Test Coverage**: 3,344 comprehensive tests (all passing)
+**Total IE Type Variants**: 335 (comprehensive 3GPP TS 29.244 Release 18 coverage)
+**Implemented IE Modules**: 328 individual implementation files
+**Core IEs**: 328+ essential PFCP functionality
+**Test Coverage**: 3,003 comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ### Implementation Highlights
 - ✅ **All essential IEs implemented** for production deployments
-- ✅ **3,344 comprehensive tests** with 100% round-trip validation
+- ✅ **3,003 comprehensive tests** with 100% round-trip validation
 - ✅ **Zero warnings** in cargo fmt, clippy, and cargo doc builds
 - ✅ **3GPP compliant** F-TEID with CHOOSE/CHOOSE_ID flags
 - ✅ **Context-specific IEs** (e.g., UpdateBarWithinSessionReportResponse)
@@ -262,6 +262,46 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | L2TP Session Information   | 277  | Grouped IE: per-session L2TP params (SessionEstReq) |
 | Created L2TP Session       | 279  | Grouped IE: UPF-allocated L2TP session info (SessionEstResp) |
 
+### Phase 10 — Remediation: 16 Missing IEs (5 groups)
+
+#### Group 1 — Simple Flat IEs
+| IE Name                                       | Type | Description |
+| --------------------------------------------- | ---- | ----------- |
+| MTEDT Control Information                     | 249  | 1-byte RDSI flag for MT-EDT control |
+| Thresholds                                    | 288  | RTT (u16 ms) and/or PLR (u8 %) thresholds for MAR steering |
+| Steering Mode Indicator                       | 289  | 1-byte ALBI/UEAI flags for MAR steering mode |
+| RTP Header Extension Additional Information   | 349  | 2-byte FI/PSSAI flags + optional PSSA format byte |
+
+#### Group 2 — Grouped IEs (all children pre-existing)
+| IE Name                                                     | Type | Wired into | Description |
+| ----------------------------------------------------------- | ---- | ---------- | ----------- |
+| Redundant Transmission Detection Parameters                 | 255  | PDI        | F-TEID + optional Network Instance for redundant UL |
+| Redundant Transmission Forwarding Parameters                | 270  | Forwarding Parameters | Outer Header Creation + optional Network Instance for redundant DL |
+| Transport Delay Reporting                                   | 271  | Create PDR | Remote GTP-U Peer + optional DSCP for path delay measurement |
+| TSC Management Information (Session Report Request)         | 201  | Session Report Request | Port/bridge management containers + NW-TT Port Number |
+| QoS Monitoring Report                                       | 247  | Session Report | QFI + QoS Monitoring Measurement + timestamp |
+| Traffic Parameter Measurement Report                        | 324  | Session Report | QFI + optional N6 jitter/UL periodicity + timestamp |
+
+#### Group 3 — Flat Complex IE
+| IE Name                          | Type | Description |
+| -------------------------------- | ---- | ----------- |
+| Multicast Transport Information  | 306  | Common C-TEID + IP Multicast Distribution Address + IP Source Address (variable-length, IPv4/IPv6) |
+
+#### Group 4 — Grouped IEs + CreateSrr update
+| IE Name                                           | Type | Wired into | Description |
+| ------------------------------------------------- | ---- | ---------- | ----------- |
+| QoS Monitoring per QoS Flow Control Information   | 242  | Create SRR | Multiple QFIs + RequestedQosMonitoring + ReportingFrequency + optional thresholds/periods |
+| Traffic Parameter Measurement Control Information | 323  | Create SRR | Multiple QFIs + TrafficParameterMeasurementIndication + optional period/threshold |
+
+Also added `DirectReportingInformation = 295` to the `IeType` enum (no typed struct yet — child IEs not yet in enum); wired as `Option<Ie>` in Create SRR alongside the existing `ReportingControlInformation` (IE 389).
+
+#### Group 5 — RTP Tree (bottom-up)
+| IE Name                              | Type | Wired into | Description |
+| ------------------------------------ | ---- | ---------- | ----------- |
+| RTP Header Extension Information     | 340  | Protocol Description | RTP header extension type/ID + additional information (all optional) |
+| RTP Payload Information              | 341  | Protocol Description | Multiple RTP payload types + optional format |
+| Protocol Description                 | 334  | PDI        | Media transport protocol + RTP header extension + RTP payload info |
+
 ## Key Implementation Features
 
 ### 🏆 3GPP TS 29.244 Release 18 Compliance
@@ -272,7 +312,7 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 - ✅ **3GPP compliant F-TEID** - CHOOSE/CHOOSE_ID flags for UPF allocation
 - ✅ **Release 18 features** - Network slicing, multi-access, enhanced QoS
 - ✅ **Context-specific IEs** - Proper usage in different message contexts
-- ✅ **Production-ready** - 3,344 comprehensive tests with 100% validation
+- ✅ **Production-ready** - 3,003 comprehensive tests with 100% validation
 
 ### F-TEID Implementation Highlights
 ```rust
@@ -316,7 +356,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 ## Architecture Excellence
 
 ### Comprehensive Test Coverage
-- **3,161 comprehensive tests** with 100% pass rate
+- **3,003 comprehensive tests** with 100% pass rate
 - **Round-trip serialization** validation for all IEs
 - **3GPP compliance testing** for critical IEs (F-TEID, Created PDR, etc.)
 - **Builder pattern validation** with comprehensive error checking
@@ -342,9 +382,9 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 
 This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
-- ✅ **312+ IEs** across 312 implementation modules
+- ✅ **328+ IEs** across 328 implementation modules
 - ✅ **All 25 message types** with proper IE integration
-- ✅ **3,161 comprehensive tests** ensuring reliability
+- ✅ **3,003 comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling
 - ✅ **Builder patterns** for ergonomic API usage
 - ✅ **Rich debugging support** with YAML/JSON formatting
