@@ -158,6 +158,7 @@ pub mod mptcp_control_information;
 pub mod mptcp_parameters;
 pub mod mt_sdt_control_information;
 pub mod mtedt_control_information;
+pub mod multicast_transport_information;
 pub mod multiplier;
 pub mod n6_jitter_measurement;
 pub mod n6_routing_information;
