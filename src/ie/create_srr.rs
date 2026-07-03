@@ -12,6 +12,14 @@ use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 pub struct CreateSrr {
     pub srr_id: SrrId,
     pub access_availability_control_information: Option<AccessAvailabilityControlInformation>,
+    /// QoS Monitoring per QoS flow control entries (IE 242, multiple, conditional).
+    pub qos_monitoring_per_qos_flow_control_informations: Vec<Ie>,
+    /// Direct reporting information for DRQOS feature (IE 295, conditional).
+    pub direct_reporting_information: Option<Ie>,
+    /// Traffic parameter measurement control entries (IE 323, multiple, conditional).
+    pub traffic_parameter_measurement_control_informations: Vec<Ie>,
+    /// Reporting control information (IE 389, conditional).
+    pub reporting_control_information: Option<Ie>,
 }
 
 impl CreateSrr {
@@ -22,6 +30,10 @@ impl CreateSrr {
         Self {
             srr_id,
             access_availability_control_information,
+            qos_monitoring_per_qos_flow_control_informations: Vec::new(),
+            direct_reporting_information: None,
+            traffic_parameter_measurement_control_informations: Vec::new(),
+            reporting_control_information: None,
         }
     }
 
@@ -30,12 +42,28 @@ impl CreateSrr {
         if let Some(aaci) = &self.access_availability_control_information {
             ies.push(aaci.to_ie());
         }
+        for ie in &self.qos_monitoring_per_qos_flow_control_informations {
+            ies.push(ie.clone());
+        }
+        if let Some(ref ie) = self.direct_reporting_information {
+            ies.push(ie.clone());
+        }
+        for ie in &self.traffic_parameter_measurement_control_informations {
+            ies.push(ie.clone());
+        }
+        if let Some(ref ie) = self.reporting_control_information {
+            ies.push(ie.clone());
+        }
         marshal_ies(&ies)
     }
 
     pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
         let mut srr_id = None;
         let mut access_availability_control_information = None;
+        let mut qos_monitoring_per_qos_flow_control_informations = Vec::new();
+        let mut direct_reporting_information = None;
+        let mut traffic_parameter_measurement_control_informations = Vec::new();
+        let mut reporting_control_information = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -48,6 +76,18 @@ impl CreateSrr {
                         AccessAvailabilityControlInformation::unmarshal(&ie.payload)?,
                     );
                 }
+                IeType::QosMonitoringPerQosFlowControlInformation => {
+                    qos_monitoring_per_qos_flow_control_informations.push(ie);
+                }
+                IeType::DirectReportingInformation => {
+                    direct_reporting_information = Some(ie);
+                }
+                IeType::TrafficParameterMeasurementControlInformation => {
+                    traffic_parameter_measurement_control_informations.push(ie);
+                }
+                IeType::ReportingControlInformation => {
+                    reporting_control_information = Some(ie);
+                }
                 _ => (),
             }
         }
@@ -57,6 +97,10 @@ impl CreateSrr {
                 PfcpError::missing_ie_in_grouped(IeType::SrrId, IeType::CreateSrr)
             })?,
             access_availability_control_information,
+            qos_monitoring_per_qos_flow_control_informations,
+            direct_reporting_information,
+            traffic_parameter_measurement_control_informations,
+            reporting_control_information,
         })
     }
 
@@ -86,6 +130,29 @@ mod tests {
     #[test]
     fn test_marshal_unmarshal_full() {
         let original = CreateSrr::new(SrrId::new(3), Some(make_aaci()));
+        let parsed = CreateSrr::unmarshal(&original.marshal()).unwrap();
+        assert_eq!(original, parsed);
+    }
+
+    #[test]
+    fn test_marshal_unmarshal_with_new_fields() {
+        let mut original = CreateSrr::new(SrrId::new(2), None);
+        original
+            .qos_monitoring_per_qos_flow_control_informations
+            .push(Ie::new(
+                IeType::QosMonitoringPerQosFlowControlInformation,
+                vec![0x01],
+            ));
+        original
+            .traffic_parameter_measurement_control_informations
+            .push(Ie::new(
+                IeType::TrafficParameterMeasurementControlInformation,
+                vec![0x02],
+            ));
+        original.direct_reporting_information =
+            Some(Ie::new(IeType::DirectReportingInformation, vec![0x03]));
+        original.reporting_control_information =
+            Some(Ie::new(IeType::ReportingControlInformation, vec![0x04]));
         let parsed = CreateSrr::unmarshal(&original.marshal()).unwrap();
         assert_eq!(original, parsed);
     }

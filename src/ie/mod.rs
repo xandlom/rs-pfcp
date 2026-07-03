@@ -218,6 +218,7 @@ pub mod qer_indications;
 pub mod qfi;
 pub mod qos_information_in_gtpu_path_qos_report;
 pub mod qos_monitoring_measurement;
+pub mod qos_monitoring_per_qos_flow_control_information;
 pub mod qos_monitoring_report;
 pub mod qos_report_trigger;
 pub mod query_packet_rate_status_within_session_modification_request;
@@ -290,6 +291,7 @@ pub mod timer;
 pub mod tl_container;
 pub mod trace_information;
 pub mod traffic_endpoint_id;
+pub mod traffic_parameter_measurement_control_information;
 pub mod traffic_parameter_measurement_indication;
 pub mod traffic_parameter_measurement_report;
 pub mod traffic_parameter_threshold;
@@ -656,6 +658,7 @@ pub enum IeType {
     PfcpSessionChangeInfo = 290,
     GroupId = 291,
     CpIpAddress = 292,
+    DirectReportingInformation = 295,
     MbsSessionN4mbControlInformation = 300,
     MbsMulticastParameters = 301,
     AddMbsUnicastParameters = 302,
@@ -1007,6 +1010,7 @@ impl From<u16> for IeType {
             290 => IeType::PfcpSessionChangeInfo,
             291 => IeType::GroupId,
             292 => IeType::CpIpAddress,
+            295 => IeType::DirectReportingInformation,
             300 => IeType::MbsSessionN4mbControlInformation,
             301 => IeType::MbsMulticastParameters,
             302 => IeType::AddMbsUnicastParameters,
