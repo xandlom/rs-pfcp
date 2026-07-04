@@ -514,8 +514,10 @@ mod tests {
     #[test]
     fn test_pdi_builder_comprehensive() {
         let source_interface = SourceInterface::new(SourceInterfaceValue::Access);
+        // CH=1 (choose_ipv4): per 3GPP TS 29.244 Section 8.2.3, TEID is not
+        // present on the wire, so it must be 0 to round-trip through marshal.
         let fteid = FteidBuilder::new()
-            .teid(0x87654321)
+            .teid(0)
             .choose_ipv4()
             .choose_id(42)
             .build()
@@ -631,11 +633,9 @@ mod tests {
 
     #[test]
     fn test_pdi_builder_uplink_with_f_teid() {
-        let fteid = FteidBuilder::new()
-            .teid(0xAABBCCDD)
-            .choose_ipv6()
-            .build()
-            .unwrap();
+        // CH=1 (choose_ipv6): TEID is not present on the wire, so it must be
+        // 0 to round-trip through marshal.
+        let fteid = FteidBuilder::new().teid(0).choose_ipv6().build().unwrap();
 
         let pdi = PdiBuilder::uplink_access()
             .f_teid(fteid.clone())

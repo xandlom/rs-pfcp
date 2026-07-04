@@ -67,6 +67,11 @@ impl Fteid {
     }
 
     /// Marshals the F-TEID into a byte vector.
+    ///
+    /// Per 3GPP TS 29.244, Section 8.2.3: if the CH (CHOOSE) flag is set, the
+    /// TEID, IPv4 address, and IPv6 address fields are NOT present on the wire
+    /// (the UP function chooses them). In that case the Choose ID (if CHID is
+    /// set) immediately follows the flags octet.
     pub fn marshal(&self) -> Vec<u8> {
         let mut data = Vec::new();
         let mut flags = 0;
@@ -83,12 +88,14 @@ impl Fteid {
             flags |= 0x08; // CHID flag (bit 3)
         }
         data.push(flags);
-        data.extend_from_slice(&self.teid.0.to_be_bytes());
-        if let Some(addr) = self.ipv4_address {
-            data.extend_from_slice(&addr.octets());
-        }
-        if let Some(addr) = self.ipv6_address {
-            data.extend_from_slice(&addr.octets());
+        if !self.ch {
+            data.extend_from_slice(&self.teid.0.to_be_bytes());
+            if let Some(addr) = self.ipv4_address {
+                data.extend_from_slice(&addr.octets());
+            }
+            if let Some(addr) = self.ipv6_address {
+                data.extend_from_slice(&addr.octets());
+            }
         }
         // Only include choose_id if CHID flag is set
         if self.chid {
@@ -99,13 +106,17 @@ impl Fteid {
 
     /// Unmarshals a byte slice into an F-TEID.
     ///
-    /// Per 3GPP TS 29.244, F-TEID requires minimum 5 bytes (1 byte flags + 4 bytes TEID).
+    /// Per 3GPP TS 29.244, Section 8.2.3: the flags octet is always present.
+    /// If the CH (CHOOSE) flag is NOT set, a 4-byte TEID follows, plus an
+    /// IPv4 and/or IPv6 address per the V4/V6 flags. If CH IS set, the TEID
+    /// and address fields are entirely absent from the wire, and the Choose
+    /// ID (if CHID is set) immediately follows the flags octet.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
-        if payload.len() < 5 {
+        if payload.is_empty() {
             return Err(PfcpError::invalid_length(
                 "F-TEID",
                 IeType::Fteid,
-                5,
+                1,
                 payload.len(),
             ));
         }
@@ -114,30 +125,37 @@ impl Fteid {
         let v6 = flags & 0x02 != 0;
         let ch = flags & 0x04 != 0;
         let chid = flags & 0x08 != 0;
-        let teid = u32::from_be_bytes([payload[1], payload[2], payload[3], payload[4]]);
-        let mut offset = 5;
-        let ipv4_address = if v4 && !ch {
-            // IPv4 address is present only if V4 flag is set and CHOOSE flag is NOT set
+
+        let mut offset = 1;
+        let (teid, ipv4_address, ipv6_address) = if ch {
+            // CH=1: TEID and addresses are not present on the wire.
+            (0u32, None, None)
+        } else {
             if payload.len() < offset + 4 {
                 return Err(PfcpError::invalid_length(
-                    "F-TEID IPv4",
+                    "F-TEID",
                     IeType::Fteid,
                     offset + 4,
                     payload.len(),
                 ));
             }
-            let addr = Ipv4Addr::new(
+            let teid = u32::from_be_bytes([
                 payload[offset],
                 payload[offset + 1],
                 payload[offset + 2],
                 payload[offset + 3],
-            );
+            ]);
             offset += 4;
-            Some(addr)
-        } else if v4 && ch {
-            // V4 flag set with CHOOSE flag - check if address is present
-            if payload.len() >= offset + 4 {
-                // Address is present (optional with CHOOSE)
+
+            let ipv4_address = if v4 {
+                if payload.len() < offset + 4 {
+                    return Err(PfcpError::invalid_length(
+                        "F-TEID IPv4",
+                        IeType::Fteid,
+                        offset + 4,
+                        payload.len(),
+                    ));
+                }
                 let addr = Ipv4Addr::new(
                     payload[offset],
                     payload[offset + 1],
@@ -147,41 +165,29 @@ impl Fteid {
                 offset += 4;
                 Some(addr)
             } else {
-                // No address present with CHOOSE flag
                 None
-            }
-        } else {
-            None
-        };
-        let ipv6_address = if v6 && !ch {
-            // IPv6 address is present only if V6 flag is set and CHOOSE flag is NOT set
-            if payload.len() < offset + 16 {
-                return Err(PfcpError::invalid_length(
-                    "F-TEID IPv6",
-                    IeType::Fteid,
-                    offset + 16,
-                    payload.len(),
-                ));
-            }
-            let mut octets = [0; 16];
-            octets.copy_from_slice(&payload[offset..offset + 16]);
-            offset += 16;
-            Some(Ipv6Addr::from(octets))
-        } else if v6 && ch {
-            // V6 flag set with CHOOSE flag - check if address is present
-            if payload.len() >= offset + 16 {
-                // Address is present (optional with CHOOSE)
+            };
+
+            let ipv6_address = if v6 {
+                if payload.len() < offset + 16 {
+                    return Err(PfcpError::invalid_length(
+                        "F-TEID IPv6",
+                        IeType::Fteid,
+                        offset + 16,
+                        payload.len(),
+                    ));
+                }
                 let mut octets = [0; 16];
                 octets.copy_from_slice(&payload[offset..offset + 16]);
                 offset += 16;
                 Some(Ipv6Addr::from(octets))
             } else {
-                // No address present with CHOOSE flag
                 None
-            }
-        } else {
-            None
+            };
+
+            (teid, ipv4_address, ipv6_address)
         };
+
         // Only read choose_id if CHID flag is set
         let choose_id = if chid {
             if payload.len() < offset + 1 {
@@ -532,6 +538,8 @@ mod tests {
 
     #[test]
     fn test_fteid_with_choose_flags() {
+        // Per 3GPP TS 29.244, Section 8.2.3: when CH=1, TEID and address
+        // fields are not present on the wire, even if supplied in memory.
         let fteid = Fteid::new_with_choose(
             true,
             false,
@@ -543,13 +551,15 @@ mod tests {
             0,
         );
         let marshaled = fteid.marshal();
+
+        // Only the flags octet is present: no TEID, address, or choose_id.
+        assert_eq!(marshaled.len(), 1);
+
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled, fteid);
         assert!(unmarshaled.ch);
         assert!(!unmarshaled.chid);
-
-        // Verify marshaled data doesn't include choose_id when chid=false
-        assert_eq!(marshaled.len(), 9); // flags(1) + teid(4) + ipv4(4) = 9 bytes
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.ipv4_address, None);
     }
 
     #[test]
@@ -593,13 +603,20 @@ mod tests {
         // First byte should have all flags set: 0x01 | 0x02 | 0x04 | 0x08 = 0x0F
         assert_eq!(marshaled[0], 0x0F);
 
+        // CH=1: no TEID/address bytes on the wire — just flags(1) + choose_id(1).
+        assert_eq!(marshaled.len(), 2);
+        assert_eq!(marshaled[1], 100);
+
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(unmarshaled, fteid);
         assert!(unmarshaled.v4);
         assert!(unmarshaled.v6);
         assert!(unmarshaled.ch);
         assert!(unmarshaled.chid);
         assert_eq!(unmarshaled.choose_id, 100);
+        // TEID and addresses are not on the wire when CH=1; unmarshal cannot recover them.
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.ipv4_address, None);
+        assert_eq!(unmarshaled.ipv6_address, None);
     }
 
     #[test]
@@ -630,6 +647,80 @@ mod tests {
         let result = Fteid::unmarshal(&data);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("choose ID"));
+    }
+
+    // Regression tests for 3GPP TS 29.244, Section 8.2.3: when CH=1, the
+    // TEID/address fields are absent from the wire entirely; only the flags
+    // octet and (if CHID=1) an immediately-following Choose ID are present.
+
+    #[test]
+    fn test_fteid_unmarshal_ch_only_one_byte() {
+        // CH=1, CHID=0: a genuine wire capture can be a single flags byte.
+        // V4=1, CH=1 -> flags = 0x01 | 0x04 = 0x05
+        let data = [0x05];
+        let fteid = Fteid::unmarshal(&data).unwrap();
+        assert!(fteid.v4);
+        assert!(fteid.ch);
+        assert!(!fteid.chid);
+        assert_eq!(fteid.teid, Teid(0));
+        assert_eq!(fteid.ipv4_address, None);
+        assert_eq!(fteid.ipv6_address, None);
+    }
+
+    #[test]
+    fn test_fteid_unmarshal_ch_and_chid_two_bytes() {
+        // CH=1, CHID=1: Choose ID sits immediately after the flags octet,
+        // not after a (non-existent) TEID field.
+        // V4=1, CH=1, CHID=1 -> flags = 0x01 | 0x04 | 0x08 = 0x0D
+        let data = [0x0D, 77];
+        let fteid = Fteid::unmarshal(&data).unwrap();
+        assert!(fteid.v4);
+        assert!(fteid.ch);
+        assert!(fteid.chid);
+        assert_eq!(fteid.choose_id, 77);
+        assert_eq!(fteid.teid, Teid(0));
+        assert_eq!(fteid.ipv4_address, None);
+    }
+
+    #[test]
+    fn test_fteid_unmarshal_ch_with_chid_but_truncated() {
+        // CH=1, CHID=1, but the Choose ID byte is missing — this must still
+        // be rejected (unlike CH=0, it must NOT be misread as a TEID byte).
+        let data = [0x0D]; // flags only, no choose_id
+        let result = Fteid::unmarshal(&data);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("choose ID"));
+    }
+
+    #[test]
+    fn test_fteid_unmarshal_ch_rejects_trailing_teid_sized_bytes_as_address() {
+        // CH=1 with no V4/V6 flags set: even if 4 extra bytes trail the
+        // flags octet (as they would for a legacy/CH=0 encoding), they must
+        // NOT be consumed as a TEID — CH=1 has no TEID field at all.
+        let data = [0x04, 0xDE, 0xAD, 0xBE, 0xEF]; // ch=1, no v4/v6, no chid
+        let fteid = Fteid::unmarshal(&data).unwrap();
+        assert!(fteid.ch);
+        assert_eq!(fteid.teid, Teid(0));
+        assert_eq!(fteid.ipv4_address, None);
+        assert_eq!(fteid.ipv6_address, None);
+    }
+
+    #[test]
+    fn test_fteid_marshal_ch_omits_teid_and_addresses() {
+        // Even if the in-memory struct carries a non-zero TEID and explicit
+        // addresses, marshal() must drop them from the wire when CH=1.
+        let fteid = Fteid::new_with_choose(
+            true,
+            true,
+            true, // ch = true
+            false,
+            0xDEADBEEFu32,
+            Some(Ipv4Addr::new(192, 168, 0, 1)),
+            Some(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
+            0,
+        );
+        let marshaled = fteid.marshal();
+        assert_eq!(marshaled, vec![0x07]); // V4|V6|CH, nothing else
     }
 
     // Builder pattern tests
@@ -723,10 +814,16 @@ mod tests {
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
 
-        // Test round-trip marshaling
+        // CH=1: the in-memory TEID is not marshaled onto the wire (3GPP TS
+        // 29.244, Section 8.2.3), so it cannot round-trip.
         let marshaled = fteid.marshal();
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(fteid, unmarshaled);
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.v4, fteid.v4);
+        assert_eq!(unmarshaled.v6, fteid.v6);
+        assert_eq!(unmarshaled.ch, fteid.ch);
+        assert_eq!(unmarshaled.chid, fteid.chid);
+        assert_eq!(unmarshaled.choose_id, fteid.choose_id);
     }
 
     #[test]
@@ -746,10 +843,15 @@ mod tests {
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
 
-        // Test round-trip marshaling
+        // CH=1: the in-memory TEID is not marshaled onto the wire.
         let marshaled = fteid.marshal();
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(fteid, unmarshaled);
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.v4, fteid.v4);
+        assert_eq!(unmarshaled.v6, fteid.v6);
+        assert_eq!(unmarshaled.ch, fteid.ch);
+        assert_eq!(unmarshaled.chid, fteid.chid);
+        assert_eq!(unmarshaled.choose_id, fteid.choose_id);
     }
 
     #[test]
@@ -769,10 +871,15 @@ mod tests {
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
 
-        // Test round-trip marshaling
+        // CH=1: the in-memory TEID is not marshaled onto the wire.
         let marshaled = fteid.marshal();
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(fteid, unmarshaled);
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.v4, fteid.v4);
+        assert_eq!(unmarshaled.v6, fteid.v6);
+        assert_eq!(unmarshaled.ch, fteid.ch);
+        assert_eq!(unmarshaled.chid, fteid.chid);
+        assert_eq!(unmarshaled.choose_id, fteid.choose_id);
     }
 
     #[test]
@@ -793,10 +900,18 @@ mod tests {
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 42);
 
-        // Test round-trip marshaling
+        // CH=1: the in-memory TEID is not marshaled onto the wire, but
+        // choose_id (CHID=1) sits immediately after the flags octet.
         let marshaled = fteid.marshal();
+        assert_eq!(marshaled.len(), 2); // flags(1) + choose_id(1)
+        assert_eq!(marshaled[1], 42);
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(fteid, unmarshaled);
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.v4, fteid.v4);
+        assert_eq!(unmarshaled.v6, fteid.v6);
+        assert_eq!(unmarshaled.ch, fteid.ch);
+        assert_eq!(unmarshaled.chid, fteid.chid);
+        assert_eq!(unmarshaled.choose_id, fteid.choose_id);
     }
 
     #[test]
@@ -817,10 +932,17 @@ mod tests {
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 100);
 
-        // Test round-trip marshaling
+        // CH=1: the in-memory TEID is not marshaled onto the wire.
         let marshaled = fteid.marshal();
+        assert_eq!(marshaled.len(), 2); // flags(1) + choose_id(1)
+        assert_eq!(marshaled[1], 100);
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
-        assert_eq!(fteid, unmarshaled);
+        assert_eq!(unmarshaled.teid, Teid(0));
+        assert_eq!(unmarshaled.v4, fteid.v4);
+        assert_eq!(unmarshaled.v6, fteid.v6);
+        assert_eq!(unmarshaled.ch, fteid.ch);
+        assert_eq!(unmarshaled.chid, fteid.chid);
+        assert_eq!(unmarshaled.choose_id, fteid.choose_id);
     }
 
     // Error cases for builder validation
