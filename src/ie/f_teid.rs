@@ -629,6 +629,80 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("choose ID"));
     }
 
+    // Regression tests for 3GPP TS 29.244, Section 8.2.3: when CH=1, the
+    // TEID/address fields are absent from the wire entirely; only the flags
+    // octet and (if CHID=1) an immediately-following Choose ID are present.
+
+    #[test]
+    fn test_fteid_unmarshal_ch_only_one_byte() {
+        // CH=1, CHID=0: a genuine wire capture can be a single flags byte.
+        // V4=1, CH=1 -> flags = 0x01 | 0x04 = 0x05
+        let data = [0x05];
+        let fteid = Fteid::unmarshal(&data).unwrap();
+        assert!(fteid.v4);
+        assert!(fteid.ch);
+        assert!(!fteid.chid);
+        assert_eq!(fteid.teid, Teid(0));
+        assert_eq!(fteid.ipv4_address, None);
+        assert_eq!(fteid.ipv6_address, None);
+    }
+
+    #[test]
+    fn test_fteid_unmarshal_ch_and_chid_two_bytes() {
+        // CH=1, CHID=1: Choose ID sits immediately after the flags octet,
+        // not after a (non-existent) TEID field.
+        // V4=1, CH=1, CHID=1 -> flags = 0x01 | 0x04 | 0x08 = 0x0D
+        let data = [0x0D, 77];
+        let fteid = Fteid::unmarshal(&data).unwrap();
+        assert!(fteid.v4);
+        assert!(fteid.ch);
+        assert!(fteid.chid);
+        assert_eq!(fteid.choose_id, 77);
+        assert_eq!(fteid.teid, Teid(0));
+        assert_eq!(fteid.ipv4_address, None);
+    }
+
+    #[test]
+    fn test_fteid_unmarshal_ch_with_chid_but_truncated() {
+        // CH=1, CHID=1, but the Choose ID byte is missing — this must still
+        // be rejected (unlike CH=0, it must NOT be misread as a TEID byte).
+        let data = [0x0D]; // flags only, no choose_id
+        let result = Fteid::unmarshal(&data);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("choose ID"));
+    }
+
+    #[test]
+    fn test_fteid_unmarshal_ch_rejects_trailing_teid_sized_bytes_as_address() {
+        // CH=1 with no V4/V6 flags set: even if 4 extra bytes trail the
+        // flags octet (as they would for a legacy/CH=0 encoding), they must
+        // NOT be consumed as a TEID — CH=1 has no TEID field at all.
+        let data = [0x04, 0xDE, 0xAD, 0xBE, 0xEF]; // ch=1, no v4/v6, no chid
+        let fteid = Fteid::unmarshal(&data).unwrap();
+        assert!(fteid.ch);
+        assert_eq!(fteid.teid, Teid(0));
+        assert_eq!(fteid.ipv4_address, None);
+        assert_eq!(fteid.ipv6_address, None);
+    }
+
+    #[test]
+    fn test_fteid_marshal_ch_omits_teid_and_addresses() {
+        // Even if the in-memory struct carries a non-zero TEID and explicit
+        // addresses, marshal() must drop them from the wire when CH=1.
+        let fteid = Fteid::new_with_choose(
+            true,
+            true,
+            true, // ch = true
+            false,
+            0xDEADBEEFu32,
+            Some(Ipv4Addr::new(192, 168, 0, 1)),
+            Some(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
+            0,
+        );
+        let marshaled = fteid.marshal();
+        assert_eq!(marshaled, vec![0x07]); // V4|V6|CH, nothing else
+    }
+
     // Builder pattern tests
 
     #[test]
