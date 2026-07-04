@@ -1,6 +1,71 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.4.0] - 2026-07-04
+
+### 🎉 100% 3GPP TS 29.244 Release 18 Compliance
+
+This release completes full specification coverage: all 354 Information Element types and all 25 message types are implemented. The library is production-ready for SMF ↔ UPF deployments requiring complete Rel-18 compliance.
+
+### Features
+
+#### IE Implementation — Full Rel-18 Coverage
+- **ie**: Implement Group A+B grouped IEs (ClockDriftControlInformation, ClockDriftReport, and children) and wire into messages
+- **ie**: Implement Group C — MAR grouped IEs (IEs 165–167, 169, 175–176)
+- **ie**: Implement Group D (ATSSS, 15 IEs) and Group F (MBS, 7 IEs) grouped IEs
+- **ie**: Implement Group E L2TP IEs (IEs 276, 277, 279) and 9 child IEs
+- **ie**: Implement Group G — RdsConfigurationInformation (262) and ProvideRdsConfigurationInformation (261)
+- **ie**: Implement Phase 10 Group 1 simple IEs (249, 288, 289, 349)
+- **ie**: Implement Phase 10 Group 2 grouped IEs (255, 270, 271, 201, 247, 324)
+- **ie**: Add MulticastTransportInformation (IE 306)
+- **ie**: Add IE 242/323, wire IE 295 into CreateSrr; add DirectReportingInformation (IE 295) to IeType enum
+- **ie**: Add IE 340/341/334 (RTP tree) and wire ProtocolDescription into PDI
+- **ie**: Implement 10 final Rel-18 IEs for 100% compliance: OffendingIeInformation (274), IpAddressAndPortNumberReplacement (293), DnsQueryResponseFilter (294), EventNotificationUri (296), NotificationCorrelationId (297), ReportingFlags (298), PredefinedRulesName (299), UserPlanePathFailureReport (102), L2tpUserAuthentication (278), DirectReportingInformation (295)
+- **ie**: Add ClockDriftControlInformation (IE 203) and ClockDriftReport (IE 205)
+- **ie**: Add Query URR Reference (IE 125) to SessionModificationRequest
+- **ie**: Add Graceful Release Period (IE 112) and PFCPAUReq-Flags (IE 162) to AssociationUpdateRequest
+- **ie**: Add Additional Usage Reports Information (IE 126) to SessionModificationResponse
+- **ie**: Add RAT Type (IE 275) to session establishment/modification requests
+- **ie**: Add `Qfi::of()` const constructor to avoid `.unwrap()` at call sites
+
+#### Message Wiring
+- **message**: Wire UeLevelMeasurementsConfiguration (IE 353) into session messages
+- **message**: Wire RequestedClockDriftInformation (IE 204) into association messages
+- **message**: Wire 2 IEs into SessionEstablishmentResponse; 5 IEs into SessionEstablishmentRequest; 7 IEs into SessionModificationRequest
+- **message**: Wire IEs 178/180/187/238/267/315/320 into association and node report messages
+- **message**: Add UpdatedPdr (IE 256) to SessionModificationResponse
+- **message**: Add FQ-CSID (IE 65) to session establishment/modification/set-deletion messages
+- **message**: Add CreatedTrafficEndpoint (IE 128) to session establishment/modification responses
+- **message**: Add UE IP Address Pool Information (IE 233), Partial Failure Information (IE 272), Failed Rule ID (IE 114) to respective messages
+- **message**: Add PFCP Association Release Request context (IE 111) to AssociationUpdateRequest
+- **message**: Add UeIpAddressUsageInformation (IE 267) to AssociationUpdateResponse
+
+#### Ergonomics API (9 improvements)
+- **message**: Add `Message: Send + Sync` bounds — `parse()` returns `Box<dyn Message>` safe for async runtimes
+- **ie**: Add `CreateQer::qfi` field and `CreateQerBuilder::qfi()` method
+- **ie**: Add `volume_quota`, `time_quota`, `measurement_period` fields and builder methods to `CreateUrr`
+- **message**: Add `SessionModificationResponseBuilder::accepted(seid, seq)` factory
+- **message**: Add `SessionDeletionResponseBuilder::accepted(seid, seq)` factory
+- **message**: Add typed `.add_pdr()`, `.add_far()`, `.add_urr()`, `.add_qer()`, `.add_bar()`, `.add_traffic_endpoint()` builder methods to `SessionEstablishmentRequestBuilder`
+- **message**: Add typed `.add_*()` methods to `SessionModificationRequestBuilder`
+
+#### Examples
+- **examples**: Update comprehensive_pfcp_features.rs to cover all Phase 11 IEs and reflect 100% Rel-18 compliance
+- **examples**: Add fixed-access-demo.rs demonstrating L2tpUserAuthentication, IpAddressAndPortNumberReplacement, and DnsQueryResponseFilter with round-trip validation
+- **examples**: Update examples to use new ergonomic APIs throughout
+- **bench**: Add comparison_operations benchmark suite
+
+### Bug Fixes
+- **ie**: Correct RAT Type IE number from 82 to 275 per 3GPP TS 29.244 Table 8.1.1
+- **message**: Add missing mandatory NodeId IE to SessionSetModificationResponse
+
+### Performance
+- **core**: Eliminate unnecessary clones in hot paths across marshal/unmarshal operations
+
+### Documentation
+- **reference**: Update ie-support.md for Phase 10 remediation and Phase 11 final gap closure
+- **reference**: Update all IE counts to 354, test counts to 3,400+, version to 0.4.0
+
 ## [0.3.1] - 2026-03-01
 
 ### Bug Fixes

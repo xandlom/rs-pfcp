@@ -16,9 +16,9 @@ PFCP is the critical communication protocol between **Control Plane** and **User
 
 ## ✨ Key Features
 
-- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 278+ Information Elements implemented with complete core session management
+- 🏆 **3GPP TS 29.244 Release 18 Compliance** - 354 Information Elements implemented — 100% complete specification coverage
 - 🔥 **High Performance** - Sub-microsecond binary protocol implementation
-- 🧪 **Battle Tested** - 3,100+ comprehensive tests with full round-trip serialization validation
+- 🧪 **Battle Tested** - 3,400+ comprehensive tests with full round-trip serialization validation
 - 🛠️ **Developer Friendly** - Ergonomic builder APIs, typed IE decoding via `Ie::parse::<T>()`, and direct marshaling
 - 📊 **Production Ready** - Message comparison, YAML/JSON display, network interface support, and robust examples
 
@@ -65,7 +65,7 @@ let cause: Cause = msg.ies(IeType::Cause).next()?.parse()?;
 
 ### Protocol Coverage
 - ✅ **25/25 Message Types** (100% coverage) - All core session and association management
-- ✅ **278+ Information Elements** implemented (334+ enum variants defined) - Complete 3GPP TS 29.244 Release 18 core IEs
+- ✅ **354 Information Elements** implemented (354 enum variants) - 100% 3GPP TS 29.244 Release 18 coverage
 - ✅ **Advanced Features** - Network slicing (S-NSSAI), multi-access support, F-TEID with CHOOSE flags, QoS enforcement, usage reporting, Ethernet PDU sessions
 - ✅ **5G Core Integration** - Session establishment, modification, deletion, and comprehensive usage reporting with quota management
 
@@ -77,7 +77,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.3.1"
+rs-pfcp = "0.4.0"
 ```
 
 ### Basic Usage
@@ -188,7 +188,7 @@ cargo bench
 
 ```
 rs-pfcp/
-├── src/ie/              # Information Elements (278+ types)
+├── src/ie/              # Information Elements (354 types, 100% Rel-18)
 │   ├── f_teid.rs        # F-TEID with 3GPP compliant CHOOSE flags
 │   ├── pdn_type.rs      # PDN connection types (IPv4/IPv6/Non-IP)
 │   ├── snssai.rs        # 5G Network Slicing identifiers
@@ -275,7 +275,7 @@ We provide migration guides for all breaking changes and deprecate features befo
 # Build the library
 cargo build
 
-# Run all tests (3,100+ tests)
+# Run all tests (3,400+ tests)
 cargo test
 
 # Run specific test category

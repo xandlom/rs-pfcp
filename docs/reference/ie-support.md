@@ -4,15 +4,15 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 
 ## Implementation Status Summary
 
-**Total IE Type Variants**: 342 (comprehensive 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 338 individual implementation files
-**Core IEs**: 338+ essential PFCP functionality
-**Test Coverage**: 3,044 comprehensive tests (all passing)
+**Total IE Type Variants**: 354 (complete 3GPP TS 29.244 Release 18 coverage)
+**Implemented IE Modules**: 356 individual implementation files
+**Core IEs**: 356+ essential PFCP functionality
+**Test Coverage**: 3,400+ comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
 ### Implementation Highlights
 - ✅ **All essential IEs implemented** for production deployments
-- ✅ **3,044 comprehensive tests** with 100% round-trip validation
+- ✅ **3,400+ comprehensive tests** with 100% round-trip validation
 - ✅ **Zero warnings** in cargo fmt, clippy, and cargo doc builds
 - ✅ **3GPP compliant** F-TEID with CHOOSE/CHOOSE_ID flags
 - ✅ **Context-specific IEs** (e.g., UpdateBarWithinSessionReportResponse)
@@ -342,7 +342,7 @@ Also added IEs 274, 293, 294, 296, 297, 298, 299 to the `IeType` enum (previousl
 - ✅ **3GPP compliant F-TEID** - CHOOSE/CHOOSE_ID flags for UPF allocation
 - ✅ **Release 18 features** - Network slicing, multi-access, enhanced QoS
 - ✅ **Context-specific IEs** - Proper usage in different message contexts
-- ✅ **Production-ready** - 3,044 comprehensive tests with 100% validation
+- ✅ **Production-ready** - 3,400+ comprehensive tests with 100% validation
 
 ### F-TEID Implementation Highlights
 ```rust
@@ -386,7 +386,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 ## Architecture Excellence
 
 ### Comprehensive Test Coverage
-- **3,044 comprehensive tests** with 100% pass rate
+- **3,400+ comprehensive tests** with 100% pass rate
 - **Round-trip serialization** validation for all IEs
 - **3GPP compliance testing** for critical IEs (F-TEID, Created PDR, etc.)
 - **Builder pattern validation** with comprehensive error checking
@@ -414,7 +414,7 @@ This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
 - ✅ **328+ IEs** across 328 implementation modules
 - ✅ **All 25 message types** with proper IE integration
-- ✅ **3,044 comprehensive tests** ensuring reliability
+- ✅ **3,400+ comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling
 - ✅ **Builder patterns** for ergonomic API usage
 - ✅ **Rich debugging support** with YAML/JSON formatting
