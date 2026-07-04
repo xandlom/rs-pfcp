@@ -3,7 +3,8 @@
 //! Converts PFCP messages to YAML and JSON formats for debugging and logging.
 //! IE order in the output matches the binary message (wire format).
 
-use crate::ie::{Ie, IeType};
+use crate::ie::{is_grouped_ie, Ie, IeIterator, IeType};
+use crate::message::header::Header;
 use crate::message::Message;
 use serde_json::{json, Map, Value};
 
@@ -79,6 +80,74 @@ fn message_to_value(msg: &dyn Message) -> Value {
 }
 
 // ============================================================================
+// Layer 2b: Lenient (best-effort) decode for diagnostic display
+// ============================================================================
+
+/// Decodes a raw PFCP message leniently for diagnostic display.
+///
+/// `rs_pfcp::message::parse()` is strict by design: a missing mandatory IE
+/// or a malformed top-level IE fails the whole message, which is the right
+/// behavior for code that builds or validates messages to actually send.
+/// But it means a diagnostic tool (e.g. `pcap-reader`) gets nothing to show
+/// for a message that is mostly fine but trips one of those checks.
+///
+/// This function never fails. It decodes only the fixed header via
+/// [`Header::unmarshal`] (the one part with no fallback — without it there
+/// are no reliable byte boundaries at all) and then walks the IE tree via
+/// [`ie_to_value`], which — same as the strict display path — recurses into
+/// grouped IEs and resyncs past a single malformed IE at any nesting level
+/// instead of aborting the whole walk.
+///
+/// Intended as a fallback for display/inspection tooling when strict
+/// `message::parse()` fails — not a substitute for it. It does not perform
+/// mandatory-IE or semantic validation.
+pub fn describe_lossy(data: &[u8]) -> Value {
+    let mut map = Map::new();
+
+    let header = match Header::unmarshal(data) {
+        Ok(header) => header,
+        Err(e) => {
+            map.insert("_error".into(), json!(format!("{e}")));
+            add_fallback_payload(&mut map, data);
+            return Value::Object(map);
+        }
+    };
+
+    map.insert(
+        "message_type".into(),
+        json!(format!("{:?}", header.message_type)),
+    );
+    map.insert("version".into(), json!(header.version));
+    map.insert("sequence".into(), json!(*header.sequence_number));
+    if header.has_seid {
+        map.insert("seid".into(), json!(format!("0x{:016x}", header.seid.0)));
+    }
+
+    let body = &data[(header.len() as usize).min(data.len())..];
+    let ie_array: Vec<Value> = IeIterator::new(body).map(ie_result_to_value).collect();
+    if !ie_array.is_empty() {
+        map.insert("information_elements".into(), Value::Array(ie_array));
+    }
+
+    Value::Object(map)
+}
+
+/// Converts one [`IeIterator`] item to a `Value`, whether it decoded
+/// successfully or not. Used both by [`describe_lossy`]'s top-level walk and
+/// by [`ie_to_value`]'s grouped-IE fallback, so a single malformed IE never
+/// hides its well-formed siblings at any nesting level.
+fn ie_result_to_value(result: Result<Ie, crate::error::PfcpError>) -> Value {
+    match result {
+        Ok(ie) => ie_to_value(&ie),
+        Err(e) => {
+            let mut obj = Map::new();
+            obj.insert("_error".into(), json!(format!("{e}")));
+            Value::Object(obj)
+        }
+    }
+}
+
+// ============================================================================
 // Layer 1: IE → Value
 // ============================================================================
 
@@ -90,6 +159,13 @@ enum IeDisplayResult {
 }
 
 /// Convert a single IE to a JSON value.
+///
+/// If there's no rich per-field decoder for this IE type (or it fails), a
+/// grouped IE (per [`is_grouped_ie`]) is rendered as a recursive tree of its
+/// children via [`IeIterator`] rather than an opaque hex dump — so a single
+/// malformed child (or a grouped type with no dedicated decoder yet) still
+/// exposes whatever structure could be decoded. True scalar IEs, which have
+/// no further structure to recurse into, fall back to a raw payload dump.
 fn ie_to_value(ie: &Ie) -> Value {
     let type_name = format!("{:?}", ie.ie_type);
 
@@ -109,7 +185,14 @@ fn ie_to_value(ie: &Ie) -> Value {
             let mut obj = Map::new();
             obj.insert("type".into(), json!(type_name));
             obj.insert("length".into(), json!(ie.len()));
-            add_fallback_payload(&mut obj, &ie.payload);
+            if is_grouped_ie(ie.ie_type) {
+                let children: Vec<Value> = IeIterator::new(&ie.payload)
+                    .map(ie_result_to_value)
+                    .collect();
+                obj.insert("children".into(), Value::Array(children));
+            } else {
+                add_fallback_payload(&mut obj, &ie.payload);
+            }
             Value::Object(obj)
         }
     }
@@ -739,8 +822,18 @@ mod tests {
     use crate::message::heartbeat_response::HeartbeatResponseBuilder;
     use crate::message::session_establishment_request::SessionEstablishmentRequestBuilder;
     use crate::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+    use crate::message::MsgType;
     use std::net::{Ipv4Addr, Ipv6Addr};
     use std::time::SystemTime;
+
+    /// Builds the raw bytes of a rejected zero-length IE (header readable,
+    /// content invalid — `FarId` is not on the zero-length allowlist).
+    fn rejected_zero_length_ie_bytes() -> Vec<u8> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&(IeType::FarId as u16).to_be_bytes());
+        bytes.extend_from_slice(&0u16.to_be_bytes());
+        bytes
+    }
 
     fn create_heartbeat_request() -> Box<dyn Message> {
         let recovery_ts = RecoveryTimeStamp::new(SystemTime::UNIX_EPOCH);
@@ -1135,5 +1228,99 @@ mod tests {
         );
         assert_eq!(json_parsed.get("sequence"), yaml_as_json.get("sequence"));
         assert_eq!(json_parsed.get("version"), yaml_as_json.get("version"));
+    }
+
+    // ========================================================================
+    // Lenient (best-effort) decode tests
+    // ========================================================================
+
+    #[test]
+    fn test_ie_to_value_grouped_ie_without_rich_decoder_recurses_into_children() {
+        // CreateQer is grouped but has no dedicated rich decoder — it must
+        // no longer collapse to an opaque hex dump.
+        let child = Ie::new(IeType::PdrId, vec![0x00, 0x01]);
+        let grouped = Ie::new(IeType::CreateQer, child.marshal());
+
+        let value = ie_to_value(&grouped);
+
+        assert_eq!(value["type"], "CreateQer");
+        assert!(value.get("payload_hex").is_none());
+        let children = value["children"].as_array().unwrap();
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0]["type"], "PdrId");
+    }
+
+    #[test]
+    fn test_ie_to_value_grouped_ie_resyncs_past_malformed_child() {
+        let mut payload = rejected_zero_length_ie_bytes();
+        payload.extend_from_slice(&Ie::new(IeType::PdrId, vec![0x00, 0x2a]).marshal());
+        let grouped = Ie::new(IeType::CreateQer, payload);
+
+        let value = ie_to_value(&grouped);
+        let children = value["children"].as_array().unwrap();
+
+        assert_eq!(
+            children.len(),
+            2,
+            "malformed child must not hide its sibling"
+        );
+        assert!(children[0].get("_error").is_some());
+        assert_eq!(children[1]["type"], "PdrId");
+    }
+
+    #[test]
+    fn test_describe_lossy_recovers_past_top_level_malformed_ie() {
+        // A message-level equivalent of the grouped-IE case above: a
+        // rejected zero-length IE at the top level, followed by a
+        // perfectly valid RecoveryTimeStamp IE.
+        let mut data = Header::new(MsgType::HeartbeatRequest, false, 0u64, 42u32).marshal();
+        data.extend_from_slice(&rejected_zero_length_ie_bytes());
+        let recovery_ts = crate::ie::recovery_time_stamp::RecoveryTimeStamp::new(
+            std::time::SystemTime::UNIX_EPOCH,
+        );
+        data.extend_from_slice(
+            &Ie::new(IeType::RecoveryTimeStamp, recovery_ts.marshal().to_vec()).marshal(),
+        );
+
+        // Confirm the premise: strict parsing really does fail on this data.
+        assert!(crate::message::parse(&data).is_err());
+
+        let value = describe_lossy(&data);
+        assert_eq!(value["message_type"], "HeartbeatRequest");
+        assert_eq!(value["sequence"], 42);
+
+        let ies = value["information_elements"].as_array().unwrap();
+        assert_eq!(
+            ies.len(),
+            2,
+            "the valid IE after the bad one must still show up"
+        );
+        assert!(ies[0].get("_error").is_some());
+        assert_eq!(ies[1]["type"], "RecoveryTimeStamp");
+    }
+
+    #[test]
+    fn test_describe_lossy_valid_message_has_no_errors() {
+        let request = create_heartbeat_request();
+        let data = request.marshal();
+
+        let value = describe_lossy(&data);
+        assert_eq!(value["message_type"], "HeartbeatRequest");
+        assert_eq!(value["sequence"], 12345);
+        assert!(value.get("_error").is_none());
+
+        let ies = value["information_elements"].as_array().unwrap();
+        assert!(ies.iter().all(|ie| ie.get("_error").is_none()));
+    }
+
+    #[test]
+    fn test_describe_lossy_header_too_short_reports_error_without_panicking() {
+        for data in [&[][..], &[0x21][..], &[0x21, 0x32, 0x00][..]] {
+            let value = describe_lossy(data);
+            assert!(
+                value.get("_error").is_some(),
+                "expected an error for header bytes: {data:?}"
+            );
+        }
     }
 }

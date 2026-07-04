@@ -5,51 +5,9 @@ use crate::comparison::{
     IeMismatch, MessageDiff, MismatchReason, OptionalIeMode,
 };
 use crate::error::PfcpError;
-use crate::ie::{Ie, IeType};
+use crate::ie::{is_grouped_ie, Ie, IeType};
 use crate::message::Message;
 use std::collections::{HashMap, HashSet};
-
-/// Check if an IE type is a grouped IE (contains child IEs).
-///
-/// Grouped IEs are defined per 3GPP TS 29.244 Section 8.2 as Information Elements
-/// that contain other Information Elements as their payload.
-fn is_grouped_ie(ie_type: IeType) -> bool {
-    matches!(
-        ie_type,
-        IeType::CreatePdr
-            | IeType::Pdi
-            | IeType::CreateFar
-            | IeType::ForwardingParameters
-            | IeType::DuplicatingParameters
-            | IeType::CreateUrr
-            | IeType::CreateQer
-            | IeType::CreatedPdr
-            | IeType::UpdatePdr
-            | IeType::UpdateFar
-            | IeType::UpdateForwardingParameters
-            | IeType::UpdateBarWithinSessionReportResponse
-            | IeType::UpdateUrr
-            | IeType::UpdateQer
-            | IeType::CreateBar
-            | IeType::UpdateBar
-            | IeType::LoadControlInformation
-            | IeType::OverloadControlInformation
-            | IeType::ApplicationIdsPfds
-            | IeType::PfdContext
-            | IeType::UpdateDuplicatingParameters
-            | IeType::CreateTrafficEndpoint
-            | IeType::UpdateTrafficEndpoint
-            | IeType::UsageReportWithinSessionModificationResponse
-            | IeType::UsageReportWithinSessionDeletionResponse
-            | IeType::UsageReportWithinSessionReportRequest
-            | IeType::UpdateMar
-            | IeType::UpdateTgppAccessForwardingActionInformation
-            | IeType::UpdateNonTgppAccessForwardingActionInformation
-            | IeType::UpdateSrr
-            | IeType::UpdatedPdr
-            | IeType::RedundantTransmissionForwardingParameters
-    )
-}
 
 /// Parse child IEs from a grouped IE payload.
 ///
@@ -579,31 +537,6 @@ mod tests {
     // ========================================================================
     // Deep Grouped IE Comparison Tests
     // ========================================================================
-
-    #[test]
-    fn test_is_grouped_ie() {
-        // Test that grouped IEs are correctly identified
-        assert!(is_grouped_ie(IeType::CreatePdr));
-        assert!(is_grouped_ie(IeType::CreateFar));
-        assert!(is_grouped_ie(IeType::CreateQer));
-        assert!(is_grouped_ie(IeType::CreateUrr));
-        assert!(is_grouped_ie(IeType::CreateBar));
-        assert!(is_grouped_ie(IeType::Pdi));
-        assert!(is_grouped_ie(IeType::ForwardingParameters));
-        assert!(is_grouped_ie(IeType::DuplicatingParameters));
-        assert!(is_grouped_ie(IeType::CreatedPdr));
-        assert!(is_grouped_ie(IeType::UpdatePdr));
-        assert!(is_grouped_ie(IeType::UpdateFar));
-        assert!(is_grouped_ie(IeType::UpdateQer));
-        assert!(is_grouped_ie(IeType::UpdateUrr));
-
-        // Test that non-grouped IEs are not identified as grouped
-        assert!(!is_grouped_ie(IeType::Cause));
-        assert!(!is_grouped_ie(IeType::PdrId));
-        assert!(!is_grouped_ie(IeType::FarId));
-        assert!(!is_grouped_ie(IeType::Fteid));
-        assert!(!is_grouped_ie(IeType::RecoveryTimeStamp));
-    }
 
     #[test]
     fn test_parse_child_ies_empty() {

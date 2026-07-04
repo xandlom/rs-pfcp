@@ -284,14 +284,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!();
                     }
                     Err(e) => {
-                        println!("Packet {packet_count}: Failed to parse PFCP message: {e}");
-                        if pfcp_data.len() >= 4 {
-                            println!(
-                                "  Raw header: {:02x} {:02x} {:02x} {:02x}",
-                                pfcp_data[0], pfcp_data[1], pfcp_data[2], pfcp_data[3]
-                            );
-                        }
+                        println!(
+                            "Packet {packet_count}: Failed to strictly parse PFCP message: {e}"
+                        );
                         println!("  Payload length: {}", pfcp_data.len());
+                        println!("  Falling back to best-effort (lossy) decode:");
+
+                        // Strict parse() rejects the whole message on a
+                        // single malformed/missing IE. describe_lossy()
+                        // never fails: it decodes the header directly and
+                        // walks whatever IEs it can, so a genuinely
+                        // malformed capture (or non-compliant peer) still
+                        // shows everything decodable instead of just an
+                        // error string and 4 raw bytes.
+                        let lossy = rs_pfcp::message::display::describe_lossy(pfcp_data);
+                        match args.format.as_str() {
+                            "json" => match serde_json::to_string_pretty(&lossy) {
+                                Ok(json) => println!("{json}"),
+                                Err(e) => println!("  Error serializing lossy decode: {e}"),
+                            },
+                            _ => match serde_yaml_ng::to_string(&lossy) {
+                                Ok(yaml) => println!("{yaml}"),
+                                Err(e) => println!("  Error serializing lossy decode: {e}"),
+                            },
+                        }
                         println!();
                     }
                 }
