@@ -1649,15 +1649,24 @@ pub fn marshal_ies(ies: &[Ie]) -> Vec<u8> {
 ///
 /// # Errors
 ///
-/// Returns an error if:
+/// Yields an error if:
 /// - IE header is malformed
 /// - Payload is truncated (IE extends past end)
 ///
 /// # Implementation Notes
 ///
-/// This iterator automatically stops on the first error and won't continue
-/// iteration after an error is encountered. This matches the standard error
-/// handling pattern for PFCP parsing.
+/// Every strict `unmarshal()` in this crate calls `ie_result?` on the first
+/// item, so it bails out on the first error exactly as before — this
+/// iterator's resync behavior is invisible to that pattern.
+///
+/// However, the iterator itself does not stop after an error: if the 4-byte
+/// Type+Length header was readable, it uses the declared length to skip
+/// forward to the next IE and keeps yielding subsequent (possibly
+/// well-formed) IEs. This lets lenient consumers — e.g. diagnostic/display
+/// tooling that wants to show as much of a malformed message as possible —
+/// continue past a single bad IE instead of losing the rest of the buffer.
+/// Iteration only stops for good when the header itself can't be read (fewer
+/// than 4 bytes remain), since there is no declared length to resync on.
 pub struct IeIterator<'a> {
     payload: &'a [u8],
     offset: usize,
@@ -1687,15 +1696,28 @@ impl<'a> Iterator for IeIterator<'a> {
             return None;
         }
 
-        match Ie::unmarshal(&self.payload[self.offset..]) {
+        let remaining = &self.payload[self.offset..];
+        match Ie::unmarshal(remaining) {
             Ok(ie) => {
                 let ie_len = ie.len() as usize;
                 self.offset += ie_len;
                 Some(Ok(ie))
             }
             Err(e) => {
-                // Move to end to stop iteration
-                self.offset = self.payload.len();
+                if remaining.len() >= 4 {
+                    // The Type+Length header was readable even though the
+                    // IE itself is invalid (e.g. a rejected zero-length
+                    // encoding, or a declared payload longer than what's
+                    // left in the buffer). Resync using the declared
+                    // length so a single bad IE doesn't hide the rest of
+                    // the buffer from lenient consumers.
+                    let declared_length = u16::from_be_bytes([remaining[2], remaining[3]]);
+                    self.offset += 4 + declared_length as usize;
+                } else {
+                    // Header itself is truncated — there's no declared
+                    // length to resync on, so stop iteration.
+                    self.offset = self.payload.len();
+                }
                 Some(Err(e))
             }
         }
@@ -3282,6 +3304,67 @@ mod tests {
 
             assert_eq!(count, 1, "Should parse one valid IE");
             assert!(error_found, "Should encounter error on truncated IE");
+        }
+
+        #[test]
+        fn test_ie_iterator_resyncs_past_rejected_zero_length_ie() {
+            // A rejected zero-length IE (header readable, but content
+            // invalid) should not hide a well-formed IE that follows it.
+            let mut payload = Vec::new();
+            payload.extend_from_slice(&(IeType::FarId as u16).to_be_bytes());
+            payload.extend_from_slice(&0u16.to_be_bytes()); // length = 0 (rejected)
+
+            let valid_ie = Ie::new(IeType::PdrId, vec![0x00, 0x2a]);
+            payload.extend_from_slice(&valid_ie.marshal());
+
+            let results: Vec<_> = IeIterator::new(&payload).collect();
+            assert_eq!(results.len(), 2);
+            assert!(results[0].is_err(), "zero-length FAR ID must be rejected");
+            let ie = results[1].as_ref().unwrap();
+            assert_eq!(ie.ie_type, IeType::PdrId);
+            assert_eq!(ie.payload, vec![0x00, 0x2a]);
+        }
+
+        #[test]
+        fn test_ie_iterator_resync_stops_cleanly_when_declared_length_exceeds_buffer() {
+            // Header is readable, but the declared length claims more bytes
+            // than actually remain. Resyncing by the declared length lands
+            // past the end of the buffer, which must end iteration cleanly
+            // (no panic, no infinite loop) rather than yielding bogus IEs.
+            let mut payload = Vec::new();
+            payload.extend_from_slice(&(IeType::FarId as u16).to_be_bytes());
+            payload.extend_from_slice(&100u16.to_be_bytes()); // claims 100 bytes
+            payload.extend_from_slice(&[0x01, 0x02, 0x03]); // but only 3 remain
+
+            let results: Vec<_> = IeIterator::new(&payload).collect();
+            assert_eq!(results.len(), 1);
+            assert!(results[0].is_err());
+        }
+
+        #[test]
+        fn test_ie_iterator_strict_question_mark_consumers_unaffected_by_resync() {
+            // Resync is invisible to the standard `ie_result?` pattern used
+            // by every strict unmarshal() in this crate: it still bails on
+            // the very first error and never sees the resynced IEs after it.
+            fn parse_ies(payload: &[u8]) -> Result<Vec<IeType>, PfcpError> {
+                let mut types = vec![];
+                for ie_result in IeIterator::new(payload) {
+                    let ie = ie_result?;
+                    types.push(ie.ie_type);
+                }
+                Ok(types)
+            }
+
+            let mut payload = Vec::new();
+            payload.extend_from_slice(&(IeType::FarId as u16).to_be_bytes());
+            payload.extend_from_slice(&0u16.to_be_bytes()); // rejected zero-length
+            payload.extend_from_slice(&Ie::new(IeType::PdrId, vec![0x00, 0x2a]).marshal());
+
+            let result = parse_ies(&payload);
+            assert!(
+                result.is_err(),
+                "strict consumer must still bail immediately"
+            );
         }
 
         #[test]
