@@ -1586,6 +1586,59 @@ impl Ie {
     }
 }
 
+/// Reports whether an IE type is a grouped IE (contains child IEs as its payload).
+///
+/// Per 3GPP TS 29.244 Section 8.2, grouped IEs are Information Elements
+/// whose payload is itself a sequence of TLV-encoded child IEs, parseable
+/// via [`IeIterator`]. Used by both the comparison framework (to decide
+/// whether to deep-compare a payload's children) and the lenient display
+/// path (to decide whether to recurse into a payload or render it as a
+/// leaf value).
+///
+/// This list covers the grouped IEs used in the session-management message
+/// flows (Create/Update/Created * IEs, PDI, forwarding/duplicating
+/// parameters, usage reports, load/overload control). It is not
+/// exhaustive of every grouped IE added across later 3GPP releases;
+/// unlisted grouped IEs are rendered as opaque payloads rather than
+/// misidentified as scalar values.
+pub(crate) fn is_grouped_ie(ie_type: IeType) -> bool {
+    matches!(
+        ie_type,
+        IeType::CreatePdr
+            | IeType::Pdi
+            | IeType::CreateFar
+            | IeType::ForwardingParameters
+            | IeType::DuplicatingParameters
+            | IeType::CreateUrr
+            | IeType::CreateQer
+            | IeType::CreatedPdr
+            | IeType::UpdatePdr
+            | IeType::UpdateFar
+            | IeType::UpdateForwardingParameters
+            | IeType::UpdateBarWithinSessionReportResponse
+            | IeType::UpdateUrr
+            | IeType::UpdateQer
+            | IeType::CreateBar
+            | IeType::UpdateBar
+            | IeType::LoadControlInformation
+            | IeType::OverloadControlInformation
+            | IeType::ApplicationIdsPfds
+            | IeType::PfdContext
+            | IeType::UpdateDuplicatingParameters
+            | IeType::CreateTrafficEndpoint
+            | IeType::UpdateTrafficEndpoint
+            | IeType::UsageReportWithinSessionModificationResponse
+            | IeType::UsageReportWithinSessionDeletionResponse
+            | IeType::UsageReportWithinSessionReportRequest
+            | IeType::UpdateMar
+            | IeType::UpdateTgppAccessForwardingActionInformation
+            | IeType::UpdateNonTgppAccessForwardingActionInformation
+            | IeType::UpdateSrr
+            | IeType::UpdatedPdr
+            | IeType::RedundantTransmissionForwardingParameters
+    )
+}
+
 /// Efficiently marshals a slice of IEs into a byte vector.
 ///
 /// Pre-allocates capacity based on IE lengths to avoid reallocations.
@@ -3145,6 +3198,29 @@ mod tests {
     /// Tests for grouped IE helper functions (Phase 2)
     mod grouped_ie_helpers {
         use super::*;
+
+        #[test]
+        fn test_is_grouped_ie() {
+            assert!(is_grouped_ie(IeType::CreatePdr));
+            assert!(is_grouped_ie(IeType::CreateFar));
+            assert!(is_grouped_ie(IeType::CreateQer));
+            assert!(is_grouped_ie(IeType::CreateUrr));
+            assert!(is_grouped_ie(IeType::CreateBar));
+            assert!(is_grouped_ie(IeType::Pdi));
+            assert!(is_grouped_ie(IeType::ForwardingParameters));
+            assert!(is_grouped_ie(IeType::DuplicatingParameters));
+            assert!(is_grouped_ie(IeType::CreatedPdr));
+            assert!(is_grouped_ie(IeType::UpdatePdr));
+            assert!(is_grouped_ie(IeType::UpdateFar));
+            assert!(is_grouped_ie(IeType::UpdateQer));
+            assert!(is_grouped_ie(IeType::UpdateUrr));
+
+            assert!(!is_grouped_ie(IeType::Cause));
+            assert!(!is_grouped_ie(IeType::PdrId));
+            assert!(!is_grouped_ie(IeType::FarId));
+            assert!(!is_grouped_ie(IeType::Fteid));
+            assert!(!is_grouped_ie(IeType::RecoveryTimeStamp));
+        }
 
         #[test]
         fn test_marshal_ies_empty() {
