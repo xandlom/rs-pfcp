@@ -50,6 +50,7 @@ use rs_pfcp::ie::{
     ue_ip_address::UeIpAddress,
     update_far::UpdateFarBuilder,
     update_forwarding_parameters::UpdateForwardingParameters,
+    update_pdr::UpdatePdrBuilder,
     update_qer::UpdateQerBuilder,
     IeType,
     IntoIe,
@@ -317,8 +318,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .build()
             .unwrap();
 
-        // Create modified PDR with higher precedence using enhanced builder
-        let modified_pdr = CreatePdrBuilder::new(PdrId::new(1))
+        // Update existing PDR 1 with higher precedence using UpdatePdrBuilder
+        let modified_pdr = UpdatePdrBuilder::new(PdrId::new(1))
             .precedence(Precedence::new(150)) // Higher precedence
             .pdi(modified_uplink_pdi)
             .far_id(FarId::new(3)) // New FAR for modified behavior
