@@ -393,7 +393,7 @@ fn test_session_modification_response_marshal_unmarshal() {
         header,
         cause: cause_ie.clone(),
         offending_ie: None,
-        created_pdr: Some(pdr_ie.clone()),
+        created_pdrs: vec![pdr_ie.clone()],
         load_control_information: None,
         overload_control_information: None,
         pdn_type: None,

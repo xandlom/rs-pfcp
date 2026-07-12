@@ -11,7 +11,7 @@ pub struct SessionModificationResponse {
     pub header: Header,
     pub cause: Ie, // M - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 19 - Acceptance/partial acceptance/rejection
     pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
-    pub created_pdr: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 16 - Multiple instances, Grouped IE (not Sxc)
+    pub created_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 16 - Multiple instances, Grouped IE (not Sxc)
     pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
     pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 54 - Grouped IE (during overload condition)
     pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 78 - Multiple instances, Grouped IE - When query requested or URR removed
@@ -42,7 +42,7 @@ impl Message for SessionModificationResponse {
         if let Some(ref ie) = self.offending_ie {
             ie.marshal_into(buf);
         }
-        if let Some(ref ie) = self.created_pdr {
+        for ie in &self.created_pdrs {
             ie.marshal_into(buf);
         }
         if let Some(ref ie) = self.load_control_information {
@@ -95,7 +95,7 @@ impl Message for SessionModificationResponse {
         if let Some(ref ie) = self.offending_ie {
             size += ie.len() as usize;
         }
-        if let Some(ref ie) = self.created_pdr {
+        for ie in &self.created_pdrs {
             size += ie.len() as usize;
         }
         if let Some(ref ie) = self.load_control_information {
@@ -147,7 +147,7 @@ impl Message for SessionModificationResponse {
         let header = Header::unmarshal(data)?;
         let mut cause = None;
         let mut offending_ie = None;
-        let mut created_pdr = None;
+        let mut created_pdrs = Vec::new();
         let mut load_control_information = None;
         let mut overload_control_information = None;
         let mut pdn_type = None;
@@ -170,7 +170,7 @@ impl Message for SessionModificationResponse {
             match ie.ie_type {
                 IeType::Cause => cause = Some(ie),
                 IeType::OffendingIe => offending_ie = Some(ie),
-                IeType::CreatedPdr => created_pdr = Some(ie),
+                IeType::CreatedPdr => created_pdrs.push(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
                 IeType::PdnType => pdn_type = Some(ie),
@@ -203,7 +203,7 @@ impl Message for SessionModificationResponse {
                 parent_ie: None,
             })?,
             offending_ie,
-            created_pdr,
+            created_pdrs,
             load_control_information,
             overload_control_information,
             pdn_type,
@@ -247,7 +247,7 @@ impl Message for SessionModificationResponse {
         match ie_type {
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
             IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
-            IeType::CreatedPdr => IeIter::single(self.created_pdr.as_ref(), ie_type),
+            IeType::CreatedPdr => IeIter::multiple(&self.created_pdrs, ie_type),
             IeType::LoadControlInformation => {
                 IeIter::single(self.load_control_information.as_ref(), ie_type)
             }
@@ -290,9 +290,7 @@ impl Message for SessionModificationResponse {
         if let Some(ref ie) = self.offending_ie {
             result.push(ie);
         }
-        if let Some(ref ie) = self.created_pdr {
-            result.push(ie);
-        }
+        result.extend(self.created_pdrs.iter());
         if let Some(ref ie) = self.load_control_information {
             result.push(ie);
         }
@@ -330,7 +328,7 @@ impl SessionModificationResponse {
         seq: impl Into<SequenceNumber>,
         cause_ie: Ie,
         offending_ie: Option<Ie>,
-        created_pdr: Option<Ie>,
+        created_pdrs: Vec<Ie>,
         load_control_information: Option<Ie>,
         overload_control_information: Option<Ie>,
         pdn_type: Option<Ie>,
@@ -347,7 +345,7 @@ impl SessionModificationResponse {
         if let Some(ie) = &offending_ie {
             payload_len += ie.len();
         }
-        if let Some(ie) = &created_pdr {
+        for ie in &created_pdrs {
             payload_len += ie.len();
         }
         if let Some(ie) = &load_control_information {
@@ -385,7 +383,7 @@ impl SessionModificationResponse {
             header,
             cause: cause_ie,
             offending_ie,
-            created_pdr,
+            created_pdrs,
             load_control_information,
             overload_control_information,
             pdn_type,
@@ -411,7 +409,7 @@ pub struct SessionModificationResponseBuilder {
     sequence: SequenceNumber,
     cause: Option<Ie>,
     offending_ie: Option<Ie>,
-    created_pdr: Option<Ie>,
+    created_pdrs: Vec<Ie>,
     load_control_information: Option<Ie>,
     overload_control_information: Option<Ie>,
     pdn_type: Option<Ie>,
@@ -443,7 +441,7 @@ impl SessionModificationResponseBuilder {
             sequence: sequence.into(),
             cause: None,
             offending_ie: None,
-            created_pdr: None,
+            created_pdrs: Vec::new(),
             load_control_information: None,
             overload_control_information: None,
             pdn_type: None,
@@ -504,9 +502,15 @@ impl SessionModificationResponseBuilder {
         self
     }
 
-    /// Sets the created PDR IE (optional).
+    /// Adds a Created PDR IE (optional, multiple instances allowed, not Sxc).
     pub fn created_pdr(mut self, created_pdr: Ie) -> Self {
-        self.created_pdr = Some(created_pdr);
+        self.created_pdrs.push(created_pdr);
+        self
+    }
+
+    /// Adds multiple Created PDR IEs (optional, multiple instances allowed, not Sxc).
+    pub fn created_pdrs(mut self, mut created_pdrs: Vec<Ie>) -> Self {
+        self.created_pdrs.append(&mut created_pdrs);
         self
     }
 
@@ -636,7 +640,7 @@ impl SessionModificationResponseBuilder {
         if let Some(ie) = &self.offending_ie {
             payload_len += ie.len();
         }
-        if let Some(ie) = &self.created_pdr {
+        for ie in &self.created_pdrs {
             payload_len += ie.len();
         }
         if let Some(ie) = &self.load_control_information {
@@ -687,7 +691,7 @@ impl SessionModificationResponseBuilder {
             header,
             cause,
             offending_ie: self.offending_ie,
-            created_pdr: self.created_pdr,
+            created_pdrs: self.created_pdrs,
             load_control_information: self.load_control_information,
             overload_control_information: self.overload_control_information,
             pdn_type: self.pdn_type,
@@ -734,7 +738,7 @@ mod tests {
         assert_eq!(response.msg_type(), MsgType::SessionModificationResponse);
         assert_eq!(response.cause, cause_ie);
         assert!(response.offending_ie.is_none());
-        assert!(response.created_pdr.is_none());
+        assert!(response.created_pdrs.is_empty());
         assert!(response.pdn_type.is_none());
         assert!(response.ies.is_empty());
     }
@@ -755,7 +759,7 @@ mod tests {
         assert_eq!(response.seid(), Some(Seid(11111)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.offending_ie, Some(offending_ie));
-        assert!(response.created_pdr.is_none());
+        assert!(response.created_pdrs.is_empty());
         assert!(response.pdn_type.is_none());
     }
 
@@ -774,9 +778,57 @@ mod tests {
         assert_eq!(*response.sequence(), 44444);
         assert_eq!(response.seid(), Some(Seid(33333)));
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.created_pdr, Some(created_pdr_ie));
+        assert_eq!(response.created_pdrs, vec![created_pdr_ie]);
         assert!(response.offending_ie.is_none());
         assert!(response.pdn_type.is_none());
+    }
+
+    #[test]
+    fn test_session_modification_response_builder_with_multiple_created_pdrs() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let created_pdr1_ie = Ie::new(IeType::CreatedPdr, vec![0x01, 0x02]);
+        let created_pdr2_ie = Ie::new(IeType::CreatedPdr, vec![0x03, 0x04]);
+
+        let response = SessionModificationResponseBuilder::new(33334, 44445)
+            .cause_ie(cause_ie)
+            .created_pdr(created_pdr1_ie.clone())
+            .created_pdr(created_pdr2_ie.clone())
+            .build();
+
+        assert_eq!(
+            response.created_pdrs,
+            vec![created_pdr1_ie.clone(), created_pdr2_ie.clone()]
+        );
+        assert_eq!(
+            response.ies(IeType::CreatedPdr).collect::<Vec<_>>(),
+            vec![&created_pdr1_ie, &created_pdr2_ie]
+        );
+
+        let marshaled = response.marshal();
+        let unmarshaled = SessionModificationResponse::unmarshal(&marshaled).unwrap();
+        assert_eq!(response, unmarshaled);
+        assert_eq!(unmarshaled.created_pdrs.len(), 2);
+    }
+
+    #[test]
+    fn test_session_modification_response_builder_created_pdrs_bulk() {
+        let cause = Cause::new(CauseValue::RequestAccepted);
+        let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+        let created_pdr1_ie = Ie::new(IeType::CreatedPdr, vec![0x01]);
+        let created_pdr2_ie = Ie::new(IeType::CreatedPdr, vec![0x02]);
+
+        let response = SessionModificationResponseBuilder::new(1, 2)
+            .cause_ie(cause_ie)
+            .created_pdrs(vec![created_pdr1_ie.clone(), created_pdr2_ie.clone()])
+            .build();
+
+        assert_eq!(
+            response.created_pdrs,
+            vec![created_pdr1_ie, created_pdr2_ie]
+        );
     }
 
     #[test]
@@ -796,7 +848,7 @@ mod tests {
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.pdn_type, Some(pdn_type_ie));
         assert!(response.offending_ie.is_none());
-        assert!(response.created_pdr.is_none());
+        assert!(response.created_pdrs.is_empty());
     }
 
     #[test]
@@ -842,7 +894,7 @@ mod tests {
         assert_eq!(*response.sequence(), 11110);
         assert_eq!(response.seid(), Some(Seid(99999)));
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.created_pdr, Some(created_pdr_ie));
+        assert_eq!(response.created_pdrs, vec![created_pdr_ie]);
         assert_eq!(response.pdn_type, Some(pdn_type_ie));
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);

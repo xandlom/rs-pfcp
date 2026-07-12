@@ -67,11 +67,9 @@ impl UpdateTrafficEndpoint {
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
             match ie.ie_type {
-                IeType::Unknown => {
-                    // Assume first Unknown IE is traffic endpoint ID
-                    if traffic_endpoint_id.is_none() {
-                        traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?);
-                    }
+                // Assume first Unknown IE is traffic endpoint ID
+                IeType::Unknown if traffic_endpoint_id.is_none() => {
+                    traffic_endpoint_id = Some(TrafficEndpointId::unmarshal(&ie.payload)?);
                 }
                 IeType::Fteid => {
                     local_f_teid = Some(Fteid::unmarshal(&ie.payload)?);

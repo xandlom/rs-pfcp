@@ -1,7 +1,7 @@
 //! Session Report Request message.
 
 use crate::error::PfcpError;
-use crate::ie::{Ie, IeType};
+use crate::ie::{report_type::ReportType, Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use crate::types::{Seid, SequenceNumber};
 
@@ -291,6 +291,11 @@ impl SessionReportRequestBuilder {
 
     pub fn report_type(mut self, report_type: Ie) -> Self {
         self.report_type = Some(report_type);
+        self
+    }
+
+    pub fn report_type_usage(mut self) -> Self {
+        self.report_type = Some(ReportType::usage_report().to_ie());
         self
     }
 

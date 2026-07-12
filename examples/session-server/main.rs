@@ -62,7 +62,8 @@ use rs_pfcp::ie::{
     create_pdr::CreatePdr,
     created_pdr::CreatedPdr,
     duration_measurement::DurationMeasurement,
-    f_teid::FteidBuilder,
+    f_teid::{Fteid, FteidBuilder},
+    fseid::Fseid,
     sequence_number::SequenceNumber,
     urr_id::UrrId,
     usage_report::UsageReportBuilder,
@@ -85,7 +86,7 @@ use rs_pfcp::message::{
     session_set_modification_response::SessionSetModificationResponseBuilder, Message, MsgType,
 };
 use std::error::Error;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
 use std::{collections::HashMap, thread, time::Duration};
 
 #[derive(Parser, Debug)]
@@ -132,6 +133,41 @@ fn create_quota_exhausted_usage_report() -> Option<Ie> {
     };
 
     Some(usage_report.to_ie())
+}
+
+/// Allocate a UPF-side local F-TEID for a newly created PDR.
+///
+/// Demonstrates three allocation strategies based on PDR ID: standard IPv4 (PDR 1),
+/// dual-stack IPv4+IPv6 (PDR 2), and CHOOSE-flag dynamic allocation (all other PDRs).
+/// Shared by the Session Establishment and Session Modification handlers.
+fn allocate_local_fteid(pdr_id: u16) -> Result<Fteid, PfcpError> {
+    let teid = 0x12345678 + pdr_id as u32;
+    match pdr_id {
+        1 => {
+            println!("      → Allocating standard IPv4 F-TEID for uplink PDR");
+            FteidBuilder::new()
+                .teid(teid)
+                .ipv4(Ipv4Addr::new(192, 168, 1, 100))
+                .build()
+        }
+        2 => {
+            println!("      → Allocating dual-stack F-TEID for downlink PDR");
+            let ipv6: Ipv6Addr = "2001:db8::100".parse().expect("valid IPv6 literal");
+            FteidBuilder::new()
+                .teid(teid)
+                .ipv4(Ipv4Addr::new(192, 168, 1, 100))
+                .ipv6(ipv6)
+                .build()
+        }
+        _ => {
+            println!("      → Using CHOOSE flag for dynamic F-TEID allocation");
+            FteidBuilder::new()
+                .teid(teid)
+                .choose_ipv4()
+                .choose_id(pdr_id as u8) // For correlation
+                .build()
+        }
+    }
 }
 
 // Structure to track session states
@@ -308,60 +344,14 @@ fn handle_session_establishment_request(
                 );
 
                 // Demonstrate different F-TEID allocation strategies based on PDR ID
-                let local_f_teid = match received_pdr.pdr_id.value {
-                    1 => {
-                        // For PDR 1: Standard IPv4 F-TEID allocation
-                        println!("      → Allocating standard IPv4 F-TEID for uplink PDR");
-                        match FteidBuilder::new()
-                            .teid(0x12345678 + received_pdr.pdr_id.value as u32)
-                            .ipv4(Ipv4Addr::new(192, 168, 1, 100))
-                            .build()
-                        {
-                            Ok(fteid) => fteid,
-                            Err(e) => {
-                                eprintln!("ERROR: Failed to build IPv4 F-TEID for uplink PDR: {e}");
-                                continue;
-                            }
-                        }
-                    }
-                    2 => {
-                        // For PDR 2: Dual-stack F-TEID with both IPv4 and IPv6
-                        println!("      → Allocating dual-stack F-TEID for downlink PDR");
-                        let ipv6 = match "2001:db8::100".parse() {
-                            Ok(addr) => addr,
-                            Err(e) => {
-                                eprintln!("ERROR: Invalid IPv6 address: {e}");
-                                continue;
-                            }
-                        };
-                        match FteidBuilder::new()
-                            .teid(0x12345678 + received_pdr.pdr_id.value as u32)
-                            .ipv4(Ipv4Addr::new(192, 168, 1, 100))
-                            .ipv6(ipv6)
-                            .build()
-                        {
-                            Ok(fteid) => fteid,
-                            Err(e) => {
-                                eprintln!("ERROR: Failed to build dual-stack F-TEID for downlink PDR: {e}");
-                                continue;
-                            }
-                        }
-                    }
-                    _ => {
-                        // For other PDRs: Use CHOOSE flag to let SMF know UPF will select
-                        println!("      → Using CHOOSE flag for dynamic F-TEID allocation");
-                        match FteidBuilder::new()
-                            .teid(0x12345678 + received_pdr.pdr_id.value as u32)
-                            .choose_ipv4()
-                            .choose_id(received_pdr.pdr_id.value as u8) // For correlation
-                            .build()
-                        {
-                            Ok(fteid) => fteid,
-                            Err(e) => {
-                                eprintln!("ERROR: Failed to build F-TEID with CHOOSE flag: {e}");
-                                continue;
-                            }
-                        }
+                let local_f_teid = match allocate_local_fteid(received_pdr.pdr_id.value) {
+                    Ok(fteid) => fteid,
+                    Err(e) => {
+                        eprintln!(
+                            "ERROR: Failed to allocate F-TEID for PDR {}: {e}",
+                            received_pdr.pdr_id.value
+                        );
+                        continue;
                     }
                 };
 
@@ -390,8 +380,12 @@ fn handle_session_establishment_request(
         },
     );
 
-    let fseid_ie = match msg.ies(IeType::Fseid).next() {
-        Some(ie) => ie.clone(),
+    let cp_fseid = match msg
+        .ies(IeType::Fseid)
+        .next()
+        .and_then(|ie| ie.parse::<Fseid>().ok())
+    {
+        Some(fseid) => fseid,
         None => {
             eprintln!("ERROR: Session establishment request missing F-SEID - sending rejection");
             let rejection = SessionEstablishmentResponseBuilder::rejected(seid, msg.sequence())
@@ -401,11 +395,13 @@ fn handle_session_establishment_request(
             return Ok(());
         }
     };
+    println!("  CP F-SEID: 0x{:016x}", *cp_fseid.seid);
 
-    // Build response with all created PDRs
+    // Build response with all created PDRs. Per 3GPP TS 29.244, the F-SEID in the
+    // response carries the UPF's own SEID/address, not the CP F-SEID from the request.
     let mut response_builder = SessionEstablishmentResponseBuilder::accepted(seid, msg.sequence())
         .node_id(Ipv4Addr::new(127, 0, 0, 1))
-        .fseid_ie(fseid_ie);
+        .fseid(seid, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
 
     // Add all created PDRs to the response
     for created_pdr in created_pdrs {
@@ -443,7 +439,6 @@ fn handle_session_establishment_request(
     println!("  [QUOTA EXHAUSTED] Sending Session Report Request for session 0x{seid:016x}");
 
     // Create and send Session Report Request with quota exhausted usage report
-    let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // USAR (Usage Report)
     let usage_report_ie = match create_quota_exhausted_usage_report() {
         Some(ie) => ie,
         None => {
@@ -453,7 +448,7 @@ fn handle_session_establishment_request(
     };
 
     let session_report_req = SessionReportRequestBuilder::new(seid, *ctx.next_sequence)
-        .report_type(report_type_ie)
+        .report_type_usage()
         .usage_reports(vec![usage_report_ie])
         .build();
 
@@ -476,7 +471,57 @@ fn handle_session_modification_request(
             return Ok(());
         }
     };
-    let res = SessionModificationResponseBuilder::accepted(seid, msg.sequence()).marshal();
+
+    if !ctx.sessions.contains_key(&seid) {
+        eprintln!("ERROR: Unknown session 0x{seid:016x} - sending rejection");
+        let rejection = SessionModificationResponseBuilder::new(seid, msg.sequence())
+            .cause(CauseValue::SessionContextNotFound)
+            .marshal();
+        ctx.socket.send_to(&rejection, ctx.src)?;
+        return Ok(());
+    }
+
+    // A modification request may ask the UPF to create brand-new PDRs, exactly like
+    // Session Establishment does - allocate F-TEIDs for them the same way.
+    let create_pdr_ies: Vec<_> = msg.ies(IeType::CreatePdr).collect();
+    if !create_pdr_ies.is_empty() {
+        println!("  Processing {} Create PDR IEs:", create_pdr_ies.len());
+    }
+
+    let mut created_pdrs = Vec::new();
+    for (index, create_pdr_ie) in create_pdr_ies.iter().enumerate() {
+        match create_pdr_ie.parse::<CreatePdr>() {
+            Ok(received_pdr) => {
+                println!(
+                    "    CreatePdr {}: PDR ID: {}, Precedence: {}",
+                    index + 1,
+                    received_pdr.pdr_id.value,
+                    received_pdr.precedence.value
+                );
+
+                let local_f_teid = match allocate_local_fteid(received_pdr.pdr_id.value) {
+                    Ok(fteid) => fteid,
+                    Err(e) => {
+                        eprintln!(
+                            "ERROR: Failed to allocate F-TEID for PDR {}: {e}",
+                            received_pdr.pdr_id.value
+                        );
+                        continue;
+                    }
+                };
+
+                let created_pdr = CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
+                created_pdrs.push(created_pdr.to_ie());
+            }
+            Err(e) => {
+                println!("    Failed to parse CreatePdr {}: {}", index + 1, e);
+            }
+        }
+    }
+
+    let res = SessionModificationResponseBuilder::accepted(seid, msg.sequence())
+        .created_pdrs(created_pdrs)
+        .marshal();
     ctx.socket.send_to(&res, ctx.src)?;
     Ok(())
 }
