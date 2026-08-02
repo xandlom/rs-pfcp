@@ -1,6 +1,6 @@
 //! Quota Validity Time Information Element.
 //!
-//! Per 3GPP TS 29.244 Section 8.2.131, contains the validity time
+//! Per 3GPP TS 29.244 Section 8.2.132, contains the validity time
 //! of a quota in seconds.
 
 use crate::error::PfcpError;
