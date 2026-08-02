@@ -1260,6 +1260,7 @@ mod tests {
             sdf_filter: None,
             application_id: None,
             ethernet_packet_filter: None,
+            three_gpp_interface_type: None,
             redundant_transmission_parameters: None,
             protocol_description: None,
         };
