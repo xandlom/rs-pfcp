@@ -283,6 +283,20 @@ fn display_usage_report(payload: &[u8]) -> Option<IeDisplayResult> {
         (UsageReportTrigger::STOPT, "STOPT"),
         (UsageReportTrigger::DROTH, "DROTH"),
         (UsageReportTrigger::LIUSA, "LIUSA"),
+        (UsageReportTrigger::IMMER, "IMMER"),
+        (UsageReportTrigger::VOLQU, "VOLQU"),
+        (UsageReportTrigger::TIMQU, "TIMQU"),
+        (UsageReportTrigger::TERMR, "TERMR"),
+        (UsageReportTrigger::MONIT, "MONIT"),
+        (UsageReportTrigger::ENVCL, "ENVCL"),
+        (UsageReportTrigger::MACAR, "MACAR"),
+        (UsageReportTrigger::EVETH, "EVETH"),
+        (UsageReportTrigger::EVEQU, "EVEQU"),
+        (UsageReportTrigger::TEBUR, "TEBUR"),
+        (UsageReportTrigger::IPMJL, "IPMJL"),
+        (UsageReportTrigger::QUVTI, "QUVTI"),
+        (UsageReportTrigger::EMRRE, "EMRRE"),
+        (UsageReportTrigger::UPINT, "UPINT"),
     ] {
         if bits & flag.bits() != 0 {
             triggers.push(name);

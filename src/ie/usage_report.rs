@@ -402,7 +402,7 @@ impl UsageReportBuilder {
     /// This is commonly used when volume or time quotas are exhausted
     /// and traffic needs to be suspended or redirected.
     pub fn quota_exhausted(mut self) -> Self {
-        self.usage_report_trigger = Some(UsageReportTrigger::VOLTH | UsageReportTrigger::TIMTH);
+        self.usage_report_trigger = Some(UsageReportTrigger::VOLQU | UsageReportTrigger::TIMQU);
         self
     }
 
@@ -1011,7 +1011,7 @@ mod tests {
         assert_eq!(usage_report.ur_seqn, ur_seqn);
         assert_eq!(
             usage_report.usage_report_trigger,
-            UsageReportTrigger::VOLTH | UsageReportTrigger::TIMTH
+            UsageReportTrigger::VOLQU | UsageReportTrigger::TIMQU
         );
     }
 
@@ -1104,7 +1104,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             quota_report.usage_report_trigger,
-            UsageReportTrigger::VOLTH | UsageReportTrigger::TIMTH
+            UsageReportTrigger::VOLQU | UsageReportTrigger::TIMQU
         );
 
         // Test periodic report convenience method
@@ -1498,7 +1498,7 @@ mod tests {
         // Verify trigger
         assert_eq!(
             usage_report.usage_report_trigger,
-            UsageReportTrigger::VOLTH | UsageReportTrigger::TIMTH
+            UsageReportTrigger::VOLQU | UsageReportTrigger::TIMQU
         );
 
         // Verify all measurements are present
