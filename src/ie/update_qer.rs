@@ -119,7 +119,7 @@ impl UpdateQer {
 ///
 /// // Update QER with new rate limits
 /// let rate_limited_qer = UpdateQerBuilder::new(QerId::new(2))
-///     .mbr(Mbr::new(2000000, 4000000)) // 2Mbps up, 4Mbps down
+///     .mbr(Mbr::new(2000, 4000)) // 2 Mbit/s up, 4 Mbit/s down
 ///     .build()
 ///     .unwrap();
 ///
@@ -169,15 +169,15 @@ impl UpdateQerBuilder {
         self
     }
 
-    /// Sets both uplink and downlink rates with the same values for MBR.
-    pub fn rate_limit(mut self, uplink_bps: u64, downlink_bps: u64) -> Self {
-        self.mbr = Some(Mbr::new(uplink_bps, downlink_bps));
+    /// Sets both uplink and downlink MBR values in kbit/s.
+    pub fn rate_limit(mut self, uplink_kbps: u64, downlink_kbps: u64) -> Self {
+        self.mbr = Some(Mbr::new(uplink_kbps, downlink_kbps));
         self
     }
 
-    /// Sets guaranteed bit rates for both directions.
-    pub fn guaranteed_rate(mut self, uplink_bps: u64, downlink_bps: u64) -> Self {
-        self.gbr = Some(Gbr::new(uplink_bps, downlink_bps));
+    /// Sets both uplink and downlink GBR values in kbit/s.
+    pub fn guaranteed_rate(mut self, uplink_kbps: u64, downlink_kbps: u64) -> Self {
+        self.gbr = Some(Gbr::new(uplink_kbps, downlink_kbps));
         self
     }
 
@@ -261,29 +261,29 @@ mod tests {
     #[test]
     fn test_update_qer_builder_with_rate_limits() {
         let qer = UpdateQerBuilder::new(QerId::new(2))
-            .rate_limit(1000000, 2000000)
+            .rate_limit(1_000, 2_000)
             .build()
             .unwrap();
 
         assert_eq!(qer.qer_id, QerId::new(2));
         assert!(qer.mbr.is_some());
         let mbr = qer.mbr.unwrap();
-        assert_eq!(mbr.uplink, 1000000);
-        assert_eq!(mbr.downlink, 2000000);
+        assert_eq!(mbr.uplink, 1000);
+        assert_eq!(mbr.downlink, 2000);
     }
 
     #[test]
     fn test_update_qer_builder_with_guaranteed_rate() {
         let qer = UpdateQerBuilder::new(QerId::new(3))
-            .guaranteed_rate(500000, 1000000)
+            .guaranteed_rate(500, 1_000)
             .build()
             .unwrap();
 
         assert_eq!(qer.qer_id, QerId::new(3));
         assert!(qer.gbr.is_some());
         let gbr = qer.gbr.unwrap();
-        assert_eq!(gbr.uplink, 500000);
-        assert_eq!(gbr.downlink, 1000000);
+        assert_eq!(gbr.uplink, 500);
+        assert_eq!(gbr.downlink, 1000);
     }
 
     #[test]
@@ -294,8 +294,8 @@ mod tests {
                 GateStatusValue::Open,
                 GateStatusValue::Open,
             ))
-            .rate_limit(2000000, 4000000)
-            .guaranteed_rate(1000000, 2000000)
+            .rate_limit(2_000, 4_000)
+            .guaranteed_rate(1_000, 2_000)
             .build()
             .unwrap();
 
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     fn test_update_qer_builder_round_trip_marshal() {
         let qer = UpdateQerBuilder::new(QerId::new(10))
-            .rate_limit(3000000, 5000000)
+            .rate_limit(3_000, 5_000)
             .gate_status(GateStatus::new(
                 GateStatusValue::Open,
                 GateStatusValue::Open,
@@ -392,8 +392,8 @@ mod tests {
     #[test]
     fn test_update_qer_builder_with_mbr_and_gbr() {
         let qer = UpdateQerBuilder::new(QerId::new(11))
-            .mbr(Mbr::new(4000000, 6000000))
-            .gbr(Gbr::new(2000000, 3000000))
+            .mbr(Mbr::new(4_000, 6_000))
+            .gbr(Gbr::new(2_000, 3_000))
             .build()
             .unwrap();
 
@@ -414,8 +414,8 @@ mod tests {
                 GateStatusValue::Closed,
                 GateStatusValue::Closed,
             ))
-            .rate_limit(1500000, 2500000)
-            .guaranteed_rate(750000, 1250000)
+            .rate_limit(1_500, 2_500)
+            .guaranteed_rate(750, 1_250)
             .build()
             .unwrap();
 
