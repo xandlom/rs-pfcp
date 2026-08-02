@@ -384,7 +384,7 @@ impl CreateFarBuilder {
 
     /// Creates a FAR builder for forwarding to DN (Data Network).
     pub fn to_data_network(far_id: FarId) -> Self {
-        CreateFarBuilder::new(far_id).forward_to(Interface::Dn)
+        CreateFarBuilder::new(far_id).forward_to(Interface::SgiLanN6Lan)
     }
 
     /// Creates a FAR builder with forwarding and duplication.
@@ -526,7 +526,7 @@ mod tests {
         let network_instance = NetworkInstance::new("internet");
 
         let far = CreateFarBuilder::new(far_id)
-            .forward_to_network(Interface::Dn, network_instance.clone())
+            .forward_to_network(Interface::SgiLanN6Lan, network_instance.clone())
             .build()
             .unwrap();
 
@@ -537,7 +537,7 @@ mod tests {
         let forwarding_params = far.forwarding_parameters.unwrap();
         assert_eq!(
             forwarding_params.destination_interface.interface,
-            Interface::Dn
+            Interface::SgiLanN6Lan
         );
         assert_eq!(forwarding_params.network_instance, Some(network_instance));
     }
@@ -745,7 +745,7 @@ mod tests {
         let forwarding_params = far.forwarding_parameters.unwrap();
         assert_eq!(
             forwarding_params.destination_interface.interface,
-            Interface::Dn
+            Interface::SgiLanN6Lan
         );
     }
 
@@ -791,7 +791,7 @@ mod tests {
         let network_instance = NetworkInstance::new("internet");
 
         let original = CreateFarBuilder::new(far_id)
-            .forward_to_network(Interface::Dn, network_instance.clone())
+            .forward_to_network(Interface::SgiLanN6Lan, network_instance.clone())
             .build()
             .unwrap();
 
@@ -823,7 +823,7 @@ mod tests {
 
         // Test complex builder with multiple parameters
         let far = CreateFarBuilder::new(far_id)
-            .forward_to_network(Interface::Dn, network_instance.clone())
+            .forward_to_network(Interface::SgiLanN6Lan, network_instance.clone())
             .bar_id(bar_id.clone())
             .build()
             .unwrap();
@@ -836,7 +836,7 @@ mod tests {
         let forwarding_params = far.forwarding_parameters.unwrap();
         assert_eq!(
             forwarding_params.destination_interface.interface,
-            Interface::Dn
+            Interface::SgiLanN6Lan
         );
         assert_eq!(forwarding_params.network_instance, Some(network_instance));
     }

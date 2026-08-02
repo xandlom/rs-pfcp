@@ -5,90 +5,39 @@ use crate::ie::{Ie, IeType};
 
 /// Represents the possible values for a Destination Interface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Interface {
-    Access,
-    Core,
-    Smf,
-    Amf,
-    Dn,
-    Lcs,
-    ScScf,
-    InterSystem,
-    Iu,
-    S1,
-    S11,
-    S12,
-    S1U,
-    S2a,
-    S2b,
-    S4,
-    S5S8,
-    S6a,
-    SGi,
-    Sm,
-    Sn,
-    Szn,
-    X2,
+    Access = 0,
+    Core = 1,
+    SgiLanN6Lan = 2,
+    CpFunction = 3,
+    LiFunction = 4,
+    FiveGvnInternal = 5,
 }
 
-impl From<u8> for Interface {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Interface::Access,
-            1 => Interface::Core,
-            2 => Interface::Smf,
-            3 => Interface::Amf,
-            4 => Interface::Dn,
-            5 => Interface::Lcs,
-            6 => Interface::ScScf,
-            7 => Interface::InterSystem,
-            10 => Interface::Iu,
-            11 => Interface::S1,
-            12 => Interface::S11,
-            13 => Interface::S12,
-            14 => Interface::S1U,
-            15 => Interface::S2a,
-            16 => Interface::S2b,
-            17 => Interface::S4,
-            18 => Interface::S5S8,
-            19 => Interface::S6a,
-            20 => Interface::SGi,
-            21 => Interface::Sm,
-            22 => Interface::Sn,
-            23 => Interface::Szn,
-            24 => Interface::X2,
-            _ => Interface::Access, // Default or unknown
+impl TryFrom<u8> for Interface {
+    type Error = PfcpError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value & 0x0f {
+            0 => Ok(Interface::Access),
+            1 => Ok(Interface::Core),
+            2 => Ok(Interface::SgiLanN6Lan),
+            3 => Ok(Interface::CpFunction),
+            4 => Ok(Interface::LiFunction),
+            5 => Ok(Interface::FiveGvnInternal),
+            value => Err(PfcpError::invalid_value(
+                "Destination Interface",
+                value.to_string(),
+                "must be 0-5",
+            )),
         }
     }
 }
 
 impl From<Interface> for u8 {
     fn from(i: Interface) -> Self {
-        match i {
-            Interface::Access => 0,
-            Interface::Core => 1,
-            Interface::Smf => 2,
-            Interface::Amf => 3,
-            Interface::Dn => 4,
-            Interface::Lcs => 5,
-            Interface::ScScf => 6,
-            Interface::InterSystem => 7,
-            Interface::Iu => 10,
-            Interface::S1 => 11,
-            Interface::S11 => 12,
-            Interface::S12 => 13,
-            Interface::S1U => 14,
-            Interface::S2a => 15,
-            Interface::S2b => 16,
-            Interface::S4 => 17,
-            Interface::S5S8 => 18,
-            Interface::S6a => 19,
-            Interface::SGi => 20,
-            Interface::Sm => 21,
-            Interface::Sn => 22,
-            Interface::Szn => 23,
-            Interface::X2 => 24,
-        }
+        i as u8
     }
 }
 
@@ -122,7 +71,7 @@ impl DestinationInterface {
             ));
         }
         Ok(DestinationInterface {
-            interface: payload[0].into(),
+            interface: Interface::try_from(payload[0])?,
         })
     }
 
@@ -153,5 +102,35 @@ mod tests {
         assert!(err.to_string().contains("Destination Interface"));
         assert!(err.to_string().contains("1"));
         assert!(err.to_string().contains("0"));
+    }
+
+    #[test]
+    fn test_destination_interface_current_values() {
+        let values = [
+            Interface::Access,
+            Interface::Core,
+            Interface::SgiLanN6Lan,
+            Interface::CpFunction,
+            Interface::LiFunction,
+            Interface::FiveGvnInternal,
+        ];
+
+        for (wire, interface) in values.into_iter().enumerate() {
+            assert_eq!(DestinationInterface::new(interface).marshal(), [wire as u8]);
+            assert_eq!(
+                DestinationInterface::unmarshal(&[wire as u8])
+                    .unwrap()
+                    .interface,
+                interface
+            );
+        }
+    }
+
+    #[test]
+    fn test_destination_interface_rejects_unknown_value() {
+        assert!(matches!(
+            DestinationInterface::unmarshal(&[6]),
+            Err(PfcpError::InvalidValue { .. })
+        ));
     }
 }
