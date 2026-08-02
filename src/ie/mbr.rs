@@ -7,13 +7,19 @@ use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mbr {
+    /// Uplink maximum bitrate in the PFCP wire unit of kbit/s.
     pub uplink: u64,
+    /// Downlink maximum bitrate in the PFCP wire unit of kbit/s.
     pub downlink: u64,
 }
 
 impl Mbr {
-    pub fn new(uplink: u64, downlink: u64) -> Self {
-        Mbr { uplink, downlink }
+    /// Creates an MBR using the PFCP wire unit of kbit/s.
+    pub const fn new(uplink_kbps: u64, downlink_kbps: u64) -> Self {
+        Mbr {
+            uplink: uplink_kbps,
+            downlink: downlink_kbps,
+        }
     }
 
     pub fn marshal(&self) -> [u8; 10] {
@@ -49,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_mbr_marshal_unmarshal() {
-        let mbr = Mbr::new(1_000_000, 2_000_000);
+        let mbr = Mbr::new(1_000, 2_000);
         let marshaled = mbr.marshal();
         let unmarshaled = Mbr::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, mbr);
