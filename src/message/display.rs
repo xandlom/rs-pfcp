@@ -587,14 +587,17 @@ fn display_cp_function_features(payload: &[u8]) -> Option<IeDisplayResult> {
     let flags: Vec<&str> = [
         (CPFunctionFeatures::LOAD, "LOAD"),
         (CPFunctionFeatures::OVRL, "OVRL"),
-        (CPFunctionFeatures::EPCO, "EPCO"),
-        (CPFunctionFeatures::DDEX, "DDEX"),
-        (CPFunctionFeatures::PFDL, "PFDL"),
-        (CPFunctionFeatures::APDP, "APDP"),
-        (CPFunctionFeatures::PFDC, "PFDC"),
+        (CPFunctionFeatures::EPFAR, "EPFAR"),
+        (CPFunctionFeatures::SSET, "SSET"),
+        (CPFunctionFeatures::BUNDL, "BUNDL"),
+        (CPFunctionFeatures::MPAS, "MPAS"),
+        (CPFunctionFeatures::ARDR, "ARDR"),
+        (CPFunctionFeatures::UIAUR, "UIAUR"),
+        (CPFunctionFeatures::PSUCC, "PSUCC"),
+        (CPFunctionFeatures::RPGUR, "RPGUR"),
     ]
     .into_iter()
-    .filter(|(flag, _)| features.contains(*flag))
+    .filter(|(feature, _)| features.contains(*feature))
     .map(|(_, name)| name)
     .collect();
     Some(IeDisplayResult::Compact(json!(flags)))
