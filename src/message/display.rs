@@ -253,17 +253,23 @@ fn display_recovery_timestamp(payload: &[u8]) -> Option<IeDisplayResult> {
 }
 
 fn display_report_type(payload: &[u8]) -> Option<IeDisplayResult> {
-    if payload.is_empty() {
-        return None;
-    }
-    let report_name = match payload[0] {
-        0x01 => "DLDR (Downlink Data Report)",
-        0x02 => "USAR (Usage Report)",
-        0x04 => "ERIR (Error Indication Report)",
-        0x08 => "UPIR (User Plane Inactivity Report)",
-        _ => "Unknown",
-    };
-    Some(IeDisplayResult::Compact(json!(report_name)))
+    use crate::ie::report_type::ReportType;
+
+    let reports = ReportType::unmarshal(payload).ok()?;
+    let names: Vec<&str> = [
+        (ReportType::DLDR, "DLDR"),
+        (ReportType::USAR, "USAR"),
+        (ReportType::ERIR, "ERIR"),
+        (ReportType::UPIR, "UPIR"),
+        (ReportType::TMIR, "TMIR"),
+        (ReportType::SESR, "SESR"),
+        (ReportType::UISR, "UISR"),
+    ]
+    .into_iter()
+    .filter(|(report, _)| reports.contains(*report))
+    .map(|(_, name)| name)
+    .collect();
+    Some(IeDisplayResult::Compact(json!(names)))
 }
 
 fn display_usage_report(payload: &[u8]) -> Option<IeDisplayResult> {
