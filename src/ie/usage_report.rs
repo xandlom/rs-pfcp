@@ -55,12 +55,12 @@ impl UsageReport {
     pub fn new(
         urr_id: UrrId,
         ur_seqn: SequenceNumber,
-        usage_report_trigger: UsageReportTrigger,
+        usage_report_trigger: impl Into<UsageReportTrigger>,
     ) -> Self {
         UsageReport {
             urr_id,
             ur_seqn,
-            usage_report_trigger,
+            usage_report_trigger: usage_report_trigger.into(),
             volume_measurement: None,
             duration_measurement: None,
             time_of_first_packet: None,
@@ -392,8 +392,8 @@ impl UsageReportBuilder {
     /// # Arguments
     ///
     /// * `trigger` - The usage report trigger flags
-    pub fn trigger(mut self, trigger: UsageReportTrigger) -> Self {
-        self.usage_report_trigger = Some(trigger);
+    pub fn trigger(mut self, trigger: impl Into<UsageReportTrigger>) -> Self {
+        self.usage_report_trigger = Some(trigger.into());
         self
     }
 
@@ -410,7 +410,7 @@ impl UsageReportBuilder {
     ///
     /// This is used for regular reporting intervals to track ongoing usage.
     pub fn periodic_report(mut self) -> Self {
-        self.usage_report_trigger = Some(UsageReportTrigger::PERIO);
+        self.usage_report_trigger = Some(UsageReportTrigger::PERIO.into());
         self
     }
 
@@ -418,7 +418,7 @@ impl UsageReportBuilder {
     ///
     /// This is used when a volume threshold has been reached.
     pub fn volume_threshold_triggered(mut self) -> Self {
-        self.usage_report_trigger = Some(UsageReportTrigger::VOLTH);
+        self.usage_report_trigger = Some(UsageReportTrigger::VOLTH.into());
         self
     }
 
@@ -426,7 +426,7 @@ impl UsageReportBuilder {
     ///
     /// This is used when a time threshold has been reached.
     pub fn time_threshold_triggered(mut self) -> Self {
-        self.usage_report_trigger = Some(UsageReportTrigger::TIMTH);
+        self.usage_report_trigger = Some(UsageReportTrigger::TIMTH.into());
         self
     }
 
@@ -434,7 +434,7 @@ impl UsageReportBuilder {
     ///
     /// This is used when traffic flow begins for the first time.
     pub fn start_of_traffic(mut self) -> Self {
-        self.usage_report_trigger = Some(UsageReportTrigger::START);
+        self.usage_report_trigger = Some(UsageReportTrigger::START.into());
         self
     }
 
@@ -442,7 +442,7 @@ impl UsageReportBuilder {
     ///
     /// This is used when traffic flow ends or stops.
     pub fn stop_of_traffic(mut self) -> Self {
-        self.usage_report_trigger = Some(UsageReportTrigger::STOPT);
+        self.usage_report_trigger = Some(UsageReportTrigger::STOPT.into());
         self
     }
 
@@ -1206,15 +1206,15 @@ mod tests {
     #[test]
     fn test_usage_report_builder_comprehensive() {
         // Test all trigger types with round-trip marshal/unmarshal
-        let triggers = [
-            UsageReportTrigger::PERIO,
-            UsageReportTrigger::VOLTH,
-            UsageReportTrigger::TIMTH,
-            UsageReportTrigger::QUHTI,
-            UsageReportTrigger::START,
-            UsageReportTrigger::STOPT,
-            UsageReportTrigger::DROTH,
-            UsageReportTrigger::LIUSA,
+        let triggers: [UsageReportTrigger; 9] = [
+            UsageReportTrigger::PERIO.into(),
+            UsageReportTrigger::VOLTH.into(),
+            UsageReportTrigger::TIMTH.into(),
+            UsageReportTrigger::QUHTI.into(),
+            UsageReportTrigger::START.into(),
+            UsageReportTrigger::STOPT.into(),
+            UsageReportTrigger::DROTH.into(),
+            UsageReportTrigger::LIUSA.into(),
             UsageReportTrigger::VOLTH | UsageReportTrigger::TIMTH, // Combined flags
         ];
 
@@ -1224,7 +1224,7 @@ mod tests {
 
             let usage_report = UsageReportBuilder::new(urr_id)
                 .sequence_number(ur_seqn)
-                .trigger(*trigger)
+                .trigger(trigger.clone())
                 .build()
                 .unwrap();
 
