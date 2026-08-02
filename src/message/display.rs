@@ -131,6 +131,7 @@ fn rich_display(ie: &Ie) -> Option<IeDisplayResult> {
         IeType::CpFunctionFeatures => display_cp_function_features(&ie.payload),
         IeType::UpFunctionFeatures => display_up_function_features(&ie.payload),
         IeType::PfcpsmReqFlags => display_pfcpsm_req_flags(&ie.payload),
+        IeType::PfcpseReqFlags => display_pfcpse_req_flags(&ie.payload),
         // Detailed: multi-field IEs
         IeType::NodeId => display_node_id(&ie.payload),
         IeType::RecoveryTimeStamp => display_recovery_timestamp(&ie.payload),
@@ -585,6 +586,22 @@ fn display_pfcpsm_req_flags(payload: &[u8]) -> Option<IeDisplayResult> {
         (PfcpsmReqFlags::SNDEM, "SNDEM"),
         (PfcpsmReqFlags::QAURR, "QAURR"),
         (PfcpsmReqFlags::ISRSI, "ISRSI"),
+    ]
+    .into_iter()
+    .filter(|(flag, _)| flags_val.contains(*flag))
+    .map(|(_, name)| name)
+    .collect();
+    Some(IeDisplayResult::Compact(json!(flags)))
+}
+
+fn display_pfcpse_req_flags(payload: &[u8]) -> Option<IeDisplayResult> {
+    use crate::ie::pfcpse_req_flags::PfcpseReqFlags;
+
+    let flags_val = PfcpseReqFlags::unmarshal(payload).ok()?;
+    let flags: Vec<&str> = [
+        (PfcpseReqFlags::RESTI, "RESTI"),
+        (PfcpseReqFlags::SUMPC, "SUMPC"),
+        (PfcpseReqFlags::HRSBOM, "HRSBOM"),
     ]
     .into_iter()
     .filter(|(flag, _)| flags_val.contains(*flag))
