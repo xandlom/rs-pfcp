@@ -9,8 +9,15 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 pub struct UeIpAddress {
     pub v4: bool,
     pub v6: bool,
+    pub source_destination: bool,
+    pub ipv6_prefix_delegation: bool,
+    pub choose_ipv4: bool,
+    pub choose_ipv6: bool,
+    pub ipv6_prefix_length_present: bool,
     pub ipv4_address: Option<Ipv4Addr>,
     pub ipv6_address: Option<Ipv6Addr>,
+    pub ipv6_prefix_delegation_bits: Option<u8>,
+    pub ipv6_prefix_length: Option<u8>,
 }
 
 impl UeIpAddress {
@@ -19,8 +26,24 @@ impl UeIpAddress {
         UeIpAddress {
             v4: ipv4_address.is_some(),
             v6: ipv6_address.is_some(),
+            source_destination: false,
+            ipv6_prefix_delegation: false,
+            choose_ipv4: false,
+            choose_ipv6: false,
+            ipv6_prefix_length_present: false,
             ipv4_address,
             ipv6_address,
+            ipv6_prefix_delegation_bits: None,
+            ipv6_prefix_length: None,
+        }
+    }
+
+    /// Requests UP-function allocation of an IPv4 address and/or IPv6 prefix.
+    pub fn choose(ipv4: bool, ipv6: bool) -> Self {
+        Self {
+            choose_ipv4: ipv4,
+            choose_ipv6: ipv6,
+            ..Self::new(None, None)
         }
     }
 
@@ -34,12 +57,33 @@ impl UeIpAddress {
         if self.v4 {
             flags |= 2; // Bit 1: V4 (IPv4)
         }
+        if self.source_destination {
+            flags |= 1 << 2;
+        }
+        if self.ipv6_prefix_delegation {
+            flags |= 1 << 3;
+        }
+        if self.choose_ipv4 {
+            flags |= 1 << 4;
+        }
+        if self.choose_ipv6 {
+            flags |= 1 << 5;
+        }
+        if self.ipv6_prefix_length_present {
+            flags |= 1 << 6;
+        }
         data.push(flags);
         if let Some(addr) = self.ipv4_address {
             data.extend_from_slice(&addr.octets());
         }
         if let Some(addr) = self.ipv6_address {
             data.extend_from_slice(&addr.octets());
+        }
+        if let Some(bits) = self.ipv6_prefix_delegation_bits {
+            data.push(bits);
+        }
+        if let Some(length) = self.ipv6_prefix_length {
+            data.push(length);
         }
         data
     }
@@ -59,6 +103,32 @@ impl UeIpAddress {
         let flags = payload[0];
         let v6 = flags & 1 != 0; // Bit 0: V6 (IPv6)
         let v4 = flags & 2 != 0; // Bit 1: V4 (IPv4)
+        let source_destination = flags & (1 << 2) != 0;
+        let ipv6_prefix_delegation = flags & (1 << 3) != 0;
+        let choose_ipv4 = flags & (1 << 4) != 0;
+        let choose_ipv6 = flags & (1 << 5) != 0;
+        let ipv6_prefix_length_present = flags & (1 << 6) != 0;
+        if (v4 && choose_ipv4) || (v6 && choose_ipv6) {
+            return Err(PfcpError::invalid_value(
+                "UE IP Address flags",
+                format!("0x{flags:02x}"),
+                "V4/V6 and CHV4/CHV6 are mutually exclusive",
+            ));
+        }
+        if ipv6_prefix_delegation && ipv6_prefix_length_present {
+            return Err(PfcpError::invalid_value(
+                "UE IP Address flags",
+                format!("0x{flags:02x}"),
+                "IPv6D and IP6PL are mutually exclusive",
+            ));
+        }
+        if (ipv6_prefix_delegation || ipv6_prefix_length_present) && !(v6 || choose_ipv6) {
+            return Err(PfcpError::invalid_value(
+                "UE IP Address flags",
+                format!("0x{flags:02x}"),
+                "IPv6D/IP6PL requires V6 or CHV6",
+            ));
+        }
         let mut offset = 1;
         let ipv4_address = if v4 {
             if payload.len() < offset + 4 {
@@ -91,15 +161,49 @@ impl UeIpAddress {
             }
             let mut octets = [0; 16];
             octets.copy_from_slice(&payload[offset..offset + 16]);
+            offset += 16;
             Some(Ipv6Addr::from(octets))
+        } else {
+            None
+        };
+        let ipv6_prefix_delegation_bits = if ipv6_prefix_delegation {
+            let value = *payload.get(offset).ok_or_else(|| {
+                PfcpError::invalid_length(
+                    "UE IP Address IPv6 prefix delegation bits",
+                    IeType::UeIpAddress,
+                    offset + 1,
+                    payload.len(),
+                )
+            })?;
+            offset += 1;
+            Some(value)
+        } else {
+            None
+        };
+        let ipv6_prefix_length = if ipv6_prefix_length_present {
+            Some(*payload.get(offset).ok_or_else(|| {
+                PfcpError::invalid_length(
+                    "UE IP Address IPv6 prefix length",
+                    IeType::UeIpAddress,
+                    offset + 1,
+                    payload.len(),
+                )
+            })?)
         } else {
             None
         };
         Ok(UeIpAddress {
             v4,
             v6,
+            source_destination,
+            ipv6_prefix_delegation,
+            choose_ipv4,
+            choose_ipv6,
+            ipv6_prefix_length_present,
             ipv4_address,
             ipv6_address,
+            ipv6_prefix_delegation_bits,
+            ipv6_prefix_length,
         })
     }
 
@@ -335,6 +439,24 @@ mod tests {
 
         assert_eq!(ie.ie_type, IeType::UeIpAddress);
         assert_eq!(ie.payload.len(), 5);
+    }
+
+    #[test]
+    fn test_choose_flags_round_trip_without_address_fields() {
+        let mut requested = UeIpAddress::choose(true, true);
+        requested.source_destination = true;
+        requested.ipv6_prefix_length_present = true;
+        requested.ipv6_prefix_length = Some(64);
+
+        let encoded = requested.marshal();
+        assert_eq!(encoded, vec![0b0111_0100, 64]);
+        assert_eq!(UeIpAddress::unmarshal(&encoded).unwrap(), requested);
+    }
+
+    #[test]
+    fn test_rejects_inconsistent_prefix_flags() {
+        assert!(UeIpAddress::unmarshal(&[0b0100_1001, 0, 0]).is_err());
+        assert!(UeIpAddress::unmarshal(&[0b0100_0000, 64]).is_err());
     }
 
     #[test]
