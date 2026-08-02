@@ -9,12 +9,21 @@ pub struct ReportingTriggers {
     pub periodic: bool,
     pub volume_threshold: bool,
     pub time_threshold: bool,
-    pub quota_exhausted: bool,
+    pub quota_holding_time: bool,
     pub start_of_traffic: bool,
     pub stop_of_traffic: bool,
     pub dropped_dl_traffic: bool,
     pub linked_urr: bool,
+    pub volume_quota: bool,
+    pub time_quota: bool,
+    pub envelope_closure: bool,
+    pub mac_addresses_reporting: bool,
     pub event_threshold: bool,
+    pub event_quota: bool,
+    pub ip_multicast_join_leave: bool,
+    pub quota_validity_time: bool,
+    pub end_marker_reception: bool,
+    pub user_plane_inactivity_timer: bool,
 }
 
 impl ReportingTriggers {
@@ -38,8 +47,23 @@ impl ReportingTriggers {
         self
     }
 
-    pub fn with_quota_exhausted(mut self, quota_exhausted: bool) -> Self {
-        self.quota_exhausted = quota_exhausted;
+    pub fn with_quota_holding_time(mut self, enabled: bool) -> Self {
+        self.quota_holding_time = enabled;
+        self
+    }
+
+    pub fn with_volume_quota(mut self, enabled: bool) -> Self {
+        self.volume_quota = enabled;
+        self
+    }
+
+    pub fn with_time_quota(mut self, enabled: bool) -> Self {
+        self.time_quota = enabled;
+        self
+    }
+
+    pub fn with_quota_validity_time(mut self, enabled: bool) -> Self {
+        self.quota_validity_time = enabled;
         self
     }
 
@@ -70,7 +94,7 @@ impl ReportingTriggers {
 
     /// Marshals the Reporting Triggers into a byte vector.
     pub fn marshal(&self) -> Vec<u8> {
-        let mut b = [0; 2];
+        let mut b = [0; 3];
         if self.periodic {
             b[0] |= 1;
         }
@@ -80,7 +104,7 @@ impl ReportingTriggers {
         if self.time_threshold {
             b[0] |= 4;
         }
-        if self.quota_exhausted {
+        if self.quota_holding_time {
             b[0] |= 8;
         }
         if self.start_of_traffic {
@@ -95,19 +119,46 @@ impl ReportingTriggers {
         if self.linked_urr {
             b[0] |= 128;
         }
-        if self.event_threshold {
+        if self.volume_quota {
             b[1] |= 1;
+        }
+        if self.time_quota {
+            b[1] |= 2;
+        }
+        if self.envelope_closure {
+            b[1] |= 4;
+        }
+        if self.mac_addresses_reporting {
+            b[1] |= 8;
+        }
+        if self.event_threshold {
+            b[1] |= 16;
+        }
+        if self.event_quota {
+            b[1] |= 32;
+        }
+        if self.ip_multicast_join_leave {
+            b[1] |= 64;
+        }
+        if self.quota_validity_time {
+            b[1] |= 128;
+        }
+        if self.end_marker_reception {
+            b[2] |= 1;
+        }
+        if self.user_plane_inactivity_timer {
+            b[2] |= 2;
         }
         b.to_vec()
     }
 
     /// Unmarshals a byte slice into a Reporting Triggers.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
-        if payload.len() < 2 {
+        if payload.len() < 3 {
             return Err(PfcpError::invalid_length(
                 "Reporting Triggers",
                 IeType::ReportingTriggers,
-                2,
+                3,
                 payload.len(),
             ));
         }
@@ -115,12 +166,21 @@ impl ReportingTriggers {
             periodic: (payload[0] & 1) != 0,
             volume_threshold: (payload[0] & 2) != 0,
             time_threshold: (payload[0] & 4) != 0,
-            quota_exhausted: (payload[0] & 8) != 0,
+            quota_holding_time: (payload[0] & 8) != 0,
             start_of_traffic: (payload[0] & 16) != 0,
             stop_of_traffic: (payload[0] & 32) != 0,
             dropped_dl_traffic: (payload[0] & 64) != 0,
             linked_urr: (payload[0] & 128) != 0,
-            event_threshold: (payload[1] & 1) != 0,
+            volume_quota: (payload[1] & 1) != 0,
+            time_quota: (payload[1] & 2) != 0,
+            envelope_closure: (payload[1] & 4) != 0,
+            mac_addresses_reporting: (payload[1] & 8) != 0,
+            event_threshold: (payload[1] & 16) != 0,
+            event_quota: (payload[1] & 32) != 0,
+            ip_multicast_join_leave: (payload[1] & 64) != 0,
+            quota_validity_time: (payload[1] & 128) != 0,
+            end_marker_reception: (payload[2] & 1) != 0,
+            user_plane_inactivity_timer: (payload[2] & 2) != 0,
         })
     }
 
@@ -140,7 +200,8 @@ mod tests {
         assert!(!triggers.periodic);
         assert!(!triggers.volume_threshold);
         assert!(!triggers.time_threshold);
-        assert!(!triggers.quota_exhausted);
+        assert!(!triggers.volume_quota);
+        assert!(!triggers.time_quota);
         assert!(!triggers.start_of_traffic);
         assert!(!triggers.stop_of_traffic);
         assert!(!triggers.dropped_dl_traffic);
@@ -173,10 +234,14 @@ mod tests {
     }
 
     #[test]
-    fn test_reporting_triggers_single_quota_exhausted() {
-        let triggers = ReportingTriggers::new().with_quota_exhausted(true);
-        assert!(triggers.quota_exhausted);
-        assert!(!triggers.volume_threshold);
+    fn test_reporting_triggers_volume_and_time_quota_are_independent() {
+        let volume = ReportingTriggers::new().with_volume_quota(true);
+        assert!(volume.volume_quota);
+        assert!(!volume.time_quota);
+
+        let time = ReportingTriggers::new().with_time_quota(true);
+        assert!(!time.volume_quota);
+        assert!(time.time_quota);
     }
 
     #[test]
@@ -233,7 +298,8 @@ mod tests {
         assert!(triggers.volume_threshold);
         assert!(triggers.time_threshold);
         assert!(triggers.event_threshold);
-        assert!(!triggers.quota_exhausted);
+        assert!(!triggers.volume_quota);
+        assert!(!triggers.time_quota);
     }
 
     #[test]
@@ -253,7 +319,8 @@ mod tests {
             .with_periodic(true)
             .with_volume_threshold(true)
             .with_time_threshold(true)
-            .with_quota_exhausted(true)
+            .with_volume_quota(true)
+            .with_time_quota(true)
             .with_start_of_traffic(true)
             .with_stop_of_traffic(true)
             .with_dropped_dl_traffic(true)
@@ -263,7 +330,8 @@ mod tests {
         assert!(triggers.periodic);
         assert!(triggers.volume_threshold);
         assert!(triggers.time_threshold);
-        assert!(triggers.quota_exhausted);
+        assert!(triggers.volume_quota);
+        assert!(triggers.time_quota);
         assert!(triggers.start_of_traffic);
         assert!(triggers.stop_of_traffic);
         assert!(triggers.dropped_dl_traffic);
@@ -275,7 +343,7 @@ mod tests {
     fn test_reporting_triggers_marshal_empty() {
         let triggers = ReportingTriggers::new();
         let marshaled = triggers.marshal();
-        assert_eq!(marshaled, vec![0, 0]);
+        assert_eq!(marshaled, vec![0, 0, 0]);
     }
 
     #[test]
@@ -301,10 +369,11 @@ mod tests {
     }
 
     #[test]
-    fn test_reporting_triggers_marshal_quota_exhausted() {
-        let triggers = ReportingTriggers::new().with_quota_exhausted(true);
-        let marshaled = triggers.marshal();
-        assert_eq!(marshaled[0] & 8, 8);
+    fn test_reporting_triggers_marshal_volume_and_time_quota_independently() {
+        let volume = ReportingTriggers::new().with_volume_quota(true).marshal();
+        let time = ReportingTriggers::new().with_time_quota(true).marshal();
+        assert_eq!(volume[1] & 0x03, 0x01);
+        assert_eq!(time[1] & 0x03, 0x02);
     }
 
     #[test]
@@ -340,7 +409,7 @@ mod tests {
         let triggers = ReportingTriggers::new().with_event_threshold(true);
         let marshaled = triggers.marshal();
         assert_eq!(marshaled[0], 0);
-        assert_eq!(marshaled[1] & 1, 1);
+        assert_eq!(marshaled[1] & 0x10, 0x10);
     }
 
     #[test]
@@ -349,7 +418,8 @@ mod tests {
             .with_periodic(true)
             .with_volume_threshold(true)
             .with_time_threshold(true)
-            .with_quota_exhausted(true)
+            .with_volume_quota(true)
+            .with_time_quota(true)
             .with_start_of_traffic(true)
             .with_stop_of_traffic(true)
             .with_dropped_dl_traffic(true)
@@ -357,13 +427,14 @@ mod tests {
             .with_event_threshold(true);
 
         let marshaled = triggers.marshal();
-        assert_eq!(marshaled[0], 0xFF); // All 8 bits set
-        assert_eq!(marshaled[1], 0x01); // Event threshold bit set
+        assert_eq!(marshaled[0], 0xF7);
+        assert_eq!(marshaled[1], 0x13);
+        assert_eq!(marshaled[2], 0);
     }
 
     #[test]
     fn test_reporting_triggers_unmarshal_empty() {
-        let data = vec![0, 0];
+        let data = vec![0, 0, 0];
         let triggers = ReportingTriggers::unmarshal(&data).unwrap();
         assert!(!triggers.periodic);
         assert!(!triggers.volume_threshold);
@@ -372,7 +443,7 @@ mod tests {
 
     #[test]
     fn test_reporting_triggers_unmarshal_periodic() {
-        let data = vec![0x01, 0x00];
+        let data = vec![0x01, 0x00, 0x00];
         let triggers = ReportingTriggers::unmarshal(&data).unwrap();
         assert!(triggers.periodic);
         assert!(!triggers.volume_threshold);
@@ -380,12 +451,13 @@ mod tests {
 
     #[test]
     fn test_reporting_triggers_unmarshal_all_flags() {
-        let data = vec![0xFF, 0x01];
+        let data = vec![0xFF, 0x13, 0x00];
         let triggers = ReportingTriggers::unmarshal(&data).unwrap();
         assert!(triggers.periodic);
         assert!(triggers.volume_threshold);
         assert!(triggers.time_threshold);
-        assert!(triggers.quota_exhausted);
+        assert!(triggers.volume_quota);
+        assert!(triggers.time_quota);
         assert!(triggers.start_of_traffic);
         assert!(triggers.stop_of_traffic);
         assert!(triggers.dropped_dl_traffic);
@@ -432,7 +504,8 @@ mod tests {
         let original = ReportingTriggers::new()
             .with_volume_threshold(true)
             .with_time_threshold(true)
-            .with_quota_exhausted(true);
+            .with_volume_quota(true)
+            .with_time_quota(true);
 
         let marshaled = original.marshal();
         let unmarshaled = ReportingTriggers::unmarshal(&marshaled).unwrap();
@@ -445,7 +518,8 @@ mod tests {
             .with_periodic(true)
             .with_volume_threshold(true)
             .with_time_threshold(true)
-            .with_quota_exhausted(true)
+            .with_volume_quota(true)
+            .with_time_quota(true)
             .with_start_of_traffic(true)
             .with_stop_of_traffic(true)
             .with_dropped_dl_traffic(true)
@@ -465,23 +539,25 @@ mod tests {
 
         let ie = triggers.to_ie();
         assert_eq!(ie.ie_type, IeType::ReportingTriggers);
-        assert_eq!(ie.payload.len(), 2);
+        assert_eq!(ie.payload.len(), 3);
     }
 
     #[test]
     fn test_reporting_triggers_real_world_volume_time_quota() {
-        // Common scenario: Report on volume, time, or quota exhaustion
+        // Common scenario: report on volume/time thresholds or quota exhaustion.
         let triggers = ReportingTriggers::new()
             .with_volume_threshold(true)
             .with_time_threshold(true)
-            .with_quota_exhausted(true);
+            .with_volume_quota(true)
+            .with_time_quota(true);
 
         let marshaled = triggers.marshal();
         let unmarshaled = ReportingTriggers::unmarshal(&marshaled).unwrap();
         assert_eq!(triggers, unmarshaled);
         assert!(unmarshaled.volume_threshold);
         assert!(unmarshaled.time_threshold);
-        assert!(unmarshaled.quota_exhausted);
+        assert!(unmarshaled.volume_quota);
+        assert!(unmarshaled.time_quota);
     }
 
     #[test]

@@ -204,7 +204,7 @@ mod tests {
         let max_report = UsageReport::new(
             UrrId::new(u32::MAX),
             SequenceNumber::new(u32::MAX),
-            UsageReportTrigger::new(u8::MAX),
+            UsageReportTrigger::new(u32::from(u8::MAX)),
         );
         let smr = UsageReportSmr::new(max_report);
         let marshaled = smr.marshal();
