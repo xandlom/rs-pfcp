@@ -4,10 +4,12 @@
 use crate::error::PfcpError;
 use crate::ie::{
     inactivity_detection_time::InactivityDetectionTime, marshal_ies,
-    measurement_method::MeasurementMethod, monitoring_time::MonitoringTime,
+    measurement_method::MeasurementMethod, measurement_period::MeasurementPeriod,
+    monitoring_time::MonitoringTime, quota_validity_time::QuotaValidityTime,
     reporting_triggers::ReportingTriggers, subsequent_time_threshold::SubsequentTimeThreshold,
-    subsequent_volume_threshold::SubsequentVolumeThreshold, time_threshold::TimeThreshold,
-    urr_id::UrrId, volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
+    subsequent_volume_threshold::SubsequentVolumeThreshold, time_quota::TimeQuota,
+    time_threshold::TimeThreshold, urr_id::UrrId, volume_quota::VolumeQuota,
+    volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
 };
 
 /// Represents the Update URR.
@@ -22,6 +24,10 @@ pub struct UpdateUrr {
     pub subsequent_volume_threshold: Option<SubsequentVolumeThreshold>,
     pub subsequent_time_threshold: Option<SubsequentTimeThreshold>,
     pub inactivity_detection_time: Option<InactivityDetectionTime>,
+    pub volume_quota: Option<VolumeQuota>,
+    pub time_quota: Option<TimeQuota>,
+    pub measurement_period: Option<MeasurementPeriod>,
+    pub quota_validity_time: Option<QuotaValidityTime>,
 }
 
 impl UpdateUrr {
@@ -48,6 +54,10 @@ impl UpdateUrr {
             subsequent_volume_threshold,
             subsequent_time_threshold,
             inactivity_detection_time,
+            volume_quota: None,
+            time_quota: None,
+            measurement_period: None,
+            quota_validity_time: None,
         }
     }
 
@@ -90,6 +100,22 @@ impl UpdateUrr {
                 idt.marshal().to_vec(),
             ));
         }
+        if let Some(vq) = &self.volume_quota {
+            ies.push(Ie::new(
+                IeType::VolumeQuota,
+                vq.marshal()
+                    .expect("VolumeQuota marshal should not fail for a well-formed value"),
+            ));
+        }
+        if let Some(tq) = &self.time_quota {
+            ies.push(tq.to_ie());
+        }
+        if let Some(mp) = &self.measurement_period {
+            ies.push(mp.to_ie());
+        }
+        if let Some(qvt) = &self.quota_validity_time {
+            ies.push(qvt.to_ie());
+        }
 
         marshal_ies(&ies)
     }
@@ -105,6 +131,10 @@ impl UpdateUrr {
         let mut subsequent_volume_threshold = None;
         let mut subsequent_time_threshold = None;
         let mut inactivity_detection_time = None;
+        let mut volume_quota = None;
+        let mut time_quota = None;
+        let mut measurement_period = None;
+        let mut quota_validity_time = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -139,6 +169,14 @@ impl UpdateUrr {
                     inactivity_detection_time =
                         Some(InactivityDetectionTime::unmarshal(&ie.payload)?);
                 }
+                IeType::VolumeQuota => volume_quota = Some(VolumeQuota::unmarshal(&ie.payload)?),
+                IeType::TimeQuota => time_quota = Some(TimeQuota::unmarshal(&ie.payload)?),
+                IeType::MeasurementPeriod => {
+                    measurement_period = Some(MeasurementPeriod::unmarshal(&ie.payload)?);
+                }
+                IeType::QuotaValidityTime => {
+                    quota_validity_time = Some(QuotaValidityTime::unmarshal(&ie.payload)?);
+                }
                 _ => (),
             }
         }
@@ -156,6 +194,10 @@ impl UpdateUrr {
             subsequent_volume_threshold,
             subsequent_time_threshold,
             inactivity_detection_time,
+            volume_quota,
+            time_quota,
+            measurement_period,
+            quota_validity_time,
         })
     }
 
@@ -206,6 +248,10 @@ pub struct UpdateUrrBuilder {
     subsequent_volume_threshold: Option<SubsequentVolumeThreshold>,
     subsequent_time_threshold: Option<SubsequentTimeThreshold>,
     inactivity_detection_time: Option<InactivityDetectionTime>,
+    volume_quota: Option<VolumeQuota>,
+    time_quota: Option<TimeQuota>,
+    measurement_period: Option<MeasurementPeriod>,
+    quota_validity_time: Option<QuotaValidityTime>,
 }
 
 impl UpdateUrrBuilder {
@@ -342,6 +388,26 @@ impl UpdateUrrBuilder {
         self
     }
 
+    pub fn volume_quota(mut self, quota: VolumeQuota) -> Self {
+        self.volume_quota = Some(quota);
+        self
+    }
+
+    pub fn time_quota(mut self, quota: TimeQuota) -> Self {
+        self.time_quota = Some(quota);
+        self
+    }
+
+    pub fn measurement_period(mut self, period: MeasurementPeriod) -> Self {
+        self.measurement_period = Some(period);
+        self
+    }
+
+    pub fn quota_validity_time(mut self, validity: QuotaValidityTime) -> Self {
+        self.quota_validity_time = Some(validity);
+        self
+    }
+
     /// Builds the Update URR IE with validation.
     ///
     /// # Errors
@@ -378,6 +444,10 @@ impl UpdateUrrBuilder {
             subsequent_volume_threshold: self.subsequent_volume_threshold,
             subsequent_time_threshold: self.subsequent_time_threshold,
             inactivity_detection_time: self.inactivity_detection_time,
+            volume_quota: self.volume_quota,
+            time_quota: self.time_quota,
+            measurement_period: self.measurement_period,
+            quota_validity_time: self.quota_validity_time,
         })
     }
 
@@ -464,6 +534,19 @@ mod tests {
         assert!(urr.time_threshold.is_some());
         assert!(urr.subsequent_volume_threshold.is_some());
         assert!(urr.inactivity_detection_time.is_some());
+    }
+
+    #[test]
+    fn test_quota_and_period_fields_round_trip() {
+        let urr = UpdateUrrBuilder::new(UrrId::new(2))
+            .volume_quota(VolumeQuota::new(0x01, Some(5_000_000), None, None))
+            .time_quota(TimeQuota::new(600))
+            .measurement_period(MeasurementPeriod::new(60))
+            .quota_validity_time(QuotaValidityTime::new(300))
+            .build()
+            .unwrap();
+
+        assert_eq!(UpdateUrr::unmarshal(&urr.marshal()).unwrap(), urr);
     }
 
     #[test]

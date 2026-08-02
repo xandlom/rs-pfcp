@@ -4,8 +4,8 @@ use crate::error::PfcpError;
 use crate::ie::{
     inactivity_detection_time::InactivityDetectionTime, marshal_ies,
     measurement_method::MeasurementMethod, measurement_period::MeasurementPeriod,
-    monitoring_time::MonitoringTime, reporting_triggers::ReportingTriggers,
-    subsequent_time_threshold::SubsequentTimeThreshold,
+    monitoring_time::MonitoringTime, quota_validity_time::QuotaValidityTime,
+    reporting_triggers::ReportingTriggers, subsequent_time_threshold::SubsequentTimeThreshold,
     subsequent_volume_threshold::SubsequentVolumeThreshold, time_quota::TimeQuota,
     time_threshold::TimeThreshold, urr_id::UrrId, volume_quota::VolumeQuota,
     volume_threshold::VolumeThreshold, Ie, IeIterator, IeType,
@@ -32,6 +32,7 @@ pub struct CreateUrr {
     /// Periodic measurement reporting interval in seconds.
     /// Per 3GPP TS 29.244 Table 7.5.2.6-1, IE Type 64.
     pub measurement_period: Option<MeasurementPeriod>,
+    pub quota_validity_time: Option<QuotaValidityTime>,
 }
 
 impl CreateUrr {
@@ -61,6 +62,7 @@ impl CreateUrr {
             volume_quota: None,
             time_quota: None,
             measurement_period: None,
+            quota_validity_time: None,
         }
     }
 
@@ -114,6 +116,9 @@ impl CreateUrr {
         if let Some(mp) = &self.measurement_period {
             ies.push(Ie::new(IeType::MeasurementPeriod, mp.marshal().to_vec()));
         }
+        if let Some(qvt) = &self.quota_validity_time {
+            ies.push(qvt.to_ie());
+        }
 
         marshal_ies(&ies)
     }
@@ -132,6 +137,7 @@ impl CreateUrr {
         let mut volume_quota = None;
         let mut time_quota = None;
         let mut measurement_period = None;
+        let mut quota_validity_time = None;
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -175,6 +181,9 @@ impl CreateUrr {
                 IeType::MeasurementPeriod => {
                     measurement_period = Some(MeasurementPeriod::unmarshal(&ie.payload)?);
                 }
+                IeType::QuotaValidityTime => {
+                    quota_validity_time = Some(QuotaValidityTime::unmarshal(&ie.payload)?);
+                }
                 _ => (),
             }
         }
@@ -201,6 +210,7 @@ impl CreateUrr {
             volume_quota,
             time_quota,
             measurement_period,
+            quota_validity_time,
         })
     }
 
@@ -258,6 +268,7 @@ pub struct CreateUrrBuilder {
     volume_quota: Option<VolumeQuota>,
     time_quota: Option<TimeQuota>,
     measurement_period: Option<MeasurementPeriod>,
+    quota_validity_time: Option<QuotaValidityTime>,
 }
 
 impl CreateUrrBuilder {
@@ -436,6 +447,18 @@ impl CreateUrrBuilder {
         self
     }
 
+    /// Sets the validity time of the granted quota.
+    pub fn quota_validity_time(mut self, validity: QuotaValidityTime) -> Self {
+        self.quota_validity_time = Some(validity);
+        self
+    }
+
+    /// Convenience method: set quota validity time in seconds.
+    pub fn quota_validity_time_seconds(mut self, seconds: u32) -> Self {
+        self.quota_validity_time = Some(QuotaValidityTime::new(seconds));
+        self
+    }
+
     /// Builds the Create URR IE with comprehensive validation.
     ///
     /// # Errors
@@ -489,6 +512,7 @@ impl CreateUrrBuilder {
             volume_quota: self.volume_quota,
             time_quota: self.time_quota,
             measurement_period: self.measurement_period,
+            quota_validity_time: self.quota_validity_time,
         })
     }
 
@@ -498,15 +522,7 @@ impl CreateUrrBuilder {
         measurement_method: &MeasurementMethod,
     ) -> Result<(), PfcpError> {
         // Validate volume measurement consistency
-        if measurement_method.volume {
-            if self.volume_threshold.is_none() && self.subsequent_volume_threshold.is_none() {
-                return Err(PfcpError::validation_error(
-                    "CreateUrrBuilder",
-                    "volume_threshold",
-                    "Volume measurement enabled but no volume threshold configured",
-                ));
-            }
-        } else {
+        if !measurement_method.volume {
             // Volume measurement disabled but volume thresholds configured
             if self.volume_threshold.is_some() || self.subsequent_volume_threshold.is_some() {
                 return Err(PfcpError::validation_error(
@@ -518,15 +534,7 @@ impl CreateUrrBuilder {
         }
 
         // Validate duration measurement consistency
-        if measurement_method.duration {
-            if self.time_threshold.is_none() && self.subsequent_time_threshold.is_none() {
-                return Err(PfcpError::validation_error(
-                    "CreateUrrBuilder",
-                    "time_threshold",
-                    "Duration measurement enabled but no time threshold configured",
-                ));
-            }
-        } else {
+        if !measurement_method.duration {
             // Duration measurement disabled but time thresholds configured
             if self.time_threshold.is_some() || self.subsequent_time_threshold.is_some() {
                 return Err(PfcpError::validation_error(
@@ -768,26 +776,14 @@ mod tests {
 
     // Type safety validation tests
     #[test]
-    fn test_builder_validation_volume_without_threshold() {
+    fn test_builder_allows_volume_measurement_without_threshold() {
         let result = CreateUrrBuilder::new(UrrId::new(1))
             .measurement_method(MeasurementMethod::new(false, true, false)) // volume enabled
             .reporting_triggers(ReportingTriggers::new())
             // No volume threshold set
             .build();
 
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            PfcpError::ValidationError {
-                builder,
-                field,
-                reason,
-            } => {
-                assert_eq!(builder, "CreateUrrBuilder");
-                assert_eq!(field, "volume_threshold");
-                assert!(reason.contains("Volume measurement enabled"));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -815,26 +811,14 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_validation_duration_without_threshold() {
+    fn test_builder_allows_duration_measurement_without_threshold() {
         let result = CreateUrrBuilder::new(UrrId::new(1))
             .measurement_method(MeasurementMethod::new(true, false, false)) // duration enabled
             .reporting_triggers(ReportingTriggers::new())
             // No time threshold set
             .build();
 
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            PfcpError::ValidationError {
-                builder,
-                field,
-                reason,
-            } => {
-                assert_eq!(builder, "CreateUrrBuilder");
-                assert_eq!(field, "time_threshold");
-                assert!(reason.contains("Duration measurement enabled"));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -961,5 +945,20 @@ mod tests {
         let unmarshaled = CreateUrr::unmarshal(&marshaled).unwrap();
         assert_eq!(urr, unmarshaled);
         assert_eq!(unmarshaled.measurement_period.unwrap().value, 60);
+    }
+
+    #[test]
+    fn test_quota_validity_time_round_trip() {
+        let urr = CreateUrrBuilder::new(UrrId::new(1))
+            .measurement_method(MeasurementMethod::new(false, true, false))
+            .reporting_triggers(ReportingTriggers::new().with_quota_validity_time(true))
+            .volume_quota_bytes(5_000_000)
+            .quota_validity_time_seconds(300)
+            .build()
+            .unwrap();
+
+        let unmarshaled = CreateUrr::unmarshal(&urr.marshal()).unwrap();
+        assert_eq!(unmarshaled, urr);
+        assert_eq!(unmarshaled.quota_validity_time.unwrap().value, 300);
     }
 }
