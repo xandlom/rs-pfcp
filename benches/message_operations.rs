@@ -81,7 +81,7 @@ fn create_session_request(
         cp_function_features: None,
         apn_dnn: None,
         user_plane_inactivity_timer: None,
-        pfcpsm_req_flags: None,
+        pfcpse_req_flags: None,
         create_mars: vec![],
         provide_atsss_control_information: None,
         create_bridge_info_for_tsc: None,
