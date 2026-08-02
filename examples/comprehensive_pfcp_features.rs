@@ -248,7 +248,7 @@ fn phase11_rel18_completion_example() -> Result<(), Box<dyn std::error::Error>> 
     let dr_ie = direct_report.to_ie();
     println!("📡 Direct Reporting Information (DRQOS):");
     println!("   URI: {}", String::from_utf8_lossy(&uri.uri));
-    println!("   Correlation ID: {:02x?}", &corr_id.value);
+    println!("   Correlation ID: {:02x?}", corr_id.value);
     println!("   DUPL flag set: {}", flags.dupl);
     println!("   IE type: {:?}", dr_ie.ie_type);
 
@@ -263,7 +263,7 @@ fn phase11_rel18_completion_example() -> Result<(), Box<dyn std::error::Error>> 
         "   Offending IE type: 0x{:04x}",
         offending.offending_ie_type
     );
-    println!("   Value bytes: {:02x?}", &offending.offending_ie_value);
+    println!("   Value bytes: {:02x?}", offending.offending_ie_value);
 
     // --- Predefined Rules Name (IE 299) ---
     // Activates a named rule set pre-configured on the UPF.

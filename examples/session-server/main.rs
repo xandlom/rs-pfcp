@@ -654,7 +654,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let socket = UdpSocket::bind(&bind_address)?;
     socket.set_read_timeout(Some(Duration::from_secs(1)))?; // Allow periodic checks
-    println!("Listening on {}...", &bind_address);
+    println!("Listening on {}...", bind_address);
     println!("Socket bound successfully to {}", socket.local_addr()?);
 
     let mut buf = vec![0u8; 4096]; // Increased buffer size for larger PFCP messages
