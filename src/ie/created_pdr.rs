@@ -115,7 +115,7 @@ mod tests {
             true,  // v4
             false, // v6
             false, // ch
-            true,  // chid
+            false, // chid
             0x87654321,
             Some(Ipv4Addr::new(10, 0, 0, 1)),
             None,
@@ -129,7 +129,7 @@ mod tests {
         assert_eq!(created_pdr, unmarshaled);
         assert_eq!(unmarshaled.pdr_id.value, 100);
         assert_eq!(unmarshaled.f_teid.teid, Teid(0x87654321));
-        assert_eq!(unmarshaled.f_teid.choose_id, 200);
-        assert!(unmarshaled.f_teid.chid);
+        assert_eq!(unmarshaled.f_teid.choose_id, 0);
+        assert!(!unmarshaled.f_teid.chid);
     }
 }

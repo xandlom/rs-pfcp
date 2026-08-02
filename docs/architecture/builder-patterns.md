@@ -224,7 +224,6 @@ let fteid = FteidBuilder::new()
 
 // CHOOSE flag - UPF selects IP
 let choose_fteid = FteidBuilder::new()
-    .teid(0x87654321)
     .choose_ipv4()
     .choose_id(42)  // For correlation
     .build()?;
