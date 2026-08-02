@@ -32,7 +32,7 @@ impl UPFunctionFeatures {
     }
 
     pub fn marshal(&self) -> [u8; 2] {
-        self.bits().to_be_bytes()
+        self.bits().to_le_bytes()
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, crate::error::PfcpError> {
@@ -45,11 +45,19 @@ impl UPFunctionFeatures {
             ));
         }
         let bits = if data.len() == 1 {
-            u16::from_be_bytes([0, data[0]])
+            u16::from_le_bytes([data[0], 0])
         } else {
-            u16::from_be_bytes([data[0], data[1]])
+            u16::from_le_bytes([data[0], data[1]])
         };
         Ok(UPFunctionFeatures::from_bits_truncate(bits))
+    }
+
+    /// Wraps the feature bitmap in an UP Function Features IE.
+    pub fn to_ie(self) -> crate::ie::Ie {
+        crate::ie::Ie::new(
+            crate::ie::IeType::UpFunctionFeatures,
+            self.marshal().to_vec(),
+        )
     }
 }
 
@@ -64,5 +72,16 @@ mod tests {
         let marshaled = features.marshal();
         let unmarshaled = UPFunctionFeatures::unmarshal(&marshaled).unwrap();
         assert_eq!(features, unmarshaled);
+    }
+
+    #[test]
+    fn test_up_function_features_uses_pfcp_octet_order() {
+        let features = UPFunctionFeatures::FTUP | UPFunctionFeatures::EMPU;
+
+        assert_eq!(features.marshal(), [0x10, 0x01]);
+        assert_eq!(
+            UPFunctionFeatures::unmarshal(&[0x10]).unwrap(),
+            UPFunctionFeatures::FTUP
+        );
     }
 }
