@@ -141,8 +141,8 @@ impl UpdateFarBuilder {
     }
 
     /// Sets the apply action.
-    pub fn apply_action(mut self, apply_action: ApplyAction) -> Self {
-        self.apply_action = Some(apply_action);
+    pub fn apply_action(mut self, apply_action: impl Into<ApplyAction>) -> Self {
+        self.apply_action = Some(apply_action.into());
         self
     }
 
@@ -193,7 +193,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(far.far_id, FarId::new(1));
-        assert_eq!(far.apply_action, Some(ApplyAction::FORW));
+        assert_eq!(far.apply_action, Some(ApplyAction::FORW.into()));
         assert!(far.update_forwarding_parameters.is_none());
     }
 
@@ -221,7 +221,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(far.far_id, FarId::new(3));
-        assert_eq!(far.apply_action, Some(ApplyAction::BUFF));
+        assert_eq!(far.apply_action, Some(ApplyAction::BUFF.into()));
         assert_eq!(far.bar_id, Some(BarId::new(1)));
     }
 
@@ -233,7 +233,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(far.far_id, FarId::new(4));
-        assert_eq!(far.apply_action, Some(ApplyAction::DROP));
+        assert_eq!(far.apply_action, Some(ApplyAction::DROP.into()));
     }
 
     #[test]

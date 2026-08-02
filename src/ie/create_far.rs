@@ -32,10 +32,10 @@ pub enum FarAction {
 impl FarAction {
     fn to_apply_action(self) -> ApplyAction {
         match self {
-            FarAction::Forward => ApplyAction::FORW,
-            FarAction::Drop => ApplyAction::DROP,
-            FarAction::Buffer => ApplyAction::BUFF,
-            FarAction::Duplicate => ApplyAction::DUPL,
+            FarAction::Forward => ApplyAction::FORW.into(),
+            FarAction::Drop => ApplyAction::DROP.into(),
+            FarAction::Buffer => ApplyAction::BUFF.into(),
+            FarAction::Duplicate => ApplyAction::DUPL.into(),
             FarAction::ForwardAndDuplicate => ApplyAction::FORW | ApplyAction::DUPL,
         }
     }
@@ -52,10 +52,10 @@ pub struct CreateFar {
 
 impl CreateFar {
     /// Creates a new Create FAR IE.
-    pub fn new(far_id: FarId, apply_action: ApplyAction) -> Self {
+    pub fn new(far_id: FarId, apply_action: impl Into<ApplyAction>) -> Self {
         CreateFar {
             far_id,
-            apply_action,
+            apply_action: apply_action.into(),
             forwarding_parameters: None,
             duplicating_parameters: None,
             bar_id: None,
@@ -238,8 +238,8 @@ impl CreateFarBuilder {
     }
 
     /// Sets the apply action.
-    pub fn apply_action(mut self, action: ApplyAction) -> Self {
-        self.apply_action = Some(action);
+    pub fn apply_action(mut self, action: impl Into<ApplyAction>) -> Self {
+        self.apply_action = Some(action.into());
         self
     }
 
@@ -262,7 +262,7 @@ impl CreateFarBuilder {
         self.forwarding_parameters = Some(forwarding_params);
         // Only set FORW action if no action is already set
         if self.apply_action.is_none() {
-            self.apply_action = Some(ApplyAction::FORW);
+            self.apply_action = Some(ApplyAction::FORW.into());
         }
         self
     }
@@ -279,7 +279,7 @@ impl CreateFarBuilder {
         self.forwarding_parameters = Some(forwarding_params);
         // Only set FORW action if no action is already set
         if self.apply_action.is_none() {
-            self.apply_action = Some(ApplyAction::FORW);
+            self.apply_action = Some(ApplyAction::FORW.into());
         }
         self
     }
@@ -313,11 +313,14 @@ impl CreateFarBuilder {
             parent_ie: Some(IeType::CreateFar),
         })?;
 
-        let apply_action = self.apply_action.ok_or(PfcpError::MissingMandatoryIe {
-            ie_type: IeType::ApplyAction,
-            message_type: None,
-            parent_ie: Some(IeType::CreateFar),
-        })?;
+        let apply_action = self
+            .apply_action
+            .clone()
+            .ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::ApplyAction,
+                message_type: None,
+                parent_ie: Some(IeType::CreateFar),
+            })?;
 
         // Validate action and parameter combinations
         self.validate_action_parameters(&apply_action)?;
@@ -771,7 +774,7 @@ mod tests {
     fn test_builder_enhanced_validation_missing_far_id() {
         // This shouldn't happen with current API, but test for completeness
         let builder = CreateFarBuilder {
-            apply_action: Some(ApplyAction::FORW),
+            apply_action: Some(ApplyAction::FORW.into()),
             ..Default::default()
         };
 
