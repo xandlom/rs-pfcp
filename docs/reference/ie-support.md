@@ -348,7 +348,6 @@ Also added IEs 274, 293, 294, 296, 297, 298, 299 to the `IeType` enum (previousl
 ```rust
 // 3GPP TS 29.244 compliant F-TEID with CHOOSE flags
 let f_teid = FteidBuilder::new()
-    .teid(0x12345678)
     .choose_ipv4()           // UPF chooses IPv4
     .choose_id(42)           // Correlation ID
     .build()?;

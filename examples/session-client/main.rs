@@ -305,7 +305,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Create F-TEID with CHOOSE flag (let UPF select IP)
         let choose_fteid = FteidBuilder::new()
-            .teid(0x87654321u32 + seid as u32)
             .choose_ipv4()
             .choose_id(42) // For correlation
             .build()

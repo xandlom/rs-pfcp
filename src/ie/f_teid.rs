@@ -26,7 +26,7 @@ impl Fteid {
         teid: impl Into<Teid>,
         ipv4_address: Option<Ipv4Addr>,
         ipv6_address: Option<Ipv6Addr>,
-        choose_id: u8,
+        _choose_id: u8,
     ) -> Self {
         Fteid {
             v4,
@@ -36,7 +36,7 @@ impl Fteid {
             teid: teid.into(),
             ipv4_address,
             ipv6_address,
-            choose_id,
+            choose_id: 0,
         }
     }
 
@@ -54,15 +54,16 @@ impl Fteid {
         ipv6_address: Option<Ipv6Addr>,
         choose_id: u8,
     ) -> Self {
+        let teid = if ch { Teid::default() } else { teid.into() };
         Fteid {
             v4,
             v6,
             ch,
-            chid,
-            teid: teid.into(),
-            ipv4_address,
-            ipv6_address,
-            choose_id,
+            chid: ch && chid,
+            teid,
+            ipv4_address: if ch { None } else { ipv4_address },
+            ipv6_address: if ch { None } else { ipv6_address },
+            choose_id: if ch && chid { choose_id } else { 0 },
         }
     }
 
@@ -79,10 +80,16 @@ impl Fteid {
         if self.ch {
             flags |= 0x04; // CH flag (bit 2)
         }
-        if self.chid {
+        if self.ch && self.chid {
             flags |= 0x08; // CHID flag (bit 3)
         }
         data.push(flags);
+        if self.ch {
+            if self.chid {
+                data.push(self.choose_id);
+            }
+            return data;
+        }
         data.extend_from_slice(&self.teid.0.to_be_bytes());
         if let Some(addr) = self.ipv4_address {
             data.extend_from_slice(&addr.octets());
@@ -90,22 +97,19 @@ impl Fteid {
         if let Some(addr) = self.ipv6_address {
             data.extend_from_slice(&addr.octets());
         }
-        // Only include choose_id if CHID flag is set
-        if self.chid {
-            data.push(self.choose_id);
-        }
         data
     }
 
     /// Unmarshals a byte slice into an F-TEID.
     ///
-    /// Per 3GPP TS 29.244, F-TEID requires minimum 5 bytes (1 byte flags + 4 bytes TEID).
+    /// A CHOOSE request contains only the flags octet and an optional Choose ID. A concrete
+    /// F-TEID contains the flags, TEID, and the selected IP addresses.
     pub fn unmarshal(payload: &[u8]) -> Result<Self, PfcpError> {
-        if payload.len() < 5 {
+        if payload.is_empty() {
             return Err(PfcpError::invalid_length(
                 "F-TEID",
                 IeType::Fteid,
-                5,
+                1,
                 payload.len(),
             ));
         }
@@ -114,10 +118,43 @@ impl Fteid {
         let v6 = flags & 0x02 != 0;
         let ch = flags & 0x04 != 0;
         let chid = flags & 0x08 != 0;
+        if ch {
+            let choose_id = if chid {
+                *payload.get(1).ok_or_else(|| {
+                    PfcpError::invalid_length("F-TEID choose ID", IeType::Fteid, 2, payload.len())
+                })?
+            } else {
+                0
+            };
+            return Ok(Fteid {
+                v4,
+                v6,
+                ch,
+                chid,
+                teid: Teid::default(),
+                ipv4_address: None,
+                ipv6_address: None,
+                choose_id,
+            });
+        }
+        if chid {
+            return Err(PfcpError::invalid_value(
+                "F-TEID choose ID",
+                format!("flags 0x{flags:02x}"),
+                "CHID requires the CH flag",
+            ));
+        }
+        if payload.len() < 5 {
+            return Err(PfcpError::invalid_length(
+                "F-TEID",
+                IeType::Fteid,
+                5,
+                payload.len(),
+            ));
+        }
         let teid = u32::from_be_bytes([payload[1], payload[2], payload[3], payload[4]]);
         let mut offset = 5;
-        let ipv4_address = if v4 && !ch {
-            // IPv4 address is present only if V4 flag is set and CHOOSE flag is NOT set
+        let ipv4_address = if v4 {
             if payload.len() < offset + 4 {
                 return Err(PfcpError::invalid_length(
                     "F-TEID IPv4",
@@ -134,27 +171,10 @@ impl Fteid {
             );
             offset += 4;
             Some(addr)
-        } else if v4 && ch {
-            // V4 flag set with CHOOSE flag - check if address is present
-            if payload.len() >= offset + 4 {
-                // Address is present (optional with CHOOSE)
-                let addr = Ipv4Addr::new(
-                    payload[offset],
-                    payload[offset + 1],
-                    payload[offset + 2],
-                    payload[offset + 3],
-                );
-                offset += 4;
-                Some(addr)
-            } else {
-                // No address present with CHOOSE flag
-                None
-            }
         } else {
             None
         };
-        let ipv6_address = if v6 && !ch {
-            // IPv6 address is present only if V6 flag is set and CHOOSE flag is NOT set
+        let ipv6_address = if v6 {
             if payload.len() < offset + 16 {
                 return Err(PfcpError::invalid_length(
                     "F-TEID IPv6",
@@ -165,36 +185,9 @@ impl Fteid {
             }
             let mut octets = [0; 16];
             octets.copy_from_slice(&payload[offset..offset + 16]);
-            offset += 16;
             Some(Ipv6Addr::from(octets))
-        } else if v6 && ch {
-            // V6 flag set with CHOOSE flag - check if address is present
-            if payload.len() >= offset + 16 {
-                // Address is present (optional with CHOOSE)
-                let mut octets = [0; 16];
-                octets.copy_from_slice(&payload[offset..offset + 16]);
-                offset += 16;
-                Some(Ipv6Addr::from(octets))
-            } else {
-                // No address present with CHOOSE flag
-                None
-            }
         } else {
             None
-        };
-        // Only read choose_id if CHID flag is set
-        let choose_id = if chid {
-            if payload.len() < offset + 1 {
-                return Err(PfcpError::invalid_length(
-                    "F-TEID choose ID",
-                    IeType::Fteid,
-                    offset + 1,
-                    payload.len(),
-                ));
-            }
-            payload[offset]
-        } else {
-            0
         };
         Ok(Fteid {
             v4,
@@ -204,7 +197,7 @@ impl Fteid {
             teid: Teid(teid),
             ipv4_address,
             ipv6_address,
-            choose_id,
+            choose_id: 0,
         })
     }
 
@@ -235,14 +228,12 @@ impl Fteid {
 ///
 /// // F-TEID with CHOOSE flag (UPF selects IP)
 /// let choose_fteid = FteidBuilder::new()
-///     .teid(0x87654321)
 ///     .choose_ipv4()
 ///     .build()
 ///     .unwrap();
 ///
 /// // F-TEID with CHOOSE ID for correlation
 /// let choose_id_fteid = FteidBuilder::new()
-///     .teid(0xABCDEF00)
 ///     .choose_ipv4()
 ///     .choose_id(42)
 ///     .build()
@@ -266,7 +257,7 @@ impl FteidBuilder {
 
     /// Sets the TEID (Tunnel Endpoint Identifier).
     ///
-    /// This is a required field for all F-TEID instances.
+    /// This is required for a concrete F-TEID and omitted from CHOOSE requests.
     pub fn teid(mut self, teid: impl Into<Teid>) -> Self {
         self.teid = Some(teid.into());
         self
@@ -332,17 +323,11 @@ impl FteidBuilder {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - TEID is not set
+    /// - TEID is not set for a concrete (non-CHOOSE) F-TEID
     /// - No IP addressing method is specified (neither explicit addresses nor CHOOSE flags)
     /// - Both explicit address and CHOOSE flag are set for the same IP version
     /// - CHOOSE ID is set but no CHOOSE flags are enabled
     pub fn build(self) -> Result<Fteid, PfcpError> {
-        let teid = self.teid.ok_or(PfcpError::validation_error(
-            "FteidBuilder",
-            "teid",
-            "TEID is required",
-        ))?;
-
         // Validate IPv4 configuration
         if self.ipv4_address.is_some() && self.choose_ipv4 {
             return Err(PfcpError::validation_error(
@@ -388,6 +373,15 @@ impl FteidBuilder {
         let ch = self.choose_ipv4 || self.choose_ipv6;
         let chid = self.choose_id.is_some();
         let choose_id = self.choose_id.unwrap_or(0);
+        let teid = if ch {
+            Teid::default()
+        } else {
+            self.teid.ok_or(PfcpError::validation_error(
+                "FteidBuilder",
+                "teid",
+                "TEID is required",
+            ))?
+        };
 
         Ok(Fteid {
             v4,
@@ -436,27 +430,31 @@ impl Fteid {
     }
 
     /// Creates an F-TEID with CHOOSE IPv4 flag.
-    pub fn choose_ipv4(teid: impl Into<Teid>) -> Self {
+    ///
+    /// The TEID argument is retained for API compatibility but is not encoded: CHOOSE requests
+    /// require the UP function to allocate the TEID.
+    pub fn choose_ipv4(_teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
-            .teid(teid)
             .choose_ipv4()
             .build()
             .expect("CHOOSE IPv4 F-TEID construction should not fail")
     }
 
     /// Creates an F-TEID with CHOOSE IPv6 flag.
-    pub fn choose_ipv6(teid: impl Into<Teid>) -> Self {
+    ///
+    /// The TEID argument is retained for API compatibility but is not encoded.
+    pub fn choose_ipv6(_teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
-            .teid(teid)
             .choose_ipv6()
             .build()
             .expect("CHOOSE IPv6 F-TEID construction should not fail")
     }
 
     /// Creates an F-TEID with CHOOSE flags for both IPv4 and IPv6.
-    pub fn choose_dual_stack(teid: impl Into<Teid>) -> Self {
+    ///
+    /// The TEID argument is retained for API compatibility but is not encoded.
+    pub fn choose_dual_stack(_teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
-            .teid(teid)
             .choose_dual_stack()
             .build()
             .expect("CHOOSE dual-stack F-TEID construction should not fail")
@@ -548,8 +546,8 @@ mod tests {
         assert!(unmarshaled.ch);
         assert!(!unmarshaled.chid);
 
-        // Verify marshaled data doesn't include choose_id when chid=false
-        assert_eq!(marshaled.len(), 9); // flags(1) + teid(4) + ipv4(4) = 9 bytes
+        // CHOOSE omits the TEID and IP address fields.
+        assert_eq!(marshaled, [0x05]);
     }
 
     #[test]
@@ -557,8 +555,8 @@ mod tests {
         let fteid = Fteid::new_with_choose(
             true,
             false,
-            false, // ch = false
-            true,  // chid = true
+            true, // ch = true
+            true, // chid = true
             0x12345678,
             Some(Ipv4Addr::new(192, 168, 0, 1)),
             None,
@@ -567,13 +565,12 @@ mod tests {
         let marshaled = fteid.marshal();
         let unmarshaled = Fteid::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, fteid);
-        assert!(!unmarshaled.ch);
+        assert!(unmarshaled.ch);
         assert!(unmarshaled.chid);
         assert_eq!(unmarshaled.choose_id, 42);
 
         // Verify marshaled data includes choose_id when chid=true
-        assert_eq!(marshaled.len(), 10); // flags(1) + teid(4) + ipv4(4) + choose_id(1) = 10 bytes
-        assert_eq!(marshaled[9], 42); // Last byte should be choose_id
+        assert_eq!(marshaled, [0x0d, 42]);
     }
 
     #[test]
@@ -708,17 +705,13 @@ mod tests {
 
     #[test]
     fn test_fteid_builder_choose_ipv4() {
-        let fteid = FteidBuilder::new()
-            .teid(0x11111111)
-            .choose_ipv4()
-            .build()
-            .unwrap();
+        let fteid = FteidBuilder::new().choose_ipv4().build().unwrap();
 
         assert!(fteid.v4);
         assert!(!fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x11111111));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -731,17 +724,13 @@ mod tests {
 
     #[test]
     fn test_fteid_builder_choose_ipv6() {
-        let fteid = FteidBuilder::new()
-            .teid(0x22222222)
-            .choose_ipv6()
-            .build()
-            .unwrap();
+        let fteid = FteidBuilder::new().choose_ipv6().build().unwrap();
 
         assert!(!fteid.v4);
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x22222222));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -754,17 +743,13 @@ mod tests {
 
     #[test]
     fn test_fteid_builder_choose_dual_stack() {
-        let fteid = FteidBuilder::new()
-            .teid(0x33333333)
-            .choose_dual_stack()
-            .build()
-            .unwrap();
+        let fteid = FteidBuilder::new().choose_dual_stack().build().unwrap();
 
         assert!(fteid.v4);
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x33333333));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 0);
@@ -778,7 +763,6 @@ mod tests {
     #[test]
     fn test_fteid_builder_choose_with_id() {
         let fteid = FteidBuilder::new()
-            .teid(0x44444444)
             .choose_ipv4()
             .choose_id(42)
             .build()
@@ -788,7 +772,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(fteid.ch);
         assert!(fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x44444444));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 42);
@@ -802,7 +786,6 @@ mod tests {
     #[test]
     fn test_fteid_builder_choose_dual_stack_with_id() {
         let fteid = FteidBuilder::new()
-            .teid(0x55555555)
             .choose_dual_stack()
             .choose_id(100)
             .build()
@@ -812,7 +795,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x55555555));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
         assert_eq!(fteid.choose_id, 100);
@@ -944,7 +927,7 @@ mod tests {
         assert!(!fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x11111111));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -957,7 +940,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x22222222));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -970,7 +953,7 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(!fteid.chid);
-        assert_eq!(fteid.teid, Teid(0x33333333));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.ipv4_address, None);
         assert_eq!(fteid.ipv6_address, None);
     }
@@ -1000,7 +983,19 @@ mod tests {
         assert!(fteid.v6);
         assert!(fteid.ch);
         assert!(fteid.chid);
-        assert_eq!(fteid.teid, Teid(0xDEADBEEF));
+        assert_eq!(fteid.teid, Teid(0));
         assert_eq!(fteid.choose_id, 50);
+    }
+
+    #[test]
+    fn test_fteid_builder_choose_does_not_require_teid() {
+        let fteid = FteidBuilder::new()
+            .choose_ipv4()
+            .choose_id(42)
+            .build()
+            .unwrap();
+
+        assert_eq!(fteid.marshal(), [0x0d, 42]);
+        assert_eq!(Fteid::unmarshal(&[0x0d, 42]).unwrap(), fteid);
     }
 }

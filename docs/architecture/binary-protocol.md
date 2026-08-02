@@ -429,14 +429,13 @@ Special compliance for F-TEID allocation (clause 8.2.3):
 ```rust
 // F-TEID with CHOOSE flag: UPF allocates IP address
 let choose_fteid = FteidBuilder::new()
-    .teid(0x12345678)
     .choose_ipv4()      // Set CHOOSE flag
     .choose_id(42)      // For correlation in response
     .build()?;
 
 // Wire format includes special flags
-// Bit 1 (CH): CHOOSE flag
-// Bit 0 (CHID): CHOOSE_ID flag
+// Bit 3 (CH): CHOOSE flag
+// Bit 4 (CHID): CHOOSE_ID flag
 ```
 
 ### Zero-Length IE Security

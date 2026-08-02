@@ -137,8 +137,8 @@ fn create_quota_exhausted_usage_report() -> Option<Ie> {
 
 /// Allocate a UPF-side local F-TEID for a newly created PDR.
 ///
-/// Demonstrates three allocation strategies based on PDR ID: standard IPv4 (PDR 1),
-/// dual-stack IPv4+IPv6 (PDR 2), and CHOOSE-flag dynamic allocation (all other PDRs).
+/// Demonstrates concrete allocation strategies based on PDR ID: IPv4 (PDR 1 and other PDRs)
+/// and dual-stack IPv4+IPv6 (PDR 2).
 /// Shared by the Session Establishment and Session Modification handlers.
 fn allocate_local_fteid(pdr_id: u16) -> Result<Fteid, PfcpError> {
     let teid = 0x12345678 + pdr_id as u32;
@@ -160,11 +160,10 @@ fn allocate_local_fteid(pdr_id: u16) -> Result<Fteid, PfcpError> {
                 .build()
         }
         _ => {
-            println!("      → Using CHOOSE flag for dynamic F-TEID allocation");
+            println!("      → Allocating IPv4 F-TEID");
             FteidBuilder::new()
                 .teid(teid)
-                .choose_ipv4()
-                .choose_id(pdr_id as u8) // For correlation
+                .ipv4(Ipv4Addr::new(192, 168, 1, 100))
                 .build()
         }
     }

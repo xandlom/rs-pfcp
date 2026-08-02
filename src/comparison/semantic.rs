@@ -117,6 +117,13 @@ pub fn compare_semantically_with_tolerance(
 /// different implementations might set them differently. We ignore them
 /// for semantic comparison.
 fn compare_fteid(left: &Fteid, right: &Fteid) -> SemanticMatch {
+    // Compare allocation mode before fields that are absent from CHOOSE requests.
+    if left.ch != right.ch {
+        return SemanticMatch::Mismatch {
+            details: format!("CHOOSE flag differs: {} vs {}", left.ch, right.ch),
+        };
+    }
+
     // Compare TEID
     if left.teid != right.teid {
         return SemanticMatch::Mismatch {
@@ -141,13 +148,6 @@ fn compare_fteid(left: &Fteid, right: &Fteid) -> SemanticMatch {
                 "IPv6 address differs: {:?} vs {:?}",
                 left.ipv6_address, right.ipv6_address
             ),
-        };
-    }
-
-    // Compare CHOOSE flag
-    if left.ch != right.ch {
-        return SemanticMatch::Mismatch {
-            details: format!("CHOOSE flag differs: {} vs {}", left.ch, right.ch),
         };
     }
 
