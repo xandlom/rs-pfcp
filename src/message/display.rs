@@ -537,6 +537,14 @@ fn display_create_far(payload: &[u8]) -> Option<IeDisplayResult> {
         (ApplyAction::BUFF, "BUFF"),
         (ApplyAction::NOCP, "NOCP"),
         (ApplyAction::DUPL, "DUPL"),
+        (ApplyAction::IPMA, "IPMA"),
+        (ApplyAction::IPMD, "IPMD"),
+        (ApplyAction::DFRT, "DFRT"),
+        (ApplyAction::EDRT, "EDRT"),
+        (ApplyAction::BDPN, "BDPN"),
+        (ApplyAction::DDPN, "DDPN"),
+        (ApplyAction::FSSM, "FSSM"),
+        (ApplyAction::MBSU, "MBSU"),
     ] {
         if far.apply_action.contains(flag) {
             actions.push(name);

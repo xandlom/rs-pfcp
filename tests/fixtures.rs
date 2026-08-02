@@ -133,12 +133,12 @@ pub fn basic_node_id_ipv4() -> NodeId {
 
 /// Creates a basic Apply Action (FORW - forward)
 pub fn basic_apply_action_forward() -> ApplyAction {
-    ApplyAction::FORW
+    ApplyAction::FORW.into()
 }
 
 /// Creates a basic Apply Action (DROP)
 pub fn basic_apply_action_drop() -> ApplyAction {
-    ApplyAction::DROP
+    ApplyAction::DROP.into()
 }
 
 /// Creates a basic Cause (Request Accepted)
