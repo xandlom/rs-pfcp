@@ -356,64 +356,97 @@ fn display_create_pdr(payload: &[u8]) -> Option<IeDisplayResult> {
         pdi.insert("f_teid".into(), Value::Object(fteid_map));
     }
 
-    if let Some(ref ue_ip) = pdr.pdi.ue_ip_address {
-        let mut ue_ip_map = Map::new();
-        if let Some(ipv4) = ue_ip.ipv4_address {
-            ue_ip_map.insert("ipv4".into(), json!(ipv4.to_string()));
-        }
-        if let Some(ipv6) = ue_ip.ipv6_address {
-            ue_ip_map.insert("ipv6".into(), json!(ipv6.to_string()));
-        }
-        pdi.insert("ue_ip_address".into(), Value::Object(ue_ip_map));
+    if !pdr.pdi.ue_ip_addresses.is_empty() {
+        let values = pdr
+            .pdi
+            .ue_ip_addresses
+            .iter()
+            .map(|ue_ip| {
+                let mut value = Map::new();
+                if let Some(ipv4) = ue_ip.ipv4_address {
+                    value.insert("ipv4".into(), json!(ipv4.to_string()));
+                }
+                if let Some(ipv6) = ue_ip.ipv6_address {
+                    value.insert("ipv6".into(), json!(ipv6.to_string()));
+                }
+                Value::Object(value)
+            })
+            .collect();
+        pdi.insert("ue_ip_addresses".into(), Value::Array(values));
     }
 
     if let Some(ref ni) = pdr.pdi.network_instance {
         pdi.insert("network_instance".into(), json!(&ni.instance));
     }
 
-    if let Some(ref sdf) = pdr.pdi.sdf_filter {
-        pdi.insert("sdf_filter".into(), json!(format!("{sdf:?}")));
+    if !pdr.pdi.sdf_filters.is_empty() {
+        pdi.insert(
+            "sdf_filters".into(),
+            json!(pdr
+                .pdi
+                .sdf_filters
+                .iter()
+                .map(|sdf| format!("{sdf:?}"))
+                .collect::<Vec<_>>()),
+        );
     }
 
     if let Some(ref app_id) = pdr.pdi.application_id {
-        pdi.insert("application_id".into(), json!(app_id));
+        pdi.insert("application_id".into(), json!(&app_id.id));
     }
 
-    if let Some(ref eth_filter) = pdr.pdi.ethernet_packet_filter {
-        let mut ef = Map::new();
-        ef.insert(
-            "filter_id".into(),
-            json!(eth_filter.ethernet_filter_id.value()),
-        );
+    if !pdr.pdi.ethernet_packet_filters.is_empty() {
+        let values = pdr
+            .pdi
+            .ethernet_packet_filters
+            .iter()
+            .map(|eth_filter| {
+                let mut value = Map::new();
+                value.insert(
+                    "filter_id".into(),
+                    json!(eth_filter.ethernet_filter_id.value()),
+                );
+                if let Some(ref properties) = eth_filter.ethernet_filter_properties {
+                    value.insert("bidirectional".into(), json!(properties.is_bidirectional()));
+                }
+                if !eth_filter.mac_addresses.is_empty() {
+                    value.insert(
+                        "mac_addresses".into(),
+                        json!(eth_filter
+                            .mac_addresses
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()),
+                    );
+                }
+                if let Some(ref ethertype) = eth_filter.ethertype {
+                    value.insert(
+                        "ethertype".into(),
+                        json!(format!("0x{:04x}", ethertype.value())),
+                    );
+                }
+                if let Some(ref c_tag) = eth_filter.c_tag {
+                    value.insert("c_tag".into(), c_tag_to_value(c_tag));
+                }
+                if let Some(ref s_tag) = eth_filter.s_tag {
+                    value.insert("s_tag".into(), s_tag_to_value(s_tag));
+                }
+                Value::Object(value)
+            })
+            .collect();
+        pdi.insert("ethernet_packet_filters".into(), Value::Array(values));
+    }
 
-        if let Some(ref props) = eth_filter.ethernet_filter_properties {
-            ef.insert("bidirectional".into(), json!(props.is_bidirectional()));
-        }
-
-        if !eth_filter.mac_addresses.is_empty() {
-            let macs: Vec<Value> = eth_filter
-                .mac_addresses
+    if !pdr.pdi.qfis.is_empty() {
+        pdi.insert(
+            "qfis".into(),
+            json!(pdr
+                .pdi
+                .qfis
                 .iter()
-                .map(|mac| json!(mac.to_string()))
-                .collect();
-            ef.insert("mac_addresses".into(), Value::Array(macs));
-        }
-
-        if let Some(ref ethertype) = eth_filter.ethertype {
-            ef.insert(
-                "ethertype".into(),
-                json!(format!("0x{:04x}", ethertype.value())),
-            );
-        }
-
-        if let Some(ref c_tag) = eth_filter.c_tag {
-            ef.insert("c_tag".into(), c_tag_to_value(c_tag));
-        }
-        if let Some(ref s_tag) = eth_filter.s_tag {
-            ef.insert("s_tag".into(), s_tag_to_value(s_tag));
-        }
-
-        pdi.insert("ethernet_packet_filter".into(), Value::Object(ef));
+                .map(|qfi| qfi.value())
+                .collect::<Vec<_>>()),
+        );
     }
 
     map.insert("pdi".into(), Value::Object(pdi));
@@ -445,32 +478,50 @@ fn display_created_pdr(payload: &[u8]) -> Option<IeDisplayResult> {
     let mut map = Map::new();
     map.insert("pdr_id".into(), json!(pdr.pdr_id.value));
 
-    let mut fteid = Map::new();
-    fteid.insert("teid".into(), json!(format!("0x{:08x}", pdr.f_teid.teid)));
-    fteid.insert("teid_decimal".into(), json!(pdr.f_teid.teid.0));
-    if let Some(ipv4) = pdr.f_teid.ipv4_address {
-        fteid.insert("ipv4_address".into(), json!(ipv4.to_string()));
-    }
-    if let Some(ipv6) = pdr.f_teid.ipv6_address {
-        fteid.insert("ipv6_address".into(), json!(ipv6.to_string()));
-    }
+    if let Some(value) = pdr.f_teid {
+        let mut fteid = Map::new();
+        fteid.insert("teid".into(), json!(format!("0x{:08x}", value.teid)));
+        fteid.insert("teid_decimal".into(), json!(value.teid.0));
+        if let Some(ipv4) = value.ipv4_address {
+            fteid.insert("ipv4_address".into(), json!(ipv4.to_string()));
+        }
+        if let Some(ipv6) = value.ipv6_address {
+            fteid.insert("ipv6_address".into(), json!(ipv6.to_string()));
+        }
 
-    let mut flags = Vec::new();
-    if pdr.f_teid.v4 {
-        flags.push("IPv4");
+        let mut flags = Vec::new();
+        if value.v4 {
+            flags.push("IPv4");
+        }
+        if value.v6 {
+            flags.push("IPv6");
+        }
+        if value.ch {
+            flags.push("CHOOSE");
+        }
+        if value.chid {
+            flags.push("CHOOSE_ID");
+        }
+        fteid.insert("flags".into(), json!(flags));
+        map.insert("f_teid".into(), Value::Object(fteid));
     }
-    if pdr.f_teid.v6 {
-        flags.push("IPv6");
+    if !pdr.ue_ip_addresses.is_empty() {
+        let values = pdr
+            .ue_ip_addresses
+            .into_iter()
+            .map(|value| {
+                let mut address = Map::new();
+                if let Some(ipv4) = value.ipv4_address {
+                    address.insert("ipv4_address".into(), json!(ipv4.to_string()));
+                }
+                if let Some(ipv6) = value.ipv6_address {
+                    address.insert("ipv6_address".into(), json!(ipv6.to_string()));
+                }
+                Value::Object(address)
+            })
+            .collect();
+        map.insert("ue_ip_addresses".into(), Value::Array(values));
     }
-    if pdr.f_teid.ch {
-        flags.push("CHOOSE");
-    }
-    if pdr.f_teid.chid {
-        flags.push("CHOOSE_ID");
-    }
-    fteid.insert("flags".into(), json!(flags));
-
-    map.insert("f_teid".into(), Value::Object(fteid));
     Some(IeDisplayResult::Detailed(map))
 }
 

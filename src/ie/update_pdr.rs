@@ -21,35 +21,27 @@ pub struct UpdatePdr {
     pub pdi: Option<Pdi>,
     pub outer_header_removal: Option<OuterHeaderRemoval>,
     pub far_id: Option<FarId>,
-    pub urr_id: Option<UrrId>,
-    pub qer_id: Option<QerId>,
-    pub activate_predefined_rules: Option<ActivatePredefinedRules>,
-    pub deactivate_predefined_rules: Option<DeactivatePredefinedRules>,
+    pub urr_ids: Vec<UrrId>,
+    pub qer_ids: Vec<QerId>,
+    pub activate_predefined_rules: Vec<ActivatePredefinedRules>,
+    pub deactivate_predefined_rules: Vec<DeactivatePredefinedRules>,
+    /// Child IEs not yet represented by typed fields.
+    pub ies: Vec<Ie>,
 }
 
 impl UpdatePdr {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        pdr_id: PdrId,
-        precedence: Option<Precedence>,
-        pdi: Option<Pdi>,
-        outer_header_removal: Option<OuterHeaderRemoval>,
-        far_id: Option<FarId>,
-        urr_id: Option<UrrId>,
-        qer_id: Option<QerId>,
-        activate_predefined_rules: Option<ActivatePredefinedRules>,
-        deactivate_predefined_rules: Option<DeactivatePredefinedRules>,
-    ) -> Self {
+    pub fn new(pdr_id: PdrId) -> Self {
         UpdatePdr {
             pdr_id,
-            precedence,
-            pdi,
-            outer_header_removal,
-            far_id,
-            urr_id,
-            qer_id,
-            activate_predefined_rules,
-            deactivate_predefined_rules,
+            precedence: None,
+            pdi: None,
+            outer_header_removal: None,
+            far_id: None,
+            urr_ids: Vec::new(),
+            qer_ids: Vec::new(),
+            activate_predefined_rules: Vec::new(),
+            deactivate_predefined_rules: Vec::new(),
+            ies: Vec::new(),
         }
     }
 
@@ -73,18 +65,19 @@ impl UpdatePdr {
         if let Some(far_id) = &self.far_id {
             ies.push(far_id.to_ie());
         }
-        if let Some(urr_id) = &self.urr_id {
-            ies.push(urr_id.to_ie());
-        }
-        if let Some(qer_id) = &self.qer_id {
-            ies.push(qer_id.to_ie());
-        }
-        if let Some(apr) = &self.activate_predefined_rules {
-            ies.push(apr.to_ie());
-        }
-        if let Some(dpr) = &self.deactivate_predefined_rules {
-            ies.push(dpr.to_ie());
-        }
+        ies.extend(self.urr_ids.iter().map(UrrId::to_ie));
+        ies.extend(self.qer_ids.iter().map(QerId::to_ie));
+        ies.extend(
+            self.activate_predefined_rules
+                .iter()
+                .map(ActivatePredefinedRules::to_ie),
+        );
+        ies.extend(
+            self.deactivate_predefined_rules
+                .iter()
+                .map(DeactivatePredefinedRules::to_ie),
+        );
+        ies.extend(self.ies.iter().cloned());
 
         marshal_ies(&ies)
     }
@@ -95,10 +88,11 @@ impl UpdatePdr {
         let mut pdi = None;
         let mut outer_header_removal = None;
         let mut far_id = None;
-        let mut urr_id = None;
-        let mut qer_id = None;
-        let mut activate_predefined_rules = None;
-        let mut deactivate_predefined_rules = None;
+        let mut urr_ids = Vec::new();
+        let mut qer_ids = Vec::new();
+        let mut activate_predefined_rules = Vec::new();
+        let mut deactivate_predefined_rules = Vec::new();
+        let mut ies = Vec::new();
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -110,17 +104,14 @@ impl UpdatePdr {
                     outer_header_removal = Some(OuterHeaderRemoval::unmarshal(&ie.payload)?)
                 }
                 IeType::FarId => far_id = Some(FarId::unmarshal(&ie.payload)?),
-                IeType::UrrId => urr_id = Some(UrrId::unmarshal(&ie.payload)?),
-                IeType::QerId => qer_id = Some(QerId::unmarshal(&ie.payload)?),
+                IeType::UrrId => urr_ids.push(UrrId::unmarshal(&ie.payload)?),
+                IeType::QerId => qer_ids.push(QerId::unmarshal(&ie.payload)?),
                 IeType::ActivatePredefinedRules => {
-                    activate_predefined_rules =
-                        Some(ActivatePredefinedRules::unmarshal(&ie.payload)?)
+                    activate_predefined_rules.push(ActivatePredefinedRules::unmarshal(&ie.payload)?)
                 }
-                IeType::DeactivatePredefinedRules => {
-                    deactivate_predefined_rules =
-                        Some(DeactivatePredefinedRules::unmarshal(&ie.payload)?)
-                }
-                _ => (),
+                IeType::DeactivatePredefinedRules => deactivate_predefined_rules
+                    .push(DeactivatePredefinedRules::unmarshal(&ie.payload)?),
+                _ => ies.push(ie),
             }
         }
 
@@ -132,10 +123,11 @@ impl UpdatePdr {
             pdi,
             outer_header_removal,
             far_id,
-            urr_id,
-            qer_id,
+            urr_ids,
+            qer_ids,
             activate_predefined_rules,
             deactivate_predefined_rules,
+            ies,
         })
     }
 
@@ -182,10 +174,11 @@ pub struct UpdatePdrBuilder {
     pdi: Option<Pdi>,
     outer_header_removal: Option<OuterHeaderRemoval>,
     far_id: Option<FarId>,
-    urr_id: Option<UrrId>,
-    qer_id: Option<QerId>,
-    activate_predefined_rules: Option<ActivatePredefinedRules>,
-    deactivate_predefined_rules: Option<DeactivatePredefinedRules>,
+    urr_ids: Vec<UrrId>,
+    qer_ids: Vec<QerId>,
+    activate_predefined_rules: Vec<ActivatePredefinedRules>,
+    deactivate_predefined_rules: Vec<DeactivatePredefinedRules>,
+    ies: Vec<Ie>,
 }
 
 impl UpdatePdrBuilder {
@@ -235,7 +228,7 @@ impl UpdatePdrBuilder {
     ///
     /// Links this PDR to a URR for usage monitoring and reporting.
     pub fn urr_id(mut self, urr_id: UrrId) -> Self {
-        self.urr_id = Some(urr_id);
+        self.urr_ids.push(urr_id);
         self
     }
 
@@ -243,7 +236,7 @@ impl UpdatePdrBuilder {
     ///
     /// Links this PDR to a QER for QoS policy enforcement.
     pub fn qer_id(mut self, qer_id: QerId) -> Self {
-        self.qer_id = Some(qer_id);
+        self.qer_ids.push(qer_id);
         self
     }
 
@@ -254,7 +247,8 @@ impl UpdatePdrBuilder {
         mut self,
         activate_predefined_rules: ActivatePredefinedRules,
     ) -> Self {
-        self.activate_predefined_rules = Some(activate_predefined_rules);
+        self.activate_predefined_rules
+            .push(activate_predefined_rules);
         self
     }
 
@@ -265,7 +259,14 @@ impl UpdatePdrBuilder {
         mut self,
         deactivate_predefined_rules: DeactivatePredefinedRules,
     ) -> Self {
-        self.deactivate_predefined_rules = Some(deactivate_predefined_rules);
+        self.deactivate_predefined_rules
+            .push(deactivate_predefined_rules);
+        self
+    }
+
+    /// Adds an extension child IE not represented by a typed field.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
         self
     }
 
@@ -292,10 +293,11 @@ impl UpdatePdrBuilder {
             pdi: self.pdi,
             outer_header_removal: self.outer_header_removal,
             far_id: self.far_id,
-            urr_id: self.urr_id,
-            qer_id: self.qer_id,
+            urr_ids: self.urr_ids,
+            qer_ids: self.qer_ids,
             activate_predefined_rules: self.activate_predefined_rules,
             deactivate_predefined_rules: self.deactivate_predefined_rules,
+            ies: self.ies,
         })
     }
 }
@@ -322,15 +324,7 @@ mod tests {
         use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 
         let precedence = Precedence::new(100);
-        let pdi = Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Access),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
+        let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access));
 
         let pdr = UpdatePdrBuilder::new(PdrId::new(2))
             .precedence(precedence)
@@ -345,8 +339,8 @@ mod tests {
         assert_eq!(pdr.precedence, Some(precedence));
         assert_eq!(pdr.pdi, Some(pdi));
         assert_eq!(pdr.far_id, Some(FarId::new(20)));
-        assert_eq!(pdr.urr_id, Some(UrrId::new(5)));
-        assert_eq!(pdr.qer_id, Some(QerId::new(3)));
+        assert_eq!(pdr.urr_ids, [UrrId::new(5)]);
+        assert_eq!(pdr.qer_ids, [QerId::new(3)]);
     }
 
     #[test]
@@ -389,13 +383,19 @@ mod tests {
         let pdr = UpdatePdrBuilder::new(PdrId::new(4))
             .far_id(FarId::new(40))
             .urr_id(UrrId::new(41))
+            .urr_id(UrrId::new(43))
             .qer_id(QerId::new(42))
+            .qer_id(QerId::new(44))
+            .ie(Ie::new(IeType::FramedRoute, b"192.0.2.0/24".to_vec()))
             .build()
             .unwrap();
 
         assert_eq!(pdr.far_id, Some(FarId::new(40)));
-        assert_eq!(pdr.urr_id, Some(UrrId::new(41)));
-        assert_eq!(pdr.qer_id, Some(QerId::new(42)));
+        assert_eq!(pdr.urr_ids, [UrrId::new(41), UrrId::new(43)]);
+        assert_eq!(pdr.qer_ids, [QerId::new(42), QerId::new(44)]);
+
+        let decoded = UpdatePdr::unmarshal(&pdr.marshal()).unwrap();
+        assert_eq!(decoded, pdr);
     }
 
     #[test]
@@ -409,8 +409,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(pdr.activate_predefined_rules, Some(activate));
-        assert_eq!(pdr.deactivate_predefined_rules, Some(deactivate));
+        assert_eq!(pdr.activate_predefined_rules, [activate]);
+        assert_eq!(pdr.deactivate_predefined_rules, [deactivate]);
     }
 
     #[test]
@@ -459,15 +459,7 @@ mod tests {
         use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 
         let precedence = Precedence::new(150);
-        let pdi = Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Core),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
+        let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Core));
         let ohr = OuterHeaderRemoval::new(0);
         let activate = ActivatePredefinedRules::new("activate_rule");
         let deactivate = DeactivatePredefinedRules::new("deactivate_rule");
@@ -489,9 +481,9 @@ mod tests {
         assert_eq!(pdr.pdi, Some(pdi));
         assert!(pdr.outer_header_removal.is_some());
         assert_eq!(pdr.far_id, Some(FarId::new(90)));
-        assert_eq!(pdr.urr_id, Some(UrrId::new(91)));
-        assert_eq!(pdr.qer_id, Some(QerId::new(92)));
-        assert_eq!(pdr.activate_predefined_rules, Some(activate));
-        assert_eq!(pdr.deactivate_predefined_rules, Some(deactivate));
+        assert_eq!(pdr.urr_ids, [UrrId::new(91)]);
+        assert_eq!(pdr.qer_ids, [QerId::new(92)]);
+        assert_eq!(pdr.activate_predefined_rules, [activate]);
+        assert_eq!(pdr.deactivate_predefined_rules, [deactivate]);
     }
 }

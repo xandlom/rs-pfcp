@@ -725,7 +725,7 @@ fn test_session_establishment_response_multiple_created_pdrs() {
         None,
         0,
     );
-    let created_pdr1 = CreatedPdr::new(PdrId::new(1), fteid1);
+    let created_pdr1 = CreatedPdr::new(PdrId::new(1)).f_teid(fteid1);
     let created_pdr1_ie = created_pdr1.to_ie();
 
     let fteid2 = Fteid::new(
@@ -736,7 +736,7 @@ fn test_session_establishment_response_multiple_created_pdrs() {
         None,
         0,
     );
-    let created_pdr2 = CreatedPdr::new(PdrId::new(2), fteid2);
+    let created_pdr2 = CreatedPdr::new(PdrId::new(2)).f_teid(fteid2);
     let created_pdr2_ie = created_pdr2.to_ie();
 
     // Build SessionEstablishmentResponse with multiple Created PDRs using the builder pattern
@@ -774,13 +774,13 @@ fn test_session_establishment_response_multiple_created_pdrs() {
 
     assert_eq!(created_pdr1_unmarshaled.pdr_id.value, 1);
     assert_eq!(
-        created_pdr1_unmarshaled.f_teid.teid,
+        created_pdr1_unmarshaled.f_teid.unwrap().teid,
         rs_pfcp::Teid(0x12345679)
     );
 
     assert_eq!(created_pdr2_unmarshaled.pdr_id.value, 2);
     assert_eq!(
-        created_pdr2_unmarshaled.f_teid.teid,
+        created_pdr2_unmarshaled.f_teid.unwrap().teid,
         rs_pfcp::Teid(0x1234567a)
     );
 

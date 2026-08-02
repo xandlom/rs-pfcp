@@ -1256,26 +1256,20 @@ mod tests {
             source_interface: SourceInterface::new(SourceInterfaceValue::Access),
             f_teid: None,
             network_instance: None,
-            ue_ip_address: None,
-            sdf_filter: None,
+            ue_ip_addresses: Vec::new(),
+            sdf_filters: Vec::new(),
             application_id: None,
-            ethernet_packet_filter: None,
+            ethernet_packet_filters: Vec::new(),
+            qfis: Vec::new(),
             three_gpp_interface_type: None,
             redundant_transmission_parameters: None,
             protocol_description: None,
+            ies: Vec::new(),
         };
 
         // Create minimal PDR
-        let pdr = CreatePdr::new(
-            PdrId::new(1),
-            Precedence::new(100),
-            pdi,
-            None, // outer_header_removal
-            Some(FarId::new(1)),
-            None, // urr_ids
-            None, // qer_ids
-            None, // activate_predefined_rules
-        );
+        let mut pdr = CreatePdr::new(PdrId::new(1), Precedence::new(100), pdi);
+        pdr.far_id = Some(FarId::new(1));
 
         // Create minimal FAR
         let far = CreateFar::builder(FarId::new(1))

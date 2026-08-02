@@ -63,20 +63,11 @@ fn basic_destination_interface() -> DestinationInterface {
 }
 
 fn basic_pdi() -> Pdi {
-    Pdi::new(basic_source_interface(), None, None, None, None, None, None)
+    Pdi::new(basic_source_interface())
 }
 
 fn basic_create_pdr() -> CreatePdr {
-    CreatePdr::new(
-        basic_pdr_id(),
-        basic_precedence(),
-        basic_pdi(),
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
+    CreatePdr::new(basic_pdr_id(), basic_precedence(), basic_pdi())
 }
 
 fn basic_far_id() -> FarId {
@@ -409,8 +400,7 @@ fn test_session_establishment_response_accepted_generation() {
     let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
 
     let create_pdr = basic_create_pdr();
-    let created_pdr = rs_pfcp::ie::created_pdr::CreatedPdr::new(
-        create_pdr.pdr_id,
+    let created_pdr = rs_pfcp::ie::created_pdr::CreatedPdr::new(create_pdr.pdr_id).f_teid(
         rs_pfcp::ie::f_teid::Fteid::new(
             true,  // v4
             false, // v6
@@ -484,11 +474,6 @@ fn test_session_establishment_multiple_pdrs_fars() {
             PdrId::new(i as u16),
             Precedence::new(100 + i as u32),
             basic_pdi(),
-            None,
-            None,
-            None,
-            None,
-            None,
         );
         create_pdr_ies.push(Ie::new(IeType::CreatePdr, pdr.marshal()));
     }
