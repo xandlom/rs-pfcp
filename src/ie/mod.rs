@@ -91,6 +91,7 @@ pub mod event_quota;
 pub mod event_threshold;
 pub mod event_time_stamp;
 pub mod extended_dl_buffering_notification_policy;
+mod extensible_bitmap;
 pub mod f_teid;
 pub mod failed_rule_id;
 pub mod far_id;
