@@ -104,7 +104,7 @@
 //!
 //! // Advanced FAR with network instance and validation
 //! let internet_far = CreateFar::builder(FarId::new(14))
-//!     .forward_to_network(Interface::Dn, NetworkInstance::new("internet.apn"))
+//!     .forward_to_network(Interface::SgiLanN6Lan, NetworkInstance::new("internet.apn"))
 //!     .build()
 //!     .unwrap();
 //!

@@ -466,7 +466,7 @@ mod tests {
 
         // Enable proxy ARP for special routing scenarios
         let params = UpdateForwardingParameters::new()
-            .with_destination_interface(DestinationInterface::new(Interface::Dn))
+            .with_destination_interface(DestinationInterface::new(Interface::SgiLanN6Lan))
             .with_network_instance(NetworkInstance::new("lan"))
             .with_proxying(Proxying::arp());
 
