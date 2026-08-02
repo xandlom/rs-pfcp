@@ -6,7 +6,8 @@ use crate::error::PfcpError;
 use crate::ie::{
     ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid, marshal_ies,
     network_instance::NetworkInstance, sdf_filter::SdfFilter, source_interface::SourceInterface,
-    ue_ip_address::UeIpAddress, Ie, IeIterator, IeType,
+    three_gpp_interface_type::ThreeGppInterfaceTypeIe, ue_ip_address::UeIpAddress, Ie, IeIterator,
+    IeType,
 };
 
 /// Represents the Packet Detection Information.
@@ -19,6 +20,7 @@ pub struct Pdi {
     pub sdf_filter: Option<SdfFilter>,
     pub application_id: Option<String>,
     pub ethernet_packet_filter: Option<EthernetPacketFilter>,
+    pub three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
     pub redundant_transmission_parameters: Option<Ie>,
     /// Protocol description for PDU-set/EDB marking (IE 334, optional).
     pub protocol_description: Option<Ie>,
@@ -43,6 +45,7 @@ impl Pdi {
             sdf_filter,
             application_id,
             ethernet_packet_filter,
+            three_gpp_interface_type: None,
             redundant_transmission_parameters: None,
             protocol_description: None,
         }
@@ -70,6 +73,9 @@ impl Pdi {
         if let Some(eth_filter) = &self.ethernet_packet_filter {
             ies.push(eth_filter.to_ie());
         }
+        if let Some(interface_type) = &self.three_gpp_interface_type {
+            ies.push(interface_type.to_ie());
+        }
         if let Some(ref rtp) = self.redundant_transmission_parameters {
             ies.push(rtp.clone());
         }
@@ -89,6 +95,7 @@ impl Pdi {
         let mut sdf_filter = None;
         let mut application_id = None;
         let mut ethernet_packet_filter = None;
+        let mut three_gpp_interface_type = None;
         let mut redundant_transmission_parameters = None;
         let mut protocol_description = None;
 
@@ -116,6 +123,10 @@ impl Pdi {
                 IeType::EthernetPacketFilter => {
                     ethernet_packet_filter = Some(EthernetPacketFilter::unmarshal(&ie.payload)?);
                 }
+                IeType::TgppInterfaceType => {
+                    three_gpp_interface_type =
+                        Some(ThreeGppInterfaceTypeIe::unmarshal(&ie.payload)?);
+                }
                 IeType::RedundantTransmissionParameters => {
                     redundant_transmission_parameters = Some(ie);
                 }
@@ -137,6 +148,7 @@ impl Pdi {
             sdf_filter,
             application_id,
             ethernet_packet_filter,
+            three_gpp_interface_type,
             redundant_transmission_parameters,
             protocol_description,
         })
@@ -191,6 +203,7 @@ pub struct PdiBuilder {
     sdf_filter: Option<SdfFilter>,
     application_id: Option<String>,
     ethernet_packet_filter: Option<EthernetPacketFilter>,
+    three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
     redundant_transmission_parameters: Option<Ie>,
     protocol_description: Option<Ie>,
 }
@@ -255,6 +268,12 @@ impl PdiBuilder {
         self
     }
 
+    /// Sets the 3GPP Interface Type associated with this PDI.
+    pub fn three_gpp_interface_type(mut self, interface_type: ThreeGppInterfaceTypeIe) -> Self {
+        self.three_gpp_interface_type = Some(interface_type);
+        self
+    }
+
     /// Builds the PDI with validation.
     ///
     /// # Errors
@@ -275,6 +294,7 @@ impl PdiBuilder {
             sdf_filter: self.sdf_filter,
             application_id: self.application_id,
             ethernet_packet_filter: self.ethernet_packet_filter,
+            three_gpp_interface_type: self.three_gpp_interface_type,
             redundant_transmission_parameters: self.redundant_transmission_parameters,
             protocol_description: self.protocol_description,
         })
@@ -371,6 +391,7 @@ mod tests {
     use crate::ie::network_instance::NetworkInstance;
     use crate::ie::sdf_filter::SdfFilter;
     use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+    use crate::ie::three_gpp_interface_type::{ThreeGppInterfaceType, ThreeGppInterfaceTypeIe};
     use crate::ie::ue_ip_address::UeIpAddress;
     use std::net::Ipv4Addr;
 
@@ -440,6 +461,18 @@ mod tests {
         let marshaled = pdi.marshal();
         let unmarshaled = Pdi::unmarshal(&marshaled).unwrap();
         assert_eq!(pdi, unmarshaled);
+    }
+
+    #[test]
+    fn test_pdi_with_three_gpp_interface_type() {
+        let interface_type = ThreeGppInterfaceTypeIe::new(ThreeGppInterfaceType::N3);
+        let pdi = PdiBuilder::uplink_access()
+            .three_gpp_interface_type(interface_type)
+            .build()
+            .unwrap();
+
+        let unmarshaled = Pdi::unmarshal(&pdi.marshal()).unwrap();
+        assert_eq!(unmarshaled.three_gpp_interface_type, Some(interface_type));
     }
 
     #[test]

@@ -9,28 +9,55 @@ use crate::ie::{Ie, IeType};
 /// 3GPP Interface Type values
 ///
 /// Specifies the interface type in 5G network architecture as defined
-/// in 3GPP TS 29.244 Section 8.2.149.
+/// in 3GPP TS 29.244 Section 8.2.118.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum ThreeGppInterfaceType {
-    S1U = 0,                  // S1-U (4G)
-    S5S8U = 1,                // S5/S8-U (4G)
-    S4U = 2,                  // S4-U (3G/4G interworking)
-    S11U = 3,                 // S11-U (4G)
-    S12U = 4,                 // S12-U (4G)
-    Gn = 5,                   // Gn/Gp (3G)
-    S2aU = 6,                 // S2a-U (untrusted non-3GPP)
-    S2bU = 7,                 // S2b-U (trusted non-3GPP)
-    ENodeBCpFunctionGtpU = 8, // eNodeB GTP-U
-    ENodeBUpFunctionGtpU = 9, // eNodeB GTP-U UP
-    SgmbU = 10,               // SGmb-U (eMBMS)
-    N3 = 11,                  // N3 (5G - RAN to UPF)
-    N6 = 12,                  // N6 (5G - UPF to Data Network)
-    N9 = 13,                  // N9 (5G - UPF to UPF)
-    N4U = 14,                 // N4-U (5G)
-    N19 = 15,                 // N19 (5G - UPF to UPF for roaming)
+    S1U = 0,
+    S5S8U = 1,
+    S4U = 2,
+    S11U = 3,
+    S12U = 4,
+    GnGpU = 5,
+    S2aU = 6,
+    S2bU = 7,
+    ENodeBGtpUForDlDataForwarding = 8,
+    ENodeBGtpUForUlDataForwarding = 9,
+    SgwUpfGtpUForDlDataForwarding = 10,
+    N3 = 11,
+    N3TrustedNon3GppAccess = 12,
+    N3UntrustedNon3GppAccess = 13,
+    N3ForDataForwarding = 14,
+    N9 = 15,
+    Sgi = 16,
+    N6 = 17,
+    N19 = 18,
+    S8U = 19,
+    GpU = 20,
+    N9ForRoaming = 21,
+    IuU = 22,
+    N9ForDataForwarding = 23,
+    SxaU = 24,
+    SxbU = 25,
+    SxcU = 26,
+    N4U = 27,
+    SgwUpfGtpUForUlDataForwarding = 28,
+    N6MbNmb9 = 29,
+    N3Mb = 30,
+    N19Mb = 31,
 }
 
 impl ThreeGppInterfaceType {
+    // Compatibility aliases for the names exposed before the values were aligned with TS 29.244.
+    #[allow(non_upper_case_globals)]
+    pub const Gn: Self = Self::GnGpU;
+    #[allow(non_upper_case_globals)]
+    pub const ENodeBCpFunctionGtpU: Self = Self::ENodeBGtpUForDlDataForwarding;
+    #[allow(non_upper_case_globals)]
+    pub const ENodeBUpFunctionGtpU: Self = Self::ENodeBGtpUForUlDataForwarding;
+    #[allow(non_upper_case_globals)]
+    pub const SgmbU: Self = Self::SgwUpfGtpUForDlDataForwarding;
+
     /// Creates from u8 value
     pub fn from_u8(value: u8) -> Result<Self, PfcpError> {
         match value {
@@ -39,21 +66,37 @@ impl ThreeGppInterfaceType {
             2 => Ok(ThreeGppInterfaceType::S4U),
             3 => Ok(ThreeGppInterfaceType::S11U),
             4 => Ok(ThreeGppInterfaceType::S12U),
-            5 => Ok(ThreeGppInterfaceType::Gn),
+            5 => Ok(ThreeGppInterfaceType::GnGpU),
             6 => Ok(ThreeGppInterfaceType::S2aU),
             7 => Ok(ThreeGppInterfaceType::S2bU),
-            8 => Ok(ThreeGppInterfaceType::ENodeBCpFunctionGtpU),
-            9 => Ok(ThreeGppInterfaceType::ENodeBUpFunctionGtpU),
-            10 => Ok(ThreeGppInterfaceType::SgmbU),
+            8 => Ok(ThreeGppInterfaceType::ENodeBGtpUForDlDataForwarding),
+            9 => Ok(ThreeGppInterfaceType::ENodeBGtpUForUlDataForwarding),
+            10 => Ok(ThreeGppInterfaceType::SgwUpfGtpUForDlDataForwarding),
             11 => Ok(ThreeGppInterfaceType::N3),
-            12 => Ok(ThreeGppInterfaceType::N6),
-            13 => Ok(ThreeGppInterfaceType::N9),
-            14 => Ok(ThreeGppInterfaceType::N4U),
-            15 => Ok(ThreeGppInterfaceType::N19),
+            12 => Ok(ThreeGppInterfaceType::N3TrustedNon3GppAccess),
+            13 => Ok(ThreeGppInterfaceType::N3UntrustedNon3GppAccess),
+            14 => Ok(ThreeGppInterfaceType::N3ForDataForwarding),
+            15 => Ok(ThreeGppInterfaceType::N9),
+            16 => Ok(ThreeGppInterfaceType::Sgi),
+            17 => Ok(ThreeGppInterfaceType::N6),
+            18 => Ok(ThreeGppInterfaceType::N19),
+            19 => Ok(ThreeGppInterfaceType::S8U),
+            20 => Ok(ThreeGppInterfaceType::GpU),
+            21 => Ok(ThreeGppInterfaceType::N9ForRoaming),
+            22 => Ok(ThreeGppInterfaceType::IuU),
+            23 => Ok(ThreeGppInterfaceType::N9ForDataForwarding),
+            24 => Ok(ThreeGppInterfaceType::SxaU),
+            25 => Ok(ThreeGppInterfaceType::SxbU),
+            26 => Ok(ThreeGppInterfaceType::SxcU),
+            27 => Ok(ThreeGppInterfaceType::N4U),
+            28 => Ok(ThreeGppInterfaceType::SgwUpfGtpUForUlDataForwarding),
+            29 => Ok(ThreeGppInterfaceType::N6MbNmb9),
+            30 => Ok(ThreeGppInterfaceType::N3Mb),
+            31 => Ok(ThreeGppInterfaceType::N19Mb),
             _ => Err(PfcpError::invalid_value(
                 "3GPP Interface Type",
                 value.to_string(),
-                "must be 0-15",
+                "must be 0-31",
             )),
         }
     }
@@ -63,15 +106,24 @@ impl ThreeGppInterfaceType {
         self as u8
     }
 
-    /// Returns true if this is a 5G interface (N3, N6, N9, N4U, N19)
+    /// Returns true if this is a 5G interface.
     pub fn is_5g_interface(self) -> bool {
         matches!(
             self,
             ThreeGppInterfaceType::N3
+                | ThreeGppInterfaceType::N3TrustedNon3GppAccess
+                | ThreeGppInterfaceType::N3UntrustedNon3GppAccess
+                | ThreeGppInterfaceType::N3ForDataForwarding
                 | ThreeGppInterfaceType::N6
                 | ThreeGppInterfaceType::N9
                 | ThreeGppInterfaceType::N4U
                 | ThreeGppInterfaceType::N19
+                | ThreeGppInterfaceType::N9ForRoaming
+                | ThreeGppInterfaceType::N9ForDataForwarding
+                | ThreeGppInterfaceType::SgwUpfGtpUForUlDataForwarding
+                | ThreeGppInterfaceType::N6MbNmb9
+                | ThreeGppInterfaceType::N3Mb
+                | ThreeGppInterfaceType::N19Mb
         )
     }
 
@@ -84,7 +136,12 @@ impl ThreeGppInterfaceType {
                 | ThreeGppInterfaceType::S4U
                 | ThreeGppInterfaceType::S11U
                 | ThreeGppInterfaceType::S12U
-                | ThreeGppInterfaceType::SgmbU
+                | ThreeGppInterfaceType::S2aU
+                | ThreeGppInterfaceType::S2bU
+                | ThreeGppInterfaceType::ENodeBGtpUForDlDataForwarding
+                | ThreeGppInterfaceType::ENodeBGtpUForUlDataForwarding
+                | ThreeGppInterfaceType::SgwUpfGtpUForDlDataForwarding
+                | ThreeGppInterfaceType::S8U
         )
     }
 }
@@ -103,8 +160,7 @@ impl ThreeGppInterfaceTypeIe {
 
     /// Marshals the IE into bytes
     pub fn marshal(&self) -> Vec<u8> {
-        // 1 byte for interface type value + 5 spare bytes (total 6 bytes)
-        vec![self.interface_type.to_u8(), 0, 0, 0, 0, 0]
+        vec![self.interface_type.to_u8()]
     }
 
     /// Unmarshals bytes into the IE
@@ -118,7 +174,7 @@ impl ThreeGppInterfaceTypeIe {
             ));
         }
 
-        let interface_type = ThreeGppInterfaceType::from_u8(payload[0])?;
+        let interface_type = ThreeGppInterfaceType::from_u8(payload[0] & 0x3f)?;
         Ok(ThreeGppInterfaceTypeIe { interface_type })
     }
 
@@ -186,30 +242,13 @@ mod tests {
 
     #[test]
     fn test_3gpp_interface_type_all_values() {
-        let types = vec![
-            ThreeGppInterfaceType::S1U,
-            ThreeGppInterfaceType::S5S8U,
-            ThreeGppInterfaceType::S4U,
-            ThreeGppInterfaceType::S11U,
-            ThreeGppInterfaceType::S12U,
-            ThreeGppInterfaceType::Gn,
-            ThreeGppInterfaceType::S2aU,
-            ThreeGppInterfaceType::S2bU,
-            ThreeGppInterfaceType::ENodeBCpFunctionGtpU,
-            ThreeGppInterfaceType::ENodeBUpFunctionGtpU,
-            ThreeGppInterfaceType::SgmbU,
-            ThreeGppInterfaceType::N3,
-            ThreeGppInterfaceType::N6,
-            ThreeGppInterfaceType::N9,
-            ThreeGppInterfaceType::N4U,
-            ThreeGppInterfaceType::N19,
-        ];
-
-        for interface_type in types {
+        for value in 0..=31 {
+            let interface_type = ThreeGppInterfaceType::from_u8(value).unwrap();
             let ie = ThreeGppInterfaceTypeIe::new(interface_type);
             let marshaled = ie.marshal();
             let unmarshaled = ThreeGppInterfaceTypeIe::unmarshal(&marshaled).unwrap();
             assert_eq!(ie, unmarshaled);
+            assert_eq!(marshaled, [value]);
         }
     }
 
