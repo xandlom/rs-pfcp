@@ -519,7 +519,7 @@ mod tests {
 
         let urr = UpdateUrrBuilder::new(UrrId::new(2))
             .measurement_method(measurement)
-            .reporting_triggers(triggers)
+            .reporting_triggers(triggers.clone())
             .volume_threshold_bytes(2_000_000_000)
             .time_threshold_seconds(3600)
             .subsequent_volume_threshold_bytes(500_000_000)
@@ -713,7 +713,7 @@ mod tests {
             .with_volume_threshold(true);
 
         let urr = UpdateUrrBuilder::new(UrrId::new(11))
-            .reporting_triggers(triggers)
+            .reporting_triggers(triggers.clone())
             .build()
             .unwrap();
 
@@ -801,7 +801,7 @@ mod tests {
 
         let urr = UpdateUrrBuilder::new(UrrId::new(18))
             .measurement_method(measurement)
-            .reporting_triggers(triggers)
+            .reporting_triggers(triggers.clone())
             .monitoring_time(monitoring)
             .volume_threshold_bytes(5_000_000_000)
             .time_threshold_seconds(7200)
@@ -901,7 +901,7 @@ mod tests {
             .with_volume_threshold(false);
 
         let urr = UpdateUrrBuilder::new(UrrId::new(24))
-            .reporting_triggers(triggers)
+            .reporting_triggers(triggers.clone())
             .build()
             .unwrap();
 

@@ -272,7 +272,6 @@ fn display_usage_report(payload: &[u8]) -> Option<IeDisplayResult> {
     map.insert("urr_id".into(), json!(ur.urr_id.id));
     map.insert("ur_seqn".into(), json!(ur.ur_seqn.value));
 
-    let bits = ur.usage_report_trigger.bits();
     let mut triggers = Vec::new();
     use crate::ie::usage_report_trigger::UsageReportTrigger;
     for (flag, name) in [
@@ -299,7 +298,7 @@ fn display_usage_report(payload: &[u8]) -> Option<IeDisplayResult> {
         (UsageReportTrigger::EMRRE, "EMRRE"),
         (UsageReportTrigger::UPINT, "UPINT"),
     ] {
-        if bits & flag.bits() != 0 {
+        if ur.usage_report_trigger.contains(flag) {
             triggers.push(name);
         }
     }
