@@ -4,8 +4,10 @@
 
 use crate::error::PfcpError;
 use crate::ie::{
-    ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid, marshal_ies,
-    network_instance::NetworkInstance, sdf_filter::SdfFilter, source_interface::SourceInterface,
+    application_id::ApplicationId, ethernet_packet_filter::EthernetPacketFilter, f_teid::Fteid,
+    marshal_ies, network_instance::NetworkInstance, protocol_description::ProtocolDescription,
+    qfi::Qfi, redundant_transmission_parameters::RedundantTransmissionParameters,
+    sdf_filter::SdfFilter, source_interface::SourceInterface,
     three_gpp_interface_type::ThreeGppInterfaceTypeIe, ue_ip_address::UeIpAddress, Ie, IeIterator,
     IeType,
 };
@@ -16,38 +18,35 @@ pub struct Pdi {
     pub source_interface: SourceInterface,
     pub f_teid: Option<Fteid>,
     pub network_instance: Option<NetworkInstance>,
-    pub ue_ip_address: Option<UeIpAddress>,
-    pub sdf_filter: Option<SdfFilter>,
-    pub application_id: Option<String>,
-    pub ethernet_packet_filter: Option<EthernetPacketFilter>,
+    pub ue_ip_addresses: Vec<UeIpAddress>,
+    pub sdf_filters: Vec<SdfFilter>,
+    pub application_id: Option<ApplicationId>,
+    pub ethernet_packet_filters: Vec<EthernetPacketFilter>,
+    pub qfis: Vec<Qfi>,
     pub three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
-    pub redundant_transmission_parameters: Option<Ie>,
+    pub redundant_transmission_parameters: Option<RedundantTransmissionParameters>,
     /// Protocol description for PDU-set/EDB marking (IE 334, optional).
-    pub protocol_description: Option<Ie>,
+    pub protocol_description: Option<ProtocolDescription>,
+    /// Child IEs not yet represented by typed fields.
+    pub ies: Vec<Ie>,
 }
 
 impl Pdi {
-    /// Creates a new PDI IE.
-    pub fn new(
-        source_interface: SourceInterface,
-        f_teid: Option<Fteid>,
-        network_instance: Option<NetworkInstance>,
-        ue_ip_address: Option<UeIpAddress>,
-        sdf_filter: Option<SdfFilter>,
-        application_id: Option<String>,
-        ethernet_packet_filter: Option<EthernetPacketFilter>,
-    ) -> Self {
+    /// Creates a PDI with its mandatory Source Interface.
+    pub fn new(source_interface: SourceInterface) -> Self {
         Pdi {
             source_interface,
-            f_teid,
-            network_instance,
-            ue_ip_address,
-            sdf_filter,
-            application_id,
-            ethernet_packet_filter,
+            f_teid: None,
+            network_instance: None,
+            ue_ip_addresses: Vec::new(),
+            sdf_filters: Vec::new(),
+            application_id: None,
+            ethernet_packet_filters: Vec::new(),
+            qfis: Vec::new(),
             three_gpp_interface_type: None,
             redundant_transmission_parameters: None,
             protocol_description: None,
+            ies: Vec::new(),
         }
     }
 
@@ -61,27 +60,27 @@ impl Pdi {
         if let Some(ni) = &self.network_instance {
             ies.push(ni.to_ie());
         }
-        if let Some(ue_ip) = &self.ue_ip_address {
-            ies.push(ue_ip.to_ie());
-        }
-        if let Some(sdf) = &self.sdf_filter {
-            ies.push(sdf.to_ie());
-        }
+        ies.extend(self.ue_ip_addresses.iter().map(UeIpAddress::to_ie));
+        ies.extend(self.sdf_filters.iter().map(SdfFilter::to_ie));
         if let Some(app_id) = &self.application_id {
-            ies.push(Ie::new(IeType::ApplicationId, app_id.as_bytes().to_vec()));
+            ies.push(app_id.to_ie());
         }
-        if let Some(eth_filter) = &self.ethernet_packet_filter {
-            ies.push(eth_filter.to_ie());
-        }
+        ies.extend(
+            self.ethernet_packet_filters
+                .iter()
+                .map(EthernetPacketFilter::to_ie),
+        );
+        ies.extend(self.qfis.iter().map(Qfi::to_ie));
         if let Some(interface_type) = &self.three_gpp_interface_type {
             ies.push(interface_type.to_ie());
         }
         if let Some(ref rtp) = self.redundant_transmission_parameters {
-            ies.push(rtp.clone());
+            ies.push(rtp.to_ie());
         }
         if let Some(ref pd) = self.protocol_description {
-            ies.push(pd.clone());
+            ies.push(pd.to_ie());
         }
+        ies.extend(self.ies.iter().cloned());
 
         marshal_ies(&ies)
     }
@@ -91,13 +90,15 @@ impl Pdi {
         let mut source_interface = None;
         let mut f_teid = None;
         let mut network_instance = None;
-        let mut ue_ip_address = None;
-        let mut sdf_filter = None;
+        let mut ue_ip_addresses = Vec::new();
+        let mut sdf_filters = Vec::new();
         let mut application_id = None;
-        let mut ethernet_packet_filter = None;
+        let mut ethernet_packet_filters = Vec::new();
+        let mut qfis = Vec::new();
         let mut three_gpp_interface_type = None;
         let mut redundant_transmission_parameters = None;
         let mut protocol_description = None;
+        let mut ies = Vec::new();
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -112,28 +113,30 @@ impl Pdi {
                     network_instance = Some(NetworkInstance::unmarshal(&ie.payload)?);
                 }
                 IeType::UeIpAddress => {
-                    ue_ip_address = Some(UeIpAddress::unmarshal(&ie.payload)?);
+                    ue_ip_addresses.push(UeIpAddress::unmarshal(&ie.payload)?);
                 }
                 IeType::SdfFilter => {
-                    sdf_filter = Some(SdfFilter::unmarshal(&ie.payload)?);
+                    sdf_filters.push(SdfFilter::unmarshal(&ie.payload)?);
                 }
                 IeType::ApplicationId => {
-                    application_id = Some(ie.as_string()?);
+                    application_id = Some(ApplicationId::unmarshal(&ie.payload)?);
                 }
                 IeType::EthernetPacketFilter => {
-                    ethernet_packet_filter = Some(EthernetPacketFilter::unmarshal(&ie.payload)?);
+                    ethernet_packet_filters.push(EthernetPacketFilter::unmarshal(&ie.payload)?);
                 }
+                IeType::Qfi => qfis.push(Qfi::unmarshal(&ie.payload)?),
                 IeType::TgppInterfaceType => {
                     three_gpp_interface_type =
                         Some(ThreeGppInterfaceTypeIe::unmarshal(&ie.payload)?);
                 }
                 IeType::RedundantTransmissionParameters => {
-                    redundant_transmission_parameters = Some(ie);
+                    redundant_transmission_parameters =
+                        Some(RedundantTransmissionParameters::unmarshal(&ie.payload)?);
                 }
                 IeType::ProtocolDescription => {
-                    protocol_description = Some(ie);
+                    protocol_description = Some(ProtocolDescription::unmarshal(&ie.payload)?);
                 }
-                _ => (),
+                _ => ies.push(ie),
             }
         }
 
@@ -144,13 +147,15 @@ impl Pdi {
             ))?,
             f_teid,
             network_instance,
-            ue_ip_address,
-            sdf_filter,
+            ue_ip_addresses,
+            sdf_filters,
             application_id,
-            ethernet_packet_filter,
+            ethernet_packet_filters,
+            qfis,
             three_gpp_interface_type,
             redundant_transmission_parameters,
             protocol_description,
+            ies,
         })
     }
 
@@ -199,13 +204,15 @@ pub struct PdiBuilder {
     source_interface: Option<SourceInterface>,
     f_teid: Option<Fteid>,
     network_instance: Option<NetworkInstance>,
-    ue_ip_address: Option<UeIpAddress>,
-    sdf_filter: Option<SdfFilter>,
-    application_id: Option<String>,
-    ethernet_packet_filter: Option<EthernetPacketFilter>,
+    ue_ip_addresses: Vec<UeIpAddress>,
+    sdf_filters: Vec<SdfFilter>,
+    application_id: Option<ApplicationId>,
+    ethernet_packet_filters: Vec<EthernetPacketFilter>,
+    qfis: Vec<Qfi>,
     three_gpp_interface_type: Option<ThreeGppInterfaceTypeIe>,
-    redundant_transmission_parameters: Option<Ie>,
-    protocol_description: Option<Ie>,
+    redundant_transmission_parameters: Option<RedundantTransmissionParameters>,
+    protocol_description: Option<ProtocolDescription>,
+    ies: Vec<Ie>,
 }
 
 impl PdiBuilder {
@@ -239,7 +246,7 @@ impl PdiBuilder {
     ///
     /// This specifies the IP address assigned to the UE for packet detection.
     pub fn ue_ip_address(mut self, ue_ip_address: UeIpAddress) -> Self {
-        self.ue_ip_address = Some(ue_ip_address);
+        self.ue_ip_addresses.push(ue_ip_address);
         self
     }
 
@@ -247,15 +254,15 @@ impl PdiBuilder {
     ///
     /// This provides packet filtering rules based on IP 5-tuple and other criteria.
     pub fn sdf_filter(mut self, sdf_filter: SdfFilter) -> Self {
-        self.sdf_filter = Some(sdf_filter);
+        self.sdf_filters.push(sdf_filter);
         self
     }
 
     /// Sets the application ID.
     ///
     /// This identifies the application for which packets should be detected.
-    pub fn application_id(mut self, app_id: impl Into<String>) -> Self {
-        self.application_id = Some(app_id.into());
+    pub fn application_id(mut self, application_id: impl Into<ApplicationId>) -> Self {
+        self.application_id = Some(application_id.into());
         self
     }
 
@@ -264,13 +271,38 @@ impl PdiBuilder {
     /// This provides Ethernet-layer packet filtering based on MAC addresses,
     /// VLAN tags, and Ethertype for Ethernet PDU sessions.
     pub fn ethernet_packet_filter(mut self, filter: EthernetPacketFilter) -> Self {
-        self.ethernet_packet_filter = Some(filter);
+        self.ethernet_packet_filters.push(filter);
+        self
+    }
+
+    /// Adds a QFI. PDI permits multiple QFI child IEs.
+    pub fn qfi(mut self, qfi: Qfi) -> Self {
+        self.qfis.push(qfi);
         self
     }
 
     /// Sets the 3GPP Interface Type associated with this PDI.
     pub fn three_gpp_interface_type(mut self, interface_type: ThreeGppInterfaceTypeIe) -> Self {
         self.three_gpp_interface_type = Some(interface_type);
+        self
+    }
+
+    pub fn redundant_transmission_parameters(
+        mut self,
+        parameters: RedundantTransmissionParameters,
+    ) -> Self {
+        self.redundant_transmission_parameters = Some(parameters);
+        self
+    }
+
+    pub fn protocol_description(mut self, description: ProtocolDescription) -> Self {
+        self.protocol_description = Some(description);
+        self
+    }
+
+    /// Adds an extension child IE not represented by a typed field.
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
         self
     }
 
@@ -290,13 +322,15 @@ impl PdiBuilder {
             source_interface,
             f_teid: self.f_teid,
             network_instance: self.network_instance,
-            ue_ip_address: self.ue_ip_address,
-            sdf_filter: self.sdf_filter,
+            ue_ip_addresses: self.ue_ip_addresses,
+            sdf_filters: self.sdf_filters,
             application_id: self.application_id,
-            ethernet_packet_filter: self.ethernet_packet_filter,
+            ethernet_packet_filters: self.ethernet_packet_filters,
+            qfis: self.qfis,
             three_gpp_interface_type: self.three_gpp_interface_type,
             redundant_transmission_parameters: self.redundant_transmission_parameters,
             protocol_description: self.protocol_description,
+            ies: self.ies,
         })
     }
 
@@ -403,8 +437,8 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -430,8 +464,8 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert_eq!(pdi.f_teid, Some(fteid));
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -453,8 +487,8 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert!(pdi.f_teid.is_none());
         assert_eq!(pdi.network_instance, Some(network_instance));
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -488,8 +522,8 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert_eq!(pdi.ue_ip_address, Some(ue_ip));
-        assert!(pdi.sdf_filter.is_none());
+        assert_eq!(pdi.ue_ip_addresses, [ue_ip]);
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -511,14 +545,36 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert_eq!(pdi.sdf_filter, Some(sdf_filter));
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert_eq!(pdi.sdf_filters, [sdf_filter]);
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
         let marshaled = pdi.marshal();
         let unmarshaled = Pdi::unmarshal(&marshaled).unwrap();
         assert_eq!(pdi, unmarshaled);
+    }
+
+    #[test]
+    fn test_pdi_preserves_repeated_and_unknown_ies() {
+        let mut pdi = PdiBuilder::uplink_access()
+            .ue_ip_address(UeIpAddress::new(Some(Ipv4Addr::new(10, 0, 0, 1)), None))
+            .ue_ip_address(UeIpAddress::new(Some(Ipv4Addr::new(10, 0, 0, 2)), None))
+            .sdf_filter(SdfFilter::new("permit out ip from any to any"))
+            .sdf_filter(SdfFilter::new("permit out tcp from any to any 443"))
+            .qfi(Qfi::of(8))
+            .qfi(Qfi::of(9))
+            .build()
+            .unwrap();
+        pdi.ies
+            .push(Ie::new(IeType::FramedRoute, b"192.0.2.0/24".to_vec()));
+
+        let decoded = Pdi::unmarshal(&pdi.marshal()).unwrap();
+
+        assert_eq!(decoded.ue_ip_addresses.len(), 2);
+        assert_eq!(decoded.sdf_filters.len(), 2);
+        assert_eq!(decoded.qfis, [Qfi::of(8), Qfi::of(9)]);
+        assert_eq!(decoded.ies, pdi.ies);
     }
 
     #[test]
@@ -534,9 +590,9 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
-        assert_eq!(pdi.application_id, Some(app_id.to_string()));
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
+        assert_eq!(pdi.application_id, Some(ApplicationId::new(app_id)));
 
         // Test round-trip marshaling
         let marshaled = pdi.marshal();
@@ -570,9 +626,9 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert_eq!(pdi.f_teid, Some(fteid));
         assert_eq!(pdi.network_instance, Some(network_instance));
-        assert_eq!(pdi.ue_ip_address, Some(ue_ip));
-        assert_eq!(pdi.sdf_filter, Some(sdf_filter));
-        assert_eq!(pdi.application_id, Some(app_id.to_string()));
+        assert_eq!(pdi.ue_ip_addresses, [ue_ip]);
+        assert_eq!(pdi.sdf_filters, [sdf_filter]);
+        assert_eq!(pdi.application_id, Some(ApplicationId::new(app_id)));
 
         // Test round-trip marshaling
         let marshaled = pdi.marshal();
@@ -601,8 +657,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Access);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -618,8 +674,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Core);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -635,8 +691,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::SgiLan);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -652,8 +708,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::CpFunction);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -678,8 +734,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Access);
         assert_eq!(pdi.f_teid, Some(fteid));
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -700,8 +756,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Core);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert_eq!(pdi.ue_ip_address, Some(ue_ip));
-        assert!(pdi.sdf_filter.is_none());
+        assert_eq!(pdi.ue_ip_addresses, [ue_ip]);
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
 
         // Test round-trip marshaling
@@ -719,8 +775,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Access);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
     }
 
@@ -731,8 +787,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Core);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
     }
 
@@ -743,8 +799,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::SgiLan);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
     }
 
@@ -755,8 +811,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::CpFunction);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
     }
 
@@ -773,8 +829,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Access);
         assert_eq!(pdi.f_teid, Some(fteid));
         assert!(pdi.network_instance.is_none());
-        assert!(pdi.ue_ip_address.is_none());
-        assert!(pdi.sdf_filter.is_none());
+        assert!(pdi.ue_ip_addresses.is_empty());
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
     }
 
@@ -787,8 +843,8 @@ mod tests {
         assert_eq!(pdi.source_interface.value, SourceInterfaceValue::Core);
         assert!(pdi.f_teid.is_none());
         assert!(pdi.network_instance.is_none());
-        assert_eq!(pdi.ue_ip_address, Some(ue_ip));
-        assert!(pdi.sdf_filter.is_none());
+        assert_eq!(pdi.ue_ip_addresses, [ue_ip]);
+        assert!(pdi.sdf_filters.is_empty());
         assert!(pdi.application_id.is_none());
     }
 
@@ -801,7 +857,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(pdi.source_interface, source_interface);
-        assert_eq!(pdi.application_id, Some("test.app".to_string()));
+        assert_eq!(pdi.application_id, Some(ApplicationId::new("test.app")));
     }
 
     #[test]
@@ -829,6 +885,6 @@ mod tests {
         assert_eq!(pdi.source_interface, source_interface);
         assert_eq!(pdi.f_teid, Some(fteid));
         assert_eq!(pdi.network_instance, Some(network_instance));
-        assert_eq!(pdi.application_id, Some(app_id.to_string()));
+        assert_eq!(pdi.application_id, Some(ApplicationId::new(app_id)));
     }
 }

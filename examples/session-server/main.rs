@@ -354,7 +354,7 @@ fn handle_session_establishment_request(
                     }
                 };
 
-                let created_pdr = CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
+                let created_pdr = CreatedPdr::new(received_pdr.pdr_id).f_teid(local_f_teid);
                 created_pdrs.push(created_pdr.to_ie());
 
                 println!(
@@ -509,7 +509,7 @@ fn handle_session_modification_request(
                     }
                 };
 
-                let created_pdr = CreatedPdr::new(received_pdr.pdr_id, local_f_teid);
+                let created_pdr = CreatedPdr::new(received_pdr.pdr_id).f_teid(local_f_teid);
                 created_pdrs.push(created_pdr.to_ie());
             }
             Err(e) => {

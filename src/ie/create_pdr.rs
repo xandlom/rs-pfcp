@@ -10,6 +10,7 @@ use crate::ie::pdi::Pdi;
 use crate::ie::pdr_id::PdrId;
 use crate::ie::precedence::Precedence;
 use crate::ie::qer_id::QerId;
+use crate::ie::transport_delay_reporting::TransportDelayReporting;
 use crate::ie::urr_id::UrrId;
 use crate::ie::{marshal_ies, Ie, IeIterator, IeType};
 
@@ -20,34 +21,27 @@ pub struct CreatePdr {
     pub pdi: Pdi,
     pub outer_header_removal: Option<OuterHeaderRemoval>,
     pub far_id: Option<FarId>,
-    pub urr_id: Option<UrrId>,
-    pub qer_id: Option<QerId>,
-    pub activate_predefined_rules: Option<ActivatePredefinedRules>,
-    pub transport_delay_reporting: Option<Ie>,
+    pub urr_ids: Vec<UrrId>,
+    pub qer_ids: Vec<QerId>,
+    pub activate_predefined_rules: Vec<ActivatePredefinedRules>,
+    pub transport_delay_reporting: Option<TransportDelayReporting>,
+    /// Child IEs not yet represented by typed fields.
+    pub ies: Vec<Ie>,
 }
 
 impl CreatePdr {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        pdr_id: PdrId,
-        precedence: Precedence,
-        pdi: Pdi,
-        outer_header_removal: Option<OuterHeaderRemoval>,
-        far_id: Option<FarId>,
-        urr_id: Option<UrrId>,
-        qer_id: Option<QerId>,
-        activate_predefined_rules: Option<ActivatePredefinedRules>,
-    ) -> Self {
+    pub fn new(pdr_id: PdrId, precedence: Precedence, pdi: Pdi) -> Self {
         CreatePdr {
             pdr_id,
             precedence,
             pdi,
-            outer_header_removal,
-            far_id,
-            urr_id,
-            qer_id,
-            activate_predefined_rules,
+            outer_header_removal: None,
+            far_id: None,
+            urr_ids: Vec::new(),
+            qer_ids: Vec::new(),
+            activate_predefined_rules: Vec::new(),
             transport_delay_reporting: None,
+            ies: Vec::new(),
         }
     }
 
@@ -64,18 +58,17 @@ impl CreatePdr {
         if let Some(far_id) = &self.far_id {
             ies.push(far_id.to_ie());
         }
-        if let Some(urr_id) = &self.urr_id {
-            ies.push(urr_id.to_ie());
-        }
-        if let Some(qer_id) = &self.qer_id {
-            ies.push(qer_id.to_ie());
-        }
-        if let Some(apr) = &self.activate_predefined_rules {
-            ies.push(Ie::new(IeType::ActivatePredefinedRules, apr.marshal()));
-        }
+        ies.extend(self.urr_ids.iter().map(UrrId::to_ie));
+        ies.extend(self.qer_ids.iter().map(QerId::to_ie));
+        ies.extend(
+            self.activate_predefined_rules
+                .iter()
+                .map(ActivatePredefinedRules::to_ie),
+        );
         if let Some(ref tdr) = self.transport_delay_reporting {
-            ies.push(tdr.clone());
+            ies.push(tdr.to_ie());
         }
+        ies.extend(self.ies.iter().cloned());
 
         marshal_ies(&ies)
     }
@@ -86,10 +79,11 @@ impl CreatePdr {
         let mut pdi = None;
         let mut outer_header_removal = None;
         let mut far_id = None;
-        let mut urr_id = None;
-        let mut qer_id = None;
-        let mut activate_predefined_rules = None;
+        let mut urr_ids = Vec::new();
+        let mut qer_ids = Vec::new();
+        let mut activate_predefined_rules = Vec::new();
         let mut transport_delay_reporting = None;
+        let mut ies = Vec::new();
 
         for ie_result in IeIterator::new(payload) {
             let ie = ie_result?;
@@ -101,16 +95,16 @@ impl CreatePdr {
                     outer_header_removal = Some(OuterHeaderRemoval::unmarshal(&ie.payload)?)
                 }
                 IeType::FarId => far_id = Some(FarId::unmarshal(&ie.payload)?),
-                IeType::UrrId => urr_id = Some(UrrId::unmarshal(&ie.payload)?),
-                IeType::QerId => qer_id = Some(QerId::unmarshal(&ie.payload)?),
+                IeType::UrrId => urr_ids.push(UrrId::unmarshal(&ie.payload)?),
+                IeType::QerId => qer_ids.push(QerId::unmarshal(&ie.payload)?),
                 IeType::ActivatePredefinedRules => {
-                    activate_predefined_rules =
-                        Some(ActivatePredefinedRules::unmarshal(&ie.payload)?)
+                    activate_predefined_rules.push(ActivatePredefinedRules::unmarshal(&ie.payload)?)
                 }
                 IeType::TransportDelayReporting => {
-                    transport_delay_reporting = Some(ie);
+                    transport_delay_reporting =
+                        Some(TransportDelayReporting::unmarshal(&ie.payload)?);
                 }
-                _ => (),
+                _ => ies.push(ie),
             }
         }
 
@@ -129,10 +123,11 @@ impl CreatePdr {
             ))?,
             outer_header_removal,
             far_id,
-            urr_id,
-            qer_id,
+            urr_ids,
+            qer_ids,
             activate_predefined_rules,
             transport_delay_reporting,
+            ies,
         })
     }
 
@@ -148,9 +143,11 @@ pub struct CreatePdrBuilder {
     pdi: Option<Pdi>,
     outer_header_removal: Option<OuterHeaderRemoval>,
     far_id: Option<FarId>,
-    urr_id: Option<UrrId>,
-    qer_id: Option<QerId>,
-    activate_predefined_rules: Option<ActivatePredefinedRules>,
+    urr_ids: Vec<UrrId>,
+    qer_ids: Vec<QerId>,
+    activate_predefined_rules: Vec<ActivatePredefinedRules>,
+    transport_delay_reporting: Option<TransportDelayReporting>,
+    ies: Vec<Ie>,
 }
 
 impl CreatePdrBuilder {
@@ -182,12 +179,12 @@ impl CreatePdrBuilder {
     }
 
     pub fn urr_id(mut self, urr_id: UrrId) -> Self {
-        self.urr_id = Some(urr_id);
+        self.urr_ids.push(urr_id);
         self
     }
 
     pub fn qer_id(mut self, qer_id: QerId) -> Self {
-        self.qer_id = Some(qer_id);
+        self.qer_ids.push(qer_id);
         self
     }
 
@@ -195,7 +192,18 @@ impl CreatePdrBuilder {
         mut self,
         activate_predefined_rules: ActivatePredefinedRules,
     ) -> Self {
-        self.activate_predefined_rules = Some(activate_predefined_rules);
+        self.activate_predefined_rules
+            .push(activate_predefined_rules);
+        self
+    }
+
+    pub fn transport_delay_reporting(mut self, reporting: TransportDelayReporting) -> Self {
+        self.transport_delay_reporting = Some(reporting);
+        self
+    }
+
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
         self
     }
 
@@ -222,10 +230,11 @@ impl CreatePdrBuilder {
             pdi,
             outer_header_removal: self.outer_header_removal,
             far_id: self.far_id,
-            urr_id: self.urr_id,
-            qer_id: self.qer_id,
+            urr_ids: self.urr_ids,
+            qer_ids: self.qer_ids,
             activate_predefined_rules: self.activate_predefined_rules,
-            transport_delay_reporting: None,
+            transport_delay_reporting: self.transport_delay_reporting,
+            ies: self.ies,
         })
     }
 }
@@ -234,33 +243,17 @@ impl CreatePdr {
     pub fn uplink_access(pdr_id: PdrId, precedence: Precedence) -> CreatePdr {
         use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 
-        let pdi = Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Access),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
+        let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access));
 
-        CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None)
+        CreatePdr::new(pdr_id, precedence, pdi)
     }
 
     pub fn downlink_core(pdr_id: PdrId, precedence: Precedence) -> CreatePdr {
         use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 
-        let pdi = Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Core),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
+        let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Core));
 
-        CreatePdr::new(pdr_id, precedence, pdi, None, None, None, None, None)
+        CreatePdr::new(pdr_id, precedence, pdi)
     }
 }
 
@@ -279,43 +272,18 @@ mod tests {
     }
 
     fn test_pdi_access() -> Pdi {
-        Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Access),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
+        Pdi::new(SourceInterface::new(SourceInterfaceValue::Access))
     }
 
     fn test_pdi_core() -> Pdi {
-        Pdi::new(
-            SourceInterface::new(SourceInterfaceValue::Core),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
+        Pdi::new(SourceInterface::new(SourceInterfaceValue::Core))
     }
 
     // BEFORE: 17 lines of repetitive setup
     // AFTER: 3 lines using test helpers ✨
     #[test]
     fn test_create_pdr_marshal_unmarshal() {
-        let create_pdr = CreatePdr::new(
-            test_pdr_id(),
-            test_precedence(),
-            test_pdi_access(),
-            None,
-            None,
-            None,
-            None,
-            None,
-        );
+        let create_pdr = CreatePdr::new(test_pdr_id(), test_precedence(), test_pdi_access());
 
         let marshaled = create_pdr.marshal();
         let unmarshaled = CreatePdr::unmarshal(&marshaled)
@@ -328,16 +296,16 @@ mod tests {
     // AFTER: 10 lines using test helpers ✨
     #[test]
     fn test_create_pdr_marshal_unmarshal_with_optionals() {
-        let create_pdr = CreatePdr::new(
-            test_pdr_id(),
-            test_precedence(),
-            test_pdi_access(),
-            Some(OuterHeaderRemoval::new(0)),
-            Some(FarId::new(1)),
-            Some(UrrId::new(1)),
-            Some(QerId::new(1)),
-            Some(ActivatePredefinedRules::new("rule1")),
-        );
+        let create_pdr = CreatePdrBuilder::new(test_pdr_id())
+            .precedence(test_precedence())
+            .pdi(test_pdi_access())
+            .outer_header_removal(OuterHeaderRemoval::new(0))
+            .far_id(FarId::new(1))
+            .urr_id(UrrId::new(1))
+            .qer_id(QerId::new(1))
+            .activate_predefined_rules(ActivatePredefinedRules::new("rule1"))
+            .build()
+            .unwrap();
 
         let marshaled = create_pdr.marshal();
         let unmarshaled = CreatePdr::unmarshal(&marshaled)
@@ -377,9 +345,9 @@ mod tests {
             .pdi(pdi)
             .outer_header_removal(ohr)
             .far_id(far_id)
-            .urr_id(urr_id)
+            .urr_id(urr_id.clone())
             .qer_id(qer_id)
-            .activate_predefined_rules(apr)
+            .activate_predefined_rules(apr.clone())
             .build()
             .expect("Failed to build comprehensive Create PDR");
 
@@ -387,9 +355,41 @@ mod tests {
         assert_eq!(create_pdr.precedence.value, 200);
         assert!(create_pdr.outer_header_removal.is_some());
         assert!(create_pdr.far_id.is_some());
-        assert!(create_pdr.urr_id.is_some());
-        assert!(create_pdr.qer_id.is_some());
-        assert!(create_pdr.activate_predefined_rules.is_some());
+        assert_eq!(create_pdr.urr_ids, [urr_id]);
+        assert_eq!(create_pdr.qer_ids, [qer_id]);
+        assert_eq!(create_pdr.activate_predefined_rules, [apr]);
+    }
+
+    #[test]
+    fn test_create_pdr_preserves_repeated_and_unknown_ies() {
+        let mut create_pdr = CreatePdrBuilder::new(test_pdr_id())
+            .precedence(test_precedence())
+            .pdi(test_pdi_access())
+            .urr_id(UrrId::new(10))
+            .urr_id(UrrId::new(11))
+            .qer_id(QerId::new(20))
+            .qer_id(QerId::new(21))
+            .build()
+            .unwrap();
+        create_pdr
+            .ies
+            .push(Ie::new(IeType::FramedRoute, b"192.0.2.0/24".to_vec()));
+
+        let decoded = CreatePdr::unmarshal(&create_pdr.marshal()).unwrap();
+
+        assert_eq!(
+            decoded.urr_ids.iter().map(|id| id.id).collect::<Vec<_>>(),
+            [10, 11]
+        );
+        assert_eq!(
+            decoded
+                .qer_ids
+                .iter()
+                .map(|id| id.value)
+                .collect::<Vec<_>>(),
+            [20, 21]
+        );
+        assert_eq!(decoded.ies, create_pdr.ies);
     }
 
     #[test]

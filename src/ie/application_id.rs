@@ -11,8 +11,8 @@ pub struct ApplicationId {
 
 impl ApplicationId {
     /// Creates a new Application ID.
-    pub fn new(id: &str) -> Self {
-        ApplicationId { id: id.to_string() }
+    pub fn new(id: impl Into<String>) -> Self {
+        ApplicationId { id: id.into() }
     }
 
     /// Marshals the Application ID into a byte vector.
@@ -41,6 +41,18 @@ impl ApplicationId {
     /// Wraps the Application ID in an ApplicationId IE.
     pub fn to_ie(&self) -> Ie {
         Ie::from_marshal(IeType::ApplicationId, self.marshal())
+    }
+}
+
+impl From<String> for ApplicationId {
+    fn from(id: String) -> Self {
+        Self::new(id)
+    }
+}
+
+impl From<&str> for ApplicationId {
+    fn from(id: &str) -> Self {
+        Self::new(id)
     }
 }
 

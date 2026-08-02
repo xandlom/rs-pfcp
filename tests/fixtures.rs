@@ -106,15 +106,7 @@ pub fn basic_destination_interface() -> DestinationInterface {
 /// - Source Interface: Access
 /// - All optional fields: None
 pub fn basic_pdi() -> Pdi {
-    Pdi::new(
-        basic_source_interface(),
-        None, // network_instance
-        None, // ue_ip_address
-        None, // traffic_endpoint_id
-        None, // sdf_filter
-        None, // application_id
-        None, // ethernet_packet_filter
-    )
+    Pdi::new(basic_source_interface())
 }
 
 /// Creates a basic F-TEID with IPv4
@@ -167,16 +159,7 @@ pub fn basic_cause_rejected() -> Cause {
 /// - PDI: Access interface only
 /// - All optional fields: None
 pub fn basic_create_pdr() -> CreatePdr {
-    CreatePdr::new(
-        basic_pdr_id(),
-        basic_precedence(),
-        basic_pdi(),
-        None, // outer_header_removal
-        None, // far_id
-        None, // urr_id
-        None, // qer_id
-        None, // activate_predefined_rules
-    )
+    CreatePdr::new(basic_pdr_id(), basic_precedence(), basic_pdi())
 }
 
 /// Creates a basic Create FAR for forwarding to core
