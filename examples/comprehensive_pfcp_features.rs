@@ -12,6 +12,7 @@ use rs_pfcp::ie::{
     reporting_flags::ReportingFlags,
     user_plane_path_failure_report::UserPlanePathFailureReport,
     user_plane_path_recovery_report::RemoteGtpuPeer,
+    AlternativeSmfIpAddress,
     GtpuPathQosControlInformation,
     Ie,
     IeType,
@@ -125,13 +126,14 @@ fn phase2_high_availability_example() -> Result<(), Box<dyn std::error::Error>> 
     );
 
     // Session Set Management
-    let session_change_info = PfcpSessionChangeInfo::new(
-        0x987654321FEDCBA0, // Session ID being changed
-        1,                  // Change type: modification
-    );
+    let session_change_info = PfcpSessionChangeInfo::new(AlternativeSmfIpAddress::new_ipv4(
+        std::net::Ipv4Addr::new(192, 0, 2, 1),
+    ));
     println!("📝 Session Change Info:");
-    println!("   Session ID: 0x{:016x}", session_change_info.session_id);
-    println!("   Change Type: {}", session_change_info.change_type);
+    println!(
+        "   Alternative SMF: {:?}",
+        session_change_info.alternative_smf_ip_address.ipv4_address
+    );
 
     // Advanced traffic duplication
     let dup_params = UpdateDuplicatingParameters::new(1) // Destination interface

@@ -11,7 +11,9 @@ fn bench_new_ie_marshaling(c: &mut Criterion) {
 
     let query_urr = QueryUrr::new(12345);
     let traffic_endpoint = TrafficEndpointId::new(42);
-    let session_change = PfcpSessionChangeInfo::new(0x123456789ABCDEF0, 1);
+    let session_change = PfcpSessionChangeInfo::new(AlternativeSmfIpAddress::new_ipv4(
+        Ipv4Addr::new(192, 0, 2, 1),
+    ));
     let smf_set_id = SmfSetId::new("smf-set-benchmark-001".to_string());
 
     group.bench_function("query_urr", |b| b.iter(|| black_box(query_urr.marshal())));
@@ -36,7 +38,10 @@ fn bench_new_ie_unmarshaling(c: &mut Criterion) {
     // Pre-marshal test data
     let query_urr_data = QueryUrr::new(12345).marshal();
     let traffic_endpoint_data = TrafficEndpointId::new(42).marshal();
-    let session_change_data = PfcpSessionChangeInfo::new(0x123456789ABCDEF0, 1).marshal();
+    let session_change_data = PfcpSessionChangeInfo::new(AlternativeSmfIpAddress::new_ipv4(
+        Ipv4Addr::new(192, 0, 2, 1),
+    ))
+    .marshal();
     let smf_set_id_data = SmfSetId::new("smf-set-benchmark-001".to_string()).marshal();
 
     group.bench_function("query_urr", |b| {
@@ -99,7 +104,9 @@ fn bench_round_trip_performance(c: &mut Criterion) {
 
     let query_urr = QueryUrr::new(12345);
     let traffic_endpoint = TrafficEndpointId::new(42);
-    let session_change = PfcpSessionChangeInfo::new(0x123456789ABCDEF0, 1);
+    let session_change = PfcpSessionChangeInfo::new(AlternativeSmfIpAddress::new_ipv4(
+        Ipv4Addr::new(192, 0, 2, 1),
+    ));
 
     group.bench_function("query_urr_round_trip", |b| {
         b.iter(|| {
