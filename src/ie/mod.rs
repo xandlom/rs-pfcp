@@ -1139,13 +1139,30 @@ impl<const N: usize> IntoIePayload for [u8; N] {
 }
 
 /// Represents a PFCP Information Element.
-#[derive(Debug, Clone, PartialEq, Eq)]
+const IE_HEADER_LEN: u16 = 4;
+const ENTERPRISE_ID_LEN: u16 = 2;
+
+/// Mask identifying the vendor-specific IE type range defined by TS 29.244.
+pub const VENDOR_SPECIFIC_IE_TYPE_MASK: u16 = 0x8000;
+
+#[derive(Debug, Clone)]
 pub struct Ie {
     pub ie_type: IeType,
-    pub enterprise_id: Option<u16>,
+    enterprise_id: Option<u16>,
     pub payload: Vec<u8>,
+    raw_type: u16,
     child_ies: Vec<Ie>,
 }
+
+impl PartialEq for Ie {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw_type() == other.raw_type()
+            && self.enterprise_id == other.enterprise_id
+            && self.payload == other.payload
+    }
+}
+
+impl Eq for Ie {}
 
 impl Ie {
     /// Creates a new IE.
@@ -1154,18 +1171,58 @@ impl Ie {
             ie_type,
             enterprise_id: None,
             payload,
+            raw_type: ie_type as u16,
             child_ies: Vec::new(),
         }
     }
 
-    /// Creates a new vendor-specific IE.
-    pub fn new_vendor_specific(ie_type: IeType, enterprise_id: u16, payload: Vec<u8>) -> Self {
-        Ie {
-            ie_type,
+    /// Creates an IE whose type is not known by this crate.
+    ///
+    /// The raw type is retained for lossless round trips. Use
+    /// [`Ie::new_vendor_specific`] for types in the vendor-specific range.
+    pub fn new_unknown(raw_type: u16, payload: Vec<u8>) -> Result<Self, PfcpError> {
+        if IeType::from(raw_type) != IeType::Unknown || raw_type & VENDOR_SPECIFIC_IE_TYPE_MASK != 0
+        {
+            return Err(PfcpError::invalid_value(
+                "IE type",
+                raw_type.to_string(),
+                "must be an unknown non-vendor-specific IE type",
+            ));
+        }
+
+        Ok(Ie {
+            ie_type: IeType::Unknown,
+            enterprise_id: None,
+            payload,
+            raw_type,
+            child_ies: Vec::new(),
+        })
+    }
+
+    /// Creates a vendor-specific IE.
+    ///
+    /// Vendor-specific IE type values occupy the range 32768..=65535. The
+    /// Enterprise ID is encoded as the first two octets of the IE value.
+    pub fn new_vendor_specific(
+        raw_type: u16,
+        enterprise_id: u16,
+        payload: Vec<u8>,
+    ) -> Result<Self, PfcpError> {
+        if raw_type & VENDOR_SPECIFIC_IE_TYPE_MASK == 0 {
+            return Err(PfcpError::invalid_value(
+                "Vendor-specific IE type",
+                raw_type.to_string(),
+                "must be in the range 32768..=65535",
+            ));
+        }
+
+        Ok(Ie {
+            ie_type: IeType::from(raw_type),
             enterprise_id: Some(enterprise_id),
             payload,
+            raw_type,
             child_ies: Vec::new(),
-        }
+        })
     }
 
     /// Creates a new grouped IE.
@@ -1178,6 +1235,7 @@ impl Ie {
             ie_type,
             enterprise_id: None,
             payload,
+            raw_type: ie_type as u16,
             child_ies: ies,
         }
     }
@@ -1202,9 +1260,9 @@ impl Ie {
 
     /// Returns the length of the IE in bytes.
     pub fn len(&self) -> u16 {
-        let mut length = 4; // Type (2) + Length (2)
+        let mut length = IE_HEADER_LEN;
         if self.is_vendor_specific() {
-            length += 2;
+            length += ENTERPRISE_ID_LEN;
         }
         length += self.payload.len() as u16;
         length
@@ -1217,7 +1275,21 @@ impl Ie {
 
     /// Reports whether an IE is vendor-specific.
     pub fn is_vendor_specific(&self) -> bool {
-        self.enterprise_id.is_some() || (self.ie_type as u16) & 0x8000 != 0
+        self.raw_type & VENDOR_SPECIFIC_IE_TYPE_MASK != 0
+    }
+
+    /// Returns the Enterprise ID carried by a vendor-specific IE.
+    pub fn enterprise_id(&self) -> Option<u16> {
+        self.enterprise_id
+    }
+
+    /// Returns the original IE type value from the wire.
+    pub fn raw_type(&self) -> u16 {
+        if self.is_vendor_specific() || self.ie_type == IeType::Unknown {
+            self.raw_type
+        } else {
+            self.ie_type as u16
+        }
     }
 
     /// Serializes the IE into a byte vector.
@@ -1247,16 +1319,19 @@ impl Ie {
     /// ie.marshal_into(&mut buf);
     /// ```
     pub fn marshal_into(&self, buf: &mut Vec<u8>) {
-        buf.extend_from_slice(&(self.ie_type as u16).to_be_bytes());
+        buf.extend_from_slice(&self.raw_type().to_be_bytes());
 
         let length = if self.is_vendor_specific() {
-            self.payload.len() as u16 + 2
+            self.payload.len() as u16 + ENTERPRISE_ID_LEN
         } else {
             self.payload.len() as u16
         };
         buf.extend_from_slice(&length.to_be_bytes());
 
-        if let Some(eid) = self.enterprise_id {
+        if self.is_vendor_specific() {
+            let eid = self
+                .enterprise_id
+                .expect("vendor-specific IEs always carry an Enterprise ID");
             buf.extend_from_slice(&eid.to_be_bytes());
         }
 
@@ -1315,8 +1390,13 @@ impl Ie {
 
     /// Deserializes a byte slice into an IE.
     pub fn unmarshal(b: &[u8]) -> Result<Self, PfcpError> {
-        if b.len() < 4 {
-            return Err(PfcpError::invalid_length("IE", IeType::Unknown, 4, b.len()));
+        if b.len() < IE_HEADER_LEN as usize {
+            return Err(PfcpError::invalid_length(
+                "IE",
+                IeType::Unknown,
+                IE_HEADER_LEN as usize,
+                b.len(),
+            ));
         }
 
         // Read raw type value to preserve vendor bit (0x8000)
@@ -1336,18 +1416,19 @@ impl Ie {
             ));
         }
 
-        let mut offset = 4;
+        let mut offset = IE_HEADER_LEN as usize;
         // Check vendor bit in RAW type value, not converted IeType
-        let enterprise_id = if raw_type & 0x8000 != 0 {
-            if b.len() < 6 {
+        let enterprise_id = if raw_type & VENDOR_SPECIFIC_IE_TYPE_MASK != 0 {
+            let vendor_header_len = (IE_HEADER_LEN + ENTERPRISE_ID_LEN) as usize;
+            if b.len() < vendor_header_len {
                 return Err(PfcpError::invalid_length(
                     "Vendor-specific IE",
                     ie_type,
-                    6,
+                    vendor_header_len,
                     b.len(),
                 ));
             }
-            offset += 2;
+            offset += ENTERPRISE_ID_LEN as usize;
             Some(u16::from_be_bytes([b[4], b[5]]))
         } else {
             None
@@ -1355,10 +1436,16 @@ impl Ie {
 
         // For vendor-specific IEs, length includes enterprise ID (2 bytes)
         // So actual payload length = length - 2
-        let payload_length = if enterprise_id.is_some() && length >= 2 {
-            length - 2
-        } else if enterprise_id.is_some() {
-            0 // Edge case: vendor IE with length < 2
+        let payload_length = if enterprise_id.is_some() {
+            if length < ENTERPRISE_ID_LEN {
+                return Err(PfcpError::invalid_length(
+                    "Vendor-specific IE value",
+                    ie_type,
+                    ENTERPRISE_ID_LEN as usize,
+                    length as usize,
+                ));
+            }
+            length - ENTERPRISE_ID_LEN
         } else {
             length
         };
@@ -1378,6 +1465,7 @@ impl Ie {
             ie_type,
             enterprise_id,
             payload,
+            raw_type,
             child_ies: Vec::new(), // Parsing child IEs will be handled separately
         })
     }
@@ -2361,7 +2449,7 @@ mod tests {
         let ie = Ie::new(IeType::Cause, payload.clone());
 
         assert_eq!(ie.ie_type, IeType::Cause);
-        assert_eq!(ie.enterprise_id, None);
+        assert_eq!(ie.enterprise_id(), None);
         assert_eq!(ie.payload, payload);
         assert_eq!(ie.child_ies.len(), 0);
         assert!(!ie.is_vendor_specific());
@@ -2370,10 +2458,11 @@ mod tests {
     #[test]
     fn test_ie_new_vendor_specific() {
         let payload = vec![0xAA, 0xBB];
-        let ie = Ie::new_vendor_specific(IeType::Unknown, 12345, payload.clone());
+        let ie = Ie::new_vendor_specific(0x8001, 12345, payload.clone()).unwrap();
 
         assert_eq!(ie.ie_type, IeType::Unknown);
-        assert_eq!(ie.enterprise_id, Some(12345));
+        assert_eq!(ie.raw_type(), 0x8001);
+        assert_eq!(ie.enterprise_id(), Some(12345));
         assert_eq!(ie.payload, payload);
         assert!(ie.is_vendor_specific());
     }
@@ -2387,7 +2476,7 @@ mod tests {
         let grouped = Ie::new_grouped(IeType::CreatePdr, vec![child1.clone(), child2.clone()]);
 
         assert_eq!(grouped.ie_type, IeType::CreatePdr);
-        assert_eq!(grouped.enterprise_id, None);
+        assert_eq!(grouped.enterprise_id(), None);
         assert_eq!(grouped.child_ies.len(), 2);
 
         // Payload should contain marshaled child IEs
@@ -2435,7 +2524,7 @@ mod tests {
 
     #[test]
     fn test_ie_len_vendor_specific() {
-        let ie = Ie::new_vendor_specific(IeType::Unknown, 123, vec![0xAA, 0xBB]);
+        let ie = Ie::new_vendor_specific(0x8001, 123, vec![0xAA, 0xBB]).unwrap();
         // Type (2) + Length (2) + Enterprise ID (2) + Payload (2) = 8
         assert_eq!(ie.len(), 8);
     }
@@ -2451,7 +2540,7 @@ mod tests {
 
     #[test]
     fn test_ie_is_vendor_specific_with_enterprise_id() {
-        let ie = Ie::new_vendor_specific(IeType::Unknown, 100, vec![0x01]);
+        let ie = Ie::new_vendor_specific(0x8001, 100, vec![0x01]).unwrap();
         assert!(ie.is_vendor_specific());
     }
 
@@ -2466,7 +2555,7 @@ mod tests {
         ];
         let ie = Ie::unmarshal(&vendor_ie_bytes).unwrap();
         assert!(ie.is_vendor_specific());
-        assert_eq!(ie.enterprise_id, Some(10));
+        assert_eq!(ie.enterprise_id(), Some(10));
     }
 
     // ========================================================================
@@ -2485,10 +2574,10 @@ mod tests {
 
     #[test]
     fn test_ie_marshal_vendor_specific() {
-        let ie = Ie::new_vendor_specific(IeType::Unknown, 12345, vec![0xAA, 0xBB]);
+        let ie = Ie::new_vendor_specific(0x8001, 12345, vec![0xAA, 0xBB]).unwrap();
         let marshaled = ie.marshal();
 
-        assert_eq!(marshaled[0..2], [0x00, 0x00]); // Type 0 (Unknown)
+        assert_eq!(marshaled[0..2], [0x80, 0x01]); // Vendor-specific type 32769
         assert_eq!(marshaled[2..4], [0x00, 0x04]); // Length 4 (2 for eid + 2 for payload)
         assert_eq!(marshaled[4..6], [0x30, 0x39]); // Enterprise ID 12345
         assert_eq!(marshaled[6..8], [0xAA, 0xBB]); // Payload
@@ -2501,8 +2590,25 @@ mod tests {
         let unmarshaled = Ie::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled.ie_type, original.ie_type);
-        assert_eq!(unmarshaled.enterprise_id, original.enterprise_id);
+        assert_eq!(unmarshaled.enterprise_id(), original.enterprise_id());
         assert_eq!(unmarshaled.payload, original.payload);
+    }
+
+    #[test]
+    fn test_unknown_ie_type_round_trip() {
+        let encoded = [0x01, 0x81, 0x00, 0x02, 0xaa, 0xbb];
+        let ie = Ie::unmarshal(&encoded).unwrap();
+
+        assert_eq!(ie.ie_type, IeType::Unknown);
+        assert_eq!(ie.raw_type(), 385);
+        assert_eq!(ie.marshal(), encoded);
+    }
+
+    #[test]
+    fn test_new_unknown_rejects_known_and_vendor_types() {
+        assert!(Ie::new_unknown(IeType::Cause as u16, vec![1]).is_err());
+        assert!(Ie::new_unknown(0x8001, vec![1]).is_err());
+        assert_eq!(Ie::new_unknown(385, vec![1]).unwrap().raw_type(), 385);
     }
 
     #[test]
@@ -2517,8 +2623,15 @@ mod tests {
 
         let unmarshaled = Ie::unmarshal(&vendor_ie_bytes).unwrap();
         assert!(unmarshaled.is_vendor_specific());
-        assert_eq!(unmarshaled.enterprise_id, Some(999));
+        assert_eq!(unmarshaled.enterprise_id(), Some(999));
         assert_eq!(unmarshaled.payload, vec![0x01, 0x02, 0x03]);
+        assert_eq!(unmarshaled.raw_type(), 0x8001);
+        assert_eq!(unmarshaled.marshal(), vendor_ie_bytes);
+    }
+
+    #[test]
+    fn test_new_vendor_specific_rejects_standard_type_range() {
+        assert!(Ie::new_vendor_specific(1, 10415, vec![]).is_err());
     }
 
     #[test]
@@ -2562,6 +2675,20 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err, PfcpError::InvalidLength { .. }));
+    }
+
+    #[test]
+    fn test_ie_unmarshal_vendor_specific_length_excludes_enterprise_id() {
+        let malformed = [
+            0x80, 0x01, // Vendor-specific type
+            0x00, 0x01, // Invalid: value cannot contain the two-octet Enterprise ID
+            0x00, 0x00,
+        ];
+
+        assert!(matches!(
+            Ie::unmarshal(&malformed),
+            Err(PfcpError::InvalidLength { .. })
+        ));
     }
 
     // ========================================================================
