@@ -1,6 +1,7 @@
 // Quick verification that all new messages can be parsed
 use rs_pfcp::ie::cause::{Cause, CauseValue};
 use rs_pfcp::ie::node_id::NodeId;
+use rs_pfcp::ie::node_report_type::NodeReportType;
 use rs_pfcp::ie::{Ie, IeType};
 use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
 use rs_pfcp::message::node_report_request::NodeReportRequest;
@@ -51,17 +52,11 @@ fn test_all_new_pfcp_messages() {
     );
 
     // Test NodeReportRequest (Type 12)
-    let msg3 = NodeReportRequest::new(
-        125,
-        node_id_ie.clone(),
-        None,
-        None,
-        Vec::new(),
-        Vec::new(), // clock_drift_report
-        Vec::new(),
-        Vec::new(),
-        Vec::new(),
-    );
+    let msg3 = NodeReportRequest::builder(125)
+        .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1)))
+        .node_report_type(NodeReportType::new(NodeReportType::UPFR))
+        .build()
+        .unwrap();
     let marshaled = msg3.marshal();
     let parsed = parse(&marshaled).unwrap();
     println!("✓ NodeReportRequest (Type 12): {}", parsed.msg_name());

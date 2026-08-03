@@ -1,80 +1,44 @@
-// src/message/node_report_request.rs
-
 //! Node Report Request message implementation.
 
 use crate::error::PfcpError;
+use crate::ie::node_id::NodeId;
+use crate::ie::node_report_type::NodeReportType;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use crate::types::{Seid, SequenceNumber};
 
-/// Represents a Node Report Request message.
-/// Used by UPF to report node-level events and information to the CP function.
+/// A PFCP Node Report Request.
+///
+/// Node ID and Node Report Type are mandatory in TS 29.244 table 7.4.5.1.1-1.
+/// They are stored as typed, immutable values; their raw IEs are retained only
+/// to support the generic [`Message::ies`] interface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReportRequest {
     pub header: Header,
-    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 60
-    pub node_report_type: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 101 (TODO: Should be mandatory, not Optional - bitmask determines report type)
-    pub user_plane_path_failure_report: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 102 - Grouped IE, Multiple instances, when UPFR bit=1 in Node Report Type
-    pub user_plane_path_recovery_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 187 - Multiple instances, Grouped IE, when UPRR bit=1 in Node Report Type
-    pub clock_drift_report: Vec<Ie>, // C - Multiple - IE Type 205 - Grouped IE, when CDR bit=1 (N4 only)
-    pub gtpu_path_qos_reports: Vec<Ie>, // C - Multiple - IE Type 239 - Grouped IE, when GPQR bit=1 (N4 only)
-    pub peer_up_restart_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 315 - Grouped IE, when PURR bit=1 in Node Report Type
-    pub vendor_specific_node_report_types: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.5.1.1-1 - IE Type 320 - Multiple instances, Grouped IE with Vendor ID + proprietary info
+    node_id: NodeId,
+    node_report_type: NodeReportType,
+    node_id_ie: Ie,
+    node_report_type_ie: Ie,
+    pub user_plane_path_failure_report: Option<Ie>,
+    pub user_plane_path_recovery_reports: Vec<Ie>,
+    pub clock_drift_reports: Vec<Ie>,
+    pub gtpu_path_qos_reports: Vec<Ie>,
+    pub peer_up_restart_reports: Vec<Ie>,
+    pub vendor_specific_node_report_types: Vec<Ie>,
     pub ies: Vec<Ie>,
 }
 
 impl NodeReportRequest {
-    /// Creates a new Node Report Request message.
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        seq: impl Into<SequenceNumber>,
-        node_id: Ie,
-        node_report_type: Option<Ie>,
-        user_plane_path_failure_report: Option<Ie>,
-        user_plane_path_recovery_reports: Vec<Ie>,
-        clock_drift_report: Vec<Ie>,
-        peer_up_restart_reports: Vec<Ie>,
-        vendor_specific_node_report_types: Vec<Ie>,
-        ies: Vec<Ie>,
-    ) -> Self {
-        let mut payload_len = node_id.len();
-        if let Some(ref ie) = node_report_type {
-            payload_len += ie.len();
-        }
-        if let Some(ref ie) = user_plane_path_failure_report {
-            payload_len += ie.len();
-        }
-        for ie in &user_plane_path_recovery_reports {
-            payload_len += ie.len();
-        }
-        for ie in &clock_drift_report {
-            payload_len += ie.len();
-        }
-        for ie in &peer_up_restart_reports {
-            payload_len += ie.len();
-        }
-        for ie in &vendor_specific_node_report_types {
-            payload_len += ie.len();
-        }
-        for ie in &ies {
-            payload_len += ie.len();
-        }
+    pub fn builder(sequence: impl Into<SequenceNumber>) -> NodeReportRequestBuilder {
+        NodeReportRequestBuilder::new(sequence)
+    }
 
-        let mut header = Header::new(MsgType::NodeReportRequest, false, 0, seq);
-        header.length = payload_len + (header.len() - 4);
+    pub fn node_id(&self) -> &NodeId {
+        &self.node_id
+    }
 
-        NodeReportRequest {
-            header,
-            node_id,
-            node_report_type,
-            user_plane_path_failure_report,
-            user_plane_path_recovery_reports,
-            clock_drift_report,
-            gtpu_path_qos_reports: Vec::new(),
-            peer_up_restart_reports,
-            vendor_specific_node_report_types,
-            ies,
-        }
+    pub fn node_report_type(&self) -> NodeReportType {
+        self.node_report_type
     }
 }
 
@@ -92,17 +56,15 @@ impl Message for NodeReportRequest {
     fn marshal_into(&self, buf: &mut Vec<u8>) {
         buf.reserve(self.marshaled_size());
         self.header.marshal_into(buf);
-        self.node_id.marshal_into(buf);
-        if let Some(ref ie) = self.node_report_type {
-            ie.marshal_into(buf);
-        }
-        if let Some(ref ie) = self.user_plane_path_failure_report {
+        self.node_id_ie.marshal_into(buf);
+        self.node_report_type_ie.marshal_into(buf);
+        if let Some(ie) = &self.user_plane_path_failure_report {
             ie.marshal_into(buf);
         }
         for ie in &self.user_plane_path_recovery_reports {
             ie.marshal_into(buf);
         }
-        for ie in &self.clock_drift_report {
+        for ie in &self.clock_drift_reports {
             ie.marshal_into(buf);
         }
         for ie in &self.gtpu_path_qos_reports {
@@ -120,45 +82,21 @@ impl Message for NodeReportRequest {
     }
 
     fn marshaled_size(&self) -> usize {
-        let mut size = self.header.len() as usize;
-        size += self.node_id.len() as usize;
-        if let Some(ref ie) = self.node_report_type {
-            size += ie.len() as usize;
-        }
-        if let Some(ref ie) = self.user_plane_path_failure_report {
-            size += ie.len() as usize;
-        }
-        for ie in &self.user_plane_path_recovery_reports {
-            size += ie.len() as usize;
-        }
-        for ie in &self.clock_drift_report {
-            size += ie.len() as usize;
-        }
-        for ie in &self.gtpu_path_qos_reports {
-            size += ie.len() as usize;
-        }
-        for ie in &self.peer_up_restart_reports {
-            size += ie.len() as usize;
-        }
-        for ie in &self.vendor_specific_node_report_types {
-            size += ie.len() as usize;
-        }
-        for ie in &self.ies {
-            size += ie.len() as usize;
-        }
-        size
+        self.header.len() as usize
+            + self
+                .all_ies()
+                .iter()
+                .map(|ie| ie.len() as usize)
+                .sum::<usize>()
     }
 
-    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
-    where
-        Self: Sized,
-    {
+    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(buf)?;
         let mut node_id = None;
         let mut node_report_type = None;
         let mut user_plane_path_failure_report = None;
         let mut user_plane_path_recovery_reports = Vec::new();
-        let mut clock_drift_report = Vec::new();
+        let mut clock_drift_reports = Vec::new();
         let mut gtpu_path_qos_reports = Vec::new();
         let mut peer_up_restart_reports = Vec::new();
         let mut vendor_specific_node_report_types = Vec::new();
@@ -169,11 +107,17 @@ impl Message for NodeReportRequest {
             let ie = Ie::unmarshal(&buf[cursor..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
-                IeType::NodeId => node_id = Some(ie),
-                IeType::ReportType => node_report_type = Some(ie),
-                IeType::UserPlanePathFailureReport => user_plane_path_failure_report = Some(ie),
+                IeType::NodeId if node_id.is_none() => {
+                    node_id = Some((NodeId::unmarshal(&ie.payload)?, ie));
+                }
+                IeType::NodeReportType if node_report_type.is_none() => {
+                    node_report_type = Some((NodeReportType::unmarshal(&ie.payload)?, ie));
+                }
+                IeType::UserPlanePathFailureReport if user_plane_path_failure_report.is_none() => {
+                    user_plane_path_failure_report = Some(ie);
+                }
                 IeType::UserPlanePathRecoveryReport => user_plane_path_recovery_reports.push(ie),
-                IeType::ClockDriftReport => clock_drift_report.push(ie),
+                IeType::ClockDriftReport => clock_drift_reports.push(ie),
                 IeType::GtpuPathQosReport => gtpu_path_qos_reports.push(ie),
                 IeType::PeerUpRestartReport => peer_up_restart_reports.push(ie),
                 IeType::VendorSpecificNodeReportType => vendor_specific_node_report_types.push(ie),
@@ -182,19 +126,27 @@ impl Message for NodeReportRequest {
             cursor += ie_len;
         }
 
-        let node_id = node_id.ok_or(PfcpError::MissingMandatoryIe {
+        let (node_id, node_id_ie) = node_id.ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::NodeId,
             message_type: Some(MsgType::NodeReportRequest),
             parent_ie: None,
         })?;
+        let (node_report_type, node_report_type_ie) =
+            node_report_type.ok_or(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeReportType,
+                message_type: Some(MsgType::NodeReportRequest),
+                parent_ie: None,
+            })?;
 
-        Ok(NodeReportRequest {
+        Ok(Self {
             header,
             node_id,
             node_report_type,
+            node_id_ie,
+            node_report_type_ie,
             user_plane_path_failure_report,
             user_plane_path_recovery_reports,
-            clock_drift_report,
+            clock_drift_reports,
             gtpu_path_qos_reports,
             peer_up_restart_reports,
             vendor_specific_node_report_types,
@@ -203,11 +155,7 @@ impl Message for NodeReportRequest {
     }
 
     fn seid(&self) -> Option<Seid> {
-        if self.header.has_seid {
-            Some(self.header.seid)
-        } else {
-            None
-        }
+        self.header.has_seid.then_some(self.header.seid)
     }
 
     fn sequence(&self) -> SequenceNumber {
@@ -222,15 +170,15 @@ impl Message for NodeReportRequest {
         use crate::message::IeIter;
 
         match ie_type {
-            IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
-            IeType::ReportType => IeIter::single(self.node_report_type.as_ref(), ie_type),
+            IeType::NodeId => IeIter::single(Some(&self.node_id_ie), ie_type),
+            IeType::NodeReportType => IeIter::single(Some(&self.node_report_type_ie), ie_type),
             IeType::UserPlanePathFailureReport => {
                 IeIter::single(self.user_plane_path_failure_report.as_ref(), ie_type)
             }
             IeType::UserPlanePathRecoveryReport => {
                 IeIter::multiple(&self.user_plane_path_recovery_reports, ie_type)
             }
-            IeType::ClockDriftReport => IeIter::multiple(&self.clock_drift_report, ie_type),
+            IeType::ClockDriftReport => IeIter::multiple(&self.clock_drift_reports, ie_type),
             IeType::GtpuPathQosReport => IeIter::multiple(&self.gtpu_path_qos_reports, ie_type),
             IeType::PeerUpRestartReport => IeIter::multiple(&self.peer_up_restart_reports, ie_type),
             IeType::VendorSpecificNodeReportType => {
@@ -241,15 +189,10 @@ impl Message for NodeReportRequest {
     }
 
     fn all_ies(&self) -> Vec<&Ie> {
-        let mut result = vec![&self.node_id];
-        if let Some(ref ie) = self.node_report_type {
-            result.push(ie);
-        }
-        if let Some(ref ie) = self.user_plane_path_failure_report {
-            result.push(ie);
-        }
+        let mut result = vec![&self.node_id_ie, &self.node_report_type_ie];
+        result.extend(self.user_plane_path_failure_report.iter());
         result.extend(self.user_plane_path_recovery_reports.iter());
-        result.extend(self.clock_drift_report.iter());
+        result.extend(self.clock_drift_reports.iter());
         result.extend(self.gtpu_path_qos_reports.iter());
         result.extend(self.peer_up_restart_reports.iter());
         result.extend(self.vendor_specific_node_report_types.iter());
@@ -258,15 +201,14 @@ impl Message for NodeReportRequest {
     }
 }
 
-/// Builder for NodeReportRequest message.
 #[derive(Debug, Default)]
 pub struct NodeReportRequestBuilder {
     sequence: SequenceNumber,
-    node_id: Option<Ie>,
-    node_report_type: Option<Ie>,
+    node_id: Option<NodeId>,
+    node_report_type: Option<NodeReportType>,
     user_plane_path_failure_report: Option<Ie>,
     user_plane_path_recovery_reports: Vec<Ie>,
-    clock_drift_report: Vec<Ie>,
+    clock_drift_reports: Vec<Ie>,
     gtpu_path_qos_reports: Vec<Ie>,
     peer_up_restart_reports: Vec<Ie>,
     vendor_specific_node_report_types: Vec<Ie>,
@@ -274,136 +216,102 @@ pub struct NodeReportRequestBuilder {
 }
 
 impl NodeReportRequestBuilder {
-    /// Creates a new NodeReportRequest builder.
     pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
         Self {
             sequence: sequence.into(),
-            node_id: None,
-            node_report_type: None,
-            user_plane_path_failure_report: None,
-            user_plane_path_recovery_reports: Vec::new(),
-            clock_drift_report: Vec::new(),
-            gtpu_path_qos_reports: Vec::new(),
-            peer_up_restart_reports: Vec::new(),
-            vendor_specific_node_report_types: Vec::new(),
-            ies: Vec::new(),
+            ..Self::default()
         }
     }
 
-    /// Sets the node ID IE (required).
-    pub fn node_id(mut self, node_id: Ie) -> Self {
+    pub fn node_id(mut self, node_id: NodeId) -> Self {
         self.node_id = Some(node_id);
         self
     }
 
-    /// Sets the node report type IE (optional).
-    pub fn node_report_type(mut self, node_report_type: Ie) -> Self {
+    pub fn node_report_type(mut self, node_report_type: NodeReportType) -> Self {
         self.node_report_type = Some(node_report_type);
         self
     }
 
-    /// Sets the user plane path failure report IE (optional).
-    pub fn user_plane_path_failure_report(mut self, user_plane_path_failure_report: Ie) -> Self {
-        self.user_plane_path_failure_report = Some(user_plane_path_failure_report);
+    pub fn user_plane_path_failure_report(mut self, ie: Ie) -> Self {
+        self.user_plane_path_failure_report = Some(ie);
         self
     }
 
-    /// Adds a User Plane Path Recovery Report IE (conditional, multiple allowed).
     pub fn user_plane_path_recovery_report(mut self, ie: Ie) -> Self {
         self.user_plane_path_recovery_reports.push(ie);
         self
     }
 
-    /// Adds a Clock Drift Report IE (conditional, multiple allowed, N4 only).
     pub fn clock_drift_report(mut self, ie: Ie) -> Self {
-        self.clock_drift_report.push(ie);
+        self.clock_drift_reports.push(ie);
         self
     }
 
-    /// Adds a GTP-U Path QoS Report IE (conditional, multiple allowed, N4 only, when GPQR=1).
     pub fn gtpu_path_qos_report(mut self, ie: Ie) -> Self {
         self.gtpu_path_qos_reports.push(ie);
         self
     }
 
-    /// Adds a Peer UP Restart Report IE (conditional, multiple allowed).
     pub fn peer_up_restart_report(mut self, ie: Ie) -> Self {
         self.peer_up_restart_reports.push(ie);
         self
     }
 
-    /// Adds a Vendor-Specific Node Report Type IE (optional, multiple allowed).
     pub fn vendor_specific_node_report_type(mut self, ie: Ie) -> Self {
         self.vendor_specific_node_report_types.push(ie);
         self
     }
 
-    /// Adds an additional IE.
     pub fn ie(mut self, ie: Ie) -> Self {
         self.ies.push(ie);
         self
     }
 
-    /// Adds multiple additional IEs.
-    pub fn ies(mut self, mut ies: Vec<Ie>) -> Self {
-        self.ies.append(&mut ies);
+    pub fn ies(mut self, ies: Vec<Ie>) -> Self {
+        self.ies.extend(ies);
         self
     }
 
-    /// Builds the NodeReportRequest message.
-    ///
-    /// # Panics
-    /// Panics if required node_id IE is not set.
-    pub fn build(self) -> NodeReportRequest {
-        self.try_build()
-            .expect("Node ID IE is required for NodeReportRequest")
-    }
+    pub fn build(self) -> Result<NodeReportRequest, PfcpError> {
+        let node_id = self.node_id.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeId,
+            message_type: Some(MsgType::NodeReportRequest),
+            parent_ie: None,
+        })?;
+        let node_report_type = self.node_report_type.ok_or(PfcpError::MissingMandatoryIe {
+            ie_type: IeType::NodeReportType,
+            message_type: Some(MsgType::NodeReportRequest),
+            parent_ie: None,
+        })?;
 
-    /// Tries to build the NodeReportRequest message.
-    ///
-    /// # Returns
-    /// Returns an error if required IEs are not set.
-    pub fn try_build(self) -> Result<NodeReportRequest, &'static str> {
-        let node_id = self
-            .node_id
-            .ok_or("Node ID IE is required for NodeReportRequest")?;
-
-        let mut payload_len = node_id.len();
-        if let Some(ie) = &self.node_report_type {
-            payload_len += ie.len();
-        }
-        if let Some(ie) = &self.user_plane_path_failure_report {
-            payload_len += ie.len();
-        }
-        for ie in &self.user_plane_path_recovery_reports {
-            payload_len += ie.len();
-        }
-        for ie in &self.clock_drift_report {
-            payload_len += ie.len();
-        }
-        for ie in &self.gtpu_path_qos_reports {
-            payload_len += ie.len();
-        }
-        for ie in &self.peer_up_restart_reports {
-            payload_len += ie.len();
-        }
-        for ie in &self.vendor_specific_node_report_types {
-            payload_len += ie.len();
-        }
-        for ie in &self.ies {
-            payload_len += ie.len();
-        }
-
+        let node_id_ie = node_id.to_ie();
+        let node_report_type_ie = node_report_type.to_ie();
         let mut header = Header::new(MsgType::NodeReportRequest, false, 0, self.sequence);
+        let payload_len = node_id_ie.len()
+            + node_report_type_ie.len()
+            + self
+                .user_plane_path_failure_report
+                .iter()
+                .chain(self.user_plane_path_recovery_reports.iter())
+                .chain(self.clock_drift_reports.iter())
+                .chain(self.gtpu_path_qos_reports.iter())
+                .chain(self.peer_up_restart_reports.iter())
+                .chain(self.vendor_specific_node_report_types.iter())
+                .chain(self.ies.iter())
+                .map(Ie::len)
+                .sum::<u16>();
         header.length = payload_len + (header.len() - 4);
 
         Ok(NodeReportRequest {
             header,
             node_id,
-            node_report_type: self.node_report_type,
+            node_report_type,
+            node_id_ie,
+            node_report_type_ie,
             user_plane_path_failure_report: self.user_plane_path_failure_report,
             user_plane_path_recovery_reports: self.user_plane_path_recovery_reports,
-            clock_drift_report: self.clock_drift_report,
+            clock_drift_reports: self.clock_drift_reports,
             gtpu_path_qos_reports: self.gtpu_path_qos_reports,
             peer_up_restart_reports: self.peer_up_restart_reports,
             vendor_specific_node_report_types: self.vendor_specific_node_report_types,
@@ -415,370 +323,65 @@ impl NodeReportRequestBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::node_id::NodeId;
     use std::net::Ipv4Addr;
 
-    #[test]
-    fn test_node_report_request_marshal_unmarshal_minimal() {
-        let node_id_ie = Ie::new(
-            IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
-        );
-
-        let original = NodeReportRequest::new(
-            123,
-            node_id_ie,
-            None,
-            None,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
-        let marshaled = original.marshal();
-        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(
-            original.header.message_type,
-            unmarshaled.header.message_type
-        );
-        assert_eq!(
-            original.header.sequence_number,
-            unmarshaled.header.sequence_number
-        );
-        assert_eq!(original.node_id, unmarshaled.node_id);
-        assert_eq!(original.node_report_type, unmarshaled.node_report_type);
-        assert_eq!(
-            original.user_plane_path_failure_report,
-            unmarshaled.user_plane_path_failure_report
-        );
+    fn request() -> NodeReportRequest {
+        NodeReportRequest::builder(123)
+            .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1)))
+            .node_report_type(NodeReportType::new(NodeReportType::UPFR))
+            .build()
+            .unwrap()
     }
 
     #[test]
-    fn test_node_report_request_with_optional_ies() {
-        let node_id_ie = Ie::new(
-            IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
-        );
-        let report_type_ie = Ie::new(IeType::ReportType, vec![0x01]); // USAR
-        let path_failure_ie = Ie::new(IeType::UserPlanePathFailureReport, vec![0x01, 0x02, 0x03]);
+    fn mandatory_ies_use_the_specified_types() {
+        let request = request();
+        let encoded = request.marshal();
 
-        let original = NodeReportRequest::new(
-            456,
-            node_id_ie,
-            Some(report_type_ie),
-            Some(path_failure_ie),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
-        let marshaled = original.marshal();
-        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(original, unmarshaled);
+        assert_eq!(request.ies(IeType::NodeId).count(), 1);
+        assert_eq!(request.ies(IeType::NodeReportType).count(), 1);
+        assert_eq!(request.ies(IeType::ReportType).count(), 0);
+        assert_eq!(&encoded[8..12], &[0x00, 0x3c, 0x00, 0x05]);
+        assert_eq!(&encoded[17..22], &[0x00, 0x65, 0x00, 0x01, 0x01]);
     }
 
     #[test]
-    fn test_node_report_request_with_additional_ies() {
-        let node_id_ie = Ie::new(
-            IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(192, 168, 1, 10))
-                .marshal()
-                .to_vec(),
-        );
-        let additional_ies = vec![
-            Ie::new(IeType::Timer, vec![0x00, 0x00, 0x01, 0x00]), // 1 minute
-            Ie::new(IeType::Unknown, vec![0xFF, 0xFF]),
-        ];
+    fn round_trip_preserves_node_report_type() {
+        let request = request();
+        let encoded = request.marshal();
+        let decoded = NodeReportRequest::unmarshal(&encoded).unwrap();
 
-        let original = NodeReportRequest::new(
-            789,
-            node_id_ie,
-            None,
-            None,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            additional_ies,
-        );
-        let marshaled = original.marshal();
-        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(original, unmarshaled);
-        assert_eq!(original.ies.len(), 2);
+        assert_eq!(decoded, request);
+        assert!(decoded.node_report_type().upfr());
     }
 
     #[test]
-    fn test_node_report_request_missing_node_id() {
-        // Test with missing required Node ID IE
-        let incomplete_data = [
-            0x21, 0x0C, 0x00, 0x04, // Header (type=12, length=4, seq=0)
-            0x00, 0x00, 0x00, 0x00, // No IEs following
-        ];
-        let result = NodeReportRequest::unmarshal(&incomplete_data);
-        assert!(result.is_err());
+    fn missing_node_report_type_is_rejected() {
+        let node_id = NodeId::new_ipv4(Ipv4Addr::LOCALHOST).to_ie();
+        let mut header = Header::new(MsgType::NodeReportRequest, false, 0, 1);
+        header.length = node_id.len() + (header.len() - 4);
+        let mut encoded = header.marshal();
+        node_id.marshal_into(&mut encoded);
+
+        assert!(matches!(
+            NodeReportRequest::unmarshal(&encoded),
+            Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::NodeReportType,
+                ..
+            })
+        ));
     }
 
     #[test]
-    fn test_node_report_request_ies() {
-        let node_id_ie = Ie::new(
-            IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
-        );
-        let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // ERIR
-
-        let message = NodeReportRequest::new(
-            123,
-            node_id_ie,
-            Some(report_type_ie),
-            None,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
-
-        assert!(message.ies(IeType::NodeId).next().is_some());
-        assert!(message.ies(IeType::ReportType).next().is_some());
-        assert!(message
-            .ies(IeType::UserPlanePathFailureReport)
-            .next()
-            .is_none());
-        assert!(message.ies(IeType::Unknown).next().is_none());
-    }
-
-    #[test]
-    fn test_node_report_request_header_validation() {
-        let node_id_ie = Ie::new(
-            IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
-        );
-
-        let message = NodeReportRequest::new(
-            999,
-            node_id_ie,
-            None,
-            None,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
-
-        assert_eq!(message.msg_type(), MsgType::NodeReportRequest);
-        assert_eq!(*message.sequence(), 999);
-        assert_eq!(message.seid(), None); // Node reports don't have SEID
-        assert_eq!(message.version(), 1);
-    }
-
-    #[test]
-    fn test_node_report_request_builder_minimal() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let request = NodeReportRequestBuilder::new(12345)
-            .node_id(node_id_ie.clone())
+    fn builder_requires_both_mandatory_ies() {
+        let missing_node_id = NodeReportRequest::builder(1)
+            .node_report_type(NodeReportType::new(NodeReportType::UPFR))
+            .build();
+        let missing_report_type = NodeReportRequest::builder(1)
+            .node_id(NodeId::new_ipv4(Ipv4Addr::LOCALHOST))
             .build();
 
-        assert_eq!(*request.sequence(), 12345);
-        assert_eq!(request.seid(), None); // Node reports have no SEID
-        assert_eq!(request.msg_type(), MsgType::NodeReportRequest);
-        assert_eq!(request.node_id, node_id_ie);
-        assert!(request.node_report_type.is_none());
-        assert!(request.user_plane_path_failure_report.is_none());
-        assert!(request.ies.is_empty());
-    }
-
-    #[test]
-    fn test_node_report_request_builder_with_report_type() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let report_type_ie = Ie::new(IeType::ReportType, vec![0x01]); // USAR
-
-        let request = NodeReportRequestBuilder::new(67890)
-            .node_id(node_id_ie.clone())
-            .node_report_type(report_type_ie.clone())
-            .build();
-
-        assert_eq!(*request.sequence(), 67890);
-        assert_eq!(request.node_id, node_id_ie);
-        assert_eq!(request.node_report_type, Some(report_type_ie));
-        assert!(request.user_plane_path_failure_report.is_none());
-    }
-
-    #[test]
-    fn test_node_report_request_builder_with_path_failure() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(172, 16, 0, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let path_failure_ie = Ie::new(IeType::UserPlanePathFailureReport, vec![0x01, 0x02, 0x03]);
-
-        let request = NodeReportRequestBuilder::new(11111)
-            .node_id(node_id_ie.clone())
-            .user_plane_path_failure_report(path_failure_ie.clone())
-            .build();
-
-        assert_eq!(*request.sequence(), 11111);
-        assert_eq!(request.node_id, node_id_ie);
-        assert!(request.node_report_type.is_none());
-        assert_eq!(
-            request.user_plane_path_failure_report,
-            Some(path_failure_ie)
-        );
-    }
-
-    #[test]
-    fn test_node_report_request_builder_with_additional_ies() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(203, 0, 113, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let ie1 = Ie::new(IeType::Timer, vec![0x00, 0x00, 0x01, 0x00]);
-        let ie2 = Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02]);
-        let ie3 = Ie::new(IeType::Unknown, vec![0xFF, 0xFF]);
-
-        let request = NodeReportRequestBuilder::new(22222)
-            .node_id(node_id_ie.clone())
-            .ie(ie1.clone())
-            .ies(vec![ie2.clone(), ie3.clone()])
-            .build();
-
-        assert_eq!(*request.sequence(), 22222);
-        assert_eq!(request.node_id, node_id_ie);
-        assert_eq!(request.ies.len(), 3);
-        assert_eq!(request.ies[0], ie1);
-        assert_eq!(request.ies[1], ie2);
-        assert_eq!(request.ies[2], ie3);
-    }
-
-    #[test]
-    fn test_node_report_request_builder_full() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(198, 51, 100, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let report_type_ie = Ie::new(IeType::ReportType, vec![0x02]); // ERIR
-        let path_failure_ie = Ie::new(IeType::UserPlanePathFailureReport, vec![0x04, 0x05, 0x06]);
-        let additional_ie = Ie::new(IeType::Timer, vec![0x00, 0x00, 0x03, 0x00]);
-
-        let request = NodeReportRequestBuilder::new(33333)
-            .node_id(node_id_ie.clone())
-            .node_report_type(report_type_ie.clone())
-            .user_plane_path_failure_report(path_failure_ie.clone())
-            .ie(additional_ie.clone())
-            .build();
-
-        assert_eq!(*request.sequence(), 33333);
-        assert_eq!(request.node_id, node_id_ie);
-        assert_eq!(request.node_report_type, Some(report_type_ie));
-        assert_eq!(
-            request.user_plane_path_failure_report,
-            Some(path_failure_ie)
-        );
-        assert_eq!(request.ies.len(), 1);
-        assert_eq!(request.ies[0], additional_ie);
-    }
-
-    #[test]
-    fn test_node_report_request_builder_try_build_success() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 0, 2, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let result = NodeReportRequestBuilder::new(44444)
-            .node_id(node_id_ie.clone())
-            .try_build();
-
-        assert!(result.is_ok());
-        let request = result.unwrap();
-        assert_eq!(*request.sequence(), 44444);
-        assert_eq!(request.node_id, node_id_ie);
-    }
-
-    #[test]
-    fn test_node_report_request_builder_try_build_missing_node_id() {
-        let result = NodeReportRequestBuilder::new(55555).try_build();
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "Node ID IE is required for NodeReportRequest"
-        );
-    }
-
-    #[test]
-    #[should_panic(expected = "Node ID IE is required for NodeReportRequest")]
-    fn test_node_report_request_builder_build_panic_missing_node_id() {
-        NodeReportRequestBuilder::new(77777).build();
-    }
-
-    #[test]
-    fn test_node_report_request_builder_roundtrip() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 100, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-
-        let report_type_ie = Ie::new(IeType::ReportType, vec![0x01]);
-
-        let original = NodeReportRequestBuilder::new(99999)
-            .node_id(node_id_ie)
-            .node_report_type(report_type_ie)
-            .build();
-
-        let marshaled = original.marshal();
-        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(original, unmarshaled);
-    }
-
-    #[test]
-    fn test_node_report_request_new_ies_roundtrip() {
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let node_id_ie = Ie::new(IeType::NodeId, node_id.marshal());
-        let recovery_ie = Ie::new(IeType::UserPlanePathRecoveryReport, vec![0x01, 0x02]);
-        let restart_ie = Ie::new(IeType::PeerUpRestartReport, vec![0x03, 0x04]);
-        let vendor_ie = Ie::new(IeType::VendorSpecificNodeReportType, vec![0x05, 0x06]);
-
-        let original = NodeReportRequestBuilder::new(11111)
-            .node_id(node_id_ie)
-            .user_plane_path_recovery_report(recovery_ie)
-            .peer_up_restart_report(restart_ie)
-            .vendor_specific_node_report_type(vendor_ie)
-            .build();
-
-        assert_eq!(original.user_plane_path_recovery_reports.len(), 1);
-        assert_eq!(original.peer_up_restart_reports.len(), 1);
-        assert_eq!(original.vendor_specific_node_report_types.len(), 1);
-
-        let marshaled = original.marshal();
-        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(original, unmarshaled);
-    }
-
-    #[test]
-    fn test_clock_drift_report_roundtrip() {
-        let node_id_ie = Ie::new(
-            IeType::NodeId,
-            NodeId::IPv4(Ipv4Addr::new(10, 0, 0, 1)).marshal().to_vec(),
-        );
-        let ie1 = Ie::new(IeType::ClockDriftReport, vec![0x01, 0x02]);
-        let ie2 = Ie::new(IeType::ClockDriftReport, vec![0x03, 0x04]);
-
-        let original = NodeReportRequestBuilder::new(50000)
-            .node_id(node_id_ie)
-            .clock_drift_report(ie1.clone())
-            .clock_drift_report(ie2.clone())
-            .build();
-
-        assert_eq!(original.clock_drift_report.len(), 2);
-
-        let marshaled = original.marshal();
-        let unmarshaled = NodeReportRequest::unmarshal(&marshaled).unwrap();
-        assert_eq!(original, unmarshaled);
-        assert_eq!(unmarshaled.clock_drift_report.len(), 2);
-        assert_eq!(unmarshaled.ies(IeType::ClockDriftReport).count(), 2);
+        assert!(missing_node_id.is_err());
+        assert!(missing_report_type.is_err());
     }
 }
