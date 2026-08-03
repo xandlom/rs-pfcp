@@ -221,6 +221,13 @@ pub trait Message: Send + Sync {
     where
         Self: Sized;
     fn msg_type(&self) -> MsgType;
+    /// Returns the message type value carried on the wire.
+    ///
+    /// This differs from [`Message::msg_type`] for future message types, which
+    /// are represented by [`MsgType::Unknown`] while retaining their raw code.
+    fn msg_type_code(&self) -> u8 {
+        self.msg_type() as u8
+    }
     fn msg_name(&self) -> String {
         format!("{:?}", self.msg_type())
     }
@@ -342,6 +349,10 @@ impl Message for Generic {
 
     fn msg_type(&self) -> MsgType {
         self.header.message_type
+    }
+
+    fn msg_type_code(&self) -> u8 {
+        self.header.message_type_code()
     }
 
     fn seid(&self) -> Option<Seid> {
@@ -546,6 +557,7 @@ mod tests {
             sequence_number: SequenceNumber::new(12345),
             message_priority: 0,
             has_seid: false,
+            raw_message_type: 18,
         };
 
         let ies = vec![
@@ -578,6 +590,7 @@ mod tests {
             sequence_number: SequenceNumber::new(54321),
             message_priority: 0,
             has_seid: true,
+            raw_message_type: 18,
         };
 
         let msg = Generic {
@@ -600,6 +613,7 @@ mod tests {
             sequence_number: SequenceNumber::new(111),
             message_priority: 0,
             has_seid: false,
+            raw_message_type: MsgType::HeartbeatRequest as u8,
         };
 
         let msg = Generic {
@@ -623,6 +637,7 @@ mod tests {
                 sequence_number: SequenceNumber::new(100),
                 message_priority: 0,
                 has_seid: false,
+                raw_message_type: 18,
             },
             ies: vec![],
         };
@@ -645,6 +660,7 @@ mod tests {
                 sequence_number: SequenceNumber::new(1),
                 message_priority: 0,
                 has_seid: false,
+                raw_message_type: MsgType::HeartbeatRequest as u8,
             },
             ies: vec![],
         };
@@ -665,6 +681,7 @@ mod tests {
                 sequence_number: SequenceNumber::new(1),
                 message_priority: 0,
                 has_seid: false,
+                raw_message_type: 18,
             },
             ies: vec![],
         };
@@ -692,6 +709,7 @@ mod tests {
             sequence_number: SequenceNumber::new(999),
             message_priority: 0,
             has_seid: false,
+            raw_message_type: 18,
         };
 
         let ies = vec![
@@ -874,18 +892,9 @@ mod tests {
 
     #[test]
     fn test_parse_unknown_message_type() {
-        // Create a message with unknown type (using Generic)
-        let header = Header {
-            version: 1,
-            has_fo: false,
-            has_mp: false,
-            message_type: MsgType::Unknown,
-            length: 8,
-            seid: Seid(0),
-            sequence_number: SequenceNumber::new(33333),
-            message_priority: 0,
-            has_seid: false,
-        };
+        const FUTURE_MESSAGE_TYPE: u8 = 18;
+        let mut header = Header::new_unknown(FUTURE_MESSAGE_TYPE, false, 0, 33333).unwrap();
+        header.length = header.len() - 4;
 
         let msg = Generic {
             header,
@@ -896,7 +905,14 @@ mod tests {
         let parsed = parse(&marshaled).unwrap();
 
         assert_eq!(parsed.msg_type(), MsgType::Unknown);
+        assert_eq!(parsed.msg_type_code(), FUTURE_MESSAGE_TYPE);
         assert_eq!(parsed.sequence(), SequenceNumber::new(33333));
+        assert_eq!(parsed.marshal(), marshaled);
+    }
+
+    #[test]
+    fn test_unknown_header_constructor_rejects_known_type() {
+        assert!(Header::new_unknown(MsgType::HeartbeatRequest as u8, false, 0, 1).is_err());
     }
 
     #[test]
