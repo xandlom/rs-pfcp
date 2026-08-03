@@ -16,6 +16,7 @@ pub struct Header {
     pub seid: Seid,
     pub sequence_number: SequenceNumber,
     pub message_priority: u8,
+    pub(crate) raw_message_type: u8,
 }
 
 impl Header {
@@ -36,6 +37,38 @@ impl Header {
             seid: seid.into(),
             sequence_number: sequence_number.into(),
             message_priority: 0,
+            raw_message_type: message_type as u8,
+        }
+    }
+
+    /// Creates a header for a message type not known by this crate.
+    ///
+    /// The raw type is retained so that decoding and re-encoding a future
+    /// message does not silently change its type on the wire.
+    pub fn new_unknown(
+        raw_message_type: u8,
+        has_seid: bool,
+        seid: impl Into<Seid>,
+        sequence_number: impl Into<SequenceNumber>,
+    ) -> Result<Self, PfcpError> {
+        if MsgType::from(raw_message_type) != MsgType::Unknown {
+            return Err(PfcpError::invalid_value(
+                "PFCP message type",
+                raw_message_type.to_string(),
+                "must be a message type unknown to this crate",
+            ));
+        }
+        let mut header = Self::new(MsgType::Unknown, has_seid, seid, sequence_number);
+        header.raw_message_type = raw_message_type;
+        Ok(header)
+    }
+
+    /// Returns the message type value as encoded on the wire.
+    pub fn message_type_code(&self) -> u8 {
+        if self.message_type == MsgType::Unknown {
+            self.raw_message_type
+        } else {
+            self.message_type as u8
         }
     }
 
@@ -91,7 +124,7 @@ impl Header {
             | ((self.has_mp as u8) << 1)
             | (self.has_seid as u8);
         b[0] = flags;
-        b[1] = self.message_type as u8;
+        b[1] = self.message_type_code();
 
         b[2..4].copy_from_slice(&self.length.to_be_bytes());
 
@@ -124,7 +157,8 @@ impl Header {
         let has_mp = (flags & 0x02) >> 1 == 1;
         let has_seid = (flags & 0x01) == 1;
 
-        let message_type = MsgType::from(b[1]);
+        let raw_message_type = b[1];
+        let message_type = MsgType::from(raw_message_type);
         let length = u16::from_be_bytes([b[2], b[3]]);
 
         let mut offset = 4;
@@ -182,6 +216,7 @@ impl Header {
             seid: Seid(seid),
             sequence_number,
             message_priority,
+            raw_message_type,
         })
     }
 }
