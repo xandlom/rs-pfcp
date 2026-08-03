@@ -1,19 +1,21 @@
 //! Integration test for Phase 2 implementation
 
 use rs_pfcp::ie::{
-    Ie, PfcpSessionChangeInfo, PfcpSessionRetentionInformation, SmfSetId,
+    AlternativeSmfIpAddress, Ie, PfcpSessionChangeInfo, PfcpSessionRetentionInformation, SmfSetId,
     UpdateDuplicatingParameters,
 };
+use std::net::Ipv4Addr;
 
 #[test]
 fn test_pfcp_session_change_info_integration() {
-    let info = PfcpSessionChangeInfo::new(0x123456789ABCDEF0, 1);
-    let ie: Ie = info.into();
+    let info = PfcpSessionChangeInfo::new(AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(
+        192, 0, 2, 1,
+    )));
+    let ie: Ie = info.clone().into();
     assert_eq!(ie.ie_type, rs_pfcp::ie::IeType::PfcpSessionChangeInfo);
 
     let unmarshaled = PfcpSessionChangeInfo::unmarshal(&ie.payload).unwrap();
-    assert_eq!(unmarshaled.session_id, 0x123456789ABCDEF0);
-    assert_eq!(unmarshaled.change_type, 1);
+    assert_eq!(unmarshaled, info);
 }
 
 #[test]
