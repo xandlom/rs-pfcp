@@ -1,46 +1,39 @@
-//! Session Set Modification Request message.
-//!
-//! The PFCP Session Set Modification Request message is sent by the SMF to the UPF(s)
-//! to request the UPF(s) to send subsequent PFCP Session Report Request messages to the
-//! alternative SMF. This is used for SMF set management and session handover scenarios.
+//! PFCP Session Set Modification Request.
 
 use crate::error::PfcpError;
-use crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
-use crate::ie::cp_ip_address::CpIpAddress;
-use crate::ie::fq_csid::FqCsid;
-use crate::ie::group_id::GroupId;
+use crate::ie::node_id::NodeId;
+use crate::ie::pfcp_session_change_info::PfcpSessionChangeInfo;
 use crate::ie::{Ie, IeType};
 use crate::message::{header::Header, Message, MsgType};
 use crate::types::{Seid, SequenceNumber};
 
-/// Represents a Session Set Modification Request message.
+/// Requests that one or more sets of sessions use an alternative SMF/PGW-C.
 ///
-/// According to 3GPP TS 29.244, this message contains:
-/// - Alternative SMF IP Address (mandatory)
-/// - FQ-CSID (optional, one or more)
-/// - Group ID (optional, one or more)
-/// - CP IP Address (optional, one or more)
+/// TS 29.244 table 7.4.7.1 requires a Node ID and one or more grouped PFCP
+/// Session Change Information IEs. Child selector IEs are therefore never
+/// flattened into the message payload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionSetModificationRequest {
     pub header: Header,
-    pub node_id: crate::ie::node_id::NodeId, // M - IE Type 60 - Node identity of originating node (Sxb/N4 only, not Sxa/Sxc/N4mb)
-    pub pfcp_session_change_info: Vec<Ie>,   // M - IE Type 290 - Grouped IE, Multiple instances
-    //       PFCP Session Change Info contains:
-    //       - PGW-C/SMF FQ-CSID (C, Type 65) - Multiple instances - Currently: fq_csids
-    //       - Group Id (C, Type 297) - Multiple instances - Currently: group_ids
-    //       - CP IP Address (C, Type 116) - Multiple instances - Currently: cp_ip_addresses
-    //       - Alternative SMF/PGW-C IP Address (M, Type 178) - Currently: alternative_smf_ip_address
-    pub alternative_smf_ip_address: AlternativeSmfIpAddress,
-    pub fq_csids: Option<Vec<FqCsid>>,
-    pub group_ids: Option<Vec<GroupId>>,
-    pub cp_ip_addresses: Option<Vec<CpIpAddress>>,
-    pub ies: Vec<Ie>,
-    // Raw IEs for additional/unknown IE types
+    node_id: NodeId,
+    session_change_infos: Vec<PfcpSessionChangeInfo>,
     node_id_ie: Ie,
-    alternative_smf_ip_address_ie: Ie,
-    fq_csids_ies: Option<Vec<Ie>>,
-    group_ids_ies: Option<Vec<Ie>>,
-    cp_ip_addresses_ies: Option<Vec<Ie>>,
+    session_change_info_ies: Vec<Ie>,
+    pub ies: Vec<Ie>,
+}
+
+impl SessionSetModificationRequest {
+    pub fn builder(sequence: impl Into<SequenceNumber>) -> SessionSetModificationRequestBuilder {
+        SessionSetModificationRequestBuilder::new(sequence)
+    }
+
+    pub fn node_id(&self) -> &NodeId {
+        &self.node_id
+    }
+
+    pub fn session_change_infos(&self) -> &[PfcpSessionChangeInfo] {
+        &self.session_change_infos
+    }
 }
 
 impl Message for SessionSetModificationRequest {
@@ -54,21 +47,8 @@ impl Message for SessionSetModificationRequest {
         buf.reserve(self.marshaled_size());
         self.header.marshal_into(buf);
         self.node_id_ie.marshal_into(buf);
-        self.alternative_smf_ip_address_ie.marshal_into(buf);
-        if let Some(ref ies) = self.fq_csids_ies {
-            for ie in ies {
-                ie.marshal_into(buf);
-            }
-        }
-        if let Some(ref ies) = self.group_ids_ies {
-            for ie in ies {
-                ie.marshal_into(buf);
-            }
-        }
-        if let Some(ref ies) = self.cp_ip_addresses_ies {
-            for ie in ies {
-                ie.marshal_into(buf);
-            }
+        for ie in &self.session_change_info_ies {
+            ie.marshal_into(buf);
         }
         for ie in &self.ies {
             ie.marshal_into(buf);
@@ -76,83 +56,34 @@ impl Message for SessionSetModificationRequest {
     }
 
     fn marshaled_size(&self) -> usize {
-        let mut size = self.header.len() as usize;
-        size += self.node_id_ie.len() as usize;
-        size += self.alternative_smf_ip_address_ie.len() as usize;
-        if let Some(ref ies) = self.fq_csids_ies {
-            for ie in ies {
-                size += ie.len() as usize;
-            }
-        }
-        if let Some(ref ies) = self.group_ids_ies {
-            for ie in ies {
-                size += ie.len() as usize;
-            }
-        }
-        if let Some(ref ies) = self.cp_ip_addresses_ies {
-            for ie in ies {
-                size += ie.len() as usize;
-            }
-        }
-        for ie in &self.ies {
-            size += ie.len() as usize;
-        }
-        size
+        self.header.len() as usize
+            + self.node_id_ie.len() as usize
+            + self
+                .session_change_info_ies
+                .iter()
+                .chain(self.ies.iter())
+                .map(|ie| ie.len() as usize)
+                .sum::<usize>()
     }
 
     fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let header = Header::unmarshal(data)?;
         let mut node_id = None;
-        let mut alternative_smf_ip_address = None;
-        let mut fq_csids = None;
-        let mut group_ids = None;
-        let mut cp_ip_addresses = None;
+        let mut session_change_infos = Vec::new();
+        let mut session_change_info_ies = Vec::new();
         let mut ies = Vec::new();
-
         let mut offset = header.len() as usize;
+
         while offset < data.len() {
             let ie = Ie::unmarshal(&data[offset..])?;
             let ie_len = ie.len() as usize;
             match ie.ie_type {
-                IeType::NodeId => {
-                    if node_id.is_none() {
-                        let typed_ie = crate::ie::node_id::NodeId::unmarshal(&ie.payload)?;
-                        node_id = Some((typed_ie, ie));
-                    } else {
-                        return Err(PfcpError::MessageParseError {
-                            message_type: Some(MsgType::SessionSetModificationRequest),
-                            reason: "Duplicate Node ID IE".to_string(),
-                        });
-                    }
+                IeType::NodeId if node_id.is_none() => {
+                    node_id = Some((NodeId::unmarshal(&ie.payload)?, ie));
                 }
-                IeType::AlternativeSmfIpAddress => {
-                    if alternative_smf_ip_address.is_none() {
-                        let typed_ie = AlternativeSmfIpAddress::unmarshal(&ie.payload)?;
-                        alternative_smf_ip_address = Some((typed_ie, ie));
-                    } else {
-                        return Err(PfcpError::MessageParseError {
-                            message_type: Some(MsgType::SessionSetModificationRequest),
-                            reason: "Duplicate Alternative SMF IP Address IE".to_string(),
-                        });
-                    }
-                }
-                IeType::FqCsid => {
-                    let typed_ie = FqCsid::unmarshal(&ie.payload)?;
-                    fq_csids
-                        .get_or_insert(Vec::new())
-                        .push((typed_ie, ie.clone()));
-                }
-                IeType::GroupId => {
-                    let typed_ie = GroupId::unmarshal(&ie.payload)?;
-                    group_ids
-                        .get_or_insert(Vec::new())
-                        .push((typed_ie, ie.clone()));
-                }
-                IeType::CpIpAddress => {
-                    let typed_ie = CpIpAddress::unmarshal(&ie.payload)?;
-                    cp_ip_addresses
-                        .get_or_insert(Vec::new())
-                        .push((typed_ie, ie.clone()));
+                IeType::PfcpSessionChangeInfo => {
+                    session_change_infos.push(PfcpSessionChangeInfo::unmarshal(&ie.payload)?);
+                    session_change_info_ies.push(ie);
                 }
                 _ => ies.push(ie),
             }
@@ -164,50 +95,21 @@ impl Message for SessionSetModificationRequest {
             message_type: Some(MsgType::SessionSetModificationRequest),
             parent_ie: None,
         })?;
-
-        let (alternative_smf_ip_address, alternative_smf_ip_address_ie) =
-            alternative_smf_ip_address.ok_or(PfcpError::MissingMandatoryIe {
-                ie_type: IeType::AlternativeSmfIpAddress,
+        if session_change_infos.is_empty() {
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::PfcpSessionChangeInfo,
                 message_type: Some(MsgType::SessionSetModificationRequest),
                 parent_ie: None,
-            })?;
+            });
+        }
 
-        // Extract typed and raw IEs
-        let (typed_fq_csids, fq_csids_ies) = if let Some(tuples) = fq_csids {
-            let (typed, raw): (Vec<_>, Vec<_>) = tuples.into_iter().unzip();
-            (Some(typed), Some(raw))
-        } else {
-            (None, None)
-        };
-
-        let (typed_group_ids, group_ids_ies) = if let Some(tuples) = group_ids {
-            let (typed, raw): (Vec<_>, Vec<_>) = tuples.into_iter().unzip();
-            (Some(typed), Some(raw))
-        } else {
-            (None, None)
-        };
-
-        let (typed_cp_ip_addresses, cp_ip_addresses_ies) = if let Some(tuples) = cp_ip_addresses {
-            let (typed, raw): (Vec<_>, Vec<_>) = tuples.into_iter().unzip();
-            (Some(typed), Some(raw))
-        } else {
-            (None, None)
-        };
-
-        Ok(SessionSetModificationRequest {
+        Ok(Self {
             header,
             node_id,
-            pfcp_session_change_info: Vec::new(), // TODO: Parse from IEs
-            alternative_smf_ip_address,
-            fq_csids: typed_fq_csids,
-            group_ids: typed_group_ids,
-            cp_ip_addresses: typed_cp_ip_addresses,
-            ies,
+            session_change_infos,
             node_id_ie,
-            alternative_smf_ip_address_ie,
-            fq_csids_ies,
-            group_ids_ies,
-            cp_ip_addresses_ies,
+            session_change_info_ies,
+            ies,
         })
     }
 
@@ -216,7 +118,7 @@ impl Message for SessionSetModificationRequest {
     }
 
     fn seid(&self) -> Option<Seid> {
-        None // Session Set messages don't use SEID
+        None
     }
 
     fn sequence(&self) -> SequenceNumber {
@@ -232,33 +134,16 @@ impl Message for SessionSetModificationRequest {
 
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id_ie), ie_type),
-            IeType::AlternativeSmfIpAddress => {
-                IeIter::single(Some(&self.alternative_smf_ip_address_ie), ie_type)
-            }
-            IeType::FqCsid => {
-                IeIter::multiple(self.fq_csids_ies.as_deref().unwrap_or(&[]), ie_type)
-            }
-            IeType::GroupId => {
-                IeIter::multiple(self.group_ids_ies.as_deref().unwrap_or(&[]), ie_type)
-            }
-            IeType::CpIpAddress => {
-                IeIter::multiple(self.cp_ip_addresses_ies.as_deref().unwrap_or(&[]), ie_type)
+            IeType::PfcpSessionChangeInfo => {
+                IeIter::multiple(&self.session_change_info_ies, ie_type)
             }
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
 
     fn all_ies(&self) -> Vec<&Ie> {
-        let mut result = vec![&self.alternative_smf_ip_address_ie];
-        if let Some(ref vec) = self.fq_csids_ies {
-            result.extend(vec.iter());
-        }
-        if let Some(ref vec) = self.group_ids_ies {
-            result.extend(vec.iter());
-        }
-        if let Some(ref vec) = self.cp_ip_addresses_ies {
-            result.extend(vec.iter());
-        }
+        let mut result = vec![&self.node_id_ie];
+        result.extend(self.session_change_info_ies.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -266,77 +151,42 @@ impl Message for SessionSetModificationRequest {
 
 #[derive(Debug, Default)]
 pub struct SessionSetModificationRequestBuilder {
-    seq: SequenceNumber,
-    node_id: Option<crate::ie::node_id::NodeId>,
-    pfcp_session_change_info: Option<Vec<Ie>>,
-    alternative_smf_ip_address: Option<AlternativeSmfIpAddress>,
-    fq_csids: Option<Vec<FqCsid>>,
-    group_ids: Option<Vec<GroupId>>,
-    cp_ip_addresses: Option<Vec<CpIpAddress>>,
+    sequence: SequenceNumber,
+    node_id: Option<NodeId>,
+    session_change_infos: Vec<PfcpSessionChangeInfo>,
     ies: Vec<Ie>,
 }
 
 impl SessionSetModificationRequestBuilder {
-    pub fn new(seq: impl Into<SequenceNumber>) -> Self {
-        SessionSetModificationRequestBuilder {
-            seq: seq.into(),
-            node_id: None,
-            pfcp_session_change_info: None,
-            alternative_smf_ip_address: None,
-            fq_csids: None,
-            group_ids: None,
-            cp_ip_addresses: None,
-            ies: Vec::new(),
+    pub fn new(sequence: impl Into<SequenceNumber>) -> Self {
+        Self {
+            sequence: sequence.into(),
+            ..Self::default()
         }
     }
 
-    pub fn node_id(mut self, node_id: crate::ie::node_id::NodeId) -> Self {
+    pub fn node_id(mut self, node_id: NodeId) -> Self {
         self.node_id = Some(node_id);
         self
     }
 
-    pub fn alternative_smf_ip_address(
-        mut self,
-        alternative_smf_ip_address: AlternativeSmfIpAddress,
-    ) -> Self {
-        self.alternative_smf_ip_address = Some(alternative_smf_ip_address);
+    pub fn session_change_info(mut self, info: PfcpSessionChangeInfo) -> Self {
+        self.session_change_infos.push(info);
         self
     }
 
-    pub fn fq_csids(mut self, fq_csids: Vec<FqCsid>) -> Self {
-        self.fq_csids = Some(fq_csids);
+    pub fn session_change_infos(mut self, infos: Vec<PfcpSessionChangeInfo>) -> Self {
+        self.session_change_infos.extend(infos);
         self
     }
 
-    pub fn add_fq_csid(mut self, fq_csid: FqCsid) -> Self {
-        self.fq_csids.get_or_insert(Vec::new()).push(fq_csid);
-        self
-    }
-
-    pub fn group_ids(mut self, group_ids: Vec<GroupId>) -> Self {
-        self.group_ids = Some(group_ids);
-        self
-    }
-
-    pub fn add_group_id(mut self, group_id: GroupId) -> Self {
-        self.group_ids.get_or_insert(Vec::new()).push(group_id);
-        self
-    }
-
-    pub fn cp_ip_addresses(mut self, cp_ip_addresses: Vec<CpIpAddress>) -> Self {
-        self.cp_ip_addresses = Some(cp_ip_addresses);
-        self
-    }
-
-    pub fn add_cp_ip_address(mut self, cp_ip_address: CpIpAddress) -> Self {
-        self.cp_ip_addresses
-            .get_or_insert(Vec::new())
-            .push(cp_ip_address);
+    pub fn ie(mut self, ie: Ie) -> Self {
+        self.ies.push(ie);
         self
     }
 
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
-        self.ies = ies;
+        self.ies.extend(ies);
         self
     }
 
@@ -346,196 +196,106 @@ impl SessionSetModificationRequestBuilder {
             message_type: Some(MsgType::SessionSetModificationRequest),
             parent_ie: None,
         })?;
-
-        let alternative_smf_ip_address =
-            self.alternative_smf_ip_address
-                .ok_or(PfcpError::MissingMandatoryIe {
-                    ie_type: IeType::AlternativeSmfIpAddress,
-                    message_type: Some(MsgType::SessionSetModificationRequest),
-                    parent_ie: None,
-                })?;
-
-        // Create raw IE versions for backwards compatibility
-        let node_id_ie = node_id.to_ie();
-        let alternative_smf_ip_address_ie = alternative_smf_ip_address.to_ie();
-        let mut payload_len = node_id_ie.len() + alternative_smf_ip_address_ie.len();
-
-        let fq_csids_ies = if let Some(ref ies) = self.fq_csids {
-            let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
-            for ie in &raw_ies {
-                payload_len += ie.len();
-            }
-            Some(raw_ies)
-        } else {
-            None
-        };
-
-        let group_ids_ies = if let Some(ref ies) = self.group_ids {
-            let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
-            for ie in &raw_ies {
-                payload_len += ie.len();
-            }
-            Some(raw_ies)
-        } else {
-            None
-        };
-
-        let cp_ip_addresses_ies = if let Some(ref ies) = self.cp_ip_addresses {
-            let raw_ies: Vec<Ie> = ies.iter().map(|ie| ie.to_ie()).collect();
-            for ie in &raw_ies {
-                payload_len += ie.len();
-            }
-            Some(raw_ies)
-        } else {
-            None
-        };
-
-        for ie in &self.ies {
-            payload_len += ie.len();
+        if self.session_change_infos.is_empty() {
+            return Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::PfcpSessionChangeInfo,
+                message_type: Some(MsgType::SessionSetModificationRequest),
+                parent_ie: None,
+            });
         }
 
+        let node_id_ie = node_id.to_ie();
+        let session_change_info_ies = self
+            .session_change_infos
+            .iter()
+            .map(PfcpSessionChangeInfo::to_ie)
+            .collect::<Vec<_>>();
+        let payload_len = node_id_ie.len()
+            + session_change_info_ies
+                .iter()
+                .chain(self.ies.iter())
+                .map(Ie::len)
+                .sum::<u16>();
         let mut header = Header::new(
             MsgType::SessionSetModificationRequest,
-            false, // Session Set messages don't use SEID
+            false,
             0,
-            self.seq,
+            self.sequence,
         );
         header.length = payload_len + (header.len() - 4);
 
         Ok(SessionSetModificationRequest {
             header,
             node_id,
-            pfcp_session_change_info: self.pfcp_session_change_info.unwrap_or_default(),
-            alternative_smf_ip_address,
-            fq_csids: self.fq_csids,
-            group_ids: self.group_ids,
-            cp_ip_addresses: self.cp_ip_addresses,
-            ies: self.ies,
+            session_change_infos: self.session_change_infos,
             node_id_ie,
-            alternative_smf_ip_address_ie,
-            fq_csids_ies,
-            group_ids_ies,
-            cp_ip_addresses_ies,
+            session_change_info_ies,
+            ies: self.ies,
         })
     }
 }
 
-impl SessionSetModificationRequest {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::IeType;
+    use crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
+    use crate::ie::fq_csid::FqCsid;
     use std::net::Ipv4Addr;
 
-    #[test]
-    fn test_session_set_modification_request_basic() {
-        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
-        let request = SessionSetModificationRequestBuilder::new(123)
-            .node_id(node_id)
-            .alternative_smf_ip_address(alt_smf_ip)
-            .build()
-            .unwrap();
+    fn change_info(last_octet: u8) -> PfcpSessionChangeInfo {
+        PfcpSessionChangeInfo::new(AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(
+            192, 0, 2, last_octet,
+        )))
+        .fq_csid(FqCsid::new_ipv4(
+            Ipv4Addr::new(198, 51, 100, last_octet),
+            vec![u16::from(last_octet)],
+        ))
+    }
 
-        assert_eq!(request.msg_type(), MsgType::SessionSetModificationRequest);
-        assert_eq!(*request.sequence(), 123);
-        assert_eq!(request.seid(), None);
-        assert!(request.ies(IeType::NodeId).next().is_some());
-        assert!(request
-            .ies(IeType::AlternativeSmfIpAddress)
-            .next()
-            .is_some());
+    fn request() -> SessionSetModificationRequest {
+        SessionSetModificationRequest::builder(123)
+            .node_id(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1)))
+            .session_change_info(change_info(1))
+            .session_change_info(change_info(2))
+            .build()
+            .unwrap()
     }
 
     #[test]
-    fn test_session_set_modification_request_with_optional_ies() {
-        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
-        let fq_csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
-        let group_id = GroupId::new(vec![0x05, 0x06]);
-        let cp_ip = CpIpAddress::new_ipv4(Ipv4Addr::new(10, 0, 0, 2));
+    fn child_ies_are_not_flattened_into_the_message() {
+        let request = request();
+        let encoded = request.marshal();
 
-        let request = SessionSetModificationRequestBuilder::new(456)
-            .node_id(node_id)
-            .alternative_smf_ip_address(alt_smf_ip)
-            .add_fq_csid(fq_csid)
-            .add_group_id(group_id)
-            .add_cp_ip_address(cp_ip)
-            .build()
-            .unwrap();
-
-        assert!(request.fq_csids.is_some());
-        assert!(request.group_ids.is_some());
-        assert!(request.cp_ip_addresses.is_some());
-        assert_eq!(request.fq_csids.as_ref().unwrap().len(), 1);
-        assert_eq!(request.group_ids.as_ref().unwrap().len(), 1);
-        assert_eq!(request.cp_ip_addresses.as_ref().unwrap().len(), 1);
+        assert_eq!(request.ies(IeType::PfcpSessionChangeInfo).count(), 2);
+        assert_eq!(request.ies(IeType::AlternativeSmfIpAddress).count(), 0);
+        assert_eq!(request.ies(IeType::FqCsid).count(), 0);
+        assert_eq!(
+            &encoded[17..19],
+            &(IeType::PfcpSessionChangeInfo as u16).to_be_bytes()
+        );
     }
 
     #[test]
-    fn test_session_set_modification_request_missing_mandatory_ie() {
-        // Test missing Node ID
-        let result = SessionSetModificationRequestBuilder::new(789).build();
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            PfcpError::MissingMandatoryIe { ie_type, .. } => {
-                assert_eq!(ie_type, IeType::NodeId);
-            }
-            _ => panic!("Expected MissingMandatoryIe error"),
-        }
+    fn round_trip_preserves_multiple_groups() {
+        let request = request();
+        let decoded = SessionSetModificationRequest::unmarshal(&request.marshal()).unwrap();
 
-        // Test missing Alternative SMF IP Address
-        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let result = SessionSetModificationRequestBuilder::new(789)
-            .node_id(node_id)
+        assert_eq!(decoded, request);
+        assert_eq!(decoded.session_change_infos().len(), 2);
+    }
+
+    #[test]
+    fn session_change_info_is_mandatory() {
+        let result = SessionSetModificationRequest::builder(1)
+            .node_id(NodeId::new_ipv4(Ipv4Addr::LOCALHOST))
             .build();
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            PfcpError::MissingMandatoryIe { ie_type, .. } => {
-                assert_eq!(ie_type, IeType::AlternativeSmfIpAddress);
-            }
-            _ => panic!("Expected MissingMandatoryIe error"),
-        }
-    }
 
-    #[test]
-    fn test_session_set_modification_request_round_trip() {
-        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
-        let fq_csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
-
-        let original = SessionSetModificationRequestBuilder::new(999)
-            .node_id(node_id)
-            .alternative_smf_ip_address(alt_smf_ip)
-            .add_fq_csid(fq_csid)
-            .build()
-            .unwrap();
-
-        let marshaled = original.marshal();
-        let unmarshaled = SessionSetModificationRequest::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(original, unmarshaled);
-        assert_eq!(*unmarshaled.sequence(), 999);
-        assert!(unmarshaled.fq_csids.is_some());
-    }
-
-    #[test]
-    fn test_session_set_modification_request_ies_collect() {
-        let node_id = crate::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 1, 100));
-        let fq_csid1 = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1]);
-        let fq_csid2 = FqCsid::new_ipv4(Ipv4Addr::new(5, 6, 7, 8), vec![2]);
-
-        let request = SessionSetModificationRequestBuilder::new(111)
-            .node_id(node_id)
-            .alternative_smf_ip_address(alt_smf_ip)
-            .add_fq_csid(fq_csid1)
-            .add_fq_csid(fq_csid2)
-            .build()
-            .unwrap();
-
-        let all_fq_csids: Vec<_> = request.ies(IeType::FqCsid).collect();
-        assert_eq!(all_fq_csids.len(), 2);
+        assert!(matches!(
+            result,
+            Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::PfcpSessionChangeInfo,
+                ..
+            })
+        ));
     }
 }
