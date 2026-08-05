@@ -29,11 +29,11 @@ use crate::ie::{Ie, IeType};
 /// use rs_pfcp::ie::usage_report_sdr::UsageReportSdr;
 /// use rs_pfcp::ie::usage_report::UsageReportBuilder;
 /// use rs_pfcp::ie::urr_id::UrrId;
-/// use rs_pfcp::ie::sequence_number::SequenceNumber;
+/// use rs_pfcp::ie::ur_seqn::UrSeqn;
 ///
 /// let usage_report = UsageReportBuilder::stop_of_traffic_report(
 ///     UrrId::new(1),
-///     SequenceNumber::new(42)
+///     UrSeqn::new(42)
 /// ).build().unwrap();
 ///
 /// let sdr_report = UsageReportSdr::new(usage_report);
@@ -57,12 +57,12 @@ impl UsageReportSdr {
     /// use rs_pfcp::ie::usage_report_sdr::UsageReportSdr;
     /// use rs_pfcp::ie::usage_report::UsageReport;
     /// use rs_pfcp::ie::urr_id::UrrId;
-    /// use rs_pfcp::ie::sequence_number::SequenceNumber;
+    /// use rs_pfcp::ie::ur_seqn::UrSeqn;
     /// use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
     ///
     /// let report = UsageReport::new(
     ///     UrrId::new(1),
-    ///     SequenceNumber::new(42),
+    ///     UrSeqn::new(42),
     ///     UsageReportTrigger::STOPT
     /// );
     /// let sdr_report = UsageReportSdr::new(report);
@@ -112,28 +112,23 @@ impl UsageReportSdr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::sequence_number::SequenceNumber;
+    use crate::ie::ur_seqn::UrSeqn;
     use crate::ie::urr_id::UrrId;
     use crate::ie::usage_report::UsageReportBuilder;
     use crate::ie::usage_report_trigger::UsageReportTrigger;
 
     #[test]
     fn test_usage_report_sdr_new() {
-        let report = UsageReport::new(
-            UrrId::new(1),
-            SequenceNumber::new(42),
-            UsageReportTrigger::STOPT,
-        );
+        let report = UsageReport::new(UrrId::new(1), UrSeqn::new(42), UsageReportTrigger::STOPT);
         let sdr_report = UsageReportSdr::new(report.clone());
         assert_eq!(sdr_report.report, report);
     }
 
     #[test]
     fn test_usage_report_sdr_marshal_unmarshal() {
-        let report =
-            UsageReportBuilder::stop_of_traffic_report(UrrId::new(10), SequenceNumber::new(100))
-                .build()
-                .unwrap();
+        let report = UsageReportBuilder::stop_of_traffic_report(UrrId::new(10), UrSeqn::new(100))
+            .build()
+            .unwrap();
         let sdr_report = UsageReportSdr::new(report);
 
         let marshaled = sdr_report.marshal();
@@ -144,10 +139,9 @@ mod tests {
 
     #[test]
     fn test_usage_report_sdr_round_trip() {
-        let report =
-            UsageReportBuilder::periodic_usage_report(UrrId::new(5), SequenceNumber::new(50))
-                .build()
-                .unwrap();
+        let report = UsageReportBuilder::periodic_usage_report(UrrId::new(5), UrSeqn::new(50))
+            .build()
+            .unwrap();
         let original = UsageReportSdr::new(report);
 
         let marshaled = original.marshal();
@@ -158,11 +152,7 @@ mod tests {
 
     #[test]
     fn test_usage_report_sdr_to_ie() {
-        let report = UsageReport::new(
-            UrrId::new(1),
-            SequenceNumber::new(1),
-            UsageReportTrigger::STOPT,
-        );
+        let report = UsageReport::new(UrrId::new(1), UrSeqn::new(1), UsageReportTrigger::STOPT);
         let sdr_report = UsageReportSdr::new(report);
         let ie = sdr_report.to_ie();
 
@@ -172,10 +162,9 @@ mod tests {
 
     #[test]
     fn test_usage_report_sdr_ie_round_trip() {
-        let report =
-            UsageReportBuilder::time_threshold_report(UrrId::new(7), SequenceNumber::new(77))
-                .build()
-                .unwrap();
+        let report = UsageReportBuilder::time_threshold_report(UrrId::new(7), UrSeqn::new(77))
+            .build()
+            .unwrap();
         let sdr_report = UsageReportSdr::new(report);
 
         let ie = sdr_report.to_ie();
@@ -187,11 +176,8 @@ mod tests {
     #[test]
     fn test_usage_report_sdr_edge_cases() {
         // Test with minimal report
-        let minimal_report = UsageReport::new(
-            UrrId::new(0),
-            SequenceNumber::new(0),
-            UsageReportTrigger::new(0),
-        );
+        let minimal_report =
+            UsageReport::new(UrrId::new(0), UrSeqn::new(0), UsageReportTrigger::new(0));
         let sdr = UsageReportSdr::new(minimal_report);
         let marshaled = sdr.marshal();
         let unmarshaled = UsageReportSdr::unmarshal(&marshaled).unwrap();
@@ -200,7 +186,7 @@ mod tests {
         // Test with maximum URR ID
         let max_report = UsageReport::new(
             UrrId::new(u32::MAX),
-            SequenceNumber::new(u32::MAX),
+            UrSeqn::new(u32::MAX),
             UsageReportTrigger::new(u32::from(u8::MAX)),
         );
         let sdr = UsageReportSdr::new(max_report);
@@ -223,7 +209,7 @@ mod tests {
     #[test]
     fn test_usage_report_sdr_with_builder() {
         let report = UsageReportBuilder::new(UrrId::new(99))
-            .sequence_number(SequenceNumber::new(255))
+            .sequence_number(UrSeqn::new(255))
             .stop_of_traffic()
             .with_volume_data(5000000, 3000000, 2000000)
             .with_duration(3600)

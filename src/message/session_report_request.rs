@@ -398,7 +398,7 @@ impl SessionReportRequestBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ie::sequence_number::SequenceNumber;
+    use crate::ie::ur_seqn::UrSeqn;
     use crate::ie::urr_id::UrrId;
     use crate::ie::usage_report::UsageReport;
     use crate::ie::usage_report_trigger::UsageReportTrigger;
@@ -450,7 +450,7 @@ mod tests {
 
         // Create usage report IE
         let urr_id = UrrId::new(1);
-        let ur_seqn = SequenceNumber::new(1);
+        let ur_seqn = UrSeqn::new(1);
         let usage_report_trigger = UsageReportTrigger::new(1);
         let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
         let usage_report_ie = usage_report.to_ie();

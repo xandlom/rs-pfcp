@@ -64,7 +64,7 @@ use rs_pfcp::ie::{
     duration_measurement::DurationMeasurement,
     f_teid::{Fteid, FteidBuilder},
     fseid::Fseid,
-    sequence_number::SequenceNumber,
+    ur_seqn::UrSeqn,
     urr_id::UrrId,
     usage_report::UsageReportBuilder,
     usage_report_trigger::UsageReportTrigger,
@@ -109,7 +109,7 @@ struct Args {
 fn create_quota_exhausted_usage_report() -> Option<Ie> {
     // Create a comprehensive usage report with Phase 3 enhanced features
     let usage_report = match UsageReportBuilder::new(UrrId::new(1))
-        .sequence_number(SequenceNumber::new(1))
+        .sequence_number(UrSeqn::new(1))
         .trigger(UsageReportTrigger::VOLTH) // Volume Threshold exhausted
         .volume_measurement(VolumeMeasurement::new(
             0x07,                // Flags: TOVOL | ULVOL | DLVOL (total, uplink, downlink volume present)

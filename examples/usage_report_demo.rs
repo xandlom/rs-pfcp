@@ -1,9 +1,9 @@
 // examples/usage_report_demo.rs
 
 use rs_pfcp::ie::duration_measurement::DurationMeasurement;
-use rs_pfcp::ie::sequence_number::SequenceNumber;
 use rs_pfcp::ie::time_of_first_packet::TimeOfFirstPacket;
 use rs_pfcp::ie::time_of_last_packet::TimeOfLastPacket;
+use rs_pfcp::ie::ur_seqn::UrSeqn;
 use rs_pfcp::ie::urr_id::UrrId;
 use rs_pfcp::ie::usage_information::UsageInformation;
 use rs_pfcp::ie::usage_report::UsageReportBuilder;
@@ -14,14 +14,13 @@ fn main() {
 
     // Example 1: Basic quota exhaustion report with volume measurement
     println!("1. Quota Exhaustion Report with Volume Measurement:");
-    let quota_report =
-        UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(100))
-            .with_volume_data(5_000_000_000, 3_000_000_000, 2_000_000_000) // 5GB total, 3GB up, 2GB down
-            .build()
-            .expect("Failed to build quota report");
+    let quota_report = UsageReportBuilder::quota_exhausted_report(UrrId::new(1), UrSeqn::new(100))
+        .with_volume_data(5_000_000_000, 3_000_000_000, 2_000_000_000) // 5GB total, 3GB up, 2GB down
+        .build()
+        .expect("Failed to build quota report");
 
     println!("   URR ID: {}", quota_report.urr_id.id);
-    println!("   Sequence: {}", quota_report.ur_seqn.value);
+    println!("   Sequence: {}", quota_report.ur_seqn.sequence_number());
     println!("   Trigger: {:?}", quota_report.usage_report_trigger);
     if let Some(ref vm) = quota_report.volume_measurement {
         println!("   Total Volume: {} bytes", vm.total_volume.unwrap_or(0));
@@ -35,14 +34,13 @@ fn main() {
 
     // Example 2: Time threshold report with duration measurement
     println!("2. Time Threshold Report with Duration:");
-    let time_report =
-        UsageReportBuilder::time_threshold_report(UrrId::new(2), SequenceNumber::new(101))
-            .with_duration(3600) // 1 hour
-            .build()
-            .expect("Failed to build time report");
+    let time_report = UsageReportBuilder::time_threshold_report(UrrId::new(2), UrSeqn::new(101))
+        .with_duration(3600) // 1 hour
+        .build()
+        .expect("Failed to build time report");
 
     println!("   URR ID: {}", time_report.urr_id.id);
-    println!("   Sequence: {}", time_report.ur_seqn.value);
+    println!("   Sequence: {}", time_report.ur_seqn.sequence_number());
     if let Some(ref dm) = time_report.duration_measurement {
         println!(
             "   Duration: {} seconds ({} hours)",
@@ -54,11 +52,10 @@ fn main() {
 
     // Example 3: Start of traffic report with packet timing
     println!("3. Start of Traffic Report with Packet Timing:");
-    let start_report =
-        UsageReportBuilder::start_of_traffic_report(UrrId::new(3), SequenceNumber::new(102))
-            .with_packet_times(0x60000000, 0x60000E10) // Mock 3GPP NTP timestamps
-            .build()
-            .expect("Failed to build start report");
+    let start_report = UsageReportBuilder::start_of_traffic_report(UrrId::new(3), UrSeqn::new(102))
+        .with_packet_times(0x60000000, 0x60000E10) // Mock 3GPP NTP timestamps
+        .build()
+        .expect("Failed to build start report");
 
     println!("   URR ID: {}", start_report.urr_id.id);
     if let Some(ref tofp) = start_report.time_of_first_packet {
@@ -72,7 +69,7 @@ fn main() {
     // Example 4: Comprehensive usage report with all measurements
     println!("4. Comprehensive Usage Report (Volume, Duration, and Timing):");
     let comprehensive_report = UsageReportBuilder::new(UrrId::new(99))
-        .sequence_number(SequenceNumber::new(255))
+        .sequence_number(UrSeqn::new(255))
         .quota_exhausted()
         .volume_measurement(VolumeMeasurement::new(
             0x3F,                 // All volume and packet flags
@@ -96,7 +93,10 @@ fn main() {
         .expect("Failed to build comprehensive report");
 
     println!("   URR ID: {}", comprehensive_report.urr_id.id);
-    println!("   Sequence: {}", comprehensive_report.ur_seqn.value);
+    println!(
+        "   Sequence: {}",
+        comprehensive_report.ur_seqn.sequence_number()
+    );
     println!(
         "   Trigger: {:?}",
         comprehensive_report.usage_report_trigger
@@ -167,7 +167,7 @@ fn main() {
     println!("6. Convenience Methods:");
 
     let volume_only = UsageReportBuilder::new(UrrId::new(10))
-        .sequence_number(SequenceNumber::new(200))
+        .sequence_number(UrSeqn::new(200))
         .volume_threshold_triggered()
         .with_volume_data(1_000_000, 600_000, 400_000)
         .build()
@@ -183,7 +183,7 @@ fn main() {
     );
 
     let packet_only = UsageReportBuilder::new(UrrId::new(11))
-        .sequence_number(SequenceNumber::new(201))
+        .sequence_number(UrSeqn::new(201))
         .volume_threshold_triggered()
         .with_packet_data(1000, 600, 400)
         .build()
@@ -199,7 +199,7 @@ fn main() {
     );
 
     let timing_only = UsageReportBuilder::new(UrrId::new(12))
-        .sequence_number(SequenceNumber::new(202))
+        .sequence_number(UrSeqn::new(202))
         .start_of_traffic()
         .with_packet_times(0x12345678, 0x87654321)
         .build()

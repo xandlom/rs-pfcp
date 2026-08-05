@@ -92,11 +92,11 @@ impl UsageReportTrigger {
     }
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
-        if data.len() == 1 {
+        if !data.is_empty() && data.len() < 3 {
             return Err(PfcpError::invalid_length(
                 "Usage Report Trigger",
                 IeType::UsageReportTrigger,
-                2,
+                3,
                 data.len(),
             ));
         }
@@ -111,7 +111,7 @@ impl UsageReportTrigger {
 impl Default for UsageReportTrigger {
     fn default() -> Self {
         Self {
-            bitmap: ExtensibleBitmap::with_min_octets(2),
+            bitmap: ExtensibleBitmap::with_min_octets(3),
         }
     }
 }
@@ -175,8 +175,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn constructed_bitmap_uses_two_octet_minimum() {
-        assert_eq!(UsageReportTrigger::default().marshal(), [0, 0]);
+    fn constructed_bitmap_uses_three_octet_minimum() {
+        assert_eq!(UsageReportTrigger::default().marshal(), [0, 0, 0]);
     }
 
     #[test]
@@ -195,10 +195,10 @@ mod tests {
     }
 
     #[test]
-    fn accepts_two_octets_and_preserves_unknown_extensions() {
+    fn accepts_three_octets_and_preserves_unknown_extensions() {
         assert_eq!(
-            UsageReportTrigger::unmarshal(&[1, 0]).unwrap().marshal(),
-            [1, 0]
+            UsageReportTrigger::unmarshal(&[1, 0, 0]).unwrap().marshal(),
+            [1, 0, 0]
         );
         assert_eq!(
             UsageReportTrigger::unmarshal(&[1, 0, 0, 0x80])
@@ -215,6 +215,7 @@ mod tests {
             .marshal()
             .is_empty());
         assert!(UsageReportTrigger::unmarshal(&[0]).is_err());
+        assert!(UsageReportTrigger::unmarshal(&[0, 0]).is_err());
     }
 
     #[test]

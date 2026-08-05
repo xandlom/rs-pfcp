@@ -468,7 +468,7 @@ fn test_session_report_response_marshal_unmarshal_with_offending_ie() {
 #[test]
 fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
     use rs_pfcp::ie::cause::CauseValue;
-    use rs_pfcp::ie::sequence_number::SequenceNumber;
+    use rs_pfcp::ie::ur_seqn::UrSeqn;
     use rs_pfcp::ie::urr_id::UrrId;
     use rs_pfcp::ie::usage_report::UsageReport;
     use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
@@ -480,7 +480,7 @@ fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
 
     // Create usage report IE
     let urr_id = UrrId::new(1);
-    let ur_seqn = SequenceNumber::new(1);
+    let ur_seqn = UrSeqn::new(1);
     let usage_report_trigger = UsageReportTrigger::new(1);
     let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
     let usage_report_ie = usage_report.to_ie();
