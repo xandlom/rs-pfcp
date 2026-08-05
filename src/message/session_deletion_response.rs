@@ -576,7 +576,7 @@ impl SessionDeletionResponseBuilder {
 mod tests {
     use super::*;
     use crate::ie::cause::*;
-    use crate::ie::sequence_number::SequenceNumber;
+    use crate::ie::ur_seqn::UrSeqn;
     use crate::ie::urr_id::UrrId;
     use crate::ie::usage_report::UsageReportBuilder;
     use crate::ie::usage_report_sdr::UsageReportSdr;
@@ -718,7 +718,7 @@ mod tests {
     fn test_session_deletion_response_with_usage_reports() {
         // Create a usage report using the typed wrapper for final session usage
         let usage_report =
-            UsageReportBuilder::stop_of_traffic_report(UrrId::new(1), SequenceNumber::new(100))
+            UsageReportBuilder::stop_of_traffic_report(UrrId::new(1), UrSeqn::new(100))
                 .with_volume_data(10000000, 6000000, 4000000)
                 .with_duration(7200)
                 .build()

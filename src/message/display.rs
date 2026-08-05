@@ -276,7 +276,7 @@ fn display_usage_report(payload: &[u8]) -> Option<IeDisplayResult> {
     let ur = crate::ie::usage_report::UsageReport::unmarshal(payload).ok()?;
     let mut map = Map::new();
     map.insert("urr_id".into(), json!(ur.urr_id.id));
-    map.insert("ur_seqn".into(), json!(ur.ur_seqn.value));
+    map.insert("ur_seqn".into(), json!(ur.ur_seqn.sequence_number()));
 
     let mut triggers = Vec::new();
     use crate::ie::usage_report_trigger::UsageReportTrigger;

@@ -58,8 +58,8 @@ use rs_pfcp::ie::{
     pdr_id::PdrId,
     precedence::Precedence,
     s_tag::STag,
-    sequence_number::SequenceNumber,
     source_interface::{SourceInterface, SourceInterfaceValue},
+    ur_seqn::UrSeqn,
     urr_id::UrrId,
     usage_report::UsageReportBuilder,
     Ie,
@@ -369,7 +369,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // for MAC learning event reporting. The trigger indicates why the report was generated.
     let urr_id = UrrId::new(1); // URR ID for Ethernet traffic reporting
     let usage_report = UsageReportBuilder::new(urr_id)
-        .sequence_number(SequenceNumber::new(1))
+        .sequence_number(UrSeqn::new(1))
         .periodic_report() // Periodic reporting trigger
         .ethernet_traffic_information(eth_traffic_info)
         .build()?;

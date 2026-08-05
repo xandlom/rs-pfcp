@@ -8,12 +8,12 @@ use crate::ie::end_time::EndTime;
 use crate::ie::ethernet_traffic_information::EthernetTrafficInformation;
 use crate::ie::query_urr_reference::QueryURRReference;
 use crate::ie::quota_holding_time::QuotaHoldingTime;
-use crate::ie::sequence_number::SequenceNumber;
 use crate::ie::start_time::StartTime;
 use crate::ie::time_of_first_packet::TimeOfFirstPacket;
 use crate::ie::time_of_last_packet::TimeOfLastPacket;
 use crate::ie::time_quota::TimeQuota;
 use crate::ie::ue_ip_address_usage_information::UEIPAddressUsageInformation;
+use crate::ie::ur_seqn::UrSeqn;
 use crate::ie::urr_id::UrrId;
 use crate::ie::usage_information::UsageInformation;
 use crate::ie::usage_report_trigger::UsageReportTrigger;
@@ -24,7 +24,7 @@ use crate::ie::{Ie, IeType};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsageReport {
     pub urr_id: UrrId,
-    pub ur_seqn: SequenceNumber,
+    pub ur_seqn: UrSeqn,
     pub usage_report_trigger: UsageReportTrigger,
 
     // Phase 1: Core measurement IEs
@@ -54,7 +54,7 @@ pub struct UsageReport {
 impl UsageReport {
     pub fn new(
         urr_id: UrrId,
-        ur_seqn: SequenceNumber,
+        ur_seqn: UrSeqn,
         usage_report_trigger: impl Into<UsageReportTrigger>,
     ) -> Self {
         UsageReport {
@@ -189,7 +189,7 @@ impl UsageReport {
             let ie = Ie::unmarshal(&data[cursor..])?;
             match ie.ie_type {
                 IeType::UrrId => urr_id = Some(UrrId::unmarshal(&ie.payload)?),
-                IeType::SequenceNumber => ur_seqn = Some(SequenceNumber::unmarshal(&ie.payload)?),
+                IeType::UrSeqn => ur_seqn = Some(UrSeqn::unmarshal(&ie.payload)?),
                 IeType::UsageReportTrigger => {
                     usage_report_trigger = Some(UsageReportTrigger::unmarshal(&ie.payload)?)
                 }
@@ -292,19 +292,19 @@ impl UsageReport {
 /// ```rust
 /// use rs_pfcp::ie::usage_report::UsageReportBuilder;
 /// use rs_pfcp::ie::urr_id::UrrId;
-/// use rs_pfcp::ie::sequence_number::SequenceNumber;
+/// use rs_pfcp::ie::ur_seqn::UrSeqn;
 /// use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
 ///
 /// // Basic usage report for quota exhaustion
 /// let quota_report = UsageReportBuilder::new(UrrId::new(1))
-///     .sequence_number(SequenceNumber::new(42))
+///     .sequence_number(UrSeqn::new(42))
 ///     .quota_exhausted()
 ///     .build()
 ///     .unwrap();
 ///
 /// // Periodic usage report
 /// let periodic_report = UsageReportBuilder::new(UrrId::new(2))
-///     .sequence_number(SequenceNumber::new(43))
+///     .sequence_number(UrSeqn::new(43))
 ///     .periodic_report()
 ///     .build()
 ///     .unwrap();
@@ -312,19 +312,19 @@ impl UsageReport {
 /// // Volume threshold triggered report
 /// let volume_report = UsageReportBuilder::volume_threshold_report(
 ///     UrrId::new(3),
-///     SequenceNumber::new(44)
+///     UrSeqn::new(44)
 /// ).build().unwrap();
 ///
 /// // Time threshold triggered report
 /// let time_report = UsageReportBuilder::time_threshold_report(
 ///     UrrId::new(4),
-///     SequenceNumber::new(45)
+///     UrSeqn::new(45)
 /// ).build().unwrap();
 /// ```
 #[derive(Debug, Default)]
 pub struct UsageReportBuilder {
     urr_id: Option<UrrId>,
-    ur_seqn: Option<SequenceNumber>,
+    ur_seqn: Option<UrSeqn>,
     usage_report_trigger: Option<UsageReportTrigger>,
     volume_measurement: Option<VolumeMeasurement>,
     duration_measurement: Option<DurationMeasurement>,
@@ -380,7 +380,7 @@ impl UsageReportBuilder {
     /// # Arguments
     ///
     /// * `ur_seqn` - The usage report sequence number
-    pub fn sequence_number(mut self, ur_seqn: SequenceNumber) -> Self {
+    pub fn sequence_number(mut self, ur_seqn: UrSeqn) -> Self {
         self.ur_seqn = Some(ur_seqn);
         self
     }
@@ -509,7 +509,7 @@ impl UsageReportBuilder {
     ///
     /// * `urr_id` - The Usage Reporting Rule ID
     /// * `ur_seqn` - The usage report sequence number
-    pub fn quota_exhausted_report(urr_id: UrrId, ur_seqn: SequenceNumber) -> Self {
+    pub fn quota_exhausted_report(urr_id: UrrId, ur_seqn: UrSeqn) -> Self {
         UsageReportBuilder::new(urr_id)
             .sequence_number(ur_seqn)
             .quota_exhausted()
@@ -523,7 +523,7 @@ impl UsageReportBuilder {
     ///
     /// * `urr_id` - The Usage Reporting Rule ID
     /// * `ur_seqn` - The usage report sequence number
-    pub fn periodic_usage_report(urr_id: UrrId, ur_seqn: SequenceNumber) -> Self {
+    pub fn periodic_usage_report(urr_id: UrrId, ur_seqn: UrSeqn) -> Self {
         UsageReportBuilder::new(urr_id)
             .sequence_number(ur_seqn)
             .periodic_report()
@@ -535,7 +535,7 @@ impl UsageReportBuilder {
     ///
     /// * `urr_id` - The Usage Reporting Rule ID
     /// * `ur_seqn` - The usage report sequence number
-    pub fn volume_threshold_report(urr_id: UrrId, ur_seqn: SequenceNumber) -> Self {
+    pub fn volume_threshold_report(urr_id: UrrId, ur_seqn: UrSeqn) -> Self {
         UsageReportBuilder::new(urr_id)
             .sequence_number(ur_seqn)
             .volume_threshold_triggered()
@@ -547,7 +547,7 @@ impl UsageReportBuilder {
     ///
     /// * `urr_id` - The Usage Reporting Rule ID
     /// * `ur_seqn` - The usage report sequence number
-    pub fn time_threshold_report(urr_id: UrrId, ur_seqn: SequenceNumber) -> Self {
+    pub fn time_threshold_report(urr_id: UrrId, ur_seqn: UrSeqn) -> Self {
         UsageReportBuilder::new(urr_id)
             .sequence_number(ur_seqn)
             .time_threshold_triggered()
@@ -559,7 +559,7 @@ impl UsageReportBuilder {
     ///
     /// * `urr_id` - The Usage Reporting Rule ID
     /// * `ur_seqn` - The usage report sequence number
-    pub fn start_of_traffic_report(urr_id: UrrId, ur_seqn: SequenceNumber) -> Self {
+    pub fn start_of_traffic_report(urr_id: UrrId, ur_seqn: UrSeqn) -> Self {
         UsageReportBuilder::new(urr_id)
             .sequence_number(ur_seqn)
             .start_of_traffic()
@@ -571,7 +571,7 @@ impl UsageReportBuilder {
     ///
     /// * `urr_id` - The Usage Reporting Rule ID
     /// * `ur_seqn` - The usage report sequence number
-    pub fn stop_of_traffic_report(urr_id: UrrId, ur_seqn: SequenceNumber) -> Self {
+    pub fn stop_of_traffic_report(urr_id: UrrId, ur_seqn: UrSeqn) -> Self {
         UsageReportBuilder::new(urr_id)
             .sequence_number(ur_seqn)
             .stop_of_traffic()
@@ -965,15 +965,23 @@ impl UsageReportBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ie::IeIterator;
 
     #[test]
     fn test_usage_report_marshal_unmarshal() {
         let urr_id = UrrId::new(1);
-        let ur_seqn = SequenceNumber::new(1);
+        let ur_seqn = UrSeqn::new(1);
         let usage_report_trigger = UsageReportTrigger::new(1);
         let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
 
         let marshaled = usage_report.marshal();
+        let children: Vec<_> = IeIterator::new(&marshaled).map(|ie| ie.unwrap()).collect();
+        assert_eq!(
+            children.iter().map(|ie| ie.ie_type).collect::<Vec<_>>(),
+            [IeType::UrrId, IeType::UrSeqn, IeType::UsageReportTrigger]
+        );
+        assert_eq!(children[1].payload.len(), 4);
+        assert_eq!(children[2].payload.len(), 3);
         let unmarshaled = UsageReport::unmarshal(&marshaled).unwrap();
 
         assert_eq!(usage_report, unmarshaled);
@@ -982,7 +990,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_basic() {
         let urr_id = UrrId::new(42);
-        let ur_seqn = SequenceNumber::new(123);
+        let ur_seqn = UrSeqn::new(123);
         let trigger = UsageReportTrigger::PERIO;
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -999,7 +1007,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_quota_exhausted() {
         let urr_id = UrrId::new(1);
-        let ur_seqn = SequenceNumber::new(42);
+        let ur_seqn = UrSeqn::new(42);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
             .sequence_number(ur_seqn)
@@ -1018,7 +1026,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_periodic_report() {
         let urr_id = UrrId::new(2);
-        let ur_seqn = SequenceNumber::new(43);
+        let ur_seqn = UrSeqn::new(43);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
             .sequence_number(ur_seqn)
@@ -1034,7 +1042,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_volume_threshold() {
         let urr_id = UrrId::new(3);
-        let ur_seqn = SequenceNumber::new(44);
+        let ur_seqn = UrSeqn::new(44);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
             .sequence_number(ur_seqn)
@@ -1050,7 +1058,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_time_threshold() {
         let urr_id = UrrId::new(4);
-        let ur_seqn = SequenceNumber::new(45);
+        let ur_seqn = UrSeqn::new(45);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
             .sequence_number(ur_seqn)
@@ -1066,7 +1074,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_start_of_traffic() {
         let urr_id = UrrId::new(5);
-        let ur_seqn = SequenceNumber::new(46);
+        let ur_seqn = UrSeqn::new(46);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
             .sequence_number(ur_seqn)
@@ -1082,7 +1090,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_stop_of_traffic() {
         let urr_id = UrrId::new(6);
-        let ur_seqn = SequenceNumber::new(47);
+        let ur_seqn = UrSeqn::new(47);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
             .sequence_number(ur_seqn)
@@ -1099,7 +1107,7 @@ mod tests {
     fn test_usage_report_builder_convenience_methods() {
         // Test quota exhausted convenience method
         let quota_report =
-            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(42))
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), UrSeqn::new(42))
                 .build()
                 .unwrap();
         assert_eq!(
@@ -1109,7 +1117,7 @@ mod tests {
 
         // Test periodic report convenience method
         let periodic_report =
-            UsageReportBuilder::periodic_usage_report(UrrId::new(2), SequenceNumber::new(43))
+            UsageReportBuilder::periodic_usage_report(UrrId::new(2), UrSeqn::new(43))
                 .build()
                 .unwrap();
         assert_eq!(
@@ -1119,7 +1127,7 @@ mod tests {
 
         // Test volume threshold convenience method
         let volume_report =
-            UsageReportBuilder::volume_threshold_report(UrrId::new(3), SequenceNumber::new(44))
+            UsageReportBuilder::volume_threshold_report(UrrId::new(3), UrSeqn::new(44))
                 .build()
                 .unwrap();
         assert_eq!(
@@ -1128,22 +1136,21 @@ mod tests {
         );
 
         // Test time threshold convenience method
-        let time_report =
-            UsageReportBuilder::time_threshold_report(UrrId::new(4), SequenceNumber::new(45))
-                .build()
-                .unwrap();
+        let time_report = UsageReportBuilder::time_threshold_report(UrrId::new(4), UrSeqn::new(45))
+            .build()
+            .unwrap();
         assert_eq!(time_report.usage_report_trigger, UsageReportTrigger::TIMTH);
 
         // Test start of traffic convenience method
         let start_report =
-            UsageReportBuilder::start_of_traffic_report(UrrId::new(5), SequenceNumber::new(46))
+            UsageReportBuilder::start_of_traffic_report(UrrId::new(5), UrSeqn::new(46))
                 .build()
                 .unwrap();
         assert_eq!(start_report.usage_report_trigger, UsageReportTrigger::START);
 
         // Test stop of traffic convenience method
         let stop_report =
-            UsageReportBuilder::stop_of_traffic_report(UrrId::new(6), SequenceNumber::new(47))
+            UsageReportBuilder::stop_of_traffic_report(UrrId::new(6), UrSeqn::new(47))
                 .build()
                 .unwrap();
         assert_eq!(stop_report.usage_report_trigger, UsageReportTrigger::STOPT);
@@ -1176,7 +1183,7 @@ mod tests {
 
         // Test missing usage report trigger
         let urr_id = UrrId::new(1);
-        let ur_seqn = SequenceNumber::new(42);
+        let ur_seqn = UrSeqn::new(42);
         let builder = UsageReportBuilder::new(urr_id).sequence_number(ur_seqn);
         let result = builder.build();
         assert!(result.is_err());
@@ -1191,7 +1198,7 @@ mod tests {
     #[test]
     fn test_usage_report_builder_round_trip_marshal() {
         let urr_id = UrrId::new(99);
-        let ur_seqn = SequenceNumber::new(255);
+        let ur_seqn = UrSeqn::new(255);
 
         let original = UsageReportBuilder::quota_exhausted_report(urr_id, ur_seqn)
             .build()
@@ -1220,7 +1227,7 @@ mod tests {
 
         for (i, trigger) in triggers.iter().enumerate() {
             let urr_id = UrrId::new(100 + i as u32);
-            let ur_seqn = SequenceNumber::new(200 + i as u32);
+            let ur_seqn = UrSeqn::new(200 + i as u32);
 
             let usage_report = UsageReportBuilder::new(urr_id)
                 .sequence_number(ur_seqn)
@@ -1244,7 +1251,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_volume_measurement() {
         let urr_id = UrrId::new(1);
-        let ur_seqn = SequenceNumber::new(42);
+        let ur_seqn = UrSeqn::new(42);
         let volume_measurement = VolumeMeasurement::new(
             0x07, // TOVOL | ULVOL | DLVOL
             Some(1000000),
@@ -1275,7 +1282,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_duration_measurement() {
         let urr_id = UrrId::new(2);
-        let ur_seqn = SequenceNumber::new(43);
+        let ur_seqn = UrSeqn::new(43);
         let duration_measurement = DurationMeasurement::new(3600); // 1 hour
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1299,7 +1306,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_time_of_first_packet() {
         let urr_id = UrrId::new(3);
-        let ur_seqn = SequenceNumber::new(44);
+        let ur_seqn = UrSeqn::new(44);
         let time_of_first_packet = TimeOfFirstPacket::new(0x12345678);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1323,7 +1330,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_time_of_last_packet() {
         let urr_id = UrrId::new(4);
-        let ur_seqn = SequenceNumber::new(45);
+        let ur_seqn = UrSeqn::new(45);
         let time_of_last_packet = TimeOfLastPacket::new(0x87654321);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1344,7 +1351,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_usage_information() {
         let urr_id = UrrId::new(5);
-        let ur_seqn = SequenceNumber::new(46);
+        let ur_seqn = UrSeqn::new(46);
         let usage_information = UsageInformation::new_with_flags(true, false, true, false);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1365,7 +1372,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_all_measurements() {
         let urr_id = UrrId::new(6);
-        let ur_seqn = SequenceNumber::new(47);
+        let ur_seqn = UrSeqn::new(47);
         let volume_measurement = VolumeMeasurement::new(
             0x3F, // All flags
             Some(2000000),
@@ -1413,7 +1420,7 @@ mod tests {
     fn test_usage_report_builder_convenience_methods_phase1() {
         // Test with_volume_data convenience method
         let volume_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(100))
+            .sequence_number(UrSeqn::new(100))
             .volume_threshold_triggered()
             .with_volume_data(5000000, 3000000, 2000000)
             .build()
@@ -1429,7 +1436,7 @@ mod tests {
 
         // Test with_packet_data convenience method
         let packet_report = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(101))
+            .sequence_number(UrSeqn::new(101))
             .volume_threshold_triggered()
             .with_packet_data(10000, 6000, 4000)
             .build()
@@ -1445,7 +1452,7 @@ mod tests {
 
         // Test with_duration convenience method
         let duration_report = UsageReportBuilder::new(UrrId::new(3))
-            .sequence_number(SequenceNumber::new(102))
+            .sequence_number(UrSeqn::new(102))
             .time_threshold_triggered()
             .with_duration(1800)
             .build()
@@ -1456,7 +1463,7 @@ mod tests {
 
         // Test with_packet_times convenience method
         let timing_report = UsageReportBuilder::new(UrrId::new(4))
-            .sequence_number(SequenceNumber::new(103))
+            .sequence_number(UrSeqn::new(103))
             .start_of_traffic()
             .with_packet_times(0x12345678, 0x87654321)
             .build()
@@ -1469,7 +1476,7 @@ mod tests {
 
         // Test with_usage_flags convenience method
         let usage_report = UsageReportBuilder::new(UrrId::new(5))
-            .sequence_number(SequenceNumber::new(104))
+            .sequence_number(UrSeqn::new(104))
             .periodic_report()
             .with_usage_flags(true, false, true, false)
             .build()
@@ -1486,7 +1493,7 @@ mod tests {
     fn test_usage_report_comprehensive_measurement_scenario() {
         // Simulate a realistic quota exhaustion scenario with all measurements
         let usage_report =
-            UsageReportBuilder::quota_exhausted_report(UrrId::new(99), SequenceNumber::new(255))
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(99), UrSeqn::new(255))
                 .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total, 3GB up, 2GB down
                 .with_packet_data(5000000, 3000000, 2000000) // 5M packets total
                 .with_duration(3600) // 1 hour session
@@ -1522,7 +1529,7 @@ mod tests {
     fn test_usage_report_phase1_marshal_unmarshal_edge_cases() {
         // Test with zero values
         let zero_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(1))
+            .sequence_number(UrSeqn::new(1))
             .periodic_report()
             .with_volume_data(0, 0, 0)
             .with_duration(0)
@@ -1537,7 +1544,7 @@ mod tests {
 
         // Test with maximum values
         let max_report = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(2))
+            .sequence_number(UrSeqn::new(2))
             .periodic_report()
             .with_volume_data(u64::MAX, u64::MAX, u64::MAX)
             .with_duration(u32::MAX)
@@ -1556,7 +1563,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_volume_quota() {
         let urr_id = UrrId::new(1);
-        let ur_seqn = SequenceNumber::new(42);
+        let ur_seqn = UrSeqn::new(42);
         let volume_quota = VolumeQuota::new(
             0x07, // TOVOL | ULVOL | DLVOL
             Some(5000000000),
@@ -1584,7 +1591,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_time_quota() {
         let urr_id = UrrId::new(2);
-        let ur_seqn = SequenceNumber::new(43);
+        let ur_seqn = UrSeqn::new(43);
         let time_quota = TimeQuota::new(3600); // 1 hour
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1605,7 +1612,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_quota_holding_time() {
         let urr_id = UrrId::new(3);
-        let ur_seqn = SequenceNumber::new(44);
+        let ur_seqn = UrSeqn::new(44);
         let quota_holding_time = QuotaHoldingTime::new(300); // 5 minutes
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1626,7 +1633,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_start_time() {
         let urr_id = UrrId::new(4);
-        let ur_seqn = SequenceNumber::new(45);
+        let ur_seqn = UrSeqn::new(45);
         let start_time = StartTime::new(0x60000000);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1647,7 +1654,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_end_time() {
         let urr_id = UrrId::new(5);
-        let ur_seqn = SequenceNumber::new(46);
+        let ur_seqn = UrSeqn::new(46);
         let end_time = EndTime::new(0x60000E10);
 
         let usage_report = UsageReportBuilder::new(urr_id.clone())
@@ -1668,7 +1675,7 @@ mod tests {
     #[test]
     fn test_usage_report_with_all_phase2_fields() {
         let urr_id = UrrId::new(6);
-        let ur_seqn = SequenceNumber::new(47);
+        let ur_seqn = UrSeqn::new(47);
         let volume_quota = VolumeQuota::new(
             0x07,
             Some(10000000000), // 10GB total
@@ -1707,7 +1714,7 @@ mod tests {
     fn test_usage_report_builder_convenience_methods_phase2() {
         // Test with_volume_quota convenience method
         let volume_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(100))
+            .sequence_number(UrSeqn::new(100))
             .quota_exhausted()
             .with_volume_quota(5000000000, 3000000000, 2000000000)
             .build()
@@ -1723,7 +1730,7 @@ mod tests {
 
         // Test with_time_quota convenience method
         let time_report = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(101))
+            .sequence_number(UrSeqn::new(101))
             .time_threshold_triggered()
             .with_time_quota(3600)
             .build()
@@ -1734,7 +1741,7 @@ mod tests {
 
         // Test with_quota_holding_time convenience method
         let holding_report = UsageReportBuilder::new(UrrId::new(3))
-            .sequence_number(SequenceNumber::new(102))
+            .sequence_number(UrSeqn::new(102))
             .quota_exhausted()
             .with_quota_holding_time(300)
             .build()
@@ -1745,7 +1752,7 @@ mod tests {
 
         // Test with_monitoring_window convenience method
         let window_report = UsageReportBuilder::new(UrrId::new(4))
-            .sequence_number(SequenceNumber::new(103))
+            .sequence_number(UrSeqn::new(103))
             .periodic_report()
             .with_monitoring_window(0x60000000, 0x60000E10)
             .build()
@@ -1761,7 +1768,7 @@ mod tests {
     fn test_usage_report_comprehensive_phase1_and_phase2_scenario() {
         // Simulate a complete quota exhaustion scenario with both Phase 1 and Phase 2 IEs
         let usage_report =
-            UsageReportBuilder::quota_exhausted_report(UrrId::new(99), SequenceNumber::new(255))
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(99), UrSeqn::new(255))
                 // Phase 1 measurements
                 .with_volume_data(5000000000, 3000000000, 2000000000) // 5GB total usage
                 .with_duration(3600) // 1 hour session
@@ -1812,7 +1819,7 @@ mod tests {
     fn test_usage_report_phase2_marshal_unmarshal_edge_cases() {
         // Test with zero values
         let zero_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(1))
+            .sequence_number(UrSeqn::new(1))
             .periodic_report()
             .with_volume_quota(0, 0, 0)
             .with_time_quota(0)
@@ -1827,7 +1834,7 @@ mod tests {
 
         // Test with maximum values
         let max_report = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(2))
+            .sequence_number(UrSeqn::new(2))
             .periodic_report()
             .with_volume_quota(u64::MAX, u64::MAX, u64::MAX)
             .with_time_quota(u32::MAX)
@@ -1847,7 +1854,7 @@ mod tests {
 
         // VolumeQuota only
         let vq_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(1))
+            .sequence_number(UrSeqn::new(1))
             .quota_exhausted()
             .volume_quota(VolumeQuota::new(0x01, Some(1000000), None, None))
             .build()
@@ -1859,7 +1866,7 @@ mod tests {
 
         // TimeQuota only
         let tq_report = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(2))
+            .sequence_number(UrSeqn::new(2))
             .time_threshold_triggered()
             .time_quota(TimeQuota::new(1800))
             .build()
@@ -1871,7 +1878,7 @@ mod tests {
 
         // QuotaHoldingTime only
         let qht_report = UsageReportBuilder::new(UrrId::new(3))
-            .sequence_number(SequenceNumber::new(3))
+            .sequence_number(UrSeqn::new(3))
             .quota_exhausted()
             .quota_holding_time(QuotaHoldingTime::new(600))
             .build()
@@ -1883,7 +1890,7 @@ mod tests {
 
         // StartTime only
         let st_report = UsageReportBuilder::new(UrrId::new(4))
-            .sequence_number(SequenceNumber::new(4))
+            .sequence_number(UrSeqn::new(4))
             .start_of_traffic()
             .start_time(StartTime::new(0x60000000))
             .build()
@@ -1895,7 +1902,7 @@ mod tests {
 
         // EndTime only
         let et_report = UsageReportBuilder::new(UrrId::new(5))
-            .sequence_number(SequenceNumber::new(5))
+            .sequence_number(UrSeqn::new(5))
             .stop_of_traffic()
             .end_time(EndTime::new(0x60000E10))
             .build()
@@ -1914,7 +1921,7 @@ mod tests {
 
         // QueryURRReference only
         let qur_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(1))
+            .sequence_number(UrSeqn::new(1))
             .periodic_report()
             .query_urr_reference(QueryURRReference::new(0x12345678))
             .build()
@@ -1926,7 +1933,7 @@ mod tests {
 
         // ApplicationDetectionInformation only
         let adi_report = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(2))
+            .sequence_number(UrSeqn::new(2))
             .stop_of_traffic()
             .application_detection_information(ApplicationDetectionInformation::simple_app(
                 "YouTube",
@@ -1940,7 +1947,7 @@ mod tests {
 
         // UEIPAddressUsageInformation only
         let ueip_report = UsageReportBuilder::new(UrrId::new(3))
-            .sequence_number(SequenceNumber::new(3))
+            .sequence_number(UrSeqn::new(3))
             .quota_exhausted()
             .ue_ip_address_usage_information(UEIPAddressUsageInformation::with_ipv4(
                 Ipv4Addr::new(192, 168, 1, 100),
@@ -1955,7 +1962,7 @@ mod tests {
 
         // AdditionalUsageReportsInformation only
         let auri_report = UsageReportBuilder::new(UrrId::new(4))
-            .sequence_number(SequenceNumber::new(4))
+            .sequence_number(UrSeqn::new(4))
             .time_threshold_triggered()
             .additional_usage_reports_information(AdditionalUsageReportsInformation::with_auri())
             .build()
@@ -1971,7 +1978,7 @@ mod tests {
         use std::net::Ipv4Addr;
 
         let comprehensive_report = UsageReportBuilder::new(UrrId::new(1))
-            .sequence_number(SequenceNumber::new(100))
+            .sequence_number(UrSeqn::new(100))
             .periodic_report()
             .query_urr_reference(QueryURRReference::new(0xABCDEF01))
             .application_detection_information(ApplicationDetectionInformation::full_app_detection(
@@ -2038,7 +2045,7 @@ mod tests {
         use std::net::Ipv4Addr;
 
         let convenience_report = UsageReportBuilder::new(UrrId::new(42))
-            .sequence_number(SequenceNumber::new(123))
+            .sequence_number(UrSeqn::new(123))
             .quota_exhausted()
             .with_query_reference(0x87654321)
             .with_detected_application("WhatsApp")
@@ -2084,7 +2091,7 @@ mod tests {
 
         // Test a comprehensive scenario combining all phases
         let complete_report = UsageReportBuilder::new(UrrId::new(999))
-            .sequence_number(SequenceNumber::new(555))
+            .sequence_number(UrSeqn::new(555))
             .quota_exhausted()
             // Phase 1: Measurements
             .with_volume_data(5000000, 3000000, 2000000)
@@ -2160,7 +2167,7 @@ mod tests {
 
         // Test edge cases for Phase 3 IEs
         let edge_case_report = UsageReportBuilder::new(UrrId::new(777))
-            .sequence_number(SequenceNumber::new(888))
+            .sequence_number(UrSeqn::new(888))
             .volume_threshold_triggered()
             .query_urr_reference(QueryURRReference::new(u32::MAX))
             .application_detection_information(ApplicationDetectionInformation::full_app_detection(
@@ -2207,7 +2214,7 @@ mod tests {
 
         // Scenario 1: Video streaming with DPI detection
         let video_streaming =
-            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(1))
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), UrSeqn::new(1))
                 .with_volume_data(500000000, 50000000, 450000000) // 500MB total, mostly downlink
                 .with_detected_application("Netflix")
                 .with_ue_ipv4_usage(Ipv4Addr::new(192, 168, 1, 100), 1)
@@ -2217,7 +2224,7 @@ mod tests {
 
         // Scenario 2: Social media with multiple instances
         let social_media = UsageReportBuilder::new(UrrId::new(2))
-            .sequence_number(SequenceNumber::new(2))
+            .sequence_number(UrSeqn::new(2))
             .stop_of_traffic()
             .with_application_instance("Instagram", "stories_session")
             .with_ue_ipv4_usage(Ipv4Addr::new(10, 0, 0, 50), 1)
@@ -2227,7 +2234,7 @@ mod tests {
 
         // Scenario 3: Enterprise app with complex tracking
         let enterprise_app =
-            UsageReportBuilder::time_threshold_report(UrrId::new(3), SequenceNumber::new(3))
+            UsageReportBuilder::time_threshold_report(UrrId::new(3), UrSeqn::new(3))
                 .application_detection_information(
                     ApplicationDetectionInformation::full_app_detection(
                         "Slack",

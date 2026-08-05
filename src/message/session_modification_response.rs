@@ -719,7 +719,7 @@ impl SessionModificationResponseBuilder {
 mod tests {
     use super::*;
     use crate::ie::cause::*;
-    use crate::ie::sequence_number::SequenceNumber;
+    use crate::ie::ur_seqn::UrSeqn;
     use crate::ie::urr_id::UrrId;
     use crate::ie::usage_report::UsageReportBuilder;
     use crate::ie::usage_report_smr::UsageReportSmr;
@@ -957,7 +957,7 @@ mod tests {
     fn test_session_modification_response_with_usage_reports() {
         // Create a usage report using the typed wrapper
         let usage_report =
-            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), SequenceNumber::new(100))
+            UsageReportBuilder::quota_exhausted_report(UrrId::new(1), UrSeqn::new(100))
                 .with_volume_data(5000000, 3000000, 2000000)
                 .build()
                 .unwrap();
@@ -996,12 +996,12 @@ mod tests {
     #[test]
     fn test_session_modification_response_with_multiple_usage_reports() {
         let usage_report1 = UsageReportSmr::new(
-            UsageReportBuilder::periodic_usage_report(UrrId::new(1), SequenceNumber::new(1))
+            UsageReportBuilder::periodic_usage_report(UrrId::new(1), UrSeqn::new(1))
                 .build()
                 .unwrap(),
         );
         let usage_report2 = UsageReportSmr::new(
-            UsageReportBuilder::volume_threshold_report(UrrId::new(2), SequenceNumber::new(2))
+            UsageReportBuilder::volume_threshold_report(UrrId::new(2), UrSeqn::new(2))
                 .build()
                 .unwrap(),
         );
