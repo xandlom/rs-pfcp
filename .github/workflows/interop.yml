@@ -1,0 +1,101 @@
+name: Cross-Library Interop Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fixture-semantic-check:
+    name: Fixture Semantic Check (no Go/network needed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-interop-fixtures-${{ hashFiles('Cargo.toml') }}
+          restore-keys: |
+            ubuntu-interop-fixtures-
+
+      - name: Run fixture semantic check
+        run: cargo test --test fixture_semantic_check --verbose
+
+  cross-verify:
+    name: Echo/Verify Exchange (Rust <-> go-pfcp)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Go toolchain
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-interop-cargo-${{ hashFiles('Cargo.toml') }}
+          restore-keys: |
+            ubuntu-interop-cargo-
+
+      - name: Cache Go modules
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ubuntu-interop-go-${{ hashFiles('interop/go/go.sum') }}
+          restore-keys: |
+            ubuntu-interop-go-
+
+      - name: Install tshark
+        run: |
+          echo "wireshark-common wireshark-common/install-setuid boolean true" | sudo debconf-set-selections
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y tshark
+
+      - name: Allow unprivileged packet capture
+        run: |
+          sudo setcap cap_net_raw,cap_net_admin=eip "$(command -v tcpdump)"
+
+      - name: Download Go module dependencies
+        working-directory: interop/go
+        run: go mod download
+
+      - name: Run cross-verify (both directions + tshark checks)
+        run: ./interop/run-cross-verify.sh
+
+      - name: Upload captures and logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: interop-captures
+          path: interop/.captures/
+          retention-days: 14

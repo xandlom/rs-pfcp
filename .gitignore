@@ -32,3 +32,5 @@ docs/ts_129244v181000p/
 # Generated files
 *.pcap
 *.bin
+interop/.captures/
+interop/go/.bin/

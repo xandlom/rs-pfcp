@@ -57,6 +57,10 @@ name = "pcap-reader"
 path = "examples/pcap-reader/main.rs"
 
 [[example]]
+name = "interop-echo-msg"
+path = "examples/interop-echo-msg/main.rs"
+
+[[example]]
 name = "ethernet-session-demo"
 path = "examples/ethernet-session-demo.rs"
 
@@ -78,3 +82,4 @@ harness = false
 [[bench]]
 name = "comparison_operations"
 harness = false
+
