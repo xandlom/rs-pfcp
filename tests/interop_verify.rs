@@ -255,12 +255,14 @@ fn version_not_supported_response() {
 #[ignore]
 fn node_report_request() {
     use rs_pfcp::ie::node_id::NodeId;
+    use rs_pfcp::ie::node_report_type::NodeReportType;
     use rs_pfcp::message::node_report_request::NodeReportRequestBuilder;
     use std::net::Ipv4Addr;
 
     let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
     let msg = NodeReportRequestBuilder::new(1u32)
         .node_id(node_id)
+        .node_report_type(NodeReportType::new(NodeReportType::UPFR))
         .build()
         .unwrap();
     echo_and_verify(&msg);

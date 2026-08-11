@@ -314,7 +314,10 @@ func TestInteropVerify(t *testing.T) {
 	})
 
 	t.Run("NodeReportRequest", func(t *testing.T) {
-		orig := message.NewNodeReportRequest(1, ie.NewNodeID("10.0.0.1", "", ""))
+		orig := message.NewNodeReportRequest(1,
+			ie.NewNodeID("10.0.0.1", "", ""),
+			ie.NewNodeReportType(0x01), // UPFR
+		)
 		echoed := echoAndParse(t, orig)
 		wantMessageTypeName(t, orig, echoed)
 
