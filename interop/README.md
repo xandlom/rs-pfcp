@@ -109,19 +109,16 @@ you only need it once per machine.
   them explicitly with a comment; there's no cross-check for this message
   type until go-pfcp adds support or a second reference implementation is
   used.
-- **rs-pfcp's `UsageReportTrigger` (as of `main`) is still on an old
-  single-octet, 8-flag encoding** (`PERIO`..`LIUSA`), while go-pfcp v0.0.24
-  already models the full extensible Release-18 version (multiple octets,
-  `IMMER`/`MONIT`/`TERMR`/`EMRRE`/`TEBUR` and more). This was found while
-  hand-verifying bit-name agreement for the fixture leg: go-pfcp's `LIUSA`
-  for `UsageReportTrigger` lives at bit 2 of octet 2 (`has3rdBit(v[1])`),
-  while rs-pfcp `main`'s `LIUSA` is bit 7 of the single octet (`0x80`) — not
-  the same field. `LIUSA` was excluded from the fixture set for
-  `usage_report_trigger_*` for this reason (used `PERIO`/`VOLTH` instead,
-  which do agree in both). PR #62 (the branch reviewed in
-  `docs/analysis/pr-62-flygoat-review.md`) already modernizes rs-pfcp's
-  `UsageReportTrigger` to the extensible form — once that merges, revisit
-  whether `LIUSA` can be added back to the fixture list.
+- **Resolved**: rs-pfcp's `UsageReportTrigger` used to be a single-octet,
+  8-flag encoding (`PERIO`..`LIUSA` sharing one byte), disagreeing with
+  go-pfcp v0.0.24's full extensible Release-18 layout (`LIUSA` at bit 2 of
+  octet 2 there vs. bit 7 of the single octet on rs-pfcp `main`). PR #62
+  (`cecbb2e`, merged) modernized rs-pfcp to the fixed 3-octet extensible
+  form, so bit positions now agree between the two libraries. `LIUSA` is
+  still not in the fixture set for `usage_report_trigger_*` (only
+  `PERIO`/`VOLTH` are covered) — that's just the general "fixture-leg intent
+  list is intentionally small" scoping under "Deferred to v2" below, not a
+  remaining disagreement.
 
 ## Deferred to v2 (explicitly out of scope for this pass)
 

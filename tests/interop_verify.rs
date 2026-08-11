@@ -258,10 +258,11 @@ fn node_report_request() {
     use rs_pfcp::message::node_report_request::NodeReportRequestBuilder;
     use std::net::Ipv4Addr;
 
-    let node_id_ie = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1)).to_ie();
+    let node_id = NodeId::new_ipv4(Ipv4Addr::new(192, 168, 1, 1));
     let msg = NodeReportRequestBuilder::new(1u32)
-        .node_id(node_id_ie)
-        .build();
+        .node_id(node_id)
+        .build()
+        .unwrap();
     echo_and_verify(&msg);
 }
 
@@ -322,7 +323,7 @@ fn session_set_deletion_response() {
 fn session_establishment_request() {
     use rs_pfcp::ie::{
         create_far::CreateFar,
-        create_pdr::CreatePdr,
+        create_pdr::CreatePdrBuilder,
         destination_interface::Interface,
         far_id::FarId,
         pdi::Pdi,
@@ -333,28 +334,13 @@ fn session_establishment_request() {
     use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
     use std::net::Ipv4Addr;
 
-    let pdi = Pdi {
-        source_interface: SourceInterface::new(SourceInterfaceValue::Access),
-        f_teid: None,
-        network_instance: None,
-        ue_ip_address: None,
-        sdf_filter: None,
-        application_id: None,
-        ethernet_packet_filter: None,
-        three_gpp_interface_type: None,
-        redundant_transmission_parameters: None,
-        protocol_description: None,
-    };
-    let pdr = CreatePdr::new(
-        PdrId::new(1),
-        Precedence::new(100),
-        pdi,
-        None,
-        Some(FarId::new(1)),
-        None,
-        None,
-        None,
-    );
+    let pdi = Pdi::new(SourceInterface::new(SourceInterfaceValue::Access));
+    let pdr = CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        .pdi(pdi)
+        .far_id(FarId::new(1))
+        .build()
+        .unwrap();
     let far = CreateFar::builder(FarId::new(1))
         .forward_to(Interface::Access)
         .build()
