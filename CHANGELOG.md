@@ -1,6 +1,47 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [0.5.0] - 2026-08-11
+
+### Bug Fixes
+- **message**: Support multiple Created PDRs in SessionModificationResponse
+- **examples**: Use UpdatePdrBuilder for session-client PDR modification
+- **ie**: Preserve PFCP recovery timestamps
+- **ie**: Use PFCP feature octet order
+- **ie**: Use the PFCP Destination Interface table
+- **ie**: Implement the Release 18 3GPP Interface Type
+- **ie**: Encode compact F-TEID CHOOSE requests
+- **ie**: Encode the SDF flow description envelope
+- **ie**: Use PFCP kbit/s for MBR and GBR
+- **ie**: Complete quota-based URR updates
+- **message**: Model PFCPSEReq-Flags as its own IE
+- **ie**: Encode Monitoring Time as NTP seconds
+- **message**: Require Node Report Type in node reports
+- **ie**: F-TEID CH=1 must omit TEID and address fields per 3GPP TS 29.244
+- **ie**: Make IeIterator resync past a single malformed IE
+- **ie**: Fix Usage Report Trigger encoding to always emit the fixed 3-octet form per 3GPP TS 29.244
+- **interop**: Repair post-merge build errors and stale fixtures (#63)
+
+### Features
+- **ie**: Encode complete usage reporting triggers
+- **ie**: Support UP-allocated UE addresses
+- **ie**: Add extensible bitmap support
+- **ie**: Model UP features as an extensible bitmap
+- **ie**: Preserve extensible reporting trigger bitmaps
+- **ie**: Implement Release 18 CP function features
+- **ie**: Implement the complete Apply Action bitmap
+- **ie**: Complete Release 18 Report Type flags
+- **ie**: Preserve raw and vendor-specific type codes
+- **message**: Preserve unknown PFCP message types
+- **ie**: Model PFCP Session Change Info as grouped
+- **message**: Support grouped Session Set Modification changes
+- **display**: Add lenient decode path for malformed PFCP messages
+- **interop**: Add cross-library verification against go-pfcp (v1)
+
+### Refactoring
+- **ie**: Preserve grouped PDR cardinality
+
 ## [0.4.0] - 2026-07-04
 
 ### 🎉 100% 3GPP TS 29.244 Release 18 Compliance
