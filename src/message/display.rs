@@ -94,9 +94,9 @@ fn message_to_value(msg: &dyn Message) -> Value {
 /// This function never fails. It decodes only the fixed header via
 /// [`Header::unmarshal`] (the one part with no fallback — without it there
 /// are no reliable byte boundaries at all) and then walks the IE tree via
-/// [`ie_to_value`], which — same as the strict display path — recurses into
-/// grouped IEs and resyncs past a single malformed IE at any nesting level
-/// instead of aborting the whole walk.
+/// an internal helper which — same as the strict display path — recurses
+/// into grouped IEs and resyncs past a single malformed IE at any nesting
+/// level instead of aborting the whole walk.
 ///
 /// Intended as a fallback for display/inspection tooling when strict
 /// `message::parse()` fails — not a substitute for it. It does not perform

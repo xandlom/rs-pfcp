@@ -21,7 +21,7 @@ use rs_pfcp::ie::report_type::ReportType;
 use rs_pfcp::ie::reporting_triggers::ReportingTriggers;
 use rs_pfcp::ie::up_function_features::UPFunctionFeatures;
 use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
-use rs_pfcp::ie::{Ie, IeType};
+use rs_pfcp::ie::Ie;
 
 fn check(name: &str, expected: &[u8], constructed: Ie) {
     let actual = constructed.marshal();
@@ -37,7 +37,7 @@ fn apply_action_forw() {
     check(
         "apply_action_forw",
         &[0x00, 0x2c, 0x00, 0x01, 0x02],
-        Ie::new(IeType::ApplyAction, ApplyAction::FORW.marshal().to_vec()),
+        ApplyAction::from(ApplyAction::FORW).to_ie(),
     );
 }
 
@@ -46,10 +46,7 @@ fn apply_action_drop_buff() {
     check(
         "apply_action_drop_buff",
         &[0x00, 0x2c, 0x00, 0x01, 0x05],
-        Ie::new(
-            IeType::ApplyAction,
-            (ApplyAction::DROP | ApplyAction::BUFF).marshal().to_vec(),
-        ),
+        (ApplyAction::DROP | ApplyAction::BUFF).to_ie(),
     );
 }
 
@@ -58,31 +55,16 @@ fn cp_function_features_load() {
     check(
         "cp_function_features_load",
         &[0x00, 0x59, 0x00, 0x01, 0x01],
-        Ie::new(
-            IeType::CpFunctionFeatures,
-            CPFunctionFeatures::LOAD.marshal().to_vec(),
-        ),
+        CPFunctionFeatures::from(CPFunctionFeatures::LOAD).to_ie(),
     );
 }
 
 #[test]
-fn cp_function_features_epco() {
+fn cp_function_features_epfar() {
     check(
-        "cp_function_features_epco",
+        "cp_function_features_epfar",
         &[0x00, 0x59, 0x00, 0x01, 0x04],
-        Ie::new(
-            IeType::CpFunctionFeatures,
-            CPFunctionFeatures::EPCO.marshal().to_vec(),
-        ),
-    );
-}
-
-#[test]
-fn up_function_features_ftup() {
-    check(
-        "up_function_features_ftup",
-        &[0x00, 0x2b, 0x00, 0x02, 0x10, 0x00],
-        UPFunctionFeatures::FTUP.to_ie(),
+        CPFunctionFeatures::from(CPFunctionFeatures::EPFAR).to_ie(),
     );
 }
 
@@ -91,7 +73,21 @@ fn up_function_features_empu() {
     check(
         "up_function_features_empu",
         &[0x00, 0x2b, 0x00, 0x02, 0x00, 0x01],
-        UPFunctionFeatures::EMPU.to_ie(),
+        UPFunctionFeatures::from(UPFunctionFeatures::EMPU).to_ie(),
+    );
+}
+
+#[test]
+fn up_function_features_pdiu() {
+    // FTUP is deliberately not covered here: go-pfcp's UPFunctionFeatures
+    // constructor floors its payload at 2 octets for any 1-2 arg call, so it
+    // cannot express the 1-octet minimal encoding rs-pfcp produces for a
+    // feature confined to octet 5. PDIU (octet 6) is the natural pairing
+    // with EMPU where both libraries' minimal encodings coincide.
+    check(
+        "up_function_features_pdiu",
+        &[0x00, 0x2b, 0x00, 0x02, 0x00, 0x02],
+        UPFunctionFeatures::from(UPFunctionFeatures::PDIU).to_ie(),
     );
 }
 
@@ -117,8 +113,8 @@ fn reporting_triggers_linked_urr() {
 fn usage_report_trigger_perio() {
     check(
         "usage_report_trigger_perio",
-        &[0x00, 0x3f, 0x00, 0x01, 0x01],
-        UsageReportTrigger::PERIO.to_ie(),
+        &[0x00, 0x3f, 0x00, 0x03, 0x01, 0x00, 0x00],
+        UsageReportTrigger::from(UsageReportTrigger::PERIO).to_ie(),
     );
 }
 
@@ -126,8 +122,8 @@ fn usage_report_trigger_perio() {
 fn usage_report_trigger_volth() {
     check(
         "usage_report_trigger_volth",
-        &[0x00, 0x3f, 0x00, 0x01, 0x02],
-        UsageReportTrigger::VOLTH.to_ie(),
+        &[0x00, 0x3f, 0x00, 0x03, 0x02, 0x00, 0x00],
+        UsageReportTrigger::from(UsageReportTrigger::VOLTH).to_ie(),
     );
 }
 
