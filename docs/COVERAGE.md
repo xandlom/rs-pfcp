@@ -1,77 +1,83 @@
 # Code Coverage Report
 
-**Last Updated**: 2025-10-18
-**Overall Coverage**: **74.83%** (6,527/8,723 lines) ⬆️ +7.19%
-**Tests**: 911 comprehensive tests (+13 new)
-**Goal**: 80% coverage
+**Last Updated**: 2026-08-15 (measured via `cargo tarpaulin --lib`; regenerate for fresh numbers — see [How to Improve Coverage](#how-to-improve-coverage))
+**Overall Coverage**: **81.19%** (15,466/19,050 lines)
+**Tests**: 3,400+ comprehensive tests
+**Goal**: 80% coverage — met
 
 ## Summary
 
-rs-pfcp maintains good test coverage across most components, with particularly strong coverage in core Information Elements. The main gaps are in session message builders and display implementations.
+rs-pfcp maintains strong test coverage overall, driven by very high coverage in Information
+Elements (~90.5%). The remaining gap is concentrated in message modules (~66.6% average) and
+the `comparison/` framework (~45%) — see [Critical Coverage Gaps](#critical-coverage-gaps).
 
 ## Coverage by Component
 
 | Component | Coverage | Lines Covered | Status |
 |-----------|----------|---------------|--------|
-| IE Simple | 95%+ | ~2,500 lines | ✅ Excellent |
-| IE Composite | 85%+ | ~1,800 lines | ✅ Good |
-| IE Grouped | 75%+ | ~1,200 lines | ⚠️ Fair |
-| Messages Core | 60% | ~800 lines | ⚠️ Fair |
-| **Messages Session** | **45%** | **~900/2,000** | ⚠️ **Improved** |
-| Display | 0% | 0/740 | ❌ Not Tested |
-| **Total** | **74.83%** | **6,527/8,723** | ✅ **Near Goal** |
+| IE modules (`src/ie/`) | 90.5% | 10,692/11,815 | ✅ Excellent |
+| Message modules (`src/message/`) | 66.6% | 4,321/6,484 | ⚠️ Below target |
+| `comparison/` module | ~45% | — | ⚠️ Least-tested subsystem |
+| **Total** | **81.19%** | **15,466/19,050** | ✅ **Goal met** |
 
 ## Critical Coverage Gaps
 
-### Priority 1: Session Operations (0% coverage)
-
-These are the **most critical** files to improve:
+### Priority 1: Session Report Response (0% coverage)
 
 ```
-❌ session_establishment_request.rs    0/271 lines (0%)
-❌ session_establishment_response.rs   0/143 lines (0%)
-❌ session_modification_request.rs     0/396 lines (0%)
-❌ session_report_response.rs          0/159 lines (0%)
+❌ message/session_report_response.rs   0/219 lines (0%)
 ```
 
-**Impact**: These are core PFCP operations. Zero coverage is a significant quality risk.
+**Impact**: This is a core PFCP operation (UPF → SMF usage/quota reporting). Zero coverage
+here is a real quality risk despite the module being otherwise stable.
 
 **Action Items**:
-1. Add builder pattern tests
+1. Add builder pattern tests (`SessionReportResponseBuilder`)
 2. Add marshal/unmarshal round-trip tests
-3. Test validation logic
+3. Test the `.accepted()`/`.rejected()` convenience constructors
 4. Test error cases
 
-### Priority 2: Display Implementations (0% coverage)
+### Priority 2: Display Implementation (25% coverage)
 
 ```
-❌ message/display.rs    0/740 lines (0%)
+⚠️ message/display.rs    148/583 lines (25%)
 ```
 
-**Impact**: Display code is used for debugging and logging.
+**Impact**: Display code (`MessageDisplay::to_yaml`/`to_json`/`to_json_pretty`) is used by
+the `pcap-reader` example and by anyone debugging captured traffic.
 
 **Action Items**:
-1. Add Display trait tests
-2. Add Debug trait tests
-3. Test YAML/JSON formatting
-4. Test edge cases (empty messages, etc.)
+1. Add YAML output tests per message type
+2. Add JSON/JSON-pretty output tests
+3. Test grouped-IE nesting in the display output
+4. Test edge cases (messages with only mandatory IEs, messages with every optional IE set)
 
-### Priority 3: Update Operations ✅ **IMPROVED**
+### Priority 3: Comparison Framework (~45% average)
 
 ```
-✅ update_bar.rs                       13/28 lines (~46%) ⬆️ NEW TESTS
-⚠️ update_urr.rs                       101/144 lines (70%)
-⚠️ update_forwarding_parameters.rs    58/76 lines (76%)
-⚠️ update_pdr.rs                       88/101 lines (87%)
+⚠️ comparison/builder.rs    32/100 lines (32%)
+⚠️ comparison/diff.rs       56/146 lines (38%)
+⚠️ comparison/result.rs     44/88 lines (50%)
 ```
 
-**Recent Improvements**:
-- ✅ Update BAR: 0% → 46% (+13 comprehensive tests)
+**Impact**: `MessageComparator` is public API (see the
+[Comparison Guide](guides/comparison-guide.md)) but is the least-tested part of the crate.
 
-**Remaining Action Items**:
-1. ~~Add Update BAR tests~~ ✅ **DONE**
-2. Complete Update URR builder tests
-3. Test forwarding parameter validation
+**Action Items**:
+1. Test each comparison mode (strict/semantic/test/audit) end to end
+2. Test `MessageDiff` generation and its `Display` output
+3. Test `IeMultiplicityMode`/`OptionalIeMode` variants
+
+### Priority 4: Remaining Update IEs
+
+```
+⚠️ update_bar.rs           7/23 lines (30%)
+⚠️ apply_action.rs         30/43 lines (70%)
+```
+
+**Action Items**:
+1. Add `UpdateBar` builder and round-trip tests
+2. Add `ApplyAction` bitmap-flag combination tests
 
 ## Well-Tested Components
 
@@ -79,81 +85,60 @@ These are the **most critical** files to improve:
 
 **Core IEs**:
 - ✅ PDR ID, FAR ID, QER ID, URR ID (100%)
-- ✅ User ID, Usage Information (100%)
-- ✅ Precedence, Apply Action (100%)
+- ✅ Precedence (100%)
+- ✅ Duration Measurement (100%)
 
 **Network IEs**:
-- ✅ Node ID (>95%)
-- ✅ F-TEID (>95%)
-- ✅ F-SEID (>95%)
+- ✅ F-TEID (99%)
+- ✅ Node ID (95%)
+
+**Grouped IEs**:
+- ✅ Create QER (100%)
+- ✅ Update Forwarding Parameters (94%)
+- ✅ Update URR (91%)
 
 **Messages**:
-- ✅ Version Not Supported Response (94%)
-- ✅ Node Report Request/Response (>95%)
+- ✅ `message/ie_iter.rs` (100%)
+- ✅ Heartbeat Request/Response (94-96%)
+- ✅ Header parsing (94%)
 
 ### Good Coverage (75-90%)
 
 **Grouped IEs**:
-- Create PDR (87%)
-- Create FAR (88%)
-- Create QER (96%)
-- Create URR (70%)
+- Create PDR (91%)
+- Create FAR (94%)
+- Create URR (86%)
+- Update PDR (88%)
 
 **Messages**:
-- Association Setup Request/Response (84-85%)
-- Session Set Operations (85-95%)
-- PFD Management (83-82%)
-
-## Coverage Trends
-
-### Recent Improvements (2025-10-18)
-- ✅ **+7.19% coverage improvement** (67.64% → 74.83%)
-- ✅ **+627 lines covered** (5,900 → 6,527)
-- ✅ **+13 new tests** for Update BAR (0% → 46%)
-- ✅ **Session Report Response**: 0% → 87.42%
-- ✅ Integration tests now included in coverage
-- ✅ Near 75% short-term goal
-
-### Previous Improvements
-- ✅ Added 898 comprehensive unit tests
-- ✅ Full round-trip testing for all IEs
-- ✅ Builder pattern validation
-- ✅ Error case coverage
-
-### Known Issues
-- ❌ Session message builders not tested (0% for establishment/modification)
-- ❌ Display implementations not tested (0%)
-- ⚠️ Some Update operations need more tests (URR, forwarding params)
+- Association Setup/Update Request/Response (74-88%)
+- Session Set Operations (73-90%)
+- PFD Management (89-90%)
 
 ## Coverage Goals
 
 ### Short Term (Next Release)
 
-**Target: 75% overall**
-
-Priority actions:
-1. **Session Establishment**: 0% → 80% (add ~220 test lines)
-2. **Session Modification**: 0% → 80% (add ~320 test lines)
-3. **Display**: 0% → 50% (add ~370 test lines)
-4. **Update BAR**: 0% → 80% (add ~25 test lines)
-
-**Estimated effort**: ~935 lines of test code
+Priority actions, in order of impact:
+1. **Session Report Response**: 0% → 70%+
+2. **Display**: 25% → 50%+
+3. **Comparison module**: ~45% → 70%+
+4. **Message modules overall**: 66.6% → 75%
 
 ### Medium Term
 
-**Target: 80% overall**
+**Target: 85% overall**
 
-1. Complete all session operations (80%+)
-2. Full display coverage (80%+)
-3. All update operations (85%+)
-4. Integration test scenarios
+1. All message modules above 80%
+2. Comparison module above 80%
+3. Integration test scenarios for the remaining gaps
 
 ### Long Term
 
-**Target: 85% overall**
+**Target: 90%+ overall**
 
-1. All message types (90%+)
-2. All IE types (95%+)
+1. All message types 90%+
+2. All IE types 95%+
 3. Edge case coverage
 4. Performance-critical path coverage
 
@@ -173,11 +158,11 @@ open target/coverage/index.html      # macOS
 ### Finding Uncovered Code
 
 ```bash
-# List files with 0% coverage
-cargo tarpaulin --lib --verbose 2>&1 | grep " 0/"
+# Print the full per-file line-coverage summary
+cargo tarpaulin --lib --out Stdout | grep "^|| src/"
 
-# Files with <50% coverage
-cargo tarpaulin --lib --verbose 2>&1 | grep -E " [0-4][0-9]/"
+# Files with 0% coverage
+cargo tarpaulin --lib --out Stdout | grep -E "^\|\| src/.*: 0/[1-9]"
 ```
 
 ### Adding Tests
@@ -221,14 +206,15 @@ When adding new code:
 
 - [Coverage Guide](guides/coverage.md) - Detailed coverage documentation
 - [Testing Strategy](architecture/testing-strategy.md) - Overall testing approach
-- [Contributing Guide](CONTRIBUTING.md) - How to contribute tests
+- [Contributing Guide](../CONTRIBUTING.md) - How to contribute tests
 
 ## Questions?
 
-- Coverage issues: [GitHub Issues](https://github.com/yourusername/rs-pfcp/issues)
+- Coverage issues: [GitHub Issues](https://github.com/xandlom/rs-pfcp/issues)
 - Test help: See [Coverage Guide](guides/coverage.md)
-- Contributions: See [Contributing Guide](CONTRIBUTING.md)
+- Contributions: See [Contributing Guide](../CONTRIBUTING.md)
 
 ---
 
-**Next Steps**: Focus on Priority 1 items (session operations) to achieve 75% coverage target.
+**Next Steps**: Focus on Priority 1-3 items (session report response, display, comparison
+module) to push message-module coverage toward the 80% target.

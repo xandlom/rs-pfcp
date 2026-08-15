@@ -24,71 +24,76 @@ rs-pfcp uses [cargo-tarpaulin](https://github.com/xd009642/tarpaulin) for code c
 
 ### Current Status
 
-- **Overall Coverage**: **67.64%** (5,900/8,723 lines)
-- **Tests**: 898+ comprehensive tests
-- **Goal**: 80% coverage minimum
+- **Overall Coverage**: **81.19%** (15,466/19,050 lines) — measured with `cargo tarpaulin --lib`
+- **Tests**: 3,400+ comprehensive tests
+- **Goal**: 80% coverage minimum — already met; see [Coverage Goals](#coverage-goals) for the next targets
 - **Minimum**: 60% for CI passing
 
+IE modules (`src/ie/`) sit far above the overall average at ~90.5% (10,692/11,815 lines);
+message modules (`src/message/`) pull the average down at ~66.6% (4,321/6,484 lines) — see
+[Low Coverage Areas](#low-coverage-areas-50) for exactly which files need attention.
+
 ## Current Coverage
+
+Numbers below are from a `cargo tarpaulin --lib` run against the current codebase — regenerate
+with the commands in [Running Coverage](#running-coverage) to get fresh figures; tarpaulin
+results vary slightly run to run.
 
 ### High Coverage Areas (>90%)
 
 These areas are well-tested:
 
-**Information Elements**:
+**Information Elements** (IE modules average ~90.5% overall):
 - ✅ Core IEs: PDR ID, FAR ID, QER ID, URR ID (100%)
-- ✅ Network IEs: Node ID, F-TEID, F-SEID (95%+)
-- ✅ Session IEs: User ID, Usage Information (100%)
-- ✅ Grouped IEs: Create PDR, Create FAR, Create QER (85%+)
-- ✅ Time IEs: Duration, End Time, Monitoring Time (95%+)
+- ✅ Network IEs: F-TEID (99%), Node ID (95%)
+- ✅ Grouped IEs: Create QER (100%), Create FAR (94%), Create PDR (91%)
+- ✅ Time IEs: Duration Measurement (100%)
 
 **Messages**:
-- ✅ Version Not Supported Response (94%)
-- ✅ Node Report Request/Response (95%+)
-- ✅ Session Set Operations (90%+)
+- ✅ `message/ie_iter.rs` (100%)
+- ✅ Session Set Deletion Request/Response (~84-90%)
+- ✅ Header parsing (`header.rs`, 94%)
 
 ### Medium Coverage Areas (50-90%)
 
 Need additional test coverage:
 
-**Messages**:
-- ⚠️ Association Operations (75-85%)
-- ⚠️ Heartbeat Messages (75-80%)
-- ⚠️ PFD Management (75-85%)
-- ⚠️ Session Deletion (70-85%)
+**Messages** (module average ~66.6% overall):
+- ⚠️ Association Setup/Update Request/Response (74-88%)
+- ⚠️ Heartbeat Messages (94-96%, close to done)
+- ⚠️ PFD Management (89-90%)
+- ⚠️ Session Deletion Request/Response (65-85%)
+- ⚠️ Session Establishment Request/Response (64-70%)
+- ⚠️ Session Modification Request/Response (55-60%)
 
 **Information Elements**:
-- ⚠️ Update IEs: Update FAR, Update PDR, Update QER (70-90%)
-- ⚠️ Usage Reporting: Usage Report, Volume Measurement (80-85%)
-- ⚠️ Complex IEs: Path Failure Report, Proxying (75-85%)
+- ⚠️ Update IEs: Update FAR (86%), Update PDR (88%), Update QER (96%)
+- ⚠️ `comparison/` module (32-64% — the comparison framework itself is the least-tested part of the crate)
+- ⚠️ `src/types.rs` (67%) — the `Seid`/`SequenceNumber`/`Teid` newtypes
 
 ### Low Coverage Areas (<50%)
 
 **Priority for improvement**:
 
 **Critical (0% coverage)**:
-- ❌ `session_establishment_request.rs` (0/271 lines)
-- ❌ `session_establishment_response.rs` (0/143 lines)
-- ❌ `session_modification_request.rs` (0/396 lines)
-- ❌ `session_report_response.rs` (0/159 lines)
-- ❌ `message/display.rs` (0/740 lines) - Display implementations
-- ❌ `update_bar.rs` (0/28 lines)
+- ❌ `message/session_report_response.rs` (0/219 lines)
+- ❌ `ie/bar.rs` (0/29 lines)
 
 **Low coverage**:
-- ❌ `message/mod.rs` (24/93 lines, 26%)
-- ❌ Various Update IEs need builder pattern tests
+- ❌ `message/display.rs` (148/583 lines, 25%) — YAML/JSON display implementations
+- ❌ `ie/update_bar.rs` (7/23 lines, 30%)
+- ❌ `comparison/builder.rs` (32/100 lines, 32%)
+- ❌ `comparison/diff.rs` (56/146 lines, 38%)
+- ❌ `ie/cause.rs` (21/41 lines, 51%)
 
 ### Coverage by Component
 
 | Component | Coverage | Lines Covered | Notes |
 |-----------|----------|---------------|-------|
-| IE Simple | 95%+ | ~2,500 lines | Well tested |
-| IE Composite | 85%+ | ~1,800 lines | Good coverage |
-| IE Grouped | 75%+ | ~1,200 lines | Needs builder tests |
-| Messages Core | 60% | ~800 lines | Missing session tests |
-| Messages Session | **20%** | ~500/2,500 | **Critical gap** |
-| Display | **0%** | 0/740 | Not tested |
-| Total | **67.64%** | 5,900/8,723 | Target: 80% |
+| IE modules (`src/ie/`) | 90.5% | 10,692/11,815 | Well tested overall |
+| Message modules (`src/message/`) | 66.6% | 4,321/6,484 | Pulls the average down — see gaps above |
+| `comparison/` module | ~45% | — | Least-tested subsystem; worth a dedicated pass |
+| **Total** | **81.19%** | **15,466/19,050** | Goal (80%) already met |
 
 ## Running Coverage
 
@@ -191,16 +196,18 @@ The HTML report (`target/coverage/index.html`) shows:
 - ✅ Critical paths: Session operations >80%
 
 **For Release**:
-- 🎯 Overall: 70% minimum
-- 🎯 Core messages: 80% minimum
-- 🎯 IE operations: 85% minimum
+- ✅ Overall: 70% minimum — currently 81.19%, met
+- 🎯 Core messages: 80% minimum — message modules currently average 66.6%, not yet met
+- ✅ IE operations: 85% minimum — IE modules currently average 90.5%, met
 
 ### Target Goals
 
-**Short Term (Next Release)**:
-- 🎯 Overall: 75%
-- 🎯 Session messages: 80%
-- 🎯 Display implementations: 50%
+**Short Term (Next Release)** — closing the gaps identified in
+[Low Coverage Areas](#low-coverage-areas-50):
+- 🎯 `message/session_report_response.rs`: 0% → 70%+
+- 🎯 `message/display.rs`: 25% → 50%+
+- 🎯 `comparison/` module: ~45% → 70%+
+- 🎯 Message modules overall: 66.6% → 75%
 
 **Long Term**:
 - 🎯 Overall: 85%
@@ -248,19 +255,27 @@ mod tests {
 
     #[test]
     fn test_session_establishment_builder() {
-        // Test builder pattern
-        let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-        let fseid = Fseid::new(0x123, Some(Ipv4Addr::new(10, 0, 0, 1)), None);
-
-        let request = SessionEstablishmentRequestBuilder::new(0, 1)
-            .node_id(node_id.to_ie())
-            .fseid(fseid.to_ie())
-            .create_pdrs(vec![])
-            .create_fars(vec![])
+        // Test builder pattern — .marshal() is the terminal call for message builders.
+        // At least one PDR and FAR are mandatory, so build minimal ones first.
+        let pdi = PdiBuilder::uplink_access().build().unwrap();
+        let pdr = CreatePdrBuilder::new(PdrId::new(1))
+            .precedence(Precedence::new(100))
+            .pdi(pdi)
             .build()
             .unwrap();
+        let far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
 
-        assert_eq!(request.header.sequence_number, 1);
+        let ip = Ipv4Addr::new(10, 0, 0, 1);
+        let bytes = SessionEstablishmentRequestBuilder::new(0x123u64, 1u32)
+            .node_id(ip) // Accepts an IP address directly
+            .fseid(0x123u64, ip)
+            .add_pdr(pdr)
+            .add_far(far)
+            .marshal()
+            .unwrap();
+
+        let parsed = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
+        assert_eq!(parsed.sequence().value(), 1);
     }
 
     #[test]
@@ -493,6 +508,6 @@ fn handle_rare_hardware_error() {
 
 ## Questions?
 
-- Open an issue: [GitHub Issues](https://github.com/yourusername/rs-pfcp/issues)
+- Open an issue: [GitHub Issues](https://github.com/xandlom/rs-pfcp/issues)
 - Coverage problems: Tag with `testing` label
 - Test contributions: Include coverage report in PR

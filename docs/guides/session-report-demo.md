@@ -50,14 +50,6 @@ The usage report includes:
 
 ## Running the Demo
 
-### Option 1: Using the test script
-```bash
-cd examples
-./test_session_report.sh [interface_name]
-```
-
-### Option 2: Manual execution
-
 Terminal 1 (Server):
 ```bash
 cargo run --example session-server -- --interface lo --port 8805
@@ -67,6 +59,9 @@ Terminal 2 (Client):
 ```bash
 cargo run --example session-client -- --sessions 1
 ```
+
+Add `--verbose` to `session-server`'s invocation for a YAML/JSON dump of every message it
+handles.
 
 ## Expected Output
 
@@ -141,31 +136,29 @@ This demo simulates this critical quota management flow in PFCP.
 Run the demo with multiple usage reporting rules:
 
 ```bash
-# Terminal 1: Server with verbose logging
-RUST_LOG=debug cargo run --example session-server -- --interface lo --port 8805
+# Terminal 1: Server (add --verbose for per-message YAML/JSON dumps)
+cargo run --example session-server -- --interface lo --port 8805 --verbose
 
 # Terminal 2: Client with multiple sessions
 cargo run --example session-client -- --sessions 3 --interface lo
 ```
 
 Expected flow:
-- Each session gets multiple URRs (volume, time, periodic)
-- Different thresholds trigger at different times
-- Demonstrates real-world multi-quota scenarios
+- Each session gets uplink/downlink PDR/FAR/QER rules
+- The server simulates quota exhaustion a few seconds into each session
+- Demonstrates the usage-reporting round trip across concurrent sessions
 
 ### Network Interface Testing
 
-Test across different network interfaces:
+`session-server`/`session-client` both accept `--interface`, so the same manual flow works
+on any interface:
 
 ```bash
 # Test on ethernet interface (if available)
-./test_session_report.sh eth0
+cargo run --example session-server -- --interface eth0 --port 8805
 
-# Test on wireless interface
-./test_session_report.sh wlan0
-
-# Test on Docker bridge
-./test_session_report.sh docker0
+# Test on a Docker bridge
+cargo run --example session-server -- --interface docker0 --port 8805
 ```
 
 ### Packet Capture Analysis
@@ -174,23 +167,22 @@ Detailed packet analysis workflow:
 
 ```bash
 # 1. Start extended capture with more details
-tcpdump -i lo -w detailed_session.pcap -v 'udp port 8805' &
+sudo tcpdump -i lo -w detailed_session.pcap -v 'udp port 8805' &
 TCPDUMP_PID=$!
 
-# 2. Run demo
-./test_session_report.sh lo
+# 2. Run the server and client (see "Running the Demo" above)
+cargo run --example session-server -- --interface lo --port 8805 &
+SERVER_PID=$!
+sleep 1
+cargo run --example session-client -- --sessions 1
 
-# 3. Stop capture
-kill $TCPDUMP_PID
+# 3. Stop capture and server
+kill $TCPDUMP_PID $SERVER_PID
 
-# 4. Detailed analysis
-cargo run --example pcap-reader -- --pcap detailed_session.pcap --format json > analysis.json
-
-# 5. Extract specific message types
-jq '.[] | select(.message_type == "SessionReportRequest")' analysis.json
-
-# 6. Analyze usage report triggers
-jq '.[] | select(.message_type == "SessionReportRequest") | .information_elements[] | select(.type == "UsageReport")' analysis.json
+# 4. Detailed analysis (pcap-reader interleaves log lines with one JSON object per
+#    packet — see the Examples Guide's "Message Analysis" section for the jq extraction
+#    pipeline needed to turn this into a proper JSON array before querying with jq)
+cargo run --example pcap-reader -- --pcap detailed_session.pcap --format yaml --pfcp-only
 ```
 
 ## Troubleshooting Guide
@@ -201,10 +193,10 @@ jq '.[] | select(.message_type == "SessionReportRequest") | .information_element
 ```bash
 # Error: Permission denied binding to interface
 # Solution: Run with appropriate permissions
-sudo ./test_session_report.sh eth0
+sudo cargo run --example session-server -- --interface eth0
 
-# Or use accessible interface
-./test_session_report.sh lo
+# Or use an accessible interface
+cargo run --example session-server -- --interface lo
 ```
 
 #### 2. Address Already in Use
@@ -217,10 +209,6 @@ netstat -tulpn | grep 8805
 # Kill existing processes
 pkill -f session-server
 pkill -f session-client
-
-# Wait and retry
-sleep 2
-./test_session_report.sh lo
 ```
 
 #### 3. No Session Reports Received
@@ -237,8 +225,9 @@ ping 127.0.0.1
 # 3. Check firewall rules (if applicable)
 sudo iptables -L | grep 8805
 
-# 4. Run with verbose logging
-RUST_LOG=trace cargo run --example session-server
+# 4. Run with --verbose for a full YAML/JSON dump of every message
+#    (RUST_LOG has no effect — these examples don't use the log/env_logger crates)
+cargo run --example session-server -- --verbose
 ```
 
 #### 4. Empty PCAP File
@@ -261,14 +250,15 @@ tcpdump -i lo -n 'udp port 8805'
 
 ### Debug Output Interpretation
 
-Enable debug logging for detailed analysis:
+These examples don't use `log`/`env_logger`, so `RUST_LOG` has no effect. Use `--verbose`
+on `session-server` and redirect to a file for later analysis:
 
 ```bash
-# Server debug output
-RUST_LOG=debug cargo run --example session-server 2>&1 | tee server_debug.log
+# Server output (with per-message YAML/JSON dumps)
+cargo run --example session-server -- --verbose 2>&1 | tee server_debug.log
 
-# Client debug output
-RUST_LOG=debug cargo run --example session-client 2>&1 | tee client_debug.log
+# Client output
+cargo run --example session-client -- --sessions 1 2>&1 | tee client_debug.log
 ```
 
 Key debug indicators:
@@ -283,80 +273,73 @@ Key debug indicators:
 Extend the client to handle different report types:
 
 ```rust
+use rs_pfcp::ie::cause::CauseValue;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
+use rs_pfcp::message::Message;
+use std::net::UdpSocket;
+
 // Enhanced usage report handler
 fn handle_session_report_advanced(
     socket: &UdpSocket,
     msg: &dyn Message,
     src: std::net::SocketAddr,
-) -> std::io::Result<()> {
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("  Received Session Report Request");
 
-    // Detailed report type analysis
+    // Detailed report type analysis (0x02=USAR, 0x04=ERIR, 0x08=UPIR — see ReportType IE)
     if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
         let report_type = report_type_ie.payload[0];
         match report_type {
-            0x02 => {
-                println!("    Report Type: USAR (Usage Report)");
-                handle_usage_report(msg)?;
-            },
-            0x04 => {
-                println!("    Report Type: ERIR (Error Indication Report)");
-                handle_error_report(msg)?;
-            },
-            0x08 => {
-                println!("    Report Type: UPIR (User Plane Inactivity Report)");
-                handle_inactivity_report(msg)?;
-            },
+            0x02 => println!("    Report Type: USAR (Usage Report)"),
+            0x04 => println!("    Report Type: ERIR (Error Indication Report)"),
+            0x08 => println!("    Report Type: UPIR (User Plane Inactivity Report)"),
             _ => println!("    Report Type: Unknown (0x{:02x})", report_type),
         }
     }
 
-    // Check for multiple usage reports in single message
-    let usage_reports: Vec<_> = msg.ies().iter()
-        .filter(|ie| ie.ie_type == IeType::UsageReport)
+    // Check for multiple usage reports in a single message — ies() is per-IeType,
+    // there is no bare no-argument ies() that returns everything.
+    let usage_reports: Vec<_> = msg
+        .ies(IeType::UsageReportWithinSessionReportRequest)
         .collect();
 
     if usage_reports.len() > 1 {
         println!("    Multiple Usage Reports: {} reports", usage_reports.len());
-        for (i, report_ie) in usage_reports.iter().enumerate() {
-            analyze_usage_report(i + 1, &report_ie.payload)?;
-        }
     }
 
-    // Intelligent response based on report content
-    let cause = if has_quota_exhaustion(msg) {
-        CauseValue::RequestAccepted // Grant more quota
-    } else if has_error_indication(msg) {
-        CauseValue::SystemFailure   // Handle error
-    } else {
-        CauseValue::RequestAccepted // Standard acceptance
-    };
+    // Respond, e.g. accepting to grant more quota
+    let seid = msg.seid().ok_or("missing SEID")?;
+    let cause = CauseValue::RequestAccepted;
+    let response_bytes = SessionReportResponseBuilder::new(seid, msg.sequence(), cause)
+        .marshal()?;
 
-    let response = SessionReportResponseBuilder::new(msg.seid().unwrap(), msg.sequence(),
-        Ie::new(IeType::Cause, vec![cause as u8]))
-        .build()?;
-
-    socket.send_to(&response.marshal(), src)?;
+    socket.send_to(&response_bytes, src)?;
     println!("  Sent Session Report Response ({:?})", cause);
 
     Ok(())
 }
 
-fn analyze_usage_report(index: usize, payload: &[u8]) -> std::io::Result<()> {
-    // Parse usage report details
-    if payload.len() >= 8 {
-        let urr_id = u32::from_be_bytes([payload[0], payload[1], payload[2], payload[3]]);
-        let sequence = u32::from_be_bytes([payload[4], payload[5], payload[6], payload[7]]);
+fn analyze_usage_report(index: usize, payload: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+    // UsageReport is a grouped IE with child TLVs in flexible order — don't hand-parse
+    // fixed byte offsets, use the real unmarshal implementation instead.
+    use rs_pfcp::ie::usage_report::UsageReport;
+    use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
 
-        println!("      Report {}: URR-ID={}, Sequence={}", index, urr_id, sequence);
+    let report = UsageReport::unmarshal(payload)?;
+    println!(
+        "      Report {}: URR-ID={}, Sequence={}",
+        index, report.urr_id.id, report.ur_seqn.sequence_number()
+    );
 
-        // Check for specific triggers
-        if payload.len() > 8 {
-            let triggers = payload[8];
-            if triggers & 0x02 != 0 { println!("        Trigger: Volume Threshold"); }
-            if triggers & 0x04 != 0 { println!("        Trigger: Time Threshold"); }
-            if triggers & 0x08 != 0 { println!("        Trigger: Periodic Reporting"); }
-        }
+    if report.usage_report_trigger.contains(UsageReportTrigger::VOLTH) {
+        println!("        Trigger: Volume Threshold");
+    }
+    if report.usage_report_trigger.contains(UsageReportTrigger::TIMTH) {
+        println!("        Trigger: Time Threshold");
+    }
+    if report.usage_report_trigger.contains(UsageReportTrigger::PERIO) {
+        println!("        Trigger: Periodic Reporting");
     }
 
     Ok(())
@@ -380,7 +363,7 @@ SERVER_PID=$!
 sleep 2
 
 # Start packet capture
-tcpdump -i lo -w stress_test.pcap 'udp port 8805' &
+sudo tcpdump -i lo -w stress_test.pcap 'udp port 8805' &
 TCPDUMP_PID=$!
 
 # Run multiple clients concurrently
@@ -396,12 +379,14 @@ wait
 kill $TCPDUMP_PID $SERVER_PID 2>/dev/null
 sleep 1
 
-# Analyze results
+# Analyze results — pcap-reader's output interleaves log lines with one JSON object per
+# packet, so extract the JSON blocks before handing them to jq (see the Examples Guide's
+# "Message Analysis" section for details on this pipeline)
 echo "Analyzing captured traffic..."
-cargo run --example pcap-reader -- --pcap stress_test.pcap --format json | \
-    jq '.[] | select(.message_type == "SessionReportRequest")' | \
-    jq -s 'length' | \
-    xargs -I {} echo "Total Session Reports: {}"
+cargo run --example pcap-reader -- --pcap stress_test.pcap --format json --pfcp-only 2>/dev/null \
+    | awk '/^--- PFCP Message \(JSON\) ---$/{flag=1; next} flag{print; if ($0 ~ /^\{/) depth++; if ($0 ~ /^\}/) {depth--; if (depth==0) flag=0}}' \
+    | jq -s '[.[] | select(.message_type == "SessionReportRequest")] | length' \
+    | xargs -I {} echo "Total Session Reports: {}"
 
 echo "Stress test complete!"
 ```
@@ -441,6 +426,8 @@ impl SessionReportMetrics {
 }
 
 // Integration with logging systems
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::Message;
 use slog::{Logger, info, warn, error};
 
 fn log_session_report(logger: &Logger, msg: &dyn Message) {
@@ -452,7 +439,7 @@ fn log_session_report(logger: &Logger, msg: &dyn Message) {
                 if has_quota_exhaustion(msg) {
                     warn!(logger, "Quota exhausted";
                           "session_id" => format!("{:016x}", msg.seid().unwrap()),
-                          "sequence" => msg.sequence());
+                          "sequence" => msg.sequence().value());
                 } else {
                     info!(logger, "Usage report received";
                           "session_id" => format!("{:016x}", msg.seid().unwrap()));
