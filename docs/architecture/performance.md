@@ -14,23 +14,32 @@ rs-pfcp is designed for high-performance PFCP protocol processing in production 
 - **Allocation**: Minimize allocations per operation
 - **CPU**: Efficient cache usage, minimal branching
 
-### Measured Performance (v0.1.3)
+### Illustrative Measured Performance
 
-Benchmarks on AMD Ryzen 7 5800X @ 3.8GHz:
+Figures below are from `cargo bench` (`benches/message_operations.rs`,
+`benches/ie_operations.rs`) — regenerate with `cargo bench` for numbers on your own hardware;
+these vary significantly by CPU. As a sanity check while writing this doc, current numbers on
+the machine used were markedly faster than the v0.1.3-era figures previously recorded here
+(consistent with the zero-copy and allocation work described later in this doc), so don't
+treat any specific number as a guarantee — the *shape* (simple IEs sub-10ns, heartbeat
+sub-100ns, grouped session messages in the hundreds-of-ns-to-low-µs range) is the useful
+takeaway:
 
 ```
 Heartbeat Request
-  Marshal:       ~150 ns/op   (6.6M ops/sec)
-  Unmarshal:     ~200 ns/op   (5.0M ops/sec)
+  Marshal:       ~35 ns/op
+  Unmarshal:     ~87 ns/op
 
 Session Establishment Request (10 PDRs, 10 FARs)
-  Marshal:       ~2.5 μs/op   (400K ops/sec)
-  Unmarshal:     ~3.2 μs/op   (312K ops/sec)
+  Marshal:       ~280 ns/op   (~1.6 GiB/s)
+  Unmarshal:     ~1.55 µs/op  (~290 MiB/s)
 
 Simple IE (PDR ID)
-  Marshal:       ~15 ns/op    (66M ops/sec)
-  Unmarshal:     ~25 ns/op    (40M ops/sec)
+  Marshal:       ~1 ns/op
 ```
+
+See the [Benchmarking Guide](../guides/benchmarking.md) for the full current baseline table
+and how to run these yourself.
 
 ## Zero-Copy Design
 
@@ -267,7 +276,10 @@ impl MessageCodec {
 
 ### SmallVec Optimization
 
-Use stack storage for small collections:
+**Status: Not currently used** — the crate has no `smallvec` dependency today, and the real
+`CreatePdr` struct holds single `Option<QerId>`/`Option<UrrId>` fields rather than
+collections. This illustrates a technique that could apply if/where a struct needs to hold
+a genuinely variable-length small collection:
 
 ```rust
 use smallvec::SmallVec;
@@ -756,6 +768,6 @@ Service Level Objectives for performance:
 
 ---
 
-**Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.3
-**Benchmark Platform**: AMD Ryzen 7 5800X @ 3.8GHz
+**Last Updated**: 2026-08-15
+**Architecture Version**: 0.5.0
+**Benchmark Platform**: varies — see [Benchmarking Guide](../guides/benchmarking.md); run `cargo bench` for your own hardware

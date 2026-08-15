@@ -5,8 +5,8 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 ## Implementation Status Summary
 
 **Total IE Type Variants**: 354 (complete 3GPP TS 29.244 Release 18 coverage)
-**Implemented IE Modules**: 356 individual implementation files
-**Core IEs**: 356+ essential PFCP functionality
+**Implemented IE Modules**: 357 individual implementation files (`src/ie/*.rs`, some files hold more than one `IeType` variant's implementation)
+**Core IEs**: 354 essential PFCP functionality
 **Test Coverage**: 3,400+ comprehensive tests (all passing)
 **Compliance Level**: 🎉 **PRODUCTION-READY 3GPP TS 29.244 Release 18 COMPLIANCE!** 🎉
 
@@ -99,7 +99,6 @@ This document outlines the support status of PFCP Information Elements (IEs) in 
 | Trace Information                      | 102  | ✅ Yes  | **Network debugging and tracing** |
 | APN/DNN                                | 103  | ✅ Yes  | **Access Point Name / Data Network Name** |
 | User Plane Inactivity Timer           | 117  | ✅ Yes  | **Session management with timer controls** |
-| Path Failure Report                    | 102  | ✅ Yes  | **Multi-path failure reporting** |
 
 ### Traffic Endpoint Management (Multi-Access)
 | IE Name                                | Type | Status | Description |
@@ -352,9 +351,13 @@ let f_teid = FteidBuilder::new()
     .choose_id(42)           // Correlation ID
     .build()?;
 
-// Created PDR returns allocated F-TEID
-let created_pdr = response.find_created_pdr(pdr_id)?;
-let allocated_teid = created_pdr.local_f_teid()?;
+// Created PDR IEs in the response carry the UPF-allocated F-TEID
+for ie in response.ies(IeType::CreatedPdr) {
+    let created_pdr: CreatedPdr = ie.parse()?;
+    if let Some(allocated_teid) = &created_pdr.f_teid {
+        println!("PDR {} got F-TEID {:?}", created_pdr.pdr_id.value, allocated_teid);
+    }
+}
 ```
 
 ### Builder Pattern Implementation
@@ -374,12 +377,13 @@ let qer = CreateQerBuilder::new(qer_id)
 
 ### Message Display and Debugging
 ```rust
-// Structured YAML/JSON output for all messages
-let yaml_output = message.to_yaml();
-let json_output = message.to_json_pretty();
+// Structured YAML/JSON output for all messages — both return Result<String, _>
+let yaml_output = message.to_yaml()?;
+let json_output = message.to_json_pretty()?;
 
 // All IEs automatically decoded with semantic information
 println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
+println!("{}", json_output);
 ```
 
 ## Architecture Excellence
@@ -411,7 +415,7 @@ println!("{}", yaml_output); // Shows F-TEID flags, Usage Report triggers, etc.
 
 This implementation provides **production-grade** PFCP support with:
 - ✅ **3GPP TS 29.244 Release 18 compliance** - Complete protocol implementation
-- ✅ **328+ IEs** across 328 implementation modules
+- ✅ **354 IEs** (100% Release 18 coverage) across 357 implementation modules
 - ✅ **All 25 message types** with proper IE integration
 - ✅ **3,400+ comprehensive tests** ensuring reliability
 - ✅ **High-performance implementation** with efficient binary protocol handling

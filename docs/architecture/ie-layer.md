@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Information Element (IE) layer is the foundation of rs-pfcp's protocol implementation. It provides type-safe, validated representations of the 104+ Information Elements defined in 3GPP TS 29.244 Release 18. This layer handles the complex encoding/decoding of PFCP's Type-Length-Value (TLV) format while presenting an ergonomic Rust API.
+The Information Element (IE) layer is the foundation of rs-pfcp's protocol implementation. It provides type-safe, validated representations of all 354 Information Elements defined in 3GPP TS 29.244 Release 18 (100% coverage). This layer handles the complex encoding/decoding of PFCP's Type-Length-Value (TLV) format while presenting an ergonomic Rust API.
 
 ## Information Element Structure
 
@@ -969,38 +969,44 @@ PFCP uses TLV encoding (defined by 3GPP spec), not Protobuf:
 ### Creating and Marshaling a Complex IE
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::network_instance::NetworkInstance;
+use rs_pfcp::ie::outer_header_removal::OuterHeaderRemoval;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+use rs_pfcp::ie::ue_ip_address::UeIpAddress;
+use rs_pfcp::ie::urr_id::UrrId;
+use std::net::Ipv4Addr;
 
-// Build a complex grouped IE
-let create_pdr = CreatePdr {
-    pdr_id: PdrId::new(1),
-    precedence: Precedence::new(100),
-    pdi: Pdi {
-        source_interface: SourceInterface::Access,
-        network_instance: Some(NetworkInstance::new("internet")),
-        ue_ip_address: Some(UEIPAddress::new_ipv4(
-            Ipv4Addr::new(10, 1, 1, 1),
-            false,  // Not source
-        )),
-        ..Default::default()
-    },
-    outer_header_removal: Some(OuterHeaderRemoval::GtpU),
-    far_id: Some(FarId::new(1)),
-    urr_id: Some(UrrId::new(1)),
-    qer_id: None,
-    activate_predefined_rules: None,
-};
+// Grouped IEs are built via their builders, not struct literals — most fields are
+// public for pattern-matching/introspection, but construction should go through
+// the builder so mandatory-field and cross-field validation actually runs.
+let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+    .network_instance(NetworkInstance::new("internet"))
+    .ue_ip_address(UeIpAddress::new(Some(Ipv4Addr::new(10, 1, 1, 1)), None))
+    .build()?;
+
+let create_pdr = CreatePdrBuilder::new(PdrId::new(1))
+    .precedence(Precedence::new(100))
+    .pdi(pdi)
+    .outer_header_removal(OuterHeaderRemoval::new(0)) // 0 = GTP-U/UDP/IPv4
+    .far_id(FarId::new(1))
+    .urr_id(UrrId::new(1))
+    .build()?;
 
 // Marshal to bytes
 let bytes = create_pdr.marshal();
 
 // Unmarshal back
-let parsed = CreatePdr::unmarshal(&bytes)?;
+let parsed = rs_pfcp::ie::create_pdr::CreatePdr::unmarshal(&bytes)?;
 assert_eq!(create_pdr, parsed);
 ```
 
 ---
 
-**Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.3
+**Last Updated**: 2026-08-15
+**Architecture Version**: 0.5.0
 **Specification**: 3GPP TS 29.244 Release 18

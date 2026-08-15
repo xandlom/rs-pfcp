@@ -108,13 +108,13 @@ Builder patterns and convenience methods make the library easy to use correctly.
 Validate all inputs, reject malformed data, prevent DoS attacks.
 
 ### 6. **Comprehensive Testing**
-Every marshal/unmarshal operation verified with round-trip tests (898+ tests).
+Every marshal/unmarshal operation verified with round-trip tests (3,400+ tests).
 
 ## Architecture Evolution
 
-### Current State (v0.1.3)
+### Current State (v0.5.0)
 - ✅ 100% message type coverage (25/25)
-- ✅ 104+ Information Elements implemented
+- ✅ 354 Information Elements implemented (100% Release 18)
 - ✅ Complete builder pattern coverage
 - ✅ Zero-length IE security protection
 - ✅ YAML/JSON message display
@@ -168,6 +168,6 @@ For architecture questions or proposals:
 
 ---
 
-**Last Updated**: 2025-10-17
-**Architecture Version**: 0.1.3
+**Last Updated**: 2026-08-15
+**Architecture Version**: 0.5.0
 **Compliance**: 3GPP TS 29.244 Release 18

@@ -233,110 +233,175 @@ All messages implement the `Message` trait providing:
 - `ies()`: Iterate/find specific Information Elements
 
 ### Builder Patterns
-**ALL messages now support builder patterns for consistent, ergonomic construction:**
+**ALL messages support builder patterns for consistent, ergonomic construction.** Most
+builders marshal directly to bytes; a few return a `Result<Message, PfcpError>` via
+`.build()` when the caller needs the struct itself (e.g. to store or inspect before
+sending):
 
 ```rust
-// Session Establishment with multiple rules
-let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(node_id_ie)
-    .fseid(fseid_ie)
-    .create_pdrs(vec![pdr1, pdr2])
-    .create_fars(vec![far1, far2])
-    .build()?;
+use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+use rs_pfcp::message::node_report_response::NodeReportResponseBuilder;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::message::session_set_deletion_request::SessionSetDeletionRequestBuilder;
+use rs_pfcp::message::Message;
+use std::net::Ipv4Addr;
 
-// Association Setup with fluent API
-let assoc_req = AssociationSetupRequestBuilder::new(sequence)
-    .node_id(node_id_ie)
-    .recovery_time_stamp(recovery_ie)
-    .cp_function_features(features_ie)
-    .build();
+fn examples(
+    seid: u64,
+    sequence: u32,
+    pdr1: rs_pfcp::ie::create_pdr::CreatePdr,
+    pdr2: rs_pfcp::ie::create_pdr::CreatePdr,
+    far1: rs_pfcp::ie::create_far::CreateFar,
+    far2: rs_pfcp::ie::create_far::CreateFar,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Session Establishment with multiple rules — marshals directly to bytes
+    let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1))
+        .fseid(seid, Ipv4Addr::new(10, 0, 0, 1))
+        .add_pdr(pdr1)
+        .add_pdr(pdr2)
+        .add_far(far1)
+        .add_far(far2)
+        .marshal()?;
 
-// Session Set Deletion Request
-let set_del_req = SessionSetDeletionRequestBuilder::new(sequence)
-    .node_id(node_id_ie)
-    .fseid_set(fseid_ie)
-    .build();
+    // Association Setup with fluent API
+    let assoc_req = AssociationSetupRequestBuilder::new(sequence)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1))
+        .recovery_time_stamp(std::time::SystemTime::now())
+        .marshal();
 
-// Node Report Response
-let node_resp = NodeReportResponseBuilder::new(sequence)
-    .node_id(node_id_ie)
-    .cause(cause_ie)
-    .build();
+    // Session Set Deletion Request — this builder takes pre-built Ie values
+    let node_id_ie = rs_pfcp::ie::node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1)).to_ie();
+    let set_del_req = SessionSetDeletionRequestBuilder::new(sequence)
+        .node_id(node_id_ie.clone())
+        .build()
+        .marshal();
+
+    // Node Report Response — also takes a pre-built Node ID Ie
+    let node_resp = NodeReportResponseBuilder::new(sequence)
+        .node_id(node_id_ie)
+        .cause_accepted()
+        .marshal();
+
+    let _ = (req, assoc_req, set_del_req, node_resp);
+    Ok(())
+}
 ```
 
 ## Usage Examples
 
 ### Basic Session Flow
 ```rust
-// 1. Association Setup
-let assoc_req = AssociationSetupRequestBuilder::new(seq)
-    .node_id(node_id)
-    .recovery_time_stamp(recovery_ts)
-    .build();
+use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+use rs_pfcp::message::session_deletion_request::SessionDeletionRequestBuilder;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::message::session_modification_request::SessionModificationRequestBuilder;
+use std::net::Ipv4Addr;
 
-// 2. Session Establishment
-let session_req = SessionEstablishmentRequestBuilder::new(seid, seq)
-    .node_id(node_id)
-    .fseid(fseid)
-    .create_pdrs(pdrs)
-    .create_fars(fars)
-    .build()?;
+fn session_flow(
+    seid: u64,
+    seq: u32,
+    pdr: rs_pfcp::ie::create_pdr::CreatePdr,
+    far: rs_pfcp::ie::create_far::CreateFar,
+    updated_pdr: rs_pfcp::ie::update_pdr::UpdatePdr,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let node_ip = Ipv4Addr::new(10, 0, 0, 1);
 
-// 3. Session Modification
-let mod_req = SessionModificationRequestBuilder::new(seid, seq)
-    .fseid(fseid)
-    .update_pdrs(updated_pdrs)
-    .build();
+    // 1. Association Setup
+    let assoc_req = AssociationSetupRequestBuilder::new(seq)
+        .node_id(node_ip)
+        .recovery_time_stamp(std::time::SystemTime::now())
+        .marshal();
 
-// 4. Session Deletion
-let del_req = SessionDeletionRequestBuilder::new(seid, seq)
-    .smf_fseid(fseid)
-    .build();
+    // 2. Session Establishment
+    let session_req = SessionEstablishmentRequestBuilder::new(seid, seq)
+        .node_id(node_ip)
+        .fseid(seid, node_ip)
+        .add_pdr(pdr)
+        .add_far(far)
+        .marshal()?;
+
+    // 3. Session Modification
+    let mod_req = SessionModificationRequestBuilder::new(seid, seq)
+        .fseid(seid, node_ip)
+        .add_update_pdr(updated_pdr)
+        .marshal();
+
+    // 4. Session Deletion
+    let del_req = SessionDeletionRequestBuilder::new(seid, seq).marshal();
+
+    let _ = (assoc_req, session_req, mod_req, del_req);
+    Ok(())
+}
 ```
 
 ### Session Set Management
 ```rust
+use rs_pfcp::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
+use rs_pfcp::ie::cause::CauseValue;
+use rs_pfcp::ie::node_id::NodeId;
+use rs_pfcp::ie::pfcp_session_change_info::PfcpSessionChangeInfo;
+use rs_pfcp::message::session_set_deletion_request::SessionSetDeletionRequestBuilder;
 use rs_pfcp::message::session_set_modification_request::SessionSetModificationRequestBuilder;
 use rs_pfcp::message::session_set_modification_response::SessionSetModificationResponse;
-use rs_pfcp::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
+use rs_pfcp::message::Message;
 use std::net::Ipv4Addr;
 
-// Request UPF to send subsequent reports to alternative SMF
-let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 100, 1));
-let set_mod_req = SessionSetModificationRequestBuilder::new(seq)
-    .alternative_smf_ip_address(alt_smf_ip)
-    .build()?;
+fn session_set_management(seq: u32) -> Result<(), Box<dyn std::error::Error>> {
+    let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
 
-// UPF sends successful response
-let set_mod_resp = SessionSetModificationResponse::success(seq)?;
+    // Request UPF to send subsequent reports to an alternative SMF. The alternative
+    // SMF address travels inside a PfcpSessionChangeInfo grouped IE.
+    let alt_smf_ip = AlternativeSmfIpAddress::new_ipv4(Ipv4Addr::new(192, 168, 100, 1));
+    let change_info = PfcpSessionChangeInfo::new(alt_smf_ip);
+    let set_mod_req = SessionSetModificationRequestBuilder::new(seq)
+        .node_id(node_id.clone())
+        .session_change_info(change_info)
+        .build()?
+        .marshal();
 
-// Or reject with cause
-let set_mod_resp = SessionSetModificationResponse::reject(
-    seq,
-    CauseValue::RuleCreationModificationFailure
-)?;
+    // UPF sends a successful response (success()/reject() both need the UPF's own Node ID IE)
+    let set_mod_resp = SessionSetModificationResponse::success(seq, node_id.to_ie())?;
 
-// Bulk session deletion
-let set_del_req = SessionSetDeletionRequestBuilder::new(seq)
-    .node_id(node_id)
-    .build();
+    // Or reject with a cause
+    let set_mod_resp_rejected = SessionSetModificationResponse::reject(
+        seq,
+        node_id.to_ie(),
+        CauseValue::RuleCreationModificationFailure,
+    )?;
+
+    // Bulk session deletion — this builder takes a pre-built Node ID Ie
+    let set_del_req = SessionSetDeletionRequestBuilder::new(seq)
+        .node_id(node_id.to_ie())
+        .build()
+        .marshal();
+
+    let _ = (set_mod_req, set_mod_resp, set_mod_resp_rejected, set_del_req);
+    Ok(())
+}
 ```
 
 ### Event-Driven Reporting
 ```rust
-// Handle incoming Session Reports
-match msg.msg_type() {
-    MsgType::SessionReportRequest => {
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
+use rs_pfcp::message::{Message, MsgType};
+
+// Handle an incoming Session Report and acknowledge it
+fn handle_report(msg: &dyn Message) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    if msg.msg_type() == MsgType::SessionReportRequest {
         // Check report type
-        if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
+        if let Some(_report_type_ie) = msg.ies(IeType::ReportType).next() {
             // Process usage reports, quota exhaustion, etc.
         }
 
         // Send acknowledgment
-        let response = SessionReportResponseBuilder::new(seid, seq)
-            .cause(cause)
-            .build()?;
+        let seid = msg.seid().ok_or("missing SEID")?;
+        return SessionReportResponseBuilder::accepted(seid, msg.sequence())
+            .marshal()
+            .map_err(Into::into);
     }
+    Err("not a SessionReportRequest".into())
 }
 ```
 
@@ -364,217 +429,60 @@ The rs-pfcp library implements PFCP messages according to:
 
 🎉 **The library provides COMPLETE coverage of all defined PFCP message types with 100% implementation!**
 
-## Error Handling and Troubleshooting
+## Error Handling
 
-### Common Message Parsing Errors
+`rs_pfcp::message::parse()` and every `unmarshal()`/`.build()`/`.marshal()` that can fail
+return `Result<T, PfcpError>` — never a panic, never `io::Error`. Match on the variant for
+specific handling:
 
-#### Invalid Message Length
 ```rust
-// Error: Message length mismatch
-match rs_pfcp::message::parse(data) {
-    Err(e) if e.kind() == std::io::ErrorKind::InvalidData => {
-        if e.to_string().contains("length mismatch") {
-            // Message header claims different length than actual payload
-            eprintln!("Message length mismatch: {}", e);
-        }
-    }
-}
-```
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::{parse, Message, MsgType};
 
-#### Unsupported Message Type
-```rust
-// Error: Unknown message type
-match rs_pfcp::message::parse(data) {
-    Ok(msg) => {
-        if msg.msg_name() == "Unknown" {
-            println!("Received unsupported message type: {}", data[1]);
-            // Send VersionNotSupportedResponse if needed
-        }
-    }
-}
-```
-
-#### Missing Required IEs
-```rust
-// Check for required IEs before processing
-match msg.msg_type() {
-    MsgType::SessionEstablishmentRequest => {
-        if msg.ies(IeType::NodeId).next().is_none() {
-            // Missing required Node ID
-            let cause = Ie::new(IeType::Cause, vec![CauseValue::MandatoryIeMissing as u8]);
-            // Send error response
-        }
-    }
-}
-```
-
-### Performance Optimization
-
-#### Message Batching
-```rust
-// Batch multiple operations in single message
-let session_req = SessionModificationRequestBuilder::new(seid, seq)
-    .update_pdrs(vec![pdr1, pdr2, pdr3]) // Batch PDR updates
-    .remove_pdrs(vec![old_pdr1, old_pdr2]) // Batch removals
-    .create_fars(vec![new_far1, new_far2]) // Batch creations
-    .build()?;
-```
-
-#### Memory Management
-```rust
-// Reuse message builders for high-frequency operations
-struct MessageCache {
-    session_builder: Option<SessionModificationRequestBuilder>,
-    report_builder: Option<SessionReportResponseBuilder>,
-}
-
-impl MessageCache {
-    fn get_session_builder(&mut self, seid: u64, seq: u32) -> &mut SessionModificationRequestBuilder {
-        self.session_builder.get_or_insert_with(||
-            SessionModificationRequestBuilder::new(seid, seq)
-        )
-    }
-}
-```
-
-### Message Validation Patterns
-
-#### Sequence Number Validation
-```rust
-fn validate_sequence(expected: u32, received: u32) -> Result<(), PfcpError> {
-    if received != expected {
-        return Err(PfcpError::SequenceMismatch { expected, received });
-    }
-    Ok(())
-}
-```
-
-#### SEID Validation
-```rust
-fn validate_session(seid: u64, active_sessions: &HashSet<u64>) -> Result<(), PfcpError> {
-    if !active_sessions.contains(&seid) {
-        return Err(PfcpError::SessionNotFound(seid));
-    }
-    Ok(())
-}
-```
-
-## Advanced Usage Patterns
-
-### State Machine Implementation
-```rust
-#[derive(Debug)]
-enum SessionState {
-    Idle,
-    Establishing,
-    Active,
-    Modifying,
-    Terminating,
-}
-
-struct SessionManager {
-    state: SessionState,
-    seid: u64,
-    pending_modifications: Vec<UpdatePdr>,
-}
-
-impl SessionManager {
-    fn handle_message(&mut self, msg: &dyn Message) -> Result<Vec<u8>, PfcpError> {
-        match (self.state, msg.msg_type()) {
-            (SessionState::Idle, MsgType::SessionEstablishmentRequest) => {
-                self.state = SessionState::Establishing;
-                self.process_establishment(msg)
-            },
-            (SessionState::Active, MsgType::SessionModificationRequest) => {
-                self.state = SessionState::Modifying;
-                self.process_modification(msg)
-            },
-            // Handle other state transitions...
-            _ => Err(PfcpError::InvalidStateTransition)
-        }
-    }
-}
-```
-
-### Heartbeat Management
-```rust
-struct HeartbeatManager {
-    last_heartbeat: std::time::Instant,
-    recovery_timestamp: u32,
-    failed_count: u8,
-}
-
-impl HeartbeatManager {
-    fn send_heartbeat(&self, socket: &UdpSocket) -> std::io::Result<()> {
-        let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
-        let heartbeat = HeartbeatRequest::new(
-            self.get_next_sequence(),
-            recovery_ts.to_ie(),
-            None, // Source IP will be filled automatically
-        );
-        socket.send(&heartbeat.marshal())
-    }
-
-    fn handle_heartbeat_response(&mut self, msg: &HeartbeatResponse) -> Result<(), PfcpError> {
-        self.last_heartbeat = std::time::Instant::now();
-        self.failed_count = 0;
-
-        // Check peer recovery timestamp for restarts
-        if let Some(peer_recovery) = msg.ies(IeType::RecoveryTimeStamp).next() {
-            let peer_ts = RecoveryTimeStamp::unmarshal(&peer_recovery.payload)?;
-            if peer_ts.timestamp() > self.recovery_timestamp {
-                // Peer has restarted - need to re-establish associations
-                return Err(PfcpError::PeerRestarted);
+fn handle(data: &[u8]) {
+    match parse(data) {
+        Ok(msg) => {
+            if msg.msg_type() == MsgType::Unknown {
+                println!("Received unsupported message type (code {})", msg.msg_type_code());
+                // Consider sending a VersionNotSupportedResponse
+            } else if let MsgType::SessionEstablishmentRequest = msg.msg_type() {
+                if msg.ies(IeType::NodeId).next().is_none() {
+                    eprintln!("Missing required Node ID — reject with cause MandatoryIeMissing");
+                }
             }
         }
-        Ok(())
+        Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
+            eprintln!("Missing mandatory IE: {:?}", ie_type);
+        }
+        Err(PfcpError::InvalidLength { ie_name, expected, actual, .. }) => {
+            eprintln!("{}: expected {} bytes, got {}", ie_name, expected, actual);
+        }
+        Err(e) => eprintln!("Parse error: {}", e),
     }
 }
 ```
 
-### Usage Report Processing
+See the [Cookbook](../guides/cookbook.md#advanced-patterns) and
+[Troubleshooting Guide](../guides/troubleshooting.md) for more error-handling and debugging
+recipes (batching, validation, sequence-number tracking, hex dumps, etc.) — those guides
+carry the worked examples so this reference doesn't duplicate them.
+
+## Message Inspection
+
+Every `Message` implementation (and `Box<dyn Message>`, as returned by `parse()`) also
+implements `MessageDisplay`, giving YAML/JSON debug output:
+
 ```rust
-fn process_usage_reports(msg: &SessionReportRequest) -> Result<Vec<UsageAction>, PfcpError> {
-    let mut actions = Vec::new();
+use rs_pfcp::message::display::MessageDisplay;
+use rs_pfcp::message::parse;
 
-    // Find all Usage Report IEs
-    for ie in msg.ies().iter().filter(|ie| ie.ie_type == IeType::UsageReport) {
-        let usage_report = UsageReport::unmarshal(&ie.payload)?;
-
-        // Check trigger conditions
-        if usage_report.has_volume_threshold() {
-            actions.push(UsageAction::GrantAdditionalQuota {
-                urr_id: usage_report.urr_id(),
-                volume: 1_000_000_000, // 1GB additional quota
-            });
-        }
-
-        if usage_report.has_time_threshold() {
-            actions.push(UsageAction::ExtendTimer {
-                urr_id: usage_report.urr_id(),
-                duration: Duration::from_secs(3600), // 1 hour extension
-            });
-        }
-    }
-
-    Ok(actions)
-}
-```
-
-## Testing and Debugging
-
-### Message Inspection
-```rust
-// Debug message content with YAML/JSON display
 fn debug_message(data: &[u8]) {
-    match rs_pfcp::message::parse(data) {
+    match parse(data) {
         Ok(msg) => {
-            println!("=== Message Debug ===");
             println!("Type: {}", msg.msg_name());
             println!("SEID: {:?}", msg.seid());
-            println!("Sequence: {}", msg.sequence());
-
-            // Display full message structure
+            println!("Sequence: {}", msg.sequence().value());
             if let Ok(yaml) = msg.to_yaml() {
                 println!("Content:\n{}", yaml);
             }
@@ -584,90 +492,5 @@ fn debug_message(data: &[u8]) {
 }
 ```
 
-### Network Testing
-```rust
-// Test message round-trip over network
-async fn test_message_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
-    let socket = UdpSocket::bind("127.0.0.1:0")?;
-
-    // Send message
-    let heartbeat = HeartbeatRequest::new(1, recovery_ts_ie, None);
-    socket.send_to(&heartbeat.marshal(), "127.0.0.1:8805")?;
-
-    // Receive response
-    let mut buf = [0; 1500];
-    let (len, _src) = socket.recv_from(&mut buf)?;
-
-    // Parse and validate
-    let response = rs_pfcp::message::parse(&buf[..len])?;
-    assert_eq!(response.msg_type(), MsgType::HeartbeatResponse);
-
-    Ok(())
-}
-```
-
-## Integration Patterns
-
-### With 5G Core Components
-```rust
-// SMF integration example
-struct SmfPfcpHandler {
-    upf_sessions: HashMap<String, u64>, // UPF ID -> SEID mapping
-    pending_reports: HashMap<u64, UsageReport>, // SEID -> pending usage
-}
-
-impl SmfPfcpHandler {
-    async fn handle_pdu_session_establishment(
-        &mut self,
-        upf_id: &str,
-        session_context: &PduSessionContext
-    ) -> Result<(), SmfError> {
-        let seid = self.allocate_seid();
-
-        // Create PDRs based on QoS flows
-        let pdrs = session_context.qos_flows.iter()
-            .map(|qf| self.create_pdr_for_qos_flow(qf))
-            .collect();
-
-        let req = SessionEstablishmentRequestBuilder::new(seid, self.get_sequence())
-            .node_id(self.node_id.clone())
-            .fseid(self.create_fseid(seid))
-            .create_pdrs(pdrs)
-            .create_fars(self.create_default_fars())
-            .build()?;
-
-        self.send_to_upf(upf_id, req.marshal()).await?;
-        self.upf_sessions.insert(upf_id.to_string(), seid);
-
-        Ok(())
-    }
-}
-```
-
-### Error Recovery Strategies
-```rust
-// Implement exponential backoff for message retries
-struct RetryManager {
-    max_retries: u8,
-    base_delay: Duration,
-}
-
-impl RetryManager {
-    async fn send_with_retry<T>(&self, send_fn: impl Fn() -> Result<T, std::io::Error>) -> Result<T, std::io::Error> {
-        let mut attempts = 0;
-        let mut delay = self.base_delay;
-
-        loop {
-            match send_fn() {
-                Ok(result) => return Ok(result),
-                Err(e) if attempts >= self.max_retries => return Err(e),
-                Err(_) => {
-                    tokio::time::sleep(delay).await;
-                    delay *= 2; // Exponential backoff
-                    attempts += 1;
-                }
-            }
-        }
-    }
-}
-```
+The `pcap-reader` example (see [Examples Guide](../guides/examples-guide.md)) applies this
+same trait to decode and pretty-print captured PFCP traffic.

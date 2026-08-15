@@ -38,41 +38,79 @@ Create `src/message/<snake_case_name>.rs`:
 ```rust
 use crate::error::PfcpError;
 use crate::ie::{Ie, IeType};
-use crate::message::{IeIter, Message, MsgType, parse_ies, PFCP_HEADER_SIZE};
-use crate::types::{SequenceNumber, Seid};  // as needed
+use crate::message::{header::Header, IeIter, Message, MsgType};
+use crate::types::SequenceNumber;  // + Seid for session messages
 
 /// <MessageTypeName> — 3GPP TS 29.244 Section 7.X.X
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct <MessageTypeName> {
-    pub sequence: SequenceNumber,
-    // pub seid: Seid,  // session messages only
-    pub ies: Vec<Ie>,
+    header: Header,
+    // One field per mandatory/optional IE (Ie or Option<Ie>), e.g.:
+    // recovery_time_stamp: Ie,
+    ies: Vec<Ie>, // any remaining/unrecognized IEs
 }
 
 impl <MessageTypeName> {
-    pub fn new(sequence: SequenceNumber) -> Self {
-        Self { sequence, ies: Vec::new() }
+    pub fn new(seq: impl Into<SequenceNumber>, /* mandatory IEs, */ ies: Vec<Ie>) -> Self {
+        let mut payload_len = 0usize; // sum .len() of every mandatory/optional Ie + ies
+        let mut header = Header::new(MsgType::<MessageTypeName>, /* has_seid */ false, 0, seq);
+        header.length = 4 + payload_len;
+        Self { header, ies }
     }
 }
 
 impl Message for <MessageTypeName> {
-    fn msg_type(&self) -> MsgType { MsgType::<MessageTypeName> }
-    fn sequence(&self) -> SequenceNumber { self.sequence }
-    fn seid(&self) -> Option<Seid> { None }  // Some(self.seid) for session msgs
-
     fn marshal(&self) -> Vec<u8> {
+        todo!() // header.marshal() + each mandatory/optional Ie.marshal() + ies
+    }
+
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>
+    where
+        Self: Sized,
+    {
+        let header = Header::unmarshal(data)?;
+        let mut ies = Vec::new();
+        let mut offset = header.len() as usize;
+        while offset < data.len() {
+            let ie = Ie::unmarshal(&data[offset..])?;
+            offset += ie.len() as usize;
+            match ie.ie_type {
+                // IeType::RecoveryTimeStamp => recovery_time_stamp = Some(ie),
+                _ => ies.push(ie),
+            }
+        }
+        // Validate mandatory IEs are present with PfcpError::MissingMandatoryIe
         todo!()
     }
 
-    fn unmarshal(data: &[u8]) -> Result<Box<dyn Message>, PfcpError> {
-        todo!()
+    fn msg_type(&self) -> MsgType {
+        MsgType::<MessageTypeName>
     }
-
+    fn seid(&self) -> Option<crate::types::Seid> {
+        None // Some(self.seid) for session messages
+    }
+    fn sequence(&self) -> SequenceNumber {
+        self.header.sequence_number
+    }
+    fn set_sequence(&mut self, seq: SequenceNumber) {
+        self.header.sequence_number = seq;
+    }
     fn ies(&self, ie_type: IeType) -> IeIter<'_> {
-        IeIter::new(self.ies.iter().filter(move |ie| ie.ie_type == ie_type))
+        // IeIter::single(self.recovery_time_stamp.as_ref(), ie_type) for a single
+        // mandatory/optional field, IeIter::multiple(&self.create_pdrs, ie_type) for a
+        // Vec<Ie> field, or IeIter::generic(&self.ies, ie_type) as a fallback.
+        todo!()
+    }
+    fn all_ies(&self) -> Vec<&Ie> {
+        todo!() // collect every mandatory/optional field + self.ies
     }
 }
 ```
+
+`marshal()`, `unmarshal()`, `msg_type()`, `seid()`, `sequence()`, `set_sequence()`,
+`ies()`, and `all_ies()` are all required (no default impl) — see the real
+`Message` trait in `src/message/mod.rs` for the exact signatures, including
+the optional-but-worth-overriding `marshal_into()`/`marshaled_size()`.
 
 If the message is complex, add a builder in the same file following the
 pattern in `session_establishment_request.rs`.

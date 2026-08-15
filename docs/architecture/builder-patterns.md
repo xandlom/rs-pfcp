@@ -280,7 +280,7 @@ let buffer_far = CreateFarBuilder::buffer_traffic(
 
 // Complex forwarding
 let complex_far = CreateFar::builder(FarId::new(3))
-    .forward_to_network(Interface::Dn, NetworkInstance::new("internet"))
+    .forward_to_network(Interface::Core, NetworkInstance::new("internet"))
     .bar_id(BarId::new(2))
     .build()?;
 ```
@@ -317,18 +317,18 @@ let downlink_only = CreateQer::downlink_only(QerId::new(4));
 ### Pattern 5: CreateUrr with Thresholds
 
 ```rust
-// Volume-based reporting
+// Volume-based reporting (MeasurementMethod::new(duration, volume, event))
 let volume_urr = CreateUrrBuilder::new(UrrId::new(1))
-    .measurement_method(MeasurementMethod::volume())
-    .reporting_triggers(ReportingTriggers::volume_threshold())
+    .measurement_method(MeasurementMethod::new(false, true, false))
+    .reporting_triggers(ReportingTriggers::new().with_volume_threshold(true))
     .volume_threshold_bytes(1_000_000_000)  // 1GB
     .subsequent_volume_threshold_bytes(500_000_000)  // 500MB
     .build()?;
 
 // Time-based reporting
 let time_urr = CreateUrrBuilder::new(UrrId::new(2))
-    .measurement_method(MeasurementMethod::duration())
-    .reporting_triggers(ReportingTriggers::time_threshold())
+    .measurement_method(MeasurementMethod::new(true, false, false))
+    .reporting_triggers(ReportingTriggers::new().with_time_threshold(true))
     .time_threshold_seconds(3600)  // 1 hour
     .build()?;
 
@@ -357,8 +357,8 @@ let update_far = UpdateFarBuilder::new(far_id)
 
 // Update QER gate and rate
 let update_qer = UpdateQerBuilder::new(QerId::new(1))
-    .update_gate_status(GateStatus::open())
-    .update_mbr(1_500_000, 3_000_000)
+    .gate_status(GateStatus::new(GateStatusValue::Open, GateStatusValue::Open))
+    .rate_limit(1_500, 3_000) // kbit/s
     .build()?;
 
 // Update URR thresholds
@@ -500,10 +500,9 @@ Don't add a builder for:
 - [Overview](overview.md) - Overall architecture
 - [Message Layer](message-layer.md) - Message builder patterns
 - [IE Layer](ie-layer.md) - IE builder patterns
-- [Completed Builder Analysis](../analysis/completed/builder-pattern-analysis.md)
-- [Builder Enhancement Plan](../analysis/completed/builder-pattern-plan.md)
+- [Builder Guide](../guides/builder-guide.md) - Practical usage guide
 
 ---
 
-**Coverage**: 100% (25/25 messages, 10+ IEs)
-**Last Updated**: 2025-10-17
+**Coverage**: 100% (25/25 messages, 10+ grouped IEs with dedicated builders)
+**Last Updated**: 2026-08-15

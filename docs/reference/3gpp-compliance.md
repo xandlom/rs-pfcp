@@ -7,14 +7,14 @@ The rs-pfcp Rust library provides **100% compliance** with 3GPP TS 29.244 Releas
 
 The library implements the complete PFCP protocol as specified in 3GPP TS 29.244 Release 18, including:
 - All 25 message types with proper SEID handling
-- 120+ Information Elements with 274 type enum variants
+- 354 Information Elements with 354 type enum variants
 - Context-specific IE usage (e.g., `UpdateBarWithinSessionReportResponse`)
 - Correct TLV (Type-Length-Value) encoding for all IEs
 - Proper header structure with version, flags, and sequence numbers
 
 ## IE Implementation Status
 
-The library implements 120+ core Information Elements covering all essential PFCP functionality:
+The library implements 354 core Information Elements covering all essential PFCP functionality:
 
 ### Key IE Categories:
 1. **Session Management IEs** - Complete PDR/FAR/QER/URR/BAR lifecycle
@@ -63,10 +63,10 @@ All PFCP message types fully implemented with proper IE integration:
 - **Session Set Management** (4): Deletion/Modification Request/Response ✅
 - **Version Management** (1): Version Not Supported Response ✅
 
-## Testing Verification: **1,712 Tests Passing** ✅
+## Testing Verification: **3,400+ Tests Passing** ✅
 
 ### Test Coverage Breakdown:
-- **1,712 comprehensive tests** covering all IEs and messages
+- **3,400+ comprehensive tests** covering all IEs and messages
 - **Round-trip serialization** validation for all IEs
 - **Error handling** tests for malformed data and protocol violations
 - **Message builder pattern** tests for complex message construction
@@ -88,7 +88,7 @@ All PFCP message types fully implemented with proper IE integration:
 - Vendor-specific IE support with enterprise IDs ✅
 
 ### 2. **Architectural Excellence**
-- Consistent marshal/unmarshal patterns across all 69 IEs ✅
+- Consistent marshal/unmarshal patterns across all 354 IEs ✅
 - Builder pattern for complex message construction ✅
 - Comprehensive error handling with descriptive messages ✅
 - Message display capabilities (YAML/JSON formatting) ✅
@@ -105,7 +105,7 @@ All PFCP message types fully implemented with proper IE integration:
 ### Compilation Status: ✅ CLEAN
 ```bash
 cargo check  # ✅ Success
-cargo test   # ✅ 308/308 tests passing
+cargo test   # ✅ 3,400+ tests passing
 ```
 
 ### Integration Compliance: ✅ VERIFIED
@@ -118,10 +118,10 @@ cargo test   # ✅ 308/308 tests passing
 
 The rs-pfcp library provides **100% 3GPP TS 29.244 Release 18 compliance**:
 
-✅ **120+ Information Elements** with 274 type variants implemented
+✅ **354 Information Elements** with 354 type variants implemented
 ✅ **25/25 PFCP Messages** with proper IE integration
-✅ **1,712 comprehensive tests** passing with full coverage
-✅ **136 IE implementation modules** covering all protocol features
+✅ **3,400+ comprehensive tests** passing with full coverage
+✅ **357 IE implementation modules** covering all protocol features
 ✅ **High-performance implementation** with efficient binary protocol handling
 ✅ **Production-ready** for 5G network deployments
 
@@ -146,4 +146,4 @@ The library is suitable for production use in 5G network implementations requiri
 
 *Specification: 3GPP TS 29.244 Release 18*
 *Library: rs-pfcp (latest version)*
-*Test Suite: 1,712 passing tests*
+*Test Suite: 3,400+ passing tests*

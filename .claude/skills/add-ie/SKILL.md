@@ -45,20 +45,18 @@ impl <IeTypeName> {
 
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         if data.is_empty() {
-            return Err(PfcpError::InvalidLength {
-                ie_name: "<IeTypeName>",
-                expected: 1,
-                actual: 0,
-                context: "unmarshal",
-            });
+            return Err(PfcpError::invalid_length(
+                "<IeTypeName>",
+                IeType::<IeTypeName>,
+                1,
+                data.len(),
+            ));
         }
         todo!()
     }
-}
 
-impl From<&<IeTypeName>> for Ie {
-    fn from(val: &<IeTypeName>) -> Self {
-        Ie::new(IeType::<IeTypeName>, val.marshal())
+    pub fn to_ie(&self) -> Ie {
+        Ie::new(IeType::<IeTypeName>, self.marshal())
     }
 }
 ```
@@ -66,9 +64,10 @@ impl From<&<IeTypeName>> for Ie {
 Rules:
 - `marshal()` returns only the value bytes — never include the TLV header
 - `unmarshal()` receives only the value bytes — no TLV header present
-- Return `PfcpError::InvalidLength` for short buffers
+- Return `PfcpError::invalid_length(...)` (or the `InvalidLength { ie_name, ie_type, expected, actual }` variant directly) for short buffers
 - Return `PfcpError::InvalidValue` for invalid field values
 - No panics — always return `Result`
+- `.to_ie()` is the project convention for wrapping into an `Ie` — there is no blanket `From<&T> for Ie` impl
 
 ### 3. Register in mod.rs
 

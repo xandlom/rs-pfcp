@@ -40,6 +40,12 @@ cargo bench --bench message_operations
 
 # IE operations only
 cargo bench --bench ie_operations
+
+# Extended/newer IE marshal/unmarshal micro-benchmarks (QueryUrr, TrafficEndpointId, etc.)
+cargo bench --bench ie_performance
+
+# Message comparison framework (comparison::MessageComparator) operations
+cargo bench --bench comparison_operations
 ```
 
 ### Run Specific Benchmark
@@ -123,6 +129,16 @@ bench_builder_patterns()       // PDI builder, FAR builder
 bench_ie_scalability()         // 1, 10, 50, 100 PDRs
 ```
 
+### Extended IE Performance (`benches/ie_performance.rs`)
+
+Marshal/unmarshal benchmarks for newer IEs not covered above (Phase 2/3 additions like
+`QueryUrr`, `TrafficEndpointId`, `PfcpSessionChangeInfo`, `SmfSetId`).
+
+### Comparison Framework (`benches/comparison_operations.rs`)
+
+Benchmarks `comparison::MessageComparator` itself — strict/semantic/test-mode comparison
+cost across heartbeat and session-establishment messages of varying complexity.
+
 ## Interpreting Results
 
 ### Sample Output
@@ -186,7 +202,12 @@ When comparing benchmarks:
 
 ## Performance Baselines
 
-### Current Baselines (as of 2025-10-18)
+### Illustrative Baselines
+
+Figures below are from a past `cargo bench` run and vary with hardware — spot-checked
+against a fresh run while writing this doc and still the right order of magnitude, but treat
+them as illustrative rather than a guaranteed current number. Run `cargo bench` yourself for
+figures on your own machine.
 
 #### Message Operations
 
@@ -362,22 +383,25 @@ fn bench_my_operation(c: &mut Criterion) {
    }
    ```
 
-2. **Batch operations**: Process multiple messages together
+2. **Batch operations**: Process multiple PDRs/FARs in one builder chain
    ```rust
-   // Good: Amortize overhead
-   session.create_pdrs(&[pdr1, pdr2, pdr3]);
+   // Good: pass the whole batch as Vec<Ie>, amortizing overhead
+   let builder = SessionEstablishmentRequestBuilder::new(seid, seq)
+       .create_pdrs(vec![pdr1.to_ie(), pdr2.to_ie(), pdr3.to_ie()]);
 
-   // Less efficient: Individual calls
-   session.create_pdr(pdr1);
-   session.create_pdr(pdr2);
-   session.create_pdr(pdr3);
+   // Equivalent, but calling .add_pdr() once per PDR:
+   let builder = SessionEstablishmentRequestBuilder::new(seid, seq)
+       .add_pdr(pdr1)
+       .add_pdr(pdr2)
+       .add_pdr(pdr3);
    ```
 
 3. **Use builders**: Zero-cost abstractions
    ```rust
    // Builder has same performance as direct construction
-   let pdr = CreatePdr::builder()
-       .pdr_id(PdrId::new(1))
+   let pdr = CreatePdrBuilder::new(PdrId::new(1))
+       .precedence(Precedence::new(100))
+       .pdi(pdi)
        .build()?;
    ```
 
@@ -460,6 +484,6 @@ log::debug!("{:?}", lazy_format);  // Only if debug enabled
 
 ## Questions?
 
-- Open an issue: [GitHub Issues](https://github.com/yourusername/rs-pfcp/issues)
+- Open an issue: [GitHub Issues](https://github.com/xandlom/rs-pfcp/issues)
 - Performance problems: Tag with `performance` label
 - Benchmark contributions: Include before/after results in PR

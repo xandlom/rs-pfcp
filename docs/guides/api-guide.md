@@ -1,6 +1,6 @@
 # PFCP API Guide
 
-This guide provides developers with practical knowledge for using the rs-pfcp library effectively. It bridges the gap between the [README](README.md) and detailed technical specifications.
+This guide provides developers with practical knowledge for using the rs-pfcp library effectively. It bridges the gap between the [README](../../README.md) and detailed technical specifications.
 
 ## 🎯 Target Audience
 
@@ -13,61 +13,91 @@ This guide provides developers with practical knowledge for using the rs-pfcp li
 
 ### 1. Message Architecture
 
-All PFCP communication revolves around **Messages** and **Information Elements (IEs)**:
+All PFCP communication revolves around **Messages** and **Information Elements (IEs)**. Every
+message type implements the `Message` trait:
 
 ```rust
-use rs_pfcp::message::Message;
-use rs_pfcp::ie::{Ie, IeType};
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::ie_iter::IeIter;
+use rs_pfcp::message::MsgType;
+use rs_pfcp::types::{Seid, SequenceNumber};
 
-// Every message implements the Message trait
-pub trait Message {
-    fn marshal(&self) -> Vec<u8>;           // Serialize to bytes
-    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>; // Parse from bytes
-    fn msg_type(&self) -> MsgType;          // Get message type
-    fn seid(&self) -> Option<Seid>;         // Session Endpoint ID
-    fn sequence(&self) -> SequenceNumber;   // Message sequence number
-    fn ies(&self, ie_type: IeType) -> IeIter<'_>;      // Iterate/find IEs by type
+pub trait MessageSketch: Send + Sync {
+    fn marshal(&self) -> Vec<u8>; // Serialize to bytes
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>
+    where
+        Self: Sized; // Parse from bytes (concrete type only)
+    fn msg_type(&self) -> MsgType; // Get message type
+    fn seid(&self) -> Option<Seid>; // Session Endpoint ID
+    fn sequence(&self) -> SequenceNumber; // Message sequence number
+    fn ies(&self, ie_type: IeType) -> IeIter<'_>; // Iterate IEs by type
 }
 ```
 
+`rs_pfcp::message::parse(data)` inspects the header and returns `Box<dyn Message>` — since
+`unmarshal()` needs a concrete, `Sized` type, dispatch on `msg_type()` first, then
+re-`unmarshal()` the raw bytes into the specific message struct when you need typed fields.
+
 ### 2. Information Elements (IEs)
 
-IEs are the building blocks of PFCP messages. The library provides 70 fully implemented IE types:
+IEs are the building blocks of PFCP messages. The library implements all 354 IE types defined
+in 3GPP TS 29.244 Release 18 (100% coverage):
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::cause::{Cause, CauseValue};
+use rs_pfcp::ie::fseid::Fseid;
+use rs_pfcp::ie::node_id::NodeId;
+use rs_pfcp::ie::{Ie, IeType, IntoIe};
+use std::net::{IpAddr, Ipv4Addr};
 
-// Core IEs for session management
-let node_id = NodeId::from_ipv4("10.0.0.1".parse()?);
-let cause = Cause::new(CauseValue::RequestAccepted);
-let fseid = Fseid::new(session_id, "192.168.1.10".parse()?);
+fn build_ies(session_id: u64) -> Result<(), Box<dyn std::error::Error>> {
+    // Core IEs for session management
+    let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+    let cause = Cause::new(CauseValue::RequestAccepted);
+    let fseid = Fseid::new(session_id, Some(Ipv4Addr::new(192, 168, 1, 10)), None);
 
-// Convert to generic IE for message inclusion
-let node_id_ie = node_id.to_ie();
-let cause_ie = cause.to_ie();
-let fseid_ie = fseid.to_ie();
+    // NodeId has a direct .to_ie() convenience method
+    let node_id_ie = node_id.to_ie();
+
+    // Types without .to_ie() convert via Ie::new(type, marshaled payload)...
+    let cause_ie = Ie::new(IeType::Cause, cause.marshal().to_vec());
+
+    // ...or, for common combos like SEID+IP, the IntoIe tuple conversions are more ergonomic
+    let ip_address: IpAddr = "192.168.1.10".parse()?;
+    let fseid_ie = (session_id, ip_address).into_ie();
+
+    let _ = (node_id_ie, cause_ie, fseid_ie, fseid);
+    Ok(())
+}
 ```
 
 ### 3. Builder Patterns
 
-Complex messages use builder patterns for intuitive construction:
+Complex messages use builder patterns for intuitive construction, marshaling directly to
+bytes:
 
 ```rust
-use rs_pfcp::message::{SessionEstablishmentRequestBuilder, SessionReportResponseBuilder};
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use std::net::Ipv4Addr;
 
-// Session establishment with multiple rules
-let request = SessionEstablishmentRequestBuilder::new(session_id, sequence)
-    .node_id(node_id_ie)
-    .fseid(fseid_ie)
-    .create_pdrs(vec![pdr_ie])
-    .create_fars(vec![far_ie])
-    .create_urrs(vec![urr_ie])    // Optional
-    .build()?;
-
-// Session report response
-let response = SessionReportResponseBuilder::new(session_id, sequence, cause_ie)
-    .update_bars(vec![bar_ie])   // Optional
-    .build()?;
+fn build_request(
+    session_id: u64,
+    sequence: u32,
+    pdr: rs_pfcp::ie::create_pdr::CreatePdr,
+    far: rs_pfcp::ie::create_far::CreateFar,
+    urr: rs_pfcp::ie::create_urr::CreateUrr,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Session establishment with multiple rules
+    SessionEstablishmentRequestBuilder::new(session_id, sequence)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1))
+        .fseid(session_id, Ipv4Addr::new(10, 0, 0, 1))
+        .add_pdr(pdr)
+        .add_far(far)
+        .add_urr(urr) // Optional
+        .marshal()
+        .map_err(Into::into)
+}
 ```
 
 ## 🚀 Common Usage Patterns
@@ -75,35 +105,41 @@ let response = SessionReportResponseBuilder::new(session_id, sequence, cause_ie)
 ### 1. Basic Message Handling
 
 ```rust
-use rs_pfcp::message::{parse, MsgType};
+use rs_pfcp::message::{parse, Message, MsgType};
+use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
+use rs_pfcp::message::heartbeat_response::HeartbeatResponseBuilder;
 use std::net::UdpSocket;
+use std::time::SystemTime;
 
-// Receive and parse messages
-let socket = UdpSocket::bind("0.0.0.0:8805")?;
-let mut buffer = [0; 4096];
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let socket = UdpSocket::bind("0.0.0.0:8805")?;
+    let mut buffer = [0; 4096];
 
-loop {
-    let (size, addr) = socket.recv_from(&mut buffer)?;
+    loop {
+        let (size, addr) = socket.recv_from(&mut buffer)?;
+        let data = &buffer[..size];
 
-    // Parse any PFCP message type
-    match parse(&buffer[..size]) {
-        Ok(message) => {
-            println!("Received {} from {}", message.msg_name(), addr);
+        // Parse any PFCP message type
+        match parse(data) {
+            Ok(message) => {
+                println!("Received {} from {}", message.msg_name(), addr);
 
-            match message.msg_type() {
-                MsgType::HeartbeatRequest => {
-                    // Handle heartbeat
-                    let response = create_heartbeat_response(&message)?;
-                    socket.send_to(&response.marshal(), addr)?;
+                match message.msg_type() {
+                    MsgType::HeartbeatRequest => {
+                        let req = HeartbeatRequest::unmarshal(data)?;
+                        let response = HeartbeatResponseBuilder::new(req.sequence())
+                            .recovery_time_stamp(SystemTime::now())
+                            .marshal();
+                        socket.send_to(&response, addr)?;
+                    }
+                    MsgType::SessionEstablishmentRequest => {
+                        // Handle session establishment...
+                    }
+                    _ => println!("Unhandled message type: {:?}", message.msg_type()),
                 }
-                MsgType::SessionEstablishmentRequest => {
-                    // Handle session establishment
-                    handle_session_establishment(&message, addr)?;
-                }
-                _ => println!("Unhandled message type: {:?}", message.msg_type()),
             }
+            Err(e) => eprintln!("Failed to parse message: {}", e),
         }
-        Err(e) => eprintln!("Failed to parse message: {}", e),
     }
 }
 ```
@@ -111,119 +147,117 @@ loop {
 ### 2. Session Lifecycle Management
 
 ```rust
-use rs_pfcp::message::*;
-use rs_pfcp::ie::*;
+use rs_pfcp::message::session_deletion_request::SessionDeletionRequestBuilder;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::message::session_modification_request::SessionModificationRequestBuilder;
+use std::net::Ipv4Addr;
 
 // Establish Session (SMF → UPF)
-async fn establish_session(upf_addr: SocketAddr, session_id: u64) -> Result<(), Box<dyn Error>> {
-    let request = SessionEstablishmentRequestBuilder::new(session_id, get_sequence())
-        .node_id(NodeId::from_ipv4("10.0.0.1".parse()?).to_ie())
-        .fseid(Fseid::new(session_id, "192.168.1.10".parse()?).to_ie())
-        .create_pdrs(vec![
-            create_uplink_pdr()?,
-            create_downlink_pdr()?,
-        ])
-        .create_fars(vec![
-            create_uplink_far()?,
-            create_downlink_far()?,
-        ])
-        .build()?;
-
-    send_and_await_response(upf_addr, request).await?;
-    Ok(())
+fn establish_session(
+    session_id: u64,
+    sequence: u32,
+    ul_pdr: rs_pfcp::ie::create_pdr::CreatePdr,
+    dl_pdr: rs_pfcp::ie::create_pdr::CreatePdr,
+    ul_far: rs_pfcp::ie::create_far::CreateFar,
+    dl_far: rs_pfcp::ie::create_far::CreateFar,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    SessionEstablishmentRequestBuilder::new(session_id, sequence)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1))
+        .fseid(session_id, Ipv4Addr::new(192, 168, 1, 10))
+        .add_pdr(ul_pdr)
+        .add_pdr(dl_pdr)
+        .add_far(ul_far)
+        .add_far(dl_far)
+        .marshal()
+        .map_err(Into::into)
 }
 
 // Modify Session (SMF → UPF)
-async fn modify_session(upf_addr: SocketAddr, session_id: u64) -> Result<(), Box<dyn Error>> {
-    let request = SessionModificationRequestBuilder::new(session_id, get_sequence())
-        .fseid(Fseid::new(session_id, "192.168.1.10".parse()?).to_ie())
-        .update_pdrs(vec![updated_pdr_ie])
-        .update_fars(vec![updated_far_ie])
-        .remove_pdrs(vec![PdrId::new(5).to_ie()])  // Remove specific rules
-        .build();
-
-    send_and_await_response(upf_addr, request).await?;
-    Ok(())
+fn modify_session(
+    session_id: u64,
+    sequence: u32,
+    updated_far: rs_pfcp::ie::update_far::UpdateFar,
+) -> Vec<u8> {
+    SessionModificationRequestBuilder::new(session_id, sequence)
+        .fseid(session_id, Ipv4Addr::new(192, 168, 1, 10))
+        .add_update_far(updated_far)
+        .marshal()
 }
 
 // Delete Session (SMF → UPF)
-async fn delete_session(upf_addr: SocketAddr, session_id: u64) -> Result<(), Box<dyn Error>> {
-    let request = SessionDeletionRequest::new(
-        session_id,
-        get_sequence(),
-        Fseid::new(session_id, "192.168.1.10".parse()?).to_ie(),
-        /* usage_information_request */ None,
-        /* user_plane_inactivity_timer */ None,
-    );
-
-    send_and_await_response(upf_addr, request).await?;
-    Ok(())
+fn delete_session(session_id: u64, sequence: u32) -> Vec<u8> {
+    SessionDeletionRequestBuilder::new(session_id, sequence).marshal()
 }
 ```
 
 ### 3. Usage Reporting and Event Handling
 
 ```rust
-use rs_pfcp::message::SessionReportRequest;
-use rs_pfcp::ie::{UsageReportTrigger, UsageReport};
+use rs_pfcp::ie::report_type::ReportType;
+use rs_pfcp::ie::usage_report::UsageReport;
+use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_report_request::SessionReportRequest;
+use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
+use rs_pfcp::message::Message;
 
 // Handle usage reports (UPF → SMF)
-fn handle_usage_report(message: &SessionReportRequest) -> Result<SessionReportResponse, Box<dyn Error>> {
+fn handle_usage_report(message: &SessionReportRequest) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // Check report type
     if let Some(report_type_ie) = message.ies(IeType::ReportType).next() {
-        let report_type = ReportType::unmarshal(&report_type_ie.payload)?;
+        let report_type: ReportType = report_type_ie.parse()?;
 
-        if report_type.contains(ReportTypeFlags::USAR) {
+        if report_type.is_usage_report() {
             // Process usage reports
-            for ie in &message.ies {
-                if ie.ie_type == IeType::UsageReport {
-                    let usage_report = UsageReport::unmarshal(&ie.payload)?;
+            for ie in message.ies(IeType::UsageReportWithinSessionReportRequest) {
+                let usage_report = UsageReport::unmarshal(&ie.payload)?;
 
-                    if usage_report.usage_report_trigger().contains(UsageReportTrigger::VOLTH) {
-                        println!("📊 Volume quota exhausted for URR ID: {}",
-                                usage_report.urr_id().as_u32());
-
-                        // Grant additional quota or terminate session
-                        handle_quota_exhaustion(&usage_report)?;
-                    }
+                if usage_report.usage_report_trigger.contains(UsageReportTrigger::VOLTH) {
+                    println!(
+                        "📊 Volume threshold reached for URR ID: {}",
+                        usage_report.urr_id.id
+                    );
+                    // Grant additional quota or terminate session
                 }
             }
         }
     }
 
     // Send acknowledgment
-    SessionReportResponseBuilder::new(
-        message.seid().unwrap(),
-        message.sequence(),
-        Cause::new(CauseValue::RequestAccepted).to_ie()
-    ).build()
+    let seid = message.seid().ok_or("missing SEID")?;
+    SessionReportResponseBuilder::accepted(seid, message.sequence())
+        .marshal()
+        .map_err(Into::into)
 }
 ```
 
 ### 4. Node Association Management
 
 ```rust
-use rs_pfcp::message::{AssociationSetupRequest, AssociationSetupResponse};
+use rs_pfcp::ie::cause::{Cause, CauseValue};
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::association_setup_request::AssociationSetupRequestBuilder;
+use rs_pfcp::message::association_setup_response::AssociationSetupResponse;
+use rs_pfcp::message::Message;
+use std::net::Ipv4Addr;
+use std::time::SystemTime;
 
-// Establish node association (SMF ↔ UPF)
-async fn establish_association(peer_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
-    let request = AssociationSetupRequest::new(
-        get_sequence(),
-        NodeId::from_ipv4("10.0.0.1".parse()?).to_ie(),
-        RecoveryTimeStamp::now().to_ie(),
-        /* up_function_features */ None,
-        /* cp_function_features */ Some(get_cp_features().to_ie()),
-        /* user_plane_ip_resource_information */ None,
-        /* graceful_release_period */ None,
-        /* pfcp_association_release_request */ None,
-    );
+// Build the request to establish a node association (SMF ↔ UPF)
+fn build_association_request(sequence: u32) -> Vec<u8> {
+    AssociationSetupRequestBuilder::new(sequence)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1))
+        .recovery_time_stamp(SystemTime::now())
+        .marshal()
+}
 
-    let response: AssociationSetupResponse = send_and_await_response(peer_addr, request).await?;
-
-    // Check if association was accepted
+// Check whether a received response accepted the association
+fn check_association_response(
+    response: &AssociationSetupResponse,
+    peer_addr: std::net::SocketAddr,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(cause_ie) = response.ies(IeType::Cause).next() {
-        let cause = Cause::unmarshal(&cause_ie.payload)?;
-        match cause.cause_value() {
+        let cause: Cause = cause_ie.parse()?;
+        match cause.value {
             CauseValue::RequestAccepted => {
                 println!("✅ Association established with {}", peer_addr);
                 Ok(())
@@ -255,7 +289,7 @@ fn process_message(data: &[u8]) -> Result<(), PfcpError> {
 
     match message.msg_type() {
         MsgType::SessionEstablishmentRequest => {
-            // Access mandatory IEs - library validates during unmarshal
+            // Access mandatory IEs — the library validates during unmarshal
             let _node_id = message.ies(IeType::NodeId).next();
             let _fseid = message.ies(IeType::Fseid).next();
             // Process the session establishment...
@@ -275,7 +309,7 @@ fn process_message(data: &[u8]) -> Result<(), PfcpError> {
 fn handle_parse_error(err: &PfcpError) {
     match err {
         PfcpError::MissingMandatoryIe { ie_type, .. } => {
-            // Map to 3GPP cause code for response
+            // Map to a 3GPP cause code for a rejection response
             let cause = err.to_cause_code();
             eprintln!("Missing IE {:?}, cause: {:?}", ie_type, cause);
         }
@@ -289,8 +323,17 @@ fn handle_parse_error(err: &PfcpError) {
 
 ### 2. Network Error Recovery
 
+rs-pfcp's `marshal()`/`unmarshal()` are synchronous, CPU-only calls — they work unchanged
+inside any async runtime you choose. This example wraps sending in `tokio`'s I/O and adds
+retry/timeout policy around it (add `tokio = { version = "1", features = ["full"] }` to your
+own `Cargo.toml` to use this pattern):
+
 ```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::message::Message;
+use std::net::SocketAddr;
 use std::time::Duration;
+use tokio::net::UdpSocket;
 use tokio::time::timeout;
 
 // Application-level error type wrapping both library and network errors
@@ -302,15 +345,17 @@ enum AppError {
 }
 
 impl From<PfcpError> for AppError {
-    fn from(e: PfcpError) -> Self { AppError::Pfcp(e) }
+    fn from(e: PfcpError) -> Self {
+        AppError::Pfcp(e)
+    }
 }
 
 // Reliable message sending with retries
 async fn send_with_retry<T: Message>(
     socket: &UdpSocket,
     addr: SocketAddr,
-    message: T,
-    max_retries: u32
+    message: &T,
+    max_retries: u32,
 ) -> Result<(), AppError> {
     let data = message.marshal();
 
@@ -344,34 +389,26 @@ async fn send_with_retry<T: Message>(
 ### 1. Efficient Memory Usage
 
 ```rust
+use rs_pfcp::message::parse;
+use std::net::UdpSocket;
+
 // Reuse buffers for repeated operations
 struct PfcpHandler {
     recv_buffer: Vec<u8>,
-    send_buffer: Vec<u8>,
 }
 
 impl PfcpHandler {
     fn new() -> Self {
         Self {
-            recv_buffer: vec![0; 4096],  // Pre-allocate
-            send_buffer: Vec::with_capacity(1024),
+            recv_buffer: vec![0; 4096], // Pre-allocate
         }
     }
 
-    async fn handle_message(&mut self, socket: &UdpSocket) -> Result<(), PfcpError> {
-        // Reuse existing buffer
-        let (size, addr) = socket.recv_from(&mut self.recv_buffer).await?;
-
+    fn handle_message(&mut self, socket: &UdpSocket) -> Result<(), Box<dyn std::error::Error>> {
+        // Reuse the existing buffer across calls — no per-message allocation
+        let (size, _addr) = socket.recv_from(&mut self.recv_buffer)?;
         let message = parse(&self.recv_buffer[..size])?;
-
-        // Process without additional allocations where possible
-        let response = self.create_response(&message)?;
-
-        // Reuse send buffer
-        self.send_buffer.clear();
-        self.send_buffer.extend_from_slice(&response.marshal());
-        socket.send_to(&self.send_buffer, addr).await?;
-
+        let _ = message; // process / respond
         Ok(())
     }
 }
@@ -380,35 +417,33 @@ impl PfcpHandler {
 ### 2. Batch Processing
 
 ```rust
-// Efficient batch session operations
-async fn batch_session_operations(
-    upf_addr: SocketAddr,
-    operations: Vec<SessionOperation>
-) -> Result<(), PfcpError> {
-    // Group operations by type for better efficiency
+enum SessionOperation {
+    Establish(Vec<u8>),
+    Modify(Vec<u8>),
+    Delete(Vec<u8>),
+}
+
+// Efficient batch session operations: process in optimal order
+fn batch_session_operations(
+    socket: &std::net::UdpSocket,
+    upf_addr: &str,
+    operations: Vec<SessionOperation>,
+) -> std::io::Result<()> {
     let mut establishments = Vec::new();
     let mut modifications = Vec::new();
     let mut deletions = Vec::new();
 
     for op in operations {
         match op {
-            SessionOperation::Establish(req) => establishments.push(req),
-            SessionOperation::Modify(req) => modifications.push(req),
-            SessionOperation::Delete(req) => deletions.push(req),
+            SessionOperation::Establish(bytes) => establishments.push(bytes),
+            SessionOperation::Modify(bytes) => modifications.push(bytes),
+            SessionOperation::Delete(bytes) => deletions.push(bytes),
         }
     }
 
-    // Process in optimal order: establish → modify → delete
-    for req in establishments {
-        send_and_await_response(upf_addr, req).await?;
-    }
-
-    for req in modifications {
-        send_and_await_response(upf_addr, req).await?;
-    }
-
-    for req in deletions {
-        send_and_await_response(upf_addr, req).await?;
+    // establish → modify → delete
+    for bytes in establishments.iter().chain(&modifications).chain(&deletions) {
+        socket.send_to(bytes, upf_addr)?;
     }
 
     Ok(())
@@ -419,13 +454,17 @@ async fn batch_session_operations(
 
 ### 1. Message Inspection
 
-The library provides excellent debugging capabilities:
+The library provides YAML/JSON debug formatting via the `MessageDisplay` trait (implemented
+for every `Message` type and for `Box<dyn Message>`):
 
 ```rust
-use rs_pfcp::message::MessageDisplay;
+use rs_pfcp::ie::fseid::Fseid;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::display::MessageDisplay;
+use rs_pfcp::message::parse;
 
 // Detailed message analysis
-fn debug_message(data: &[u8]) -> Result<(), Box<dyn Error>> {
+fn debug_message(data: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let message = parse(data)?;
 
     // Human-readable YAML output
@@ -437,8 +476,11 @@ fn debug_message(data: &[u8]) -> Result<(), Box<dyn Error>> {
     // Inspect specific IEs
     if let Some(fseid_ie) = message.ies(IeType::Fseid).next() {
         let fseid = Fseid::unmarshal(&fseid_ie.payload)?;
-        println!("F-SEID: Session ID={:016x}, IP={}",
-                 fseid.seid(), fseid.ipv4_address().unwrap_or("N/A".parse().unwrap()));
+        println!(
+            "F-SEID: Session ID={:016x}, IPv4={:?}",
+            fseid.seid.value(),
+            fseid.ipv4_address
+        );
     }
 
     Ok(())
@@ -450,50 +492,67 @@ fn debug_message(data: &[u8]) -> Result<(), Box<dyn Error>> {
 ```rust
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rs_pfcp::ie::apply_action::ApplyAction;
+    use rs_pfcp::ie::create_far::CreateFar;
+    use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+    use rs_pfcp::ie::f_teid::FteidBuilder;
+    use rs_pfcp::ie::far_id::FarId;
+    use rs_pfcp::ie::pdi::PdiBuilder;
+    use rs_pfcp::ie::pdr_id::PdrId;
+    use rs_pfcp::ie::precedence::Precedence;
+    use rs_pfcp::ie::IeType;
+    use rs_pfcp::message::session_establishment_request::{
+        SessionEstablishmentRequest, SessionEstablishmentRequestBuilder,
+    };
+    use rs_pfcp::message::{parse, Message, MsgType};
 
     #[test]
     fn test_session_establishment_round_trip() {
-        // Test complete marshal/unmarshal cycle
-        let original_request = SessionEstablishmentRequestBuilder::new(0x123456789abcdef0, 42)
-            .node_id(NodeId::from_ipv4("10.0.0.1".parse().unwrap()).to_ie())
-            .fseid(Fseid::new(0x123456789abcdef0, "192.168.1.1".parse().unwrap()).to_ie())
-            .create_pdrs(vec![create_test_pdr()])
-            .create_fars(vec![create_test_far()])
+        let pdr = CreatePdrBuilder::new(PdrId::new(1))
+            .precedence(Precedence::new(100))
+            .pdi(PdiBuilder::uplink_access().build().unwrap())
             .build()
             .unwrap();
+        let far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
 
-        // Serialize
-        let bytes = original_request.marshal();
+        // Test complete marshal/unmarshal cycle
+        let bytes = SessionEstablishmentRequestBuilder::new(0x123456789abcdef0u64, 42u32)
+            .node_id(std::net::Ipv4Addr::new(10, 0, 0, 1))
+            .fseid(0x123456789abcdef0u64, std::net::Ipv4Addr::new(192, 168, 1, 1))
+            .add_pdr(pdr)
+            .add_far(far)
+            .marshal()
+            .unwrap();
 
-        // Parse back
+        // Parse back via the trait-object dispatcher...
         let parsed_message = parse(&bytes).unwrap();
-
-        // Verify identity
         assert_eq!(parsed_message.msg_type(), MsgType::SessionEstablishmentRequest);
-        assert_eq!(parsed_message.seid(), Some(0x123456789abcdef0));
-        assert_eq!(parsed_message.sequence(), 42);
+        assert_eq!(parsed_message.seid().map(|s| s.value()), Some(0x123456789abcdef0u64));
+        assert_eq!(parsed_message.sequence().value(), 42);
 
-        // Verify IEs are preserved
-        assert!(parsed_message.ies(IeType::NodeId).next().is_some());
-        assert!(parsed_message.ies(IeType::Fseid).next().is_some());
+        // ...or the concrete type directly, to access typed fields
+        let parsed_request = SessionEstablishmentRequest::unmarshal(&bytes).unwrap();
+        assert!(parsed_request.ies(IeType::NodeId).next().is_some());
+        assert!(parsed_request.ies(IeType::Fseid).next().is_some());
     }
 
     #[test]
     fn test_3gpp_compliance() {
-        // Test specific 3GPP TS 29.244 requirements
-        let fteid = FTeid::new_ipv4_with_choose(0x12345678, "10.0.0.1".parse().unwrap());
+        // Test F-TEID CHOOSE flag encoding
+        let fteid = FteidBuilder::new()
+            .teid(0x12345678u32)
+            .choose_ipv4()
+            .build()
+            .unwrap();
 
-        // Verify CHOOSE flag encoding
         let bytes = fteid.marshal();
         assert_eq!(bytes[0] & 0x01, 0x01); // V4 flag
         assert_eq!(bytes[0] & 0x02, 0x00); // V6 flag
         assert_eq!(bytes[0] & 0x04, 0x04); // CH flag
 
         // Test round-trip
-        let parsed = FTeid::unmarshal(&bytes).unwrap();
-        assert_eq!(parsed.teid(), 0x12345678);
-        assert!(parsed.has_choose_flag());
+        let parsed = rs_pfcp::ie::f_teid::Fteid::unmarshal(&bytes).unwrap();
+        assert!(parsed.ch); // CHOOSE flag preserved
     }
 }
 ```
@@ -502,9 +561,23 @@ mod tests {
 
 ### 1. Async/Await Integration
 
+Add `tokio = { version = "1", features = ["full"] }` to your own `Cargo.toml` to use this
+pattern — rs-pfcp itself has no async runtime dependency:
+
 ```rust
-use tokio::net::UdpSocket;
+use rs_pfcp::message::parse;
 use std::sync::Arc;
+use tokio::net::UdpSocket;
+
+async fn handle_message(
+    data: &[u8],
+    addr: std::net::SocketAddr,
+    _socket: Arc<UdpSocket>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let message = parse(data)?;
+    println!("Handling {} from {}", message.msg_name(), addr);
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -516,10 +589,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let (size, addr) = socket.recv_from(&mut buffer).await?;
         let socket_clone = Arc::clone(&socket);
+        let data = buffer[..size].to_vec();
 
         // Handle each message in a separate task
         tokio::spawn(async move {
-            if let Err(e) = handle_message(&buffer[..size], addr, socket_clone).await {
+            if let Err(e) = handle_message(&data, addr, socket_clone).await {
                 eprintln!("Error handling message from {}: {}", addr, e);
             }
         });
@@ -530,13 +604,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### 2. State Management
 
 ```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::Message;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
 pub struct SessionState {
     pub seid: u64,
-    pub node_id: String,
     pub active_pdrs: Vec<u16>,
     pub active_fars: Vec<u32>,
     pub last_activity: std::time::Instant,
@@ -553,32 +630,45 @@ impl PfcpSessionManager {
         }
     }
 
-    pub async fn handle_session_establishment(
+    pub fn handle_session_establishment(
         &self,
-        request: &SessionEstablishmentRequest
-    ) -> Result<SessionEstablishmentResponse, PfcpError> {
-        let session_id = request.seid().unwrap();
+        request: &SessionEstablishmentRequest,
+    ) -> Result<(), PfcpError> {
+        let seid = request.seid().ok_or_else(|| PfcpError::InvalidValue {
+            field: "seid".to_string(),
+            value: "none".to_string(),
+            reason: "Session Establishment Request must carry a SEID".to_string(),
+        })?;
+        let session_id = seid.value();
 
-        // Validate request
-        self.validate_establishment_request(request)?;
+        let active_pdrs: Vec<u16> = request
+            .ies(IeType::CreatePdr)
+            .filter_map(|ie| ie.parse::<rs_pfcp::ie::create_pdr::CreatePdr>().ok())
+            .map(|pdr| pdr.pdr_id.value)
+            .collect();
+        let active_fars: Vec<u32> = request
+            .ies(IeType::CreateFar)
+            .filter_map(|ie| ie.parse::<rs_pfcp::ie::create_far::CreateFar>().ok())
+            .map(|far| far.far_id.value)
+            .collect();
 
-        // Create session state
         let session_state = SessionState {
             seid: session_id,
-            node_id: extract_node_id(request)?,
-            active_pdrs: extract_pdr_ids(request),
-            active_fars: extract_far_ids(request),
+            active_pdrs,
+            active_fars,
             last_activity: std::time::Instant::now(),
         };
 
-        // Store session
-        {
-            let mut sessions = self.sessions.write().unwrap();
-            sessions.insert(session_id, session_state);
-        }
+        let mut sessions = self.sessions.write().unwrap();
+        sessions.insert(session_id, session_state);
 
-        // Create response with allocated resources
-        Ok(create_session_establishment_response(request, session_id)?)
+        Ok(())
+    }
+}
+
+impl Default for PfcpSessionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 ```

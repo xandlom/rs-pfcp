@@ -384,18 +384,13 @@ F-SEID IE:
 **Rust Construction:**
 ```rust
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
-use rs_pfcp::ie::node_id::NodeId;
-use rs_pfcp::ie::fseid::Fseid;
 
-let node_id = NodeId::new_ipv4("10.0.0.1".parse()?);
-let fseid = Fseid::new(2, Some("192.168.1.1".parse()?), None);
-
-let request = SessionEstablishmentRequestBuilder::new(1, 1)
-    .node_id(node_id.to_ie())
-    .fseid(Ie::new(IeType::Fseid, fseid.marshal()))
-    .build()?;
-
-let wire_bytes = request.marshal();
+// .node_id()/.fseid() accept an IP address / (SEID, IP) directly — the builder
+// marshals straight to bytes, there's no intermediate .build() step
+let wire_bytes = SessionEstablishmentRequestBuilder::new(1u64, 1u32)
+    .node_id("10.0.0.1".parse::<std::net::Ipv4Addr>()?)
+    .fseid(2u64, "192.168.1.1".parse::<std::net::Ipv4Addr>()?)
+    .marshal()?;
 ```
 
 ## 3GPP TS 29.244 Release 18 Compliance
@@ -529,7 +524,7 @@ Binary protocol optimizations:
 
 ## Metadata
 
-- **Version:** 0.3.0
-- **Last Updated:** 2026-02-08
+- **Version:** 0.5.0
+- **Last Updated:** 2026-08-15
 - **3GPP Compliance:** TS 29.244 Release 18
 - **Specification Reference:** 3GPP TS 29.244 V18.1.0 (2023-12)

@@ -17,10 +17,9 @@ Pre-commit hook configuration:
 ### Testing Strategy
 
 rs-pfcp uses comprehensive testing:
-- **Unit Tests** - 898+ tests covering all IEs and messages
+- **Unit Tests** - 3,400+ tests covering all IEs and messages
 - **Integration Tests** - Full message workflows
 - **Round-trip Tests** - Marshal/unmarshal verification
-- **Property Tests** - Edge cases and fuzzing
 - **Compliance Tests** - 3GPP TS 29.244 verification
 
 Run tests:
@@ -37,17 +36,16 @@ cargo test --test messages
 
 ### Benchmarking
 
-Performance testing infrastructure:
-- Located in `benchmarks/` directory
-- Rust vs Go comparison benchmarks
-- Real PFCP traffic testing
-- Performance regression tracking
+Performance testing uses [Criterion.rs](https://github.com/bheisler/criterion.rs), in-crate
+under `benches/` (`message_operations.rs`, `ie_operations.rs`, `ie_performance.rs`,
+`comparison_operations.rs`):
 
-Run benchmarks:
 ```bash
-cd benchmarks
-./scripts/run-benchmarks.sh
+cargo bench
 ```
+
+See the [Benchmarking Guide](../guides/benchmarking.md) for running specific suites,
+interpreting results, and CI integration.
 
 ### Code Quality Standards
 
@@ -66,9 +64,10 @@ cd benchmarks
 - Write self-documenting code
 
 #### Error Handling
-- Use `io::Error` with `InvalidData` for protocol errors
+- Use the `PfcpError` enum (`src/error.rs`) for all marshal/unmarshal/builder failures —
+  not `io::Error`; see [Error Handling Architecture](../architecture/error-handling.md)
 - Provide descriptive error messages
-- Include received vs expected in validation errors
+- Include received vs expected in validation errors (e.g. `PfcpError::InvalidLength`)
 - Never panic on invalid input
 
 ### Adding New Features
@@ -140,25 +139,16 @@ See `.claude/claude-guide.md` for comprehensive builder pattern guidelines:
 # Analyze PCAP files
 cargo run --example pcap-reader -- --pcap file.pcap --format yaml
 
-# Debug specific messages
-cargo run --example debug_parser
-
-# Test real captured messages
-cargo run --example test_real_messages
+# Dump every message a running session-server handles (YAML/JSON)
+cargo run --example session-server -- --interface lo --port 8805 --verbose
 ```
 
-#### IE Parsing Issues
-```bash
-# Debug IE parser
-cargo run --example debug_ie_parser
-```
+See the [Examples Guide](../guides/examples-guide.md) for the full list of runnable examples.
 
 #### Logging
-Enable detailed logging:
-```bash
-RUST_LOG=debug cargo test
-RUST_LOG=trace cargo run --example session-client
-```
+None of the crate or its examples depend on `log`/`env_logger`, so `RUST_LOG` has no effect.
+Use `--verbose` on `session-server` (see above), or `MessageDisplay::to_yaml()`/`to_json()`
+directly in your own code — see the [Troubleshooting Guide](../guides/troubleshooting.md).
 
 ## Project Structure
 
@@ -167,10 +157,11 @@ rs-pfcp/
 ├── src/
 │   ├── ie/              # Information Elements
 │   ├── message/         # Message types
+│   ├── comparison/      # Message comparison framework
 │   └── lib.rs           # Library root
 ├── tests/               # Integration tests
 ├── examples/            # Example applications
-├── benchmarks/          # Performance tests
+├── benches/             # Criterion.rs performance benchmarks
 └── docs/                # Documentation
 ```
 

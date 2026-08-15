@@ -498,6 +498,8 @@ impl PfcpMetrics {
 
 #### Structured Logging
 ```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::message::Message;
 use tracing::{info, warn, error, instrument};
 use serde_json::json;
 
@@ -505,8 +507,10 @@ use serde_json::json;
     skip(message),
     fields(
         msg_type = ?message.msg_type(),
-        sequence = message.sequence(),
-        seid = message.seid()
+        // sequence()/seid() return the SequenceNumber/Option<Seid> newtypes, not raw
+        // integers — use `?` (Debug) rather than `=` (which needs tracing::Value)
+        sequence = ?message.sequence(),
+        seid = ?message.seid()
     )
 )]
 pub async fn handle_pfcp_message(
