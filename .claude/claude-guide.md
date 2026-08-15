@@ -13,7 +13,7 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 ### Build and Test
 - **Build**: `cargo build`
 - **Test**: `cargo test`
-- **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`, `pcap-reader`, `header-length-test`, `usage_report_phase1_demo`, `usage_report_phase2_demo`, `pdn-type-demo`, `pdn-type-simple`, `debug_ie_parser`, `debug_parser`, `test_real_messages`
+- **Run examples**: `cargo run --example <name>` where `<name>` is one of: `heartbeat-client`, `heartbeat-server`, `session-client`, `session-server`, `pcap-reader`, `interop-echo-msg`, `ethernet-session-demo`, `comprehensive_pfcp_features`, `error-handling-demo`, `fixed-access-demo`, `message-comparison`, `pdn-type-demo`, `pdn-type-simple`, `usage_report_demo`, `usage_report_quota_demo`
 - **Check**: `cargo check`
 - **Format**: `cargo fmt`
 - **Lint**: `cargo clippy`
@@ -21,15 +21,13 @@ This is a Rust implementation of the PFCP (Packet Forwarding Control Protocol) l
 ### Running Examples
 - Heartbeat server: `cargo run --example heartbeat-server`
 - Heartbeat client: `cargo run --example heartbeat-client`
-- Session server: `cargo run --example session-server --interface lo --port 8805`
-- Session client: `cargo run --example session-client --interface lo --address 127.0.0.1 --port 8805 --sessions 1`
+- Session server: `cargo run --example session-server -- --interface lo --port 8805`
+- Session client: `cargo run --example session-client -- --interface lo --address 127.0.0.1 --port 8805 --sessions 1`
 - PFCP packet analysis: `cargo run --example pcap-reader -- --pcap <file.pcap> --format yaml`
-- Session report demo: `cd examples && ./test_session_report.sh [interface_name]`
-- Header length test: `cargo run --example header-length-test`
-- Usage report demos: `cargo run --example usage_report_phase1_demo` or `cargo run --example usage_report_phase2_demo`
+- Usage report demos: `cargo run --example usage_report_demo` or `cargo run --example usage_report_quota_demo`
 - PDN type demos: `cargo run --example pdn-type-demo` or `cargo run --example pdn-type-simple`
-- Debug parsers: `cargo run --example debug_ie_parser` or `cargo run --example debug_parser`
-- Real message testing: `cargo run --example test_real_messages`
+- Ethernet session demo: `cargo run --example ethernet-session-demo`
+- Error handling demo: `cargo run --example error-handling-demo`
 
 ### Testing Individual Components
 - **Run all tests**: `cargo test`
@@ -116,11 +114,11 @@ Complex messages and Information Elements use the builder pattern for constructi
 **Messages:**
 ```rust
 let req = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(node_id_ie)
-    .fseid(fseid_ie)
+    .node_id(node_id_ip)            // accepts Ipv4Addr/Ipv6Addr directly
+    .fseid(session_seid, node_ip)   // accepts (Seid, IpAddr)
     .create_pdrs(vec![pdr_ie])
     .create_fars(vec![far_ie])
-    .build()?;
+    .marshal()?;                    // -> Result<Vec<u8>, PfcpError>; or .build()? for the typed struct
 ```
 
 **Information Elements:**
@@ -165,7 +163,7 @@ let buffer_far = CreateFarBuilder::buffer_traffic(
 ).build()?;
 
 let complex_far = CreateFar::builder(FarId::new(3))
-    .forward_to_network(Interface::Dn, NetworkInstance::new("internet"))
+    .forward_to_network(Interface::SgiLanN6Lan, NetworkInstance::new("internet"))
     .bar_id(BarId::new(2))
     .build()?;
 
@@ -195,8 +193,8 @@ let update_far = UpdateFarBuilder::new(far_id)
 
 // UpdateQer (Update QoS Enforcement Rules) with convenience methods
 let update_qer = UpdateQerBuilder::new(QerId::new(1))
-    .update_gate_status(GateStatus::open())
-    .update_mbr(1500000, 3000000)  // Update to 1.5Mbps up, 3Mbps down
+    .gate_status(GateStatus::new(GateStatusValue::Open, GateStatusValue::Open))
+    .rate_limit(1500000, 3000000)  // Update to 1.5Mbps up, 3Mbps down
     .build()?;
 
 // UpdateUrr (Update Usage Reporting Rules) with threshold updates
@@ -399,7 +397,7 @@ if length == 0 && !Self::allows_zero_length(ie_type) {
 - Allowlist validation tests (6 new tests covering all allowlisted IEs)
 - Real-world Update FAR scenario (`test_zero_length_update_far_scenario`)
 
-**Reference**: See [Zero-Length IE Analysis](../docs/analysis/completed/zero-length-ie-analysis.md) for comprehensive security analysis and specification research.
+**Reference**: See [Security Architecture](../docs/architecture/security.md) for comprehensive security analysis and specification research.
 
 ## Working with the Codebase
 
@@ -446,55 +444,55 @@ Examples support flexible network configuration:
 - Support for both IPv4 and IPv6 (where implemented)
 
 ### Session Report Demo
-A comprehensive demo shows quota exhausted reporting:
-- Located in `examples/SESSION_REPORT_DEMO.md` with detailed architecture
-- Run with `cd examples && ./test_session_report.sh [interface_name]`
-- Demonstrates UPF→SMF quota exhaustion reporting with packet capture
-- Shows Session Report Request/Response message flow with Usage Report triggers
-- Includes automatic packet analysis with the pcap-reader example
+Quota-exhausted reporting is demonstrated by running `session-server` and
+`session-client` together, then inspecting captured traffic with
+`pcap-reader`. See [docs/guides/session-report-demo.md](../docs/guides/session-report-demo.md)
+for the full manual walkthrough (no standalone script exists for this).
 
 ### Dependencies and Tools
 Key dependencies used throughout the codebase:
-- **anyhow**: Error handling and context
 - **bitflags**: Flag-based IEs (Apply Action, Reporting Triggers, etc.)
 - **clap**: Command-line parsing for examples
 - **network-interface**: Network interface detection and IP resolution
 - **pcap-file**: PCAP file parsing for traffic analysis
 - **serde**: JSON/YAML serialization for message display
-- **serde_json/serde_yaml**: Structured output formatting
+- **serde_json/serde_yaml_ng**: Structured output formatting (JSON / YAML)
 
 ### Performance and Benchmarking
-The repository includes comprehensive benchmarking capabilities:
-- **Benchmark suite**: Located in `benchmarks/` directory with Rust vs Go comparisons
-- **Run benchmarks**: `cd benchmarks && ./scripts/run-benchmarks.sh`
-- **Performance tests**: Uses real captured PFCP traffic for realistic measurements
-- **Individual examples**: `cargo run --example header-length-test` for specific testing
-- **Debug tools**: Various debug examples for protocol analysis
+The repository includes in-crate Criterion benchmarks:
+- **Benchmark suite**: Located in `benches/` (`message_operations.rs`, `ie_operations.rs`,
+  `ie_performance.rs`, `comparison_operations.rs`)
+- **Run benchmarks**: `cargo bench` (or `cargo bench --bench <name>` for one suite)
+- See [docs/guides/benchmarking.md](../docs/guides/benchmarking.md) for details and current baselines
 
 ### Development Workflow
 
 #### Git Hooks
-The project includes a pre-commit hook that automatically runs:
-- **Code formatting**: `cargo fmt` (auto-fixes and stages changes)
-- **Linting**: `cargo clippy --all-targets --all-features -- -D warnings`
-- **Build check**: `cargo check --all-targets`
-- **Quick tests**: Unit tests with 30s timeout
-- **Security scan**: Detects potential secrets in staged changes
-- **Benchmark validation**: Ensures benchmark project compiles
+The project includes a pre-commit hook (`scripts/pre-commit`, installed via
+`scripts/install-hooks.sh`) that runs, in order:
+1. **Code formatting**: `cargo fmt --all -- --check` (auto-fixes and stages changes)
+2. **Linting**: `cargo clippy --all-targets --all-features -- -D warnings`
+3. **Secret scan**: TODO/FIXME + secret-pattern scan of the staged diff
+4. **Build check**: `cargo check --all-targets`
+5. **Quick tests**: `cargo test --lib --bins` with a 30s timeout — only runs if
+   `.rs` files are staged, otherwise skipped entirely
+6. **Large-file warning**: flags any staged file over 1MB
 
-The hook is automatically installed and helps maintain code quality. See [docs/development/git-hooks.md](../docs/development/git-hooks.md) for details.
+There is no separate benchmark-project check (the standalone `benchmarks/`
+crate was removed; benchmarks now live in-crate under `benches/`). See
+[docs/development/git-hooks.md](../docs/development/git-hooks.md) for details.
 
 ## Related Documentation
 
 - **Quick Start Guide**: [../CLAUDE.md](../CLAUDE.md) - Concise overview for quick reference
 - **API Documentation**: [../docs/guides/api-guide.md](../docs/guides/api-guide.md) - Complete API usage guide
-- **Architecture Docs**: [../docs/architecture/](../docs/architecture/) - Design documentation (6,325 lines)
+- **Architecture Docs**: [../docs/architecture/](../docs/architecture/) - Design documentation (6,700+ lines)
   - [Overview](../docs/architecture/overview.md) - System architecture
-  - [Message Layer](../docs/architecture/message-layer.md) - Message design (691 lines)
-  - [IE Layer](../docs/architecture/ie-layer.md) - IE architecture (1,019 lines)
-  - [Builder Patterns](../docs/architecture/builder-patterns.md) - Builder philosophy (467 lines)
-  - [Error Handling](../docs/architecture/error-handling.md) - Error patterns (875 lines)
-  - [Security Architecture](../docs/architecture/security.md) - Security design (389 lines)
+  - [Message Layer](../docs/architecture/message-layer.md) - Message design (707 lines)
+  - [IE Layer](../docs/architecture/ie-layer.md) - IE architecture (1,012 lines)
+  - [Builder Patterns](../docs/architecture/builder-patterns.md) - Builder philosophy (508 lines)
+  - [Error Handling](../docs/architecture/error-handling.md) - Error patterns (504 lines)
+  - [Security Architecture](../docs/architecture/security.md) - Security design (432 lines)
 - **Reference Documentation**: [../docs/reference/](../docs/reference/)
   - [IE Support](../docs/reference/ie-support.md) - Complete IE implementation status
   - [3GPP Compliance](../docs/reference/3gpp-compliance.md) - Compliance verification

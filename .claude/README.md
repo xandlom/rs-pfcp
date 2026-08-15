@@ -146,6 +146,6 @@ If you're uncertain about AI assistant guidance:
 
 ---
 
-**Last Updated**: 2025-10-17
+**Last Updated**: 2026-08-15
 **Purpose**: AI assistant guidance and configuration
 **Maintenance**: Update when project patterns or structure change
