@@ -55,29 +55,30 @@ rs-pfcp implements all 25 PFCP message types defined in 3GPP TS 29.244 Release 1
 
 ### Core Message Trait
 
-All PFCP messages implement the `PfcpMessage` trait:
+All PFCP messages implement the `Message` trait (`Send + Sync`, since v0.3.x):
 
 ```rust
-pub trait PfcpMessage {
-    /// Get the message type code
-    fn message_type() -> u8;
-
-    /// Get the message name for display
-    fn message_name() -> &'static str;
-
-    /// Marshal message to bytes
-    fn marshal(&self) -> Result<Vec<u8>, PfcpError>;
+pub trait Message: Send + Sync {
+    /// Marshal message to bytes (infallible — the message is already valid)
+    fn marshal(&self) -> Vec<u8>;
 
     /// Unmarshal message from bytes
-    fn unmarshal(buf: &[u8]) -> Result<Self, PfcpError>
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError>
     where
         Self: Sized;
+
+    /// Get the message type
+    fn msg_type(&self) -> MsgType;
 
     /// Get SEID if present (session messages only)
     fn seid(&self) -> Option<Seid>;
 
     /// Get sequence number
-    fn sequence_number(&self) -> SequenceNumber;
+    fn sequence(&self) -> SequenceNumber;
+
+    /// Get all IEs of a specific type as an iterator
+    fn ies(&self, ie_type: IeType) -> IeIter<'_>;
+    // ... additional methods (msg_name(), to_yaml() via MessageDisplay, etc.)
 }
 ```
 
@@ -86,24 +87,25 @@ pub trait PfcpMessage {
 Message pairs follow a consistent pattern:
 
 ```rust
-// Request message (type N)
+// Request message (type 50) — IE fields hold the raw Ie (child IEs are lazily
+// parsed via .ies(IeType::X) or .parse::<T>()), not the fully-typed struct
 pub struct SessionEstablishmentRequest {
-    pub header: PfcpHeader,
-    pub node_id: NodeId,
-    pub cp_f_seid: Option<FSEID>,
-    pub create_pdr: Vec<CreatePDR>,
-    pub create_far: Vec<CreateFAR>,
+    pub header: Header,
+    pub node_id: Ie,               // M
+    pub fseid: Ie,                 // M
+    pub create_pdrs: Vec<Ie>,      // M, at least one
+    pub create_fars: Vec<Ie>,      // M, at least one
     // ... other IEs
 }
 
-// Response message (type N+1)
+// Response message (type 51)
 pub struct SessionEstablishmentResponse {
-    pub header: PfcpHeader,
-    pub node_id: NodeId,
-    pub cause: Cause,
-    pub offending_ie: Option<OffendingIE>,
-    pub up_f_seid: Option<FSEID>,
-    pub created_pdr: Vec<CreatedPDR>,
+    pub header: Header,
+    pub node_id: Ie,               // M
+    pub cause: Ie,                 // M
+    pub offending_ie: Option<Ie>,
+    pub fseid: Option<Ie>,
+    pub created_pdrs: Vec<Ie>,
     // ... other IEs
 }
 ```
@@ -115,25 +117,31 @@ pub struct SessionEstablishmentResponse {
 Messages are built using the builder pattern:
 
 ```rust
-let request = SessionEstablishmentRequest::builder()
-    .node_id(NodeId::new_ipv4([192, 168, 1, 1]))
-    .cp_f_seid(FSEID::new(0x1234567890ABCDEF, [10, 0, 0, 1], None))
-    .add_create_pdr(pdr)
-    .add_create_far(far)
-    .build()?;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use std::net::Ipv4Addr;
+
+// Message builders marshal directly to bytes — there is no separate .build() step
+let bytes = SessionEstablishmentRequestBuilder::new(0x1234567890ABCDEFu64, 1u32)
+    .node_id(Ipv4Addr::new(192, 168, 1, 1))
+    .fseid(0x1234567890ABCDEFu64, Ipv4Addr::new(10, 0, 0, 1))
+    .add_pdr(pdr)
+    .add_far(far)
+    .marshal()?;
 ```
 
-**Validation occurs at build time:**
+**Validation occurs at marshal time:**
 - Required IEs are enforced by the type system
 - Optional IEs use `Option<T>` or `Vec<T>`
-- Builder methods validate IE constraints
+- Builder methods validate IE constraints; `.marshal()` returns `Result<Vec<u8>, PfcpError>`
 
 ### 2. Marshaling
 
-Converting a message to wire format:
+The builder's `.marshal()` call above already produced wire-format bytes. If you instead have
+an already-parsed concrete message (e.g. from `unmarshal()`), the `Message::marshal()` trait
+method re-serializes it — and is infallible there, since the data was already validated:
 
 ```rust
-let bytes = request.marshal()?;
+let bytes: Vec<u8> = request.marshal();
 
 // Process:
 // 1. Calculate total message length
@@ -519,13 +527,17 @@ Messages are designed for concurrent use:
 Once constructed, messages are immutable:
 
 ```rust
-let message = SessionEstablishmentRequest::builder()
-    .node_id(node_id)
-    .build()?;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
 
-// message can be safely shared across threads
-let bytes1 = message.marshal()?;
-let bytes2 = message.marshal()?;  // Same result, no mutation
+let bytes = SessionEstablishmentRequestBuilder::new(seid, seq)
+    .node_id(node_ip)
+    .marshal()?;
+let message = SessionEstablishmentRequest::unmarshal(&bytes)?;
+
+// message can be safely shared across threads — Message::marshal() is infallible
+// once you already have a validated, parsed message
+let bytes1 = message.marshal();
+let bytes2 = message.marshal();  // Same result, no mutation
 ```
 
 ### Thread Safety
@@ -639,53 +651,57 @@ Alternative names like `to_bytes()`/`from_bytes()` considered but rejected for c
 ### Complete Session Establishment Flow
 
 ```rust
-use rs_pfcp::messages::*;
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::apply_action::ApplyAction;
+use rs_pfcp::ie::cause::CauseValue;
+use rs_pfcp::ie::create_far::CreateFar;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponse;
+use rs_pfcp::message::Message;
+use std::net::Ipv4Addr;
 
-// 1. Build request
-let request = SessionEstablishmentRequest::builder()
-    .node_id(NodeId::new_ipv4([192, 168, 1, 1]))
-    .cp_f_seid(FSEID::new(0x1234, [10, 0, 0, 1], None))
-    .add_create_pdr(
-        CreatePDR::builder()
-            .pdr_id(1)
-            .precedence(100)
-            .pdi(PDI::builder()
-                .source_interface(SourceInterface::Access)
-                .build()?)
-            .build()?
-    )
-    .add_create_far(
-        CreateFAR::builder()
-            .far_id(1)
-            .apply_action(ApplyAction::FORW)
-            .build()?
-    )
+// 1. Build the PDI, PDR, and FAR, then the request — builders marshal
+//    straight to bytes, there is no separate .build() step at the message level
+let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access)).build()?;
+let pdr = CreatePdrBuilder::new(PdrId::new(1))
+    .precedence(Precedence::new(100))
+    .pdi(pdi)
     .build()?;
+let far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
 
-// 2. Marshal to bytes
-let request_bytes = request.marshal()?;
+let request_bytes = SessionEstablishmentRequestBuilder::new(0x1234u64, 1u32)
+    .node_id(Ipv4Addr::new(192, 168, 1, 1))
+    .fseid(0x1234u64, Ipv4Addr::new(10, 0, 0, 1))
+    .add_pdr(pdr)
+    .add_far(far)
+    .marshal()?;
 
-// 3. Send over network
+// 2. Send over network
 socket.send_to(&request_bytes, peer_addr)?;
 
-// 4. Receive response
+// 3. Receive response
 let (len, _) = socket.recv_from(&mut buf)?;
 
-// 5. Unmarshal response
+// 4. Unmarshal response
 let response = SessionEstablishmentResponse::unmarshal(&buf[..len])?;
 
-// 6. Check result
-if response.cause.value() == CauseValue::RequestAccepted {
+// 5. Check result
+let cause = response.cause()?;
+if cause.value == CauseValue::RequestAccepted {
     println!("Session established!");
-    println!("UP F-SEID: {:?}", response.up_f_seid);
+    println!("UP F-SEID: {:?}", response.fseid());
 } else {
-    eprintln!("Session establishment failed: {:?}", response.cause);
+    eprintln!("Session establishment failed: {:?}", cause.value);
 }
 ```
 
 ---
 
-**Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.3
+**Last Updated**: 2026-08-15
+**Architecture Version**: 0.5.0
 **Specification**: 3GPP TS 29.244 Release 18

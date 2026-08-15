@@ -2,7 +2,7 @@
 
 ## Overview
 
-rs-pfcp employs a comprehensive, multi-layered testing strategy designed to ensure 100% compliance with 3GPP TS 29.244 Release 18, prevent regressions, and maintain protocol correctness. With 898+ tests covering all message types and IEs, the testing approach balances thoroughness, maintainability, and execution speed.
+rs-pfcp employs a comprehensive, multi-layered testing strategy designed to ensure 100% compliance with 3GPP TS 29.244 Release 18, prevent regressions, and maintain protocol correctness. With 3,400+ tests covering all message types and IEs, the testing approach balances thoroughness, maintainability, and execution speed.
 
 ## Testing Philosophy
 
@@ -17,14 +17,15 @@ rs-pfcp employs a comprehensive, multi-layered testing strategy designed to ensu
 
 ### Quality Metrics
 
-Current test coverage (v0.1.3):
+Current test coverage (v0.5.0, `cargo test`):
 
 ```
-Message Types:    25/25  (100%)
-Information Elements: 104+ (all implemented IEs tested)
-Total Tests:      898+
-Test Execution:   < 2 seconds (full suite)
-Round-Trip Tests: 100% (all marshal/unmarshal pairs)
+Message Types:      25/25  (100%)
+Information Elements: 354  (all implemented IEs tested)
+Total Tests:        3,400+ (unit + integration + doc tests)
+Unit Test Execution: < 1 second (3,000+ #[test] functions)
+Full `cargo test`:   ~25-30 seconds (dominated by compiling 325 separate doctest binaries)
+Round-Trip Tests:    100% (all marshal/unmarshal pairs)
 ```
 
 ## Testing Layers
@@ -340,7 +341,9 @@ mod compliance_tests {
 
 ### 5. Property-Based Tests
 
-Use property testing for exhaustive coverage:
+**Status: Not yet implemented.** No `quickcheck`/`proptest` dependency exists in the crate
+today — this section documents the pattern the project would use if/when it's added, not
+something currently running as part of the 3,400+ tests above.
 
 ```rust
 #[cfg(test)]
@@ -388,6 +391,10 @@ mod property_tests {
 
 ### 6. Fuzz Testing
 
+**Status: Not yet implemented.** No `fuzz/` directory or `cargo-fuzz` setup exists in the
+repository today — this section documents the pattern the project would use if/when it's
+added.
+
 Discover vulnerabilities through randomized input:
 
 ```rust
@@ -423,16 +430,19 @@ rs-pfcp/
 │   ├── message/
 │   │   └── session_establishment_request.rs
 │   └── lib.rs
-├── tests/
-│   ├── test_new_messages.rs     # Integration tests
-│   ├── compliance_tests.rs      # 3GPP compliance
-│   └── round_trip_tests.rs      # Comprehensive round-trips
-├── benches/
-│   └── marshal_benchmark.rs     # Performance benchmarks
-└── fuzz/
-    └── fuzz_targets/
-        └── unmarshal.rs         # Fuzz tests
+├── tests/                       # Integration tests
+│   ├── test_new_messages.rs
+│   ├── session_establishment_integration.rs
+│   ├── fixture_semantic_check.rs
+│   └── ie_iteration_tests.rs
+└── benches/                     # Criterion.rs performance benchmarks
+    ├── message_operations.rs
+    ├── ie_operations.rs
+    ├── ie_performance.rs
+    └── comparison_operations.rs
 ```
+
+(No `fuzz/` directory exists yet — see [Fuzz Testing](#6-fuzz-testing) above.)
 
 ### Naming Conventions
 
@@ -656,8 +666,9 @@ fn test_with_macros() {
 Measure critical path performance:
 
 ```rust
-// benches/marshal_benchmark.rs
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+// benches/message_operations.rs (see the real file for the full, current suite)
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box; // criterion::black_box is deprecated in favor of this
 use rs_pfcp::message::*;
 
 fn benchmark_session_establishment_marshal(c: &mut Criterion) {
@@ -789,7 +800,7 @@ fn debug_unmarshal_failure() {
 
 ---
 
-**Last Updated**: 2025-10-18
-**Architecture Version**: 0.1.3
-**Test Count**: 898+
+**Last Updated**: 2026-08-15
+**Architecture Version**: 0.5.0
+**Test Count**: 3,400+
 **Specification**: 3GPP TS 29.244 Release 18

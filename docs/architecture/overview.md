@@ -27,7 +27,7 @@ rs-pfcp is a high-performance Rust implementation of the PFCP (Packet Forwarding
 │  Message Layer   │          │  Information         │
 │                  │◄────────►│  Element (IE) Layer  │
 │  - 25 msg types  │          │                      │
-│  - Marshaling    │          │  - 104+ IE types     │
+│  - Marshaling    │          │  - 354 IE types      │
 │  - Parsing       │          │  - TLV encoding      │
 │  - Validation    │          │  - Grouped IEs       │
 └────────┬─────────┘          └──────────┬───────────┘
@@ -159,17 +159,17 @@ pub trait Message {
 Complex messages and IEs use builders for construction:
 
 ```rust
-// Message builder
+// Message builder — marshals directly to bytes
 SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(node_id_ie)
-    .fseid(fseid_ie)
-    .create_pdrs(vec![pdr_ie])
-    .create_fars(vec![far_ie])
-    .build()?
+    .node_id(node_ip)               // accepts an IP directly
+    .fseid(seid, cp_ip)
+    .add_pdr(pdr)
+    .add_far(far)
+    .marshal()?
 
-// IE builder
+// IE builder — returns the typed struct via .build()
 FteidBuilder::new()
-    .teid(0x12345678)
+    .teid(0x12345678u32)
     .ipv4("192.168.1.1".parse()?)
     .build()?
 ```
@@ -325,7 +325,8 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 - Protocol-level rejection of attack vectors
 - Bounded parsing (no infinite loops)
 - Resource limits enforced
-- Comprehensive testing with fuzzing
+- Comprehensive round-trip and edge-case testing (fuzzing is not yet part of the suite —
+  see [Testing Strategy](testing-strategy.md#6-fuzz-testing))
 
 ### See Also
 
@@ -336,7 +337,7 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 
 ### Comprehensive Coverage
 
-- **898+ tests** covering all IEs and messages
+- **3,400+ tests** covering all IEs and messages
 - Round-trip testing (marshal → unmarshal → compare)
 - Edge case validation
 - Compliance verification
@@ -346,7 +347,8 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 1. **Unit Tests**: Individual IE and message tests
 2. **Integration Tests**: Full message workflows
 3. **Compliance Tests**: 3GPP TS 29.244 verification
-4. **Property Tests**: Fuzzing and edge cases
+4. **Property Tests / Fuzzing**: Not yet implemented — see
+   [Testing Strategy](testing-strategy.md#5-property-based-tests)
 
 ## Extension Points
 
@@ -403,6 +405,6 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 
 ---
 
-**Version**: 0.1.3
+**Version**: 0.5.0
 **3GPP Compliance**: TS 29.244 Release 18
-**Last Updated**: 2025-10-17
+**Last Updated**: 2026-08-15

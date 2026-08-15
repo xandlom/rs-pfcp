@@ -194,14 +194,13 @@ fn handle_session_request(data: &[u8]) -> Result<(), PfcpError> {
 
 ```rust
 use rs_pfcp::error::PfcpError;
-use rs_pfcp::ie::cause::{Cause, CauseValue};
-use rs_pfcp::message::SessionEstablishmentResponseBuilder;
+use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
 
 fn create_error_response(err: &PfcpError, seid: u64, seq: u32) -> Vec<u8> {
     let cause_value = err.to_cause_code();
 
-    SessionEstablishmentResponseBuilder::new(seid, seq)
-        .cause(cause_value)
+    // The cause is a required constructor argument, not a separate setter
+    SessionEstablishmentResponseBuilder::new(seid, seq, cause_value)
         .marshal()
         .expect("response marshaling should not fail")
 }
@@ -212,21 +211,26 @@ fn create_error_response(err: &PfcpError, seid: u64, seq: u32) -> Vec<u8> {
 ```rust
 use rs_pfcp::error::PfcpError;
 use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
 
 fn build_pdr() -> Result<(), PfcpError> {
-    let pdr = CreatePdrBuilder::new()
-        // Missing pdr_id - will fail validation
-        .precedence(100)
-        .build()?;  // Returns Err(PfcpError::ValidationError { ... })
+    // pdr_id is a required constructor argument, not an optional field — but pdi is
+    // still missing here, which build() rejects:
+    let pdr = CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        // Missing .pdi(...) - will fail validation
+        .build()?; // Returns Err(PfcpError::MissingMandatoryIe { .. })
 
+    let _ = pdr;
     Ok(())
 }
 
 // Handle validation errors
 match build_pdr() {
     Ok(()) => println!("PDR created"),
-    Err(PfcpError::ValidationError { builder, field, reason }) => {
-        eprintln!("{} validation failed: {} - {}", builder, field, reason);
+    Err(PfcpError::MissingMandatoryIe { ie_type, .. }) => {
+        eprintln!("missing mandatory IE: {:?}", ie_type);
     }
     Err(e) => eprintln!("Unexpected error: {}", e),
 }
@@ -495,6 +499,6 @@ assert!(matches!(pfcp_err, PfcpError::IoError { .. }));
 
 ---
 
-**Last Updated**: 2026-02-03
-**Architecture Version**: 0.3.0
+**Last Updated**: 2026-08-15
+**Architecture Version**: 0.5.0
 **Specification**: 3GPP TS 29.244 Release 18
