@@ -77,7 +77,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-pfcp = "0.4.0"
+rs-pfcp = "0.5.0"
 ```
 
 ### Basic Usage
@@ -85,6 +85,7 @@ rs-pfcp = "0.4.0"
 ```rust
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
 use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+use rs_pfcp::message::MsgType;
 use std::net::Ipv4Addr;
 
 // Create a session establishment request with ergonomic builders
@@ -104,7 +105,7 @@ match parsed_msg.msg_type() {
     MsgType::SessionEstablishmentRequest => {
         // Handle session establishment
         println!("Received session establishment for SEID: {:016x}",
-                 parsed_msg.seid().unwrap_or(0));
+                 parsed_msg.seid().map(|s| s.value()).unwrap_or(0));
 
         // Create response with convenience methods
         let response_bytes = SessionEstablishmentResponseBuilder::accepted(seid, sequence)
@@ -139,13 +140,13 @@ if result.is_match {
 // Semantic comparison with timestamp tolerance
 let result = MessageComparator::new(&msg1, &msg2)
     .semantic_mode()                    // Compare F-TEID, UE IP by meaning
-    .timestamp_tolerance(5)              // 5 second tolerance
+    .timestamp_tolerance_secs(5)         // 5 second tolerance
     .ignore_sequence()
     .compare()?;
 
 // Generate detailed diff
 let result = MessageComparator::new(&msg1, &msg2)
-    .generate_diff(true)
+    .with_detailed_diff()
     .compare()?;
 
 if let Some(diff) = result.diff {
@@ -165,8 +166,8 @@ if let Some(diff) = result.diff {
 The library includes comprehensive examples for real-world scenarios:
 
 ```bash
-# Run PFCP heartbeat server
-cargo run --example heartbeat-server -- --interface lo --port 8805
+# Run PFCP heartbeat server (listens on 127.0.0.1:8805)
+cargo run --example heartbeat-server
 
 # Run session client connecting to UPF
 cargo run --example session-client -- --address 127.0.0.1 --sessions 5
@@ -242,10 +243,10 @@ rs-pfcp/
 
 ## 🔒 API Stability
 
-rs-pfcp is currently **pre-1.0** (version 0.3.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
+rs-pfcp is currently **pre-1.0** (version 0.5.x), meaning the API may change between minor versions. We follow [Semantic Versioning](https://semver.org/) and document all breaking changes in the [CHANGELOG](CHANGELOG.md).
 
 **Current Status:**
-- **Version**: 0.3.1
+- **Version**: 0.5.0
 - **MSRV**: Rust 1.87.0
 - **Spec Compliance**: 3GPP TS 29.244 Release 18
 - **Stability**: Pre-1.0 (API evolving)
@@ -304,7 +305,7 @@ cargo run --example session-client -- --address 127.0.0.1 --sessions 3
 cargo run --example pcap-reader -- --pcap captured.pcap --format json --pfcp-only
 
 # Benchmark performance
-cargo test --release -- --ignored bench_
+cargo bench
 ```
 
 ### Cross-Language Interoperability Testing
