@@ -124,7 +124,7 @@ Compares functional meaning, not byte encoding:
 ```rust
 let result = MessageComparator::new(&msg1, &msg2)
     .semantic_mode()
-    .timestamp_tolerance(5)  // 5 second tolerance
+    .timestamp_tolerance_secs(5)  // 5 second tolerance
     .compare()?;
 ```
 
@@ -146,7 +146,7 @@ For compliance checking with timing tolerance:
 ```rust
 let result = MessageComparator::new(&msg1, &msg2)
     .audit_mode()
-    .timestamp_tolerance(10)  // 10 second tolerance
+    .timestamp_tolerance_secs(10)  // 10 second tolerance
     .compare()?;
 ```
 
@@ -225,7 +225,7 @@ Timestamps can be compared with a configurable tolerance window:
 ```rust
 let result = MessageComparator::new(&msg1, &msg2)
     .semantic_comparison_for(IeType::RecoveryTimeStamp)
-    .timestamp_tolerance(5)  // 5 seconds
+    .timestamp_tolerance_secs(5)  // 5 seconds
     .compare()?;
 ```
 
@@ -246,11 +246,11 @@ let time1 = SystemTime::now();
 let time2 = time1 + Duration::from_secs(3);
 
 // With 5 second tolerance: MATCH
-let result = comparator.timestamp_tolerance(5).compare()?;
+let result = comparator.timestamp_tolerance_secs(5).compare()?;
 assert!(result.is_match);
 
 // With 2 second tolerance: MISMATCH
-let result = comparator.timestamp_tolerance(2).compare()?;
+let result = comparator.timestamp_tolerance_secs(2).compare()?;
 assert!(!result.is_match);
 ```
 
@@ -396,6 +396,15 @@ for mismatch in &result.ie_mismatches {
         MismatchReason::SemanticMismatch { details } => {
             println!("  Semantic mismatch: {}", details);
         }
+        MismatchReason::MissingInRight => {
+            println!("  IE present in left message only");
+        }
+        MismatchReason::MissingInLeft => {
+            println!("  IE present in right message only");
+        }
+        MismatchReason::GroupedIeMismatch { child_mismatches, .. } => {
+            println!("  Grouped IE has {} mismatched children", child_mismatches);
+        }
     }
 
     // Access payloads if included
@@ -411,7 +420,7 @@ Generate detailed YAML-formatted diffs:
 
 ```rust
 let result = MessageComparator::new(&msg1, &msg2)
-    .generate_diff(true)
+    .with_detailed_diff()
     .include_payload_in_diff(true)  // Include hex dumps
     .compare()?;
 
@@ -421,10 +430,10 @@ if let Some(diff) = result.diff {
     // Or iterate differences
     for difference in &diff.differences {
         match difference {
-            Difference::HeaderField { field, left, right } => {
-                println!("Header {}: {} -> {}", field, left, right);
+            Difference::HeaderField { field, left_value, right_value } => {
+                println!("Header {:?}: {} -> {}", field, left_value, right_value);
             }
-            Difference::IeValue { ie_type, left_hex, right_hex } => {
+            Difference::IeValue { ie_type, left_hex, right_hex, .. } => {
                 println!("IE {:?} differs:", ie_type);
                 println!("  Left:  {}", left_hex);
                 println!("  Right: {}", right_hex);
@@ -453,21 +462,25 @@ println!("{}", result.summary());
 
 ```rust
 #[test]
-fn test_session_establishment_round_trip() {
-    let original = SessionEstablishmentRequestBuilder::new(seid, seq)
+fn test_session_establishment_round_trip() -> Result<(), Box<dyn std::error::Error>> {
+    // Message builders marshal straight to bytes, so parse once to get the
+    // typed "original" to compare against the re-parsed "round-tripped" copy.
+    let bytes = SessionEstablishmentRequestBuilder::new(seid, seq)
         .node_id(node_id)
-        .fseid(fseid, ip)
-        .create_pdrs(pdrs)
-        .build();
+        .fseid(seid, ip)
+        .add_pdr(pdr)
+        .marshal()?;
+    let original = SessionEstablishmentRequest::unmarshal(&bytes)?;
 
-    let bytes = original.marshal();
-    let parsed = SessionEstablishmentRequest::unmarshal(&bytes)?;
+    let reparsed_bytes = original.marshal();
+    let parsed = SessionEstablishmentRequest::unmarshal(&reparsed_bytes)?;
 
     let result = MessageComparator::new(&original, &parsed)
-        .test_mode()  // Ignore sequence/timestamps
+        .test_mode() // Ignore sequence/timestamps
         .compare()?;
 
     assert!(result.is_match, "Round trip should preserve all data");
+    Ok(())
 }
 ```
 
@@ -517,7 +530,7 @@ fn validate_captured_traffic(pcap_file: &str) {
     for (captured, expected) in messages.iter().zip(expected_messages.iter()) {
         let result = MessageComparator::new(captured, expected)
             .audit_mode()
-            .timestamp_tolerance(10)  // 10 second tolerance for captures
+            .timestamp_tolerance_secs(10)  // 10 second tolerance for captures
             .ignore_sequence()  // Sequence varies in live traffic
             .compare()?;
 
@@ -545,7 +558,7 @@ fn test_no_regression_in_message_format() {
     if !result.is_match {
         // Generate detailed report for investigation
         let result_with_diff = MessageComparator::new(&current_msg, &baseline_msg)
-            .generate_diff(true)
+            .with_detailed_diff()
             .compare()?;
 
         panic!("Regression detected:\n{}", result_with_diff.diff.unwrap());
@@ -561,7 +574,7 @@ For performance with large messages:
 
 ```rust
 let result = MessageComparator::new(&msg1, &msg2)
-    .max_reported_differences(10)  // Stop after 10 differences
+    .max_differences(10)  // Stop after 10 differences
     .compare()?;
 ```
 
@@ -595,7 +608,7 @@ Generate just the diff:
 
 ```rust
 let diff = MessageComparator::new(&msg1, &msg2)
-    .generate_diff(true)
+    .with_detailed_diff()
     .diff()?;
 
 println!("{}", diff);
@@ -631,7 +644,7 @@ println!("{}", diff);
 
 5. **Generate a diff** to see exact differences:
    ```rust
-   .generate_diff(true).diff()?
+   .with_detailed_diff().diff()?
    ```
 
 ### Too Many Differences Reported
@@ -652,7 +665,7 @@ println!("{}", diff);
 
 3. **Limit reported differences**:
    ```rust
-   .max_reported_differences(5)
+   .max_differences(5)
    ```
 
 ### Semantic Comparison Not Working
@@ -672,7 +685,7 @@ println!("{}", diff);
 
 3. **Timestamp tolerance is set** (for timestamp IEs):
    ```rust
-   .timestamp_tolerance(5)
+   .timestamp_tolerance_secs(5)
    ```
 
 ### Performance Issues
@@ -686,14 +699,12 @@ println!("{}", diff);
    if comparator.matches()? { ... }
    ```
 
-2. **Disable diff generation**:
-   ```rust
-   .generate_diff(false)  // Default
-   ```
+2. **Skip diff generation**: simply don't call `.with_detailed_diff()` — it's opt-in and off
+   by default, so leaving it out is the fast path.
 
 3. **Limit differences**:
    ```rust
-   .max_reported_differences(10)
+   .max_differences(10)
    ```
 
 4. **Disable payload in diffs**:

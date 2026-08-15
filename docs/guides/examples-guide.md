@@ -11,7 +11,7 @@ This comprehensive guide walks you through all the working examples in the rs-pf
 | **[PCAP Reader](#traffic-analysis-example)** | Protocol traffic analysis | 🟡 Intermediate | Network debugging |
 | **[Session Report Demo](#session-reporting-demo)** | Usage reporting workflow | 🔴 Advanced | Quota management |
 | **[PDN Type Examples](#pdn-type-examples)** | Data network configuration | 🟢 Basic | Connection type handling |
-| **[Header Length Test](#header-length-test)** | Protocol compliance testing | 🟢 Basic | Development/testing |
+| **[Additional Examples](#additional-examples)** | Comparison, Ethernet, usage reporting, error handling | 🟡 Varies | Feature-specific demos |
 
 ## 🚀 Getting Started
 
@@ -60,17 +60,13 @@ ip link show
 
 **Usage**:
 ```bash
-# Start server on localhost:8805
+# This example takes no CLI flags — it always binds 127.0.0.1:8805
 cargo run --example heartbeat-server
-
-# Start server on specific interface and port
-cargo run --example heartbeat-server -- --interface eth0 --port 8806
 ```
 
 **Key Features**:
-- Multi-interface support with automatic IP detection
 - Recovery timestamp management
-- Graceful error handling
+- Graceful error handling on undecodable messages
 
 ### Heartbeat Client
 
@@ -274,13 +270,14 @@ Packet 1:
 
 **Purpose**: Complete end-to-end demonstration of quota management and usage reporting
 
-### The Complete Demo
+For a detailed narrative walkthrough (what each message means and why), see the
+[Session Report Demo guide](session-report-demo.md). The runnable pieces are the
+`session-server`/`session-client` example pair plus `pcap-reader`, run manually:
 
 **Files**:
-- Script: `examples/test_session_report.sh`
-- Documentation: `examples/SESSION_REPORT_DEMO.md`
 - Server: `examples/session-server/main.rs`
 - Client: `examples/session-client/main.rs`
+- Traffic analyzer: `examples/pcap-reader/main.rs`
 
 **What it demonstrates**:
 - Complete session establishment
@@ -289,48 +286,36 @@ Packet 1:
 - Report acknowledgment (SMF → UPF)
 - Real-time packet capture and analysis
 
-**Usage**:
+**Usage** (manual, three terminals — verified working end to end):
+
 ```bash
-# Run complete demo with packet capture
-cd examples
-./test_session_report.sh
-
-# Use specific interface
-./test_session_report.sh eth0
-
-# Manual step-by-step execution:
-# Terminal 1: Start server
+# Terminal 1: Start the server
 cargo run --example session-server -- --interface lo --port 8805
 
-# Terminal 2: Start packet capture (optional)
-tcpdump -i lo -w session_demo.pcap udp
+# Terminal 2 (optional): Start packet capture
+sudo tcpdump -i lo -w session_demo.pcap udp port 8805
 
-# Terminal 3: Run client
+# Terminal 3: Run the client
 cargo run --example session-client -- --sessions 1
 
-# Terminal 4: Analyze captured traffic
-cargo run --example pcap-reader -- --pcap session_demo.pcap --pfcp-only
+# After the run, analyze the capture (if you ran tcpdump)
+cargo run --example pcap-reader -- --pcap session_demo.pcap --format yaml --pfcp-only
 ```
 
 **Demo Flow**:
-1. **Setup**: Start packet capture and server
-2. **Association**: Client establishes PFCP association
-3. **Session Creation**: Client creates session with PDR/FAR rules
-4. **Quota Simulation**: Server simulates data usage and quota exhaustion
-5. **Usage Reporting**: Server sends Session Report Request with volume threshold trigger
-6. **Acknowledgment**: Client responds with Session Report Response
-7. **Analysis**: Captured packets are analyzed and displayed
-
-**Expected Files Generated**:
-- `session_report_TIMESTAMP.pcap`: Raw packet capture
-- `session_report_TIMESTAMP_analysis.yaml`: Parsed PFCP messages
+1. **Association**: Client establishes a PFCP association with the server
+2. **Session Creation**: Client creates a session with uplink/downlink PDR/FAR/QER rules
+3. **Quota Simulation**: Server simulates quota exhaustion a few seconds in
+4. **Usage Reporting**: Server sends a Session Report Request (Usage Report, quota exhausted)
+5. **Acknowledgment**: Client responds with a Session Report Response
+6. **Modification & Deletion**: Client modifies then deletes the session; server acknowledges each
 
 **Real-World Application**:
 This demonstrates the critical 5G network flow where:
 - UPF monitors user data consumption against quotas
 - UPF reports quota exhaustion to SMF
 - SMF can grant additional quota, apply policies, or terminate sessions
-- All communication is captured for audit and troubleshooting
+- All communication can be captured for audit and troubleshooting
 
 ---
 
@@ -353,12 +338,17 @@ cargo run --example pdn-type-simple
 
 **Example Output**:
 ```
-PDN Type Examples:
-  IPv4: [0x01]
-  IPv6: [0x02]
-  IPv4v6: [0x03]
-  Non-IP: [0x04]
-  Ethernet: [0x05]
+🚀 PDN Type IE Integration Demo - Simplified Version
+Demonstrating PDN Type IE integration in PFCP messages
+
+1. 📋 PDN Type IE Examples:
+   • IPv4: Type=1, Supports IPv4=true, IP-based=true
+   • IPv4v6 (Dual Stack): Type=3, Supports IPv4=true, IP-based=true
+   • Non-IP (IoT): Type=4, Supports IPv4=false, IP-based=false
+
+2. ✅ Session Modification Response with PDN Type IE:
+   📤 SessionModificationResponse created successfully
+   🔍 PDN Type IE present: true
 ```
 
 ### PDN Type Demo
@@ -381,26 +371,19 @@ cargo run --example pdn-type-demo
 
 ---
 
-## 🔍 Header Length Test
+## 📦 Additional Examples
 
-**Location**: `examples/header-length-test/main.rs`
+A few more self-contained demos, none of which take CLI flags:
 
-**Purpose**: Validate PFCP header length calculations and protocol compliance
-
-**What it does**:
-- Tests header length calculations for different message types
-- Validates SEID presence/absence handling
-- Ensures protocol compliance with 3GPP TS 29.244
-
-**Usage**:
-```bash
-cargo run --example header-length-test
-```
-
-**Use Cases**:
-- Development testing
-- Protocol compliance verification
-- Regression testing
+| Example | What it shows |
+|---------|----------------|
+| `cargo run --example message-comparison [roundtrip\|semantic\|timestamp\|validation\|diff]` | The `comparison` module's modes — omit the argument to run all demos |
+| `cargo run --example ethernet-session-demo` | Ethernet PDU session construction (10 Ethernet-related IEs) |
+| `cargo run --example usage_report_demo` | Building and interpreting `UsageReport` IEs |
+| `cargo run --example usage_report_quota_demo` | Quota-triggered usage reporting end to end |
+| `cargo run --example error-handling-demo` | `PfcpError` variants and idiomatic handling patterns |
+| `cargo run --example fixed-access-demo` | Fixed (non-3GPP) access PDU session handling |
+| `cargo run --example comprehensive_pfcp_features` | A broad tour across many IE/message features in one program |
 
 ---
 
@@ -426,12 +409,17 @@ sleep 2
 cargo run --example session-client -- --sessions 3
 kill $SERVER_PID
 
-# 4. Run comprehensive demo
-cd examples
-./test_session_report.sh lo
+# 4. Capture and analyze a session lifecycle (see Session Reporting Demo above)
+sudo tcpdump -i lo -w session_demo.pcap udp port 8805 &
+TCPDUMP_PID=$!
+cargo run --example session-server -- --interface lo &
+SERVER_PID=$!
+sleep 1
+cargo run --example session-client -- --sessions 1
+kill $SERVER_PID $TCPDUMP_PID
 
-# 5. Analyze generated traffic
-cargo run --example pcap-reader -- --pcap session_report_*.pcap --pfcp-only
+# 5. Analyze the captured traffic
+cargo run --example pcap-reader -- --pcap session_demo.pcap --format yaml --pfcp-only
 ```
 
 ### Network Debugging Workflow
@@ -447,11 +435,13 @@ your-pfcp-application
 # 3. Stop capture
 kill $TCPDUMP_PID
 
-# 4. Analyze with rs-pfcp
-cargo run --example pcap-reader -- --pcap pfcp_debug.pcap --pfcp-only --format json > analysis.json
+# 4. Analyze with rs-pfcp (or use --format yaml for direct reading, no jq needed)
+cargo run --example pcap-reader -- --pcap pfcp_debug.pcap --pfcp-only --format json > raw_output.txt
 
-# 5. Review results
-cat analysis.json | jq '.[] | select(.message_type == "SessionEstablishmentRequest")'
+# 5. Extract the per-packet JSON objects (see "Message Analysis" below for why this is
+#    needed — the raw output interleaves log lines with JSON) and review results
+awk '/^--- PFCP Message \(JSON\) ---$/{flag=1; next} flag{print; if ($0 ~ /^\{/) depth++; if ($0 ~ /^\}/) {depth--; if (depth==0) flag=0}}' raw_output.txt \
+  | jq -s '.[] | select(.message_type == "SessionEstablishmentRequest")'
 ```
 
 ### Performance Testing
@@ -514,26 +504,34 @@ tshark -i lo -w capture.pcap -f 'udp port 8805'
 
 ### Debug Output
 
-Enable verbose logging:
-```bash
-# Set Rust logging level
-RUST_LOG=debug cargo run --example session-client -- --sessions 1
+These examples print with plain `println!` (no `log`/`env_logger` crate, so `RUST_LOG` has
+no effect). `session-server` takes a `--verbose` flag that dumps every message as YAML/JSON:
 
-# Enable all logs
-RUST_LOG=trace cargo run --example session-server
+```bash
+cargo run --example session-server -- --interface lo --verbose
 ```
 
 ### Message Analysis
 
+`pcap-reader`'s output interleaves human-readable log lines (`Packet N: ...`, raw hex dumps)
+with a `--- PFCP Message (JSON) ---`-prefixed JSON object per packet — it is **not** a single
+JSON array, so piping straight into `jq '.[...]'` will fail on the log lines. Extract the
+JSON objects first, then slurp them into an array:
+
 ```bash
-# Get detailed message breakdown
-cargo run --example pcap-reader -- --pcap file.pcap --format json | jq '.[0].information_elements'
+# Extract just the per-packet JSON blocks, then slurp into an array for jq
+cargo run --example pcap-reader -- --pcap file.pcap --format json --pfcp-only 2>/dev/null \
+  | awk '/^--- PFCP Message \(JSON\) ---$/{flag=1; next} flag{print; if ($0 ~ /^\{/) depth++; if ($0 ~ /^\}/) {depth--; if (depth==0) flag=0}}' \
+  > messages.json
+
+# Get detailed message breakdown for the first message
+jq -s '.[0].information_elements' messages.json
 
 # Count message types
-cargo run --example pcap-reader -- --pcap file.pcap --format json | jq '.[].message_type' | sort | uniq -c
+jq -s '.[].message_type' messages.json | sort | uniq -c
 
-# Find specific sessions
-cargo run --example pcap-reader -- --pcap file.pcap --format json | jq '.[] | select(.session_id == "0x123456789abcdef0")'
+# Find a specific session by SEID
+jq -s '.[] | select(.seid == "0x123456789abcdef0")' messages.json
 ```
 
 ---

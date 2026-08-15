@@ -15,7 +15,8 @@ Step-by-step tutorials and practical guides:
 - **[Cookbook](guides/cookbook.md)** ⭐ - Copy-paste recipes for common tasks
 - **[Troubleshooting](guides/troubleshooting.md)** ⭐ - Debug common issues
 - **[Benchmarking Guide](guides/benchmarking.md)** ⭐ - Performance testing and optimization
-- **[Coverage Guide](guides/coverage.md)** ⭐ - Code coverage analysis (67.64% current)
+- **[Coverage Guide](guides/coverage.md)** ⭐ - Code coverage analysis
+- **[Builder Guide](guides/builder-guide.md)** - Builder pattern usage across IEs and messages
 - **[API Guide](guides/api-guide.md)** - Comprehensive API reference and usage patterns
 - **[Comparison Guide](guides/comparison-guide.md)** - Message comparison, testing, and validation
 - **[Deployment Guide](guides/deployment-guide.md)** - Production deployment strategies
@@ -28,6 +29,8 @@ Technical reference documentation:
 - **[Messages](reference/messages.md)** - PFCP message types and usage patterns
 - **[3GPP Compliance](reference/3gpp-compliance.md)** - 3GPP TS 29.244 Release 18 compliance verification
 - **[IE Compliance](reference/ie-compliance.md)** - Detailed Information Element compliance report
+- **[API Stability](API-STABILITY.md)** - Semantic versioning guarantees and version roadmap
+- **[Coverage Report](COVERAGE.md)** - Current test coverage snapshot
 
 ### For Developers
 
@@ -48,7 +51,7 @@ Deep dives into library architecture:
 - **[Builder Patterns](architecture/builder-patterns.md)** - Comprehensive builder pattern guide
 - **[Error Handling](architecture/error-handling.md)** - Error philosophy, validation, and recovery
 - **[Security Architecture](architecture/security.md)** - Security design and threat mitigation
-- **[Testing Strategy](architecture/testing-strategy.md)** - 898+ tests across 6 testing layers
+- **[Testing Strategy](architecture/testing-strategy.md)** - 3,400+ tests across 6 testing layers
 - **[Performance](architecture/performance.md)** - Zero-copy design and optimization techniques
 - **[Extension Points](architecture/extension-points.md)** - Vendor IEs, custom messages, and handlers
 
@@ -129,27 +132,27 @@ Documentation improvements are always welcome! When contributing:
 
 | Category | Documents | Status |
 |----------|-----------|--------|
-| User Guides | 10 | ✅ Complete |
+| User Guides | 11 | ✅ Complete |
 | Reference | 4 | ✅ Complete |
 | Development | 1 | 🔄 Growing |
 | Architecture | 10 | ✅ Complete |
-| Analysis | 5 | ✅ Archived |
+| Analysis | 6 | ✅ Archived |
 
 ### Architecture Documentation Coverage
-- ✅ System overview and design principles
+- ✅ System overview and design principles (408 lines)
 - ✅ Message layer architecture (691 lines)
-- ✅ Information Element layer (1,019 lines)
-- ✅ Binary protocol specification (449 lines)
-- ✅ Builder pattern philosophy (467 lines)
-- ✅ Error handling architecture (875 lines)
-- ✅ Security architecture (389 lines)
+- ✅ Information Element layer (1,006 lines)
+- ✅ Binary protocol specification (535 lines)
+- ✅ Builder pattern philosophy (509 lines)
+- ✅ Error handling architecture (500 lines)
+- ✅ Security architecture (432 lines)
 - ✅ Testing strategy (795 lines)
-- ✅ Performance optimization (751 lines)
-- ✅ Extension points (890 lines)
+- ✅ Performance optimization (761 lines)
+- ✅ Extension points (900 lines)
 
-**Total**: 6,325 lines of comprehensive architecture documentation
+**Total**: 6,537 lines of comprehensive architecture documentation
 
 ---
 
-**Last Updated**: 2025-10-30
-**Version**: 0.1.6 (unreleased)
+**Last Updated**: 2026-08-15
+**Version**: 0.5.0

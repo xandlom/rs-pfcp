@@ -9,10 +9,10 @@ rs-pfcp follows [Semantic Versioning 2.0.0](https://semver.org/):
 - **MINOR** (x.0.x → x.1.x): New features, backward compatible
 - **PATCH** (x.x.0 → x.x.1): Bug fixes, backward compatible
 
-### Pre-1.0 Status (Current: v0.1.x)
+### Pre-1.0 Status (Current: v0.5.x)
 
 ⚠️ **rs-pfcp is currently pre-1.0**, meaning:
-- Breaking changes MAY occur in minor versions (0.1.x → 0.2.x)
+- Breaking changes MAY occur in minor versions (0.x.x → 0.y.x)
 - We will document all breaking changes in CHANGELOG
 - We aim to minimize breaking changes even in 0.x versions
 - Once stable, we will release 1.0.0 with stability guarantees
@@ -25,15 +25,18 @@ rs-pfcp follows [Semantic Versioning 2.0.0](https://semver.org/):
 
 #### Core Traits
 ```rust
-// Message trait and its methods
-pub trait Message {
+// Message trait and its methods (Send + Sync since v0.3.x)
+pub trait Message: Send + Sync {
     fn marshal(&self) -> Vec<u8>;
-    fn unmarshal(data: &[u8]) -> Result<Self, io::Error>;
+    fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> where Self: Sized;
     fn msg_type(&self) -> MsgType;
-    fn seid(&self) -> Option<u64>;
-    fn sequence(&self) -> u32;
+    fn seid(&self) -> Option<Seid>;
+    fn sequence(&self) -> SequenceNumber;
     fn ies(&self, ie_type: IeType) -> IeIter<'_>;
 }
+
+// Free-standing dispatch parser: inspects the header and returns the right type
+fn parse(data: &[u8]) -> Result<Box<dyn Message>, PfcpError>;
 ```
 
 #### Public Enums
@@ -49,7 +52,7 @@ pub enum CauseValue { ... }
 // Builder patterns are stable
 SessionEstablishmentRequestBuilder::new(seid, seq)
     .node_id(ip)
-    .build()
+    .marshal()?
 ```
 
 #### IE Constructors
@@ -131,7 +134,7 @@ Currently, rs-pfcp has no feature flags. If added in the future:
 
 ## Minimum Supported Rust Version (MSRV)
 
-**Current MSRV: 1.90.0**
+**Current MSRV: 1.87.0**
 
 ### MSRV Policy
 
@@ -169,7 +172,7 @@ Once we reach 1.0.0:
 // Use builder patterns
 let request = SessionEstablishmentRequestBuilder::new(seid, seq)
     .node_id(ip)
-    .build()?;
+    .marshal()?;
 
 // Use trait methods
 let msg_type = request.msg_type();
@@ -205,30 +208,27 @@ match msg_type {
 
 ## Version Roadmap
 
-### Version 0.2.0 (Planned)
+### Shipped Breaking-Change Releases
 
-**Status**: In Development
-
-**Breaking Changes**:
-- Private struct fields (improved encapsulation)
-- Custom error type `PfcpError` (better error handling)
-- Unified IE access patterns (consistency improvements)
-
-**Timeline**: Q1 2025
-
-See [MIGRATION-0.2.md](MIGRATION-0.2.md) for detailed upgrade guide when released.
+- **v0.2.0** — Private struct fields, `PfcpError` custom error type, unified IE access
+  patterns. See [analysis/MIGRATION-0.2.md](analysis/MIGRATION-0.2.md) (historical).
+- **v0.3.0** — `Result<T, PfcpError>` everywhere (was `io::Error`); type-safe `Seid`/
+  `SequenceNumber`/`Teid` newtypes; removed deprecated `find_ie()`/`find_all_ies()` in favor
+  of `ies()`. See [analysis/v0.3.0-migration.md](analysis/v0.3.0-migration.md) (historical).
+- **v0.5.0** — Full 3GPP TS 29.244 Release 18 IE coverage reached (354/354). See
+  [CHANGELOG.md](../CHANGELOG.md) for the complete list of releases and fixes.
 
 ### Version 1.0.0 (Future)
 
 **Requirements for 1.0:**
+- [x] Full 3GPP TS 29.244 R18 coverage (all mandatory IEs) — reached in v0.5.0
 - [ ] API stabilized (no more breaking changes expected)
-- [ ] Full 3GPP TS 29.244 R18 coverage (all mandatory IEs)
 - [ ] Production usage validation
 - [ ] Comprehensive documentation
 - [ ] Performance benchmarks baseline
 - [ ] Security audit complete
 
-**Timeline**: TBD (after 0.2.0 stabilization period)
+**Timeline**: TBD
 
 ## Support Policy
 
@@ -239,9 +239,9 @@ See [MIGRATION-0.2.md](MIGRATION-0.2.md) for detailed upgrade guide when release
 - **Older versions**: Best effort, no guarantees
 
 Example:
-- Current: 0.2.x (full support)
-- Previous: 0.1.x (security fixes)
-- Older: 0.0.x (unsupported)
+- Current: 0.5.x (full support)
+- Previous: 0.4.x (security fixes)
+- Older: 0.3.x and earlier (unsupported)
 
 ## Questions & Contact
 

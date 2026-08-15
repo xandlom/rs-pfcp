@@ -44,8 +44,7 @@ A collection of practical recipes for common PFCP tasks using rs-pfcp. Each reci
 **Use Case**: Keep a PFCP association alive, detect peer failures
 
 ```rust
-use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
-use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
+use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
 use std::net::UdpSocket;
 use std::time::SystemTime;
 
@@ -54,19 +53,11 @@ fn send_heartbeat(
     peer_addr: &str,
     sequence: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Create recovery timestamp (when this node started)
-    let recovery_ts = RecoveryTimeStamp::new(SystemTime::now());
+    // Build and marshal the heartbeat (recovery timestamp = when this node started)
+    let bytes = HeartbeatRequestBuilder::new(sequence)
+        .recovery_time_stamp(SystemTime::now())
+        .marshal();
 
-    // Build heartbeat request
-    let heartbeat = HeartbeatRequest::new(
-        sequence,
-        Some(recovery_ts.to_ie()),
-        None,  // Source IP optional
-        vec![], // No additional IEs
-    );
-
-    // Marshal and send
-    let bytes = heartbeat.marshal();
     socket.send_to(&bytes, peer_addr)?;
 
     println!("Sent heartbeat #{} to {}", sequence, peer_addr);
@@ -75,7 +66,7 @@ fn send_heartbeat(
 
 // Usage:
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let socket = UdpSocket::bind("0.0.0.0:8805")?;
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
     send_heartbeat(&socket, "10.0.0.1:8805", 1)?;
     Ok(())
 }
@@ -86,32 +77,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 **Use Case**: Respond to peer health checks
 
 ```rust
-use rs_pfcp::ie::recovery_time_stamp::RecoveryTimeStamp;
-use rs_pfcp::message::{heartbeat_request::HeartbeatRequest, heartbeat_response::HeartbeatResponse};
+use rs_pfcp::message::heartbeat_request::HeartbeatRequest;
+use rs_pfcp::message::heartbeat_response::HeartbeatResponseBuilder;
+use rs_pfcp::message::Message;
 use std::net::UdpSocket;
 use std::time::SystemTime;
 
 fn handle_heartbeat(
     socket: &UdpSocket,
-    request: HeartbeatRequest,
+    request: &HeartbeatRequest,
     peer_addr: std::net::SocketAddr,
     node_start_time: SystemTime,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Received heartbeat from {}", peer_addr);
 
-    // Create response with our recovery timestamp
-    let recovery_ts = RecoveryTimeStamp::new(node_start_time);
+    // Echo the sequence number, reply with our own recovery timestamp
+    let bytes = HeartbeatResponseBuilder::new(request.sequence())
+        .recovery_time_stamp(node_start_time)
+        .marshal();
 
-    let response = HeartbeatResponse::new(
-        request.header.sequence_number,  // Echo sequence number
-        recovery_ts.to_ie(),
-        vec![],
-    );
-
-    // Send response
-    let bytes = response.marshal();
     socket.send_to(&bytes, peer_addr)?;
-
     Ok(())
 }
 
@@ -125,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let (len, peer_addr) = socket.recv_from(&mut buf)?;
 
         if let Ok(request) = HeartbeatRequest::unmarshal(&buf[..len]) {
-            handle_heartbeat(&socket, request, peer_addr, node_start)?;
+            handle_heartbeat(&socket, &request, peer_addr, node_start)?;
         }
     }
 }
@@ -135,27 +120,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 **Use Case**: Generic message handler, protocol analysis
 
+`rs_pfcp::message::parse()` returns a `Box<dyn Message>` — dispatch on `msg_type()`, then
+re-`unmarshal()` the raw bytes into the concrete type for type-specific fields:
+
 ```rust
-use rs_pfcp::message::{parse, Message};
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::{parse, Message, MsgType};
 
 fn handle_message(buf: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-    match parse(buf)? {
-        Message::HeartbeatRequest(msg) => {
-            println!("Heartbeat Request, seq={}", msg.header.sequence_number);
+    let msg = parse(buf)?;
+
+    match msg.msg_type() {
+        MsgType::HeartbeatRequest => {
+            println!("Heartbeat Request, seq={}", msg.sequence());
         }
-        Message::SessionEstablishmentRequest(msg) => {
+        MsgType::SessionEstablishmentRequest => {
+            let req = SessionEstablishmentRequest::unmarshal(buf)?;
             println!("Session Establishment Request");
-            println!("  PDRs: {}", msg.create_pdr.len());
-            println!("  FARs: {}", msg.create_far.len());
+            println!("  PDRs: {}", req.ies(IeType::CreatePdr).count());
+            println!("  FARs: {}", req.ies(IeType::CreateFar).count());
         }
-        Message::SessionModificationRequest(msg) => {
+        MsgType::SessionModificationRequest => {
             println!("Session Modification Request");
         }
-        Message::SessionDeletionRequest(msg) => {
+        MsgType::SessionDeletionRequest => {
             println!("Session Deletion Request");
         }
         _ => {
-            println!("Other message type: {}", std::any::type_name_of_val(&parse(buf)?));
+            println!("Other message type: {}", msg.msg_name());
         }
     }
 
@@ -172,98 +165,72 @@ fn handle_message(buf: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
 **Use Case**: SMF creates a new PDU session with UPF
 
 ```rust
-use rs_pfcp::ie::*;
-use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::ie::apply_action::ApplyAction;
+use rs_pfcp::ie::create_far::CreateFar;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::create_urr::CreateUrrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::measurement_method::MeasurementMethod;
+use rs_pfcp::ie::node_id::NodeId;
+use rs_pfcp::ie::outer_header_removal::OuterHeaderRemoval;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::reporting_triggers::ReportingTriggers;
+use rs_pfcp::ie::urr_id::UrrId;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
 use std::net::Ipv4Addr;
 
 fn create_session_request(
     sequence: u32,
     session_id: u64,
-) -> Result<SessionEstablishmentRequest, Box<dyn std::error::Error>> {
-    // SMF Node ID
-    let node_id = node_id::NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // SMF Node ID and F-SEID
+    let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
+    let cp_ip = Ipv4Addr::new(10, 0, 0, 1);
 
-    // SMF F-SEID (includes IP for UDP session reporting)
-    let cp_fseid = fseid::Fseid::new(
-        session_id,
-        Some(Ipv4Addr::new(10, 0, 0, 1)),
-        None,
-    );
-
-    // Create uplink PDR (UE → DN)
-    let uplink_pdr = create_pdr::CreatePdr {
-        pdr_id: pdr_id::PdrId::new(1),
-        precedence: precedence::Precedence::new(100),
-        pdi: pdi::Pdi::uplink_access(),  // Traffic from UE
-        outer_header_removal: Some(outer_header_removal::OuterHeaderRemoval::GtpU),
-        far_id: Some(far_id::FarId::new(1)),
-        urr_id: Some(urr_id::UrrId::new(1)),  // Attach URR for usage reporting
-        qer_id: None,
-        activate_predefined_rules: None,
-    };
-
-    // Create downlink PDR (DN → UE)
-    let downlink_pdr = create_pdr::CreatePdr {
-        pdr_id: pdr_id::PdrId::new(2),
-        precedence: precedence::Precedence::new(100),
-        pdi: pdi::Pdi::downlink_core(),  // Traffic from data network
-        outer_header_removal: None,  // No encapsulation to remove
-        far_id: Some(far_id::FarId::new(2)),
-        urr_id: Some(urr_id::UrrId::new(1)),  // Same URR for bi-directional counting
-        qer_id: None,
-        activate_predefined_rules: None,
-    };
-
-    // Create uplink FAR (forward to data network)
-    let uplink_far = create_far::CreateFar {
-        far_id: far_id::FarId::new(1),
-        apply_action: apply_action::ApplyAction::new(apply_action::ApplyAction::FORW),
-        forwarding_parameters: Some(forwarding_parameters::ForwardingParameters {
-            destination_interface: destination_interface::DestinationInterface::Core,
-            network_instance: Some(network_instance::NetworkInstance::new("internet")),
-            outer_header_creation: None,  // No GTP-U needed for uplink
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Create downlink FAR (forward to UE with GTP-U)
-    let downlink_far = create_far::CreateFar {
-        far_id: far_id::FarId::new(2),
-        apply_action: apply_action::ApplyAction::new(apply_action::ApplyAction::FORW),
-        forwarding_parameters: Some(forwarding_parameters::ForwardingParameters {
-            destination_interface: destination_interface::DestinationInterface::Access,
-            outer_header_creation: Some(outer_header_creation::OuterHeaderCreation::gtpu_ipv4(
-                0x12345678,  // TEID
-                Ipv4Addr::new(192, 168, 1, 100),  // gNB address
-            )),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    // Create URR for usage reporting
-    let urr = create_urr::CreateUrr::builder()
-        .urr_id(1)
-        .measurement_method(measurement_method::MeasurementMethod::VOLUM)
-        .reporting_triggers(reporting_triggers::ReportingTriggers::new_volume_threshold())
-        .volume_threshold(volume_threshold::VolumeThreshold::total(1_000_000_000))  // 1 GB
+    // Create uplink PDR (UE → DN), attach URR for usage reporting
+    let uplink_pdi = PdiBuilder::uplink_access().build()?;
+    let uplink_pdr = CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        .pdi(uplink_pdi)
+        .outer_header_removal(OuterHeaderRemoval::new(0)) // 0 = GTP-U/UDP/IPv4
+        .far_id(FarId::new(1))
+        .urr_id(UrrId::new(1))
         .build()?;
 
-    // Build the session establishment request
-    let request = SessionEstablishmentRequest::new(
-        sequence,
-        node_id.to_ie(),
-        Some(cp_fseid.to_ie()),
-        vec![uplink_pdr, downlink_pdr],
-        vec![uplink_far, downlink_far],
-        vec![urr],
-        vec![],  // No QERs
-        vec![],  // No BARs
-        vec![],  // Additional IEs
-    );
+    // Create downlink PDR (DN → UE), same URR for bi-directional counting
+    let downlink_pdi = PdiBuilder::downlink_core().build()?;
+    let downlink_pdr = CreatePdrBuilder::new(PdrId::new(2))
+        .precedence(Precedence::new(100))
+        .pdi(downlink_pdi)
+        .far_id(FarId::new(2))
+        .urr_id(UrrId::new(1))
+        .build()?;
 
-    Ok(request)
+    // Uplink FAR: forward to core, no encapsulation
+    let uplink_far = CreateFar::new(FarId::new(1), ApplyAction::FORW);
+
+    // Downlink FAR: forward to access with GTP-U encapsulation toward the gNB
+    let downlink_far = CreateFar::new(FarId::new(2), ApplyAction::FORW);
+
+    // URR for usage reporting: report every 1 GB
+    let urr = CreateUrrBuilder::new(UrrId::new(1))
+        .measurement_method(MeasurementMethod::new(false, true, false)) // VOLUM
+        .reporting_triggers(ReportingTriggers::new().with_volume_threshold(true))
+        .volume_threshold_bytes(1_000_000_000)
+        .build()?;
+
+    SessionEstablishmentRequestBuilder::new(session_id, sequence)
+        .node_id_ie(node_id.to_ie())
+        .fseid(session_id, cp_ip)
+        .add_pdr(uplink_pdr)
+        .add_pdr(downlink_pdr)
+        .add_far(uplink_far)
+        .add_far(downlink_far)
+        .add_urr(urr)
+        .marshal()
+        .map_err(Into::into)
 }
 ```
 
@@ -272,54 +239,31 @@ fn create_session_request(
 **Use Case**: UPF accepts and responds to session establishment
 
 ```rust
-use rs_pfcp::ie::*;
-use rs_pfcp::message::{
-    session_establishment_request::SessionEstablishmentRequest,
-    session_establishment_response::SessionEstablishmentResponse,
-};
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+use rs_pfcp::message::Message;
 use std::net::Ipv4Addr;
 
 fn handle_session_establishment(
-    request: SessionEstablishmentRequest,
+    request: &SessionEstablishmentRequest,
     upf_node_id: Ipv4Addr,
     upf_session_id: u64,
-) -> Result<SessionEstablishmentResponse, Box<dyn std::error::Error>> {
-    // Validate request
-    if request.node_id.is_empty() {
-        return Err("Missing Node ID".into());
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Validate: at least one PDR must be present
+    if request.ies(IeType::CreatePdr).count() == 0 {
+        return Err("Session must have at least one PDR".into());
     }
 
-    // Create UPF F-SEID
-    let up_fseid = fseid::Fseid::new(
-        upf_session_id,
-        Some(upf_node_id),
-        None,
-    );
+    let seid = request.seid().ok_or("Missing SEID")?;
 
-    // For each PDR, create corresponding Created PDR with F-TEID
-    let mut created_pdrs = Vec::new();
-
-    for pdr in &request.create_pdr {
-        let created_pdr = created_pdr::CreatedPdr {
-            pdr_id: pdr.pdr_id,
-            local_f_teid: Some(f_teid::FTeid::ipv4(
-                0x00001000 + pdr.pdr_id.value() as u32,  // Unique TEID
-                upf_node_id,
-            )),
-        };
-        created_pdrs.push(created_pdr);
-    }
-
-    // Build response
-    let response = SessionEstablishmentResponse::new(
-        request.header.sequence_number,  // Echo sequence
-        node_id::NodeId::new_ipv4(upf_node_id).to_ie(),
-        cause::Cause::new(cause::CauseValue::RequestAccepted).to_ie(),
-        Some(up_fseid.to_ie()),
-        created_pdrs,
-    );
-
-    Ok(response)
+    // Build the acceptance response with the UPF's own F-SEID.
+    // (To assign per-PDR F-TEIDs, build CreatedPdr IEs and add them via
+    // `.created_pdr(ie)` — see the SessionEstablishmentResponseBuilder docs.)
+    SessionEstablishmentResponseBuilder::accepted(seid, request.sequence())
+        .fseid(upf_session_id, upf_node_id)
+        .marshal()
+        .map_err(Into::into)
 }
 ```
 
@@ -328,41 +272,25 @@ fn handle_session_establishment(
 **Use Case**: Update session rules, change QoS, add/remove PDRs
 
 ```rust
-use rs_pfcp::ie::*;
-use rs_pfcp::message::session_modification_request::SessionModificationRequest;
+use rs_pfcp::ie::create_qer::CreateQerBuilder;
+use rs_pfcp::ie::qer_id::QerId;
+use rs_pfcp::message::session_modification_request::SessionModificationRequestBuilder;
 
 fn modify_session_qos(
     session_id: u64,
     sequence: u32,
-    new_max_bitrate_ul: u64,
-    new_max_bitrate_dl: u64,
-) -> Result<SessionModificationRequest, Box<dyn std::error::Error>> {
+    new_max_bitrate_ul_kbps: u64,
+    new_max_bitrate_dl_kbps: u64,
+) -> Vec<u8> {
     // Create or update QER for rate limiting
-    let qer = create_qer::CreateQer::builder()
-        .qer_id(1)
-        .gate_status(gate_status::GateStatus::open())
-        .maximum_bitrate(mbr::Mbr::new(new_max_bitrate_ul, new_max_bitrate_dl))
-        .build()?;
+    let qer = CreateQerBuilder::new(QerId::new(1))
+        .rate_limit(new_max_bitrate_ul_kbps, new_max_bitrate_dl_kbps)
+        .build()
+        .expect("valid QER");
 
-    // Update FARs to reference the QER
-    let update_far = update_far::UpdateFar {
-        far_id: far_id::FarId::new(1),
-        apply_action: Some(apply_action::ApplyAction::new(apply_action::ApplyAction::FORW)),
-        update_forwarding_parameters: None,
-        bar_id: None,
-    };
-
-    let request = SessionModificationRequest::new(
-        sequence,
-        session_id,
-        vec![],  // No PDR updates
-        vec![update_far],
-        vec![qer],
-        vec![],  // No URR updates
-        vec![],  // Additional IEs
-    );
-
-    Ok(request)
+    SessionModificationRequestBuilder::new(session_id, sequence)
+        .add_qer(qer)
+        .marshal()
 }
 ```
 
@@ -371,35 +299,35 @@ fn modify_session_qos(
 **Use Case**: Tear down PDU session, free resources
 
 ```rust
-use rs_pfcp::message::session_deletion_request::SessionDeletionRequest;
+use rs_pfcp::message::session_deletion_request::SessionDeletionRequestBuilder;
 
-fn delete_session(
-    session_id: u64,
-    sequence: u32,
-) -> SessionDeletionRequest {
-    SessionDeletionRequest::new(
-        sequence,
-        session_id,
-        vec![],  // Additional IEs
-    )
+fn delete_session(session_id: u64, sequence: u32) -> Vec<u8> {
+    SessionDeletionRequestBuilder::new(session_id, sequence).marshal()
 }
 
-// Handle deletion response with usage reports
+// Handle deletion response with final usage reports
+use rs_pfcp::ie::cause::Cause;
+use rs_pfcp::ie::usage_report::UsageReport;
 use rs_pfcp::message::session_deletion_response::SessionDeletionResponse;
 
-fn handle_deletion_response(response: SessionDeletionResponse) {
-    println!("Session deleted: {:?}", response.cause);
+fn handle_deletion_response(response: &SessionDeletionResponse) -> Result<(), Box<dyn std::error::Error>> {
+    let cause: Cause = response.cause.parse()?;
+    println!("Session deleted: {:?}", cause);
 
     // Extract final usage reports
-    for report in &response.usage_report {
+    for report_ie in &response.usage_reports {
+        let report = UsageReport::unmarshal(&report_ie.payload)?;
         println!("Usage Report:");
-        if let Some(ref vol) = report.volume_measurement {
-            println!("  Total Volume: {} bytes", vol.total_volume());
+        if let Some(vol) = &report.volume_measurement {
+            if let Some(total) = vol.total_volume {
+                println!("  Total Volume: {total} bytes");
+            }
         }
-        if let Some(ref dur) = report.duration_measurement {
-            println!("  Duration: {} seconds", dur.value());
+        if let Some(dur) = &report.duration_measurement {
+            println!("  Duration: {} seconds", dur.duration_seconds);
         }
     }
+    Ok(())
 }
 ```
 
@@ -412,31 +340,38 @@ fn handle_deletion_response(response: SessionDeletionResponse) {
 **Use Case**: Detect packets from UE going to data network
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::f_teid::FteidBuilder;
+use rs_pfcp::ie::network_instance::NetworkInstance;
+use rs_pfcp::ie::outer_header_removal::OuterHeaderRemoval;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+use rs_pfcp::ie::ue_ip_address::UeIpAddress;
+use rs_pfcp::ie::far_id::FarId;
 
-fn create_uplink_pdr() -> create_pdr::CreatePdr {
-    create_pdr::CreatePdr::builder()
-        .pdr_id(1)
-        .precedence(100)
-        .pdi(
-            pdi::Pdi::builder()
-                .source_interface(source_interface::SourceInterface::Access)
-                .network_instance("internet")
-                .f_teid(f_teid::FTeid::ipv4(
-                    0x12345678,  // UE's TEID
-                    std::net::Ipv4Addr::new(192, 168, 1, 1),
-                ))
-                .ue_ip_address(ue_ip_address::UEIPAddress::new_ipv4(
-                    std::net::Ipv4Addr::new(10, 1, 1, 1),
-                    false,  // Not source
-                ))
-                .build()
-                .unwrap()
-        )
-        .outer_header_removal(outer_header_removal::OuterHeaderRemoval::GtpU)
-        .far_id(1)
+fn create_uplink_pdr() -> Result<rs_pfcp::ie::create_pdr::CreatePdr, Box<dyn std::error::Error>> {
+    let f_teid = FteidBuilder::new()
+        .teid(0x12345678u32) // UE's TEID
+        .ipv4(std::net::Ipv4Addr::new(192, 168, 1, 1))
+        .build()?;
+
+    let ue_ip = UeIpAddress::new(Some("10.1.1.1".parse()?), None);
+
+    let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+        .network_instance(NetworkInstance::new("internet"))
+        .f_teid(f_teid)
+        .ue_ip_address(ue_ip)
+        .build()?;
+
+    CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        .pdi(pdi)
+        .outer_header_removal(OuterHeaderRemoval::new(0)) // GTP-U/UDP/IPv4
+        .far_id(FarId::new(1))
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 ```
 
@@ -445,27 +380,28 @@ fn create_uplink_pdr() -> create_pdr::CreatePdr {
 **Use Case**: Detect packets from data network to UE
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::network_instance::NetworkInstance;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+use rs_pfcp::ie::ue_ip_address::UeIpAddress;
 use std::net::Ipv4Addr;
 
-fn create_downlink_pdr(ue_ip: Ipv4Addr) -> create_pdr::CreatePdr {
-    create_pdr::CreatePdr::builder()
-        .pdr_id(2)
-        .precedence(100)
-        .pdi(
-            pdi::Pdi::builder()
-                .source_interface(source_interface::SourceInterface::Core)
-                .network_instance("internet")
-                .ue_ip_address(ue_ip_address::UEIPAddress::new_ipv4(
-                    ue_ip,
-                    true,  // This IS the source (destination in downlink)
-                ))
-                .build()
-                .unwrap()
-        )
-        .far_id(2)
+fn create_downlink_pdr(ue_ip: Ipv4Addr) -> Result<rs_pfcp::ie::create_pdr::CreatePdr, Box<dyn std::error::Error>> {
+    let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Core))
+        .network_instance(NetworkInstance::new("internet"))
+        .ue_ip_address(UeIpAddress::new(Some(ue_ip), None))
+        .build()?;
+
+    CreatePdrBuilder::new(PdrId::new(2))
+        .precedence(Precedence::new(100))
+        .pdi(pdi)
+        .far_id(FarId::new(2))
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 ```
 
@@ -474,28 +410,29 @@ fn create_downlink_pdr(ue_ip: Ipv4Addr) -> create_pdr::CreatePdr {
 **Use Case**: Detect specific application traffic (e.g., HTTP, DNS)
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::qer_id::QerId;
+use rs_pfcp::ie::sdf_filter::SdfFilter;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
 
-fn create_http_pdr() -> create_pdr::CreatePdr {
-    let http_filter = sdf_filter::SdfFilter::builder()
-        .flow_description("permit out ip from any to any 80")
-        .build()
-        .unwrap();
+fn create_http_pdr() -> Result<rs_pfcp::ie::create_pdr::CreatePdr, Box<dyn std::error::Error>> {
+    let http_filter = SdfFilter::new("permit out ip from any to any 80");
 
-    create_pdr::CreatePdr::builder()
-        .pdr_id(3)
-        .precedence(200)  // Higher precedence for specific traffic
-        .pdi(
-            pdi::Pdi::builder()
-                .source_interface(source_interface::SourceInterface::Access)
-                .sdf_filter(http_filter)
-                .build()
-                .unwrap()
-        )
-        .far_id(3)
-        .qer_id(1)  // Apply special QoS to HTTP
+    let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+        .sdf_filter(http_filter)
+        .build()?;
+
+    CreatePdrBuilder::new(PdrId::new(3))
+        .precedence(Precedence::new(200)) // Higher precedence for specific traffic
+        .pdi(pdi)
+        .far_id(FarId::new(3))
+        .qer_id(QerId::new(1)) // Apply special QoS to HTTP
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 ```
 
@@ -508,22 +445,22 @@ fn create_http_pdr() -> create_pdr::CreatePdr {
 **Use Case**: Route UE traffic to internet/DN
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::apply_action::ApplyAction;
+use rs_pfcp::ie::create_far::CreateFarBuilder;
+use rs_pfcp::ie::destination_interface::{DestinationInterface, Interface};
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::forwarding_parameters::ForwardingParameters;
+use rs_pfcp::ie::network_instance::NetworkInstance;
 
-fn create_uplink_far() -> create_far::CreateFar {
-    create_far::CreateFar::builder()
-        .far_id(1)
-        .apply_action(apply_action::ApplyAction::FORW)
-        .forwarding_parameters(
-            forwarding_parameters::ForwardingParameters {
-                destination_interface: destination_interface::DestinationInterface::Core,
-                network_instance: Some(network_instance::NetworkInstance::new("internet")),
-                outer_header_creation: None,  // No encapsulation
-                ..Default::default()
-            }
-        )
+fn create_uplink_far() -> Result<rs_pfcp::ie::create_far::CreateFar, Box<dyn std::error::Error>> {
+    let params = ForwardingParameters::new(DestinationInterface::new(Interface::Core))
+        .with_network_instance(NetworkInstance::new("internet"));
+
+    CreateFarBuilder::new(FarId::new(1))
+        .apply_action(ApplyAction::FORW)
+        .forwarding_parameters(params)
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 ```
 
@@ -532,24 +469,23 @@ fn create_uplink_far() -> create_far::CreateFar {
 **Use Case**: Send packets to gNB with GTP-U tunnel
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::apply_action::ApplyAction;
+use rs_pfcp::ie::create_far::CreateFarBuilder;
+use rs_pfcp::ie::destination_interface::{DestinationInterface, Interface};
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::forwarding_parameters::ForwardingParameters;
+use rs_pfcp::ie::outer_header_creation::OuterHeaderCreation;
 use std::net::Ipv4Addr;
 
-fn create_downlink_far(gnb_ip: Ipv4Addr, teid: u32) -> create_far::CreateFar {
-    create_far::CreateFar::builder()
-        .far_id(2)
-        .apply_action(apply_action::ApplyAction::FORW)
-        .forwarding_parameters(
-            forwarding_parameters::ForwardingParameters {
-                destination_interface: destination_interface::DestinationInterface::Access,
-                outer_header_creation: Some(
-                    outer_header_creation::OuterHeaderCreation::gtpu_ipv4(teid, gnb_ip)
-                ),
-                ..Default::default()
-            }
-        )
+fn create_downlink_far(gnb_ip: Ipv4Addr, teid: u32) -> Result<rs_pfcp::ie::create_far::CreateFar, Box<dyn std::error::Error>> {
+    let params = ForwardingParameters::new(DestinationInterface::new(Interface::Access))
+        .with_outer_header_creation(OuterHeaderCreation::gtpu_ipv4(teid, gnb_ip));
+
+    CreateFarBuilder::new(FarId::new(2))
+        .apply_action(ApplyAction::FORW)
+        .forwarding_parameters(params)
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 ```
 
@@ -558,28 +494,27 @@ fn create_downlink_far(gnb_ip: Ipv4Addr, teid: u32) -> create_far::CreateFar {
 **Use Case**: Hold packets until notification (e.g., paging UE)
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::apply_action::ApplyAction;
+use rs_pfcp::ie::bar_id::BarId;
+use rs_pfcp::ie::create_bar::CreateBar;
+use rs_pfcp::ie::create_far::CreateFarBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::suggested_buffering_packets_count::SuggestedBufferingPacketsCount;
 
-fn create_buffering_far() -> create_far::CreateFar {
-    create_far::CreateFar::builder()
-        .far_id(3)
-        .apply_action(apply_action::ApplyAction::BUFF)
-        .bar_id(1)  // Reference buffering action rule
+fn create_buffering_far() -> Result<rs_pfcp::ie::create_far::CreateFar, Box<dyn std::error::Error>> {
+    CreateFarBuilder::new(FarId::new(3))
+        .apply_action(ApplyAction::BUFF)
+        .bar_id(BarId::new(1)) // Reference buffering action rule
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 
-// Companion BAR
-fn create_bar() -> create_bar::CreateBar {
-    create_bar::CreateBar {
-        bar_id: bar_id::BarId::new(1),
-        downlink_data_notification_delay: Some(
-            dl_buffering_duration::DlBufferingDuration::new(5000)  // 5 seconds
-        ),
-        suggested_buffering_packets_count: Some(
-            suggested_buffering_packets_count::SuggestedBufferingPacketsCount::new(100)
-        ),
-    }
+// Companion BAR, included in the same Session Establishment/Modification Request
+fn create_bar() -> CreateBar {
+    CreateBar::new(
+        BarId::new(1),
+        Some(SuggestedBufferingPacketsCount::new(100)),
+    )
 }
 ```
 
@@ -588,14 +523,12 @@ fn create_bar() -> create_bar::CreateBar {
 **Use Case**: Block specific traffic flows
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::apply_action::ApplyAction;
+use rs_pfcp::ie::create_far::CreateFar;
+use rs_pfcp::ie::far_id::FarId;
 
-fn create_drop_far() -> create_far::CreateFar {
-    create_far::CreateFar::builder()
-        .far_id(4)
-        .apply_action(apply_action::ApplyAction::DROP)
-        .build()
-        .unwrap()
+fn create_drop_far() -> rs_pfcp::ie::create_far::CreateFar {
+    CreateFar::new(FarId::new(4), ApplyAction::DROP)
 }
 ```
 
@@ -608,22 +541,19 @@ fn create_drop_far() -> create_far::CreateFar {
 **Use Case**: Enforce maximum bit rate per session
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_qer::CreateQerBuilder;
+use rs_pfcp::ie::qer_id::QerId;
 
-fn create_rate_limit_qer(max_ul_mbps: u64, max_dl_mbps: u64) -> create_qer::CreateQer {
-    let ul_kbps = max_ul_mbps * 1000;
-    let dl_kbps = max_dl_mbps * 1000;
-
-    create_qer::CreateQer::builder()
-        .qer_id(1)
-        .gate_status(gate_status::GateStatus::open())
-        .maximum_bitrate(mbr::Mbr::new(ul_kbps, dl_kbps))
+fn create_rate_limit_qer(max_ul_mbps: u64, max_dl_mbps: u64) -> Result<rs_pfcp::ie::create_qer::CreateQer, Box<dyn std::error::Error>> {
+    // .rate_limit() takes kbit/s, the PFCP wire unit
+    CreateQerBuilder::new(QerId::new(1))
+        .rate_limit(max_ul_mbps * 1000, max_dl_mbps * 1000)
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 
 // Example: 10 Mbps uplink, 50 Mbps downlink
-let qer = create_rate_limit_qer(10, 50);
+// let qer = create_rate_limit_qer(10, 50)?;
 ```
 
 ### Gate Control
@@ -631,21 +561,26 @@ let qer = create_rate_limit_qer(10, 50);
 **Use Case**: Temporarily block traffic
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_qer::CreateQerBuilder;
+use rs_pfcp::ie::gate_status::{GateStatus, GateStatusValue};
+use rs_pfcp::ie::qer_id::QerId;
 
-fn create_gated_qer(ul_open: bool, dl_open: bool) -> create_qer::CreateQer {
-    create_qer::CreateQer::builder()
-        .qer_id(2)
-        .gate_status(gate_status::GateStatus::new(ul_open, dl_open))
+fn create_gated_qer(ul_open: bool, dl_open: bool) -> Result<rs_pfcp::ie::create_qer::CreateQer, Box<dyn std::error::Error>> {
+    let open_closed = |open: bool| {
+        if open { GateStatusValue::Open } else { GateStatusValue::Closed }
+    };
+
+    CreateQerBuilder::new(QerId::new(2))
+        .gate_status(GateStatus::new(open_closed(dl_open), open_closed(ul_open)))
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 
 // Block all traffic
-let closed = create_gated_qer(false, false);
-
+// let closed = create_gated_qer(false, false)?;
+//
 // Allow only downlink
-let dl_only = create_gated_qer(false, true);
+// let dl_only = create_gated_qer(false, true)?;
 ```
 
 ### Guaranteed Bit Rate
@@ -653,19 +588,15 @@ let dl_only = create_gated_qer(false, true);
 **Use Case**: Ensure minimum bandwidth for premium services
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_qer::CreateQerBuilder;
+use rs_pfcp::ie::qer_id::QerId;
 
-fn create_gbr_qer(guaranteed_ul_kbps: u64, guaranteed_dl_kbps: u64) -> create_qer::CreateQer {
-    create_qer::CreateQer::builder()
-        .qer_id(3)
-        .gate_status(gate_status::GateStatus::open())
-        .guaranteed_bitrate(gbr::Gbr::new(guaranteed_ul_kbps, guaranteed_dl_kbps))
-        .maximum_bitrate(mbr::Mbr::new(
-            guaranteed_ul_kbps * 2,  // Max 2x guaranteed
-            guaranteed_dl_kbps * 2,
-        ))
+fn create_gbr_qer(guaranteed_ul_kbps: u64, guaranteed_dl_kbps: u64) -> Result<rs_pfcp::ie::create_qer::CreateQer, Box<dyn std::error::Error>> {
+    CreateQerBuilder::new(QerId::new(3))
+        .guaranteed_rate(guaranteed_ul_kbps, guaranteed_dl_kbps)
+        .rate_limit(guaranteed_ul_kbps * 2, guaranteed_dl_kbps * 2) // Max 2x guaranteed
         .build()
-        .unwrap()
+        .map_err(Into::into)
 }
 ```
 
@@ -678,19 +609,22 @@ fn create_gbr_qer(guaranteed_ul_kbps: u64, guaranteed_dl_kbps: u64) -> create_qe
 **Use Case**: Report usage when volume threshold reached
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_urr::CreateUrrBuilder;
+use rs_pfcp::ie::measurement_method::MeasurementMethod;
+use rs_pfcp::ie::reporting_triggers::ReportingTriggers;
+use rs_pfcp::ie::urr_id::UrrId;
 
-fn create_volume_urr(threshold_bytes: u64) -> Result<create_urr::CreateUrr, Box<dyn std::error::Error>> {
-    create_urr::CreateUrr::builder()
-        .urr_id(1)
-        .measurement_method(measurement_method::MeasurementMethod::VOLUM)
-        .reporting_triggers(reporting_triggers::ReportingTriggers::new_volume_threshold())
-        .volume_threshold(volume_threshold::VolumeThreshold::total(threshold_bytes))
+fn create_volume_urr(threshold_bytes: u64) -> Result<rs_pfcp::ie::create_urr::CreateUrr, Box<dyn std::error::Error>> {
+    CreateUrrBuilder::new(UrrId::new(1))
+        .measurement_method(MeasurementMethod::new(false, true, false)) // VOLUM
+        .reporting_triggers(ReportingTriggers::new().with_volume_threshold(true))
+        .volume_threshold_bytes(threshold_bytes)
         .build()
+        .map_err(Into::into)
 }
 
 // Example: Report every 1 GB
-let urr = create_volume_urr(1_000_000_000)?;
+// let urr = create_volume_urr(1_000_000_000)?;
 ```
 
 ### Time-Based Reporting
@@ -698,19 +632,22 @@ let urr = create_volume_urr(1_000_000_000)?;
 **Use Case**: Report usage periodically
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_urr::CreateUrrBuilder;
+use rs_pfcp::ie::measurement_method::MeasurementMethod;
+use rs_pfcp::ie::reporting_triggers::ReportingTriggers;
+use rs_pfcp::ie::urr_id::UrrId;
 
-fn create_periodic_urr(period_seconds: u32) -> Result<create_urr::CreateUrr, Box<dyn std::error::Error>> {
-    create_urr::CreateUrr::builder()
-        .urr_id(2)
-        .measurement_method(measurement_method::MeasurementMethod::DURAT)
-        .reporting_triggers(reporting_triggers::ReportingTriggers::new_periodic_reporting())
-        .measurement_period(measurement_period::MeasurementPeriod::new(period_seconds))
+fn create_periodic_urr(period_seconds: u32) -> Result<rs_pfcp::ie::create_urr::CreateUrr, Box<dyn std::error::Error>> {
+    CreateUrrBuilder::new(UrrId::new(2))
+        .measurement_method(MeasurementMethod::new(true, false, false)) // DURAT
+        .reporting_triggers(ReportingTriggers::new().with_periodic(true))
+        .measurement_period_seconds(period_seconds)
         .build()
+        .map_err(Into::into)
 }
 
 // Example: Report every 5 minutes
-let urr = create_periodic_urr(300)?;
+// let urr = create_periodic_urr(300)?;
 ```
 
 ### Quota Management
@@ -718,20 +655,26 @@ let urr = create_periodic_urr(300)?;
 **Use Case**: Track quota, report when exhausted
 
 ```rust
-use rs_pfcp::ie::*;
+use rs_pfcp::ie::create_urr::CreateUrrBuilder;
+use rs_pfcp::ie::measurement_method::MeasurementMethod;
+use rs_pfcp::ie::reporting_triggers::ReportingTriggers;
+use rs_pfcp::ie::urr_id::UrrId;
 
-fn create_quota_urr(quota_bytes: u64) -> Result<create_urr::CreateUrr, Box<dyn std::error::Error>> {
-    create_urr::CreateUrr::builder()
-        .urr_id(3)
-        .measurement_method(measurement_method::MeasurementMethod::VOLUM)
-        .reporting_triggers(reporting_triggers::ReportingTriggers::new_quota_exhausted())
-        .volume_quota(volume_quota::VolumeQuota::total(quota_bytes))
+fn create_quota_urr(quota_bytes: u64) -> Result<rs_pfcp::ie::create_urr::CreateUrr, Box<dyn std::error::Error>> {
+    CreateUrrBuilder::new(UrrId::new(3))
+        .measurement_method(MeasurementMethod::new(false, true, false)) // VOLUM
+        .reporting_triggers(ReportingTriggers::new().with_volume_quota(true))
+        .volume_quota_bytes(quota_bytes)
         .build()
+        .map_err(Into::into)
 }
 
-// Handle quota exhausted in session report
-fn handle_usage_report(report: &usage_report::UsageReport) {
-    if report.usage_report_trigger.is_quota_exhausted() {
+// Handle quota exhaustion in a session report
+use rs_pfcp::ie::usage_report::UsageReport;
+use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
+
+fn handle_usage_report(report: &UsageReport) {
+    if report.usage_report_trigger.contains(UsageReportTrigger::VOLQU) {
         println!("Quota exhausted!");
         // Recharge quota or block user
     }
@@ -747,8 +690,10 @@ fn handle_usage_report(report: &usage_report::UsageReport) {
 **Use Case**: Robust message processing
 
 ```rust
+use rs_pfcp::ie::IeType;
 use rs_pfcp::message::parse;
-use std::io;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::Message;
 
 fn process_message(buf: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let message = parse(buf).map_err(|e| {
@@ -757,29 +702,33 @@ fn process_message(buf: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     })?;
 
     // Process message...
-
+    let _ = message;
     Ok(())
 }
 
 // Validation errors
-fn validate_session_request(
-    request: &SessionEstablishmentRequest
-) -> Result<(), String> {
-    if request.create_pdr.is_empty() {
+fn validate_session_request(request: &SessionEstablishmentRequest) -> Result<(), String> {
+    if request.ies(IeType::CreatePdr).count() == 0 {
         return Err("Session must have at least one PDR".to_string());
     }
 
-    // Validate PDR/FAR references
-    for pdr in &request.create_pdr {
-        if let Some(far_id) = &pdr.far_id {
-            let far_exists = request.create_far.iter()
-                .any(|far| far.far_id.value() == far_id.value());
+    // Validate PDR → FAR references
+    let far_ids: Vec<u32> = request
+        .ies(IeType::CreateFar)
+        .filter_map(|ie| ie.parse::<rs_pfcp::ie::create_far::CreateFar>().ok())
+        .map(|far| far.far_id.value)
+        .collect();
 
-            if !far_exists {
+    for pdr_ie in request.ies(IeType::CreatePdr) {
+        let pdr = pdr_ie
+            .parse::<rs_pfcp::ie::create_pdr::CreatePdr>()
+            .map_err(|e| e.to_string())?;
+        if let Some(far_id) = &pdr.far_id {
+            if !far_ids.contains(&far_id.value) {
                 return Err(format!(
                     "PDR {} references non-existent FAR {}",
-                    pdr.pdr_id.value(),
-                    far_id.value()
+                    pdr.pdr_id.value,
+                    far_id.value
                 ));
             }
         }
@@ -794,31 +743,34 @@ fn validate_session_request(
 **Use Case**: Ensure 3GPP compliance before sending
 
 ```rust
+use rs_pfcp::ie::IeType;
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::Message;
 
 fn validate_and_send(
-    request: SessionEstablishmentRequest,
+    request: &SessionEstablishmentRequest,
     socket: &std::net::UdpSocket,
     peer: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Validate mandatory fields
-    if request.node_id.is_empty() {
+    if request.ies(IeType::NodeId).next().is_none() {
         return Err("Node ID is mandatory".into());
     }
 
     // Validate PDR precedence (must be non-zero per spec)
-    for pdr in &request.create_pdr {
-        if pdr.precedence.value() == 0 {
+    for pdr_ie in request.ies(IeType::CreatePdr) {
+        let pdr = pdr_ie.parse::<rs_pfcp::ie::create_pdr::CreatePdr>()?;
+        if pdr.precedence.value == 0 {
             return Err(format!(
                 "PDR {} has invalid precedence 0 (must be non-zero per 3GPP TS 29.244)",
-                pdr.pdr_id.value()
-            ).into());
+                pdr.pdr_id.value
+            )
+            .into());
         }
     }
 
     // Marshal and send
-    let bytes = request.marshal();
-    socket.send_to(&bytes, peer)?;
+    socket.send_to(&request.marshal(), peer)?;
 
     Ok(())
 }
@@ -829,8 +781,8 @@ fn validate_and_send(
 **Use Case**: Track request/response matching
 
 ```rust
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Instant;
 
 struct SequenceTracker {
@@ -870,16 +822,22 @@ impl SequenceTracker {
 }
 
 // Usage:
-let tracker = SequenceTracker::new();
+use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
 
-// Sending request
-let seq = tracker.next();
-let request = HeartbeatRequest::new(seq, None, None, vec![]);
-socket.send(&request.marshal())?;
+fn example(socket: &std::net::UdpSocket, tracker: &SequenceTracker, response_seq: u32) -> std::io::Result<()> {
+    // Sending request
+    let seq = tracker.next();
+    let bytes = HeartbeatRequestBuilder::new(seq)
+        .recovery_time_stamp(std::time::SystemTime::now())
+        .marshal();
+    socket.send(&bytes)?;
 
-// Receiving response
-if let Some(rtt) = tracker.complete(response.header.sequence_number) {
-    println!("Round-trip time: {:?}", rtt);
+    // Receiving response
+    if let Some(rtt) = tracker.complete(response_seq) {
+        println!("Round-trip time: {:?}", rtt);
+    }
+    let _ = tracker.cleanup_old(std::time::Duration::from_secs(60));
+    Ok(())
 }
 ```
 
@@ -890,62 +848,86 @@ if let Some(rtt) = tracker.complete(response.header.sequence_number) {
 ### 1. Always Use Builders
 
 ```rust
-// Good: Type-safe, validated
-let pdr = create_pdr::CreatePdr::builder()
-    .pdr_id(1)
-    .precedence(100)
-    .pdi(pdi)
-    .far_id(1)
-    .build()?;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
 
-// Bad: Easy to miss required fields
-let pdr = create_pdr::CreatePdr {
-    pdr_id: pdr_id::PdrId::new(1),
-    // ... might forget mandatory fields
-};
+fn build_it() -> Result<(), Box<dyn std::error::Error>> {
+    let pdi = PdiBuilder::uplink_access().build()?;
+
+    // Good: Type-safe, validated — fails at .build() if a required field is missing
+    let pdr = CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        .pdi(pdi)
+        .far_id(rs_pfcp::ie::far_id::FarId::new(1))
+        .build()?;
+    let _ = pdr;
+    Ok(())
+}
 ```
 
 ### 2. Validate Before Sending
 
 ```rust
-// Always validate messages before marshaling
-if request.create_pdr.is_empty() {
-    return Err("Invalid session: no PDRs".into());
-}
+use rs_pfcp::ie::IeType;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::Message;
 
-let bytes = request.marshal();
+fn send_it(request: &SessionEstablishmentRequest) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Always validate messages before marshaling
+    if request.ies(IeType::CreatePdr).count() == 0 {
+        return Err("Invalid session: no PDRs".into());
+    }
+
+    Ok(request.marshal())
+}
 ```
 
 ### 3. Handle All Message Types
 
 ```rust
-match parse(buf)? {
-    Message::SessionEstablishmentRequest(req) => handle_establishment(req),
-    Message::SessionModificationRequest(req) => handle_modification(req),
-    Message::SessionDeletionRequest(req) => handle_deletion(req),
-    _ => {
-        eprintln!("Unexpected message type");
-        // Don't panic, log and continue
+use rs_pfcp::message::{parse, Message, MsgType};
+
+fn dispatch(buf: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+    let msg = parse(buf)?;
+    match msg.msg_type() {
+        MsgType::SessionEstablishmentRequest => { /* handle_establishment(&msg) */ }
+        MsgType::SessionModificationRequest => { /* handle_modification(&msg) */ }
+        MsgType::SessionDeletionRequest => { /* handle_deletion(&msg) */ }
+        _ => {
+            eprintln!("Unexpected message type: {}", msg.msg_name());
+            // Don't panic, log and continue
+        }
     }
+    Ok(())
 }
 ```
 
 ### 4. Set Reasonable Timeouts
 
 ```rust
-socket.set_read_timeout(Some(std::time::Duration::from_secs(5)))?;
-socket.set_write_timeout(Some(std::time::Duration::from_secs(5)))?;
+fn set_timeouts(socket: &std::net::UdpSocket) -> std::io::Result<()> {
+    socket.set_read_timeout(Some(std::time::Duration::from_secs(5)))?;
+    socket.set_write_timeout(Some(std::time::Duration::from_secs(5)))?;
+    Ok(())
+}
 ```
 
 ### 5. Log Protocol Errors
 
 ```rust
-match SessionEstablishmentRequest::unmarshal(&buf) {
-    Ok(req) => process_request(req),
-    Err(e) => {
-        eprintln!("Parse error: {}", e);
-        eprintln!("Buffer (first 64 bytes): {:02x?}", &buf[..64.min(buf.len())]);
-        // Send error response if appropriate
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
+use rs_pfcp::message::Message;
+
+fn parse_or_log(buf: &[u8]) {
+    match SessionEstablishmentRequest::unmarshal(buf) {
+        Ok(_req) => { /* process_request(req) */ }
+        Err(e) => {
+            eprintln!("Parse error: {}", e);
+            eprintln!("Buffer (first 64 bytes): {:02x?}", &buf[..64.min(buf.len())]);
+            // Send error response if appropriate
+        }
     }
 }
 ```
@@ -958,8 +940,3 @@ match SessionEstablishmentRequest::unmarshal(&buf) {
 - **[Examples Guide](examples-guide.md)** - Runnable example programs
 - **[Architecture Documentation](../architecture/)** - Design deep-dives
 - **[3GPP TS 29.244](https://www.3gpp.org/ftp/Specs/archive/29_series/29.244/)** - Official specification
-
----
-
-**Last Updated**: 2025-10-18
-**rs-pfcp Version**: 0.1.3

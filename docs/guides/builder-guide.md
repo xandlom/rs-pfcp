@@ -1,7 +1,6 @@
 # Builder Pattern Guide for rs-pfcp
 
-**Last Updated:** 2026-02-08
-**Target:** rs-pfcp v0.3.0+
+**Target:** rs-pfcp v0.5.0+
 
 This guide covers the builder patterns used throughout rs-pfcp for constructing PFCP messages and Information Elements (IEs).
 
@@ -27,18 +26,21 @@ PFCP messages and grouped IEs can be complex, with many optional fields. Builder
 
 - **Ergonomic API**: Fluent, chainable method calls
 - **Type Safety**: Required fields enforced at compile time
-- **Validation**: Early error detection in `.build()`
+- **Validation**: Early error detection
 - **Flexibility**: Easy to construct partial configurations
 - **Readability**: Self-documenting code
 
-### Builder Philosophy
+### Two Builder Shapes
 
-rs-pfcp builders follow these principles:
+rs-pfcp has two distinct builder shapes — knowing which one you're holding matters:
 
-1. **Required fields in `new()`**: Mandatory parameters passed to constructor
-2. **Optional fields via methods**: Chainable setters for optional fields
-3. **Validation in `build()`**: Catch errors before marshaling
-4. **Zero-cost abstraction**: Builders compile away to direct construction
+1. **Message builders** (`SessionEstablishmentRequestBuilder`, `HeartbeatRequestBuilder`,
+   etc.) marshal **directly to bytes**: the terminal call is `.marshal()` (or `.marshal()?`
+   for the ones that validate mandatory IEs), not `.build()`.
+2. **IE builders** (`CreatePdrBuilder`, `CreateFarBuilder`, `EthernetPacketFilterBuilder`,
+   etc.) return the **typed struct**: the terminal call is `.build()?`, and you then call
+   `.to_ie()` on the result (or pass it straight into a message builder's `.add_*()` method,
+   which does that conversion for you).
 
 ---
 
@@ -48,41 +50,48 @@ rs-pfcp builders follow these principles:
 
 ```rust
 use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
+use std::time::SystemTime;
 
-// Simple heartbeat request
-let request = HeartbeatRequestBuilder::new(1001)  // sequence number
-    .build()?;
-
-let bytes = request.marshal();
+// Simple heartbeat request — marshals straight to bytes
+let bytes = HeartbeatRequestBuilder::new(1001) // sequence number
+    .recovery_time_stamp(SystemTime::now())
+    .marshal();
 ```
 
 ### Message Builder with IEs
 
 ```rust
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
-use rs_pfcp::ie::node_id::NodeId;
 use std::net::Ipv4Addr;
 
-let node_id = NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1));
-
-let request = SessionEstablishmentRequestBuilder::new(0x1234u64, 1001)
-    .node_id(node_id)              // Add IEs as needed
-    .build()?;
+fn build(seid: u64) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    SessionEstablishmentRequestBuilder::new(seid, 1001u32)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1)) // Add IEs as needed
+        .fseid(seid, Ipv4Addr::new(10, 0, 0, 1))
+        .marshal()
+        .map_err(Into::into)
+}
 ```
 
 ### Grouped IE Builder
 
 ```rust
 use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::pdi::PdiBuilder;
 use rs_pfcp::ie::pdr_id::PdrId;
 use rs_pfcp::ie::precedence::Precedence;
-use rs_pfcp::ie::pdi::Pdi;
 
-let pdr = CreatePdrBuilder::new(PdrId::new(1))  // Required field
-    .precedence(Precedence::new(100))            // Required via builder
-    .pdi(pdi_instance)                           // Required via builder
-    .far_id(FarId::new(1))                       // Optional field
-    .build()?;
+fn build_pdr() -> Result<rs_pfcp::ie::create_pdr::CreatePdr, Box<dyn std::error::Error>> {
+    let pdi_instance = PdiBuilder::uplink_access().build()?;
+
+    CreatePdrBuilder::new(PdrId::new(1)) // Required field
+        .precedence(Precedence::new(100)) // Required via builder
+        .pdi(pdi_instance) // Required via builder
+        .far_id(FarId::new(1)) // Optional field
+        .build()
+        .map_err(Into::into)
+}
 ```
 
 ---
@@ -91,7 +100,7 @@ let pdr = CreatePdrBuilder::new(PdrId::new(1))  // Required field
 
 ### 1. Message Builders
 
-All PFCP messages have builders in `src/message/`:
+All PFCP messages have builders in `src/message/`, and all of them marshal directly to bytes.
 
 #### Heartbeat Messages
 
@@ -103,26 +112,35 @@ use std::time::SystemTime;
 // Request
 let hb_req = HeartbeatRequestBuilder::new(1001)
     .recovery_time_stamp(SystemTime::now())
-    .build()?;
+    .marshal();
 
 // Response
 let hb_resp = HeartbeatResponseBuilder::new(1001)
     .recovery_time_stamp(SystemTime::now())
-    .build()?;
+    .marshal();
 ```
 
 #### Session Messages
 
 ```rust
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
-use rs_pfcp::ie::IntoIe;  // For tuple conversions
+use std::net::{IpAddr, Ipv4Addr};
 
-let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(node_id)
-    .fseid_ie((seid, ip_addr).into_ie())  // ✨ New in v0.2.1: Tuple conversion!
-    .create_pdrs(vec![pdr.to_ie()])
-    .create_fars(vec![far.to_ie()])
-    .build()?;
+fn build(
+    seid: u64,
+    sequence: u32,
+    ip_addr: IpAddr,
+    pdr: rs_pfcp::ie::create_pdr::CreatePdr,
+    far: rs_pfcp::ie::create_far::CreateFar,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    SessionEstablishmentRequestBuilder::new(seid, sequence)
+        .node_id(Ipv4Addr::new(10, 0, 0, 1)) // Accepts an IP address directly
+        .fseid(seid, ip_addr) // SEID + IP — the tuple form (seid, ip).into_ie() also works
+        .add_pdr(pdr)
+        .add_far(far)
+        .marshal()
+        .map_err(Into::into)
+}
 ```
 
 #### Convenience Response Builders
@@ -130,87 +148,128 @@ let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
 Many response builders have convenience constructors:
 
 ```rust
+use rs_pfcp::ie::cause::CauseValue;
 use rs_pfcp::message::session_establishment_response::SessionEstablishmentResponseBuilder;
+use std::net::IpAddr;
 
-// Pre-configured "accepted" response
-let response = SessionEstablishmentResponseBuilder::accepted(seid, sequence)
-    .fseid_ie((upf_seid, upf_ip).into_ie())
-    .build()?;
+fn responses(seid: u64, sequence: u32, upf_seid: u64, upf_ip: IpAddr) -> Result<(), Box<dyn std::error::Error>> {
+    // Pre-configured "accepted" response
+    let accepted = SessionEstablishmentResponseBuilder::accepted(seid, sequence)
+        .fseid(upf_seid, upf_ip)
+        .marshal()?;
 
-// Pre-configured "rejected" response
-let response = SessionEstablishmentResponseBuilder::rejected(
-    seid,
-    sequence,
-    CauseValue::MandatoryIeMissing
-).build()?;
+    // Pre-configured generic "rejected" response (CauseValue::RequestRejected)
+    let rejected = SessionEstablishmentResponseBuilder::rejected(seid, sequence).marshal()?;
+
+    // For a *specific* rejection cause, use the 3-arg constructor instead
+    let rejected_specific =
+        SessionEstablishmentResponseBuilder::new(seid, sequence, CauseValue::MandatoryIeMissing)
+            .marshal()?;
+
+    let _ = (accepted, rejected, rejected_specific);
+    Ok(())
+}
 ```
 
 ### 2. Grouped IE Builders
 
-Complex IEs with multiple fields have builders:
+Complex IEs with multiple fields have builders that return `Result<T, PfcpError>` via `.build()`.
 
 #### CreatePdrBuilder
 
 ```rust
 use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::outer_header_removal::OuterHeaderRemoval;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::qer_id::QerId;
 
-let pdr = CreatePdrBuilder::new(PdrId::new(1))
-    .precedence(Precedence::new(100))
-    .pdi(pdi)
-    .outer_header_removal(ohr)  // Optional
-    .far_id(FarId::new(1))      // Optional
-    .qer_id(QerId::new(1))      // Optional
-    .build()?;
+fn build() -> Result<(), Box<dyn std::error::Error>> {
+    let pdi = PdiBuilder::uplink_access().build()?;
+    let ohr = OuterHeaderRemoval::new(0); // 0 = GTP-U/UDP/IPv4
+
+    let pdr = CreatePdrBuilder::new(PdrId::new(1))
+        .precedence(Precedence::new(100))
+        .pdi(pdi)
+        .outer_header_removal(ohr) // Optional
+        .far_id(FarId::new(1)) // Optional
+        .qer_id(QerId::new(1)) // Optional
+        .build()?;
+    let _ = pdr;
+    Ok(())
+}
 ```
 
 #### CreateFarBuilder
 
 ```rust
+use rs_pfcp::ie::apply_action::ApplyAction;
 use rs_pfcp::ie::create_far::CreateFarBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::forwarding_parameters::ForwardingParameters;
 
-// Convenience constructors for common patterns
-let far = CreateFarBuilder::uplink_to_core(FarId::new(1))
-    .build()?;
+fn build() -> Result<(), Box<dyn std::error::Error>> {
+    // Convenience constructors for common patterns
+    let far = CreateFarBuilder::uplink_to_core(FarId::new(1)).build()?;
 
-let far = CreateFarBuilder::downlink_to_access(FarId::new(2))
-    .outer_header_creation(ohc)
-    .build()?;
+    // Or build from scratch
+    let far2 = CreateFarBuilder::new(FarId::new(3))
+        .apply_action(ApplyAction::FORW)
+        .forwarding_parameters(ForwardingParameters::new(
+            rs_pfcp::ie::destination_interface::DestinationInterface::new(
+                rs_pfcp::ie::destination_interface::Interface::Access,
+            ),
+        ))
+        .build()?;
 
-// Or build from scratch
-let far = CreateFarBuilder::new(FarId::new(3))
-    .apply_action(action)
-    .forwarding_parameters(params)
-    .build()?;
+    let _ = (far, far2);
+    Ok(())
+}
 ```
 
 #### CreateQerBuilder
 
 ```rust
 use rs_pfcp::ie::create_qer::CreateQerBuilder;
+use rs_pfcp::ie::qer_id::QerId;
 
-// Convenience constructors
-let qer = CreateQerBuilder::open_gate(QerId::new(1))
-    .uplink_mbr(100_000_000)   // 100 Mbps
-    .downlink_mbr(100_000_000)
+fn build() -> Result<(), Box<dyn std::error::Error>> {
+    // Convenience constructors
+    let qer = CreateQerBuilder::open_gate(QerId::new(1))
+        .rate_limit(100_000, 100_000) // 100 Mbps up/down, in kbit/s
+        .build()?;
+
+    let qer2 = CreateQerBuilder::with_rate_limit(
+        QerId::new(2),
+        10_000, // 10 Mbps uplink
+        50_000, // 50 Mbps downlink
+    )
     .build()?;
 
-let qer = CreateQerBuilder::with_rate_limit(
-    QerId::new(2),
-    10_000_000,  // 10 Mbps uplink
-    50_000_000   // 50 Mbps downlink
-).build()?;
+    let _ = (qer, qer2);
+    Ok(())
+}
 ```
 
 #### CreateUrrBuilder
 
 ```rust
 use rs_pfcp::ie::create_urr::CreateUrrBuilder;
+use rs_pfcp::ie::measurement_method::MeasurementMethod;
+use rs_pfcp::ie::reporting_triggers::ReportingTriggers;
+use rs_pfcp::ie::urr_id::UrrId;
 
-let urr = CreateUrrBuilder::new(UrrId::new(1))
-    .measurement_method(method)
-    .reporting_triggers(triggers)
-    .volume_threshold(threshold)
-    .build()?;
+fn build() -> Result<(), Box<dyn std::error::Error>> {
+    let urr = CreateUrrBuilder::new(UrrId::new(1))
+        .measurement_method(MeasurementMethod::new(false, true, false)) // VOLUM
+        .reporting_triggers(ReportingTriggers::new().with_volume_threshold(true))
+        .volume_threshold_bytes(1_000_000_000)
+        .build()?;
+    let _ = urr;
+    Ok(())
+}
 ```
 
 ### 3. Nested IE Builders
@@ -220,26 +279,47 @@ Some IEs contain other IEs:
 #### PdiBuilder (Packet Detection Information)
 
 ```rust
+use rs_pfcp::ie::f_teid::FteidBuilder;
+use rs_pfcp::ie::network_instance::NetworkInstance;
 use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+use rs_pfcp::ie::ue_ip_address::UeIpAddress;
+use std::net::Ipv4Addr;
 
-let pdi = PdiBuilder::new(source_interface)
-    .network_instance(network_instance)
-    .ue_ip_address(ue_ip)
-    .f_teid(fteid)
-    .build()?;
+fn build() -> Result<(), Box<dyn std::error::Error>> {
+    let fteid = FteidBuilder::new()
+        .teid(0x12345678u32)
+        .ipv4(Ipv4Addr::new(192, 168, 1, 1))
+        .build()?;
+
+    let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+        .network_instance(NetworkInstance::new("internet"))
+        .ue_ip_address(UeIpAddress::new(Some(Ipv4Addr::new(10, 1, 1, 1)), None))
+        .f_teid(fteid)
+        .build()?;
+    let _ = pdi;
+    Ok(())
+}
 ```
 
 #### EthernetPacketFilterBuilder
 
 ```rust
+use rs_pfcp::ie::c_tag::CTag;
+use rs_pfcp::ie::ethernet_filter_id::EthernetFilterId;
 use rs_pfcp::ie::ethernet_packet_filter::EthernetPacketFilterBuilder;
+use rs_pfcp::ie::ethertype::Ethertype;
+use rs_pfcp::ie::mac_address::MacAddress;
 
-let filter = EthernetPacketFilterBuilder::new()
-    .filter_id(EthernetFilterId::new(1))
-    .filter_properties(properties)
-    .mac_address(mac)
-    .ethertype(Ethertype::ipv4())
-    .build()?;
+fn build(mac: MacAddress) -> Result<(), Box<dyn std::error::Error>> {
+    let filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+        .mac_address(mac)
+        .ethertype(Ethertype::ipv4())
+        .c_tag(CTag::new(0, false, 100)?) // pcp=0, dei=false, VLAN ID=100
+        .build()?;
+    let _ = filter;
+    Ok(())
+}
 ```
 
 ---
@@ -251,21 +331,31 @@ let filter = EthernetPacketFilterBuilder::new()
 Build complex structures step by step:
 
 ```rust
-let mut builder = SessionEstablishmentRequestBuilder::new(seid, sequence);
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use std::net::Ipv4Addr;
 
-// Add IEs conditionally
-builder = builder.node_id(node_id);
+fn build(
+    seid: u64,
+    sequence: u32,
+    fseid_opt: Option<Ipv4Addr>,
+    pdrs: Vec<rs_pfcp::ie::create_pdr::CreatePdr>,
+) -> Result<Vec<u8>, rs_pfcp::error::PfcpError> {
+    let mut builder = SessionEstablishmentRequestBuilder::new(seid, sequence);
 
-if let Some(fseid) = fseid_opt {
-    builder = builder.fseid_ie((seid, fseid).into_ie());
+    // Add IEs conditionally
+    builder = builder.node_id(Ipv4Addr::new(10, 0, 0, 1));
+
+    if let Some(cp_ip) = fseid_opt {
+        builder = builder.fseid(seid, cp_ip);
+    }
+
+    // Add grouped IEs one at a time
+    for pdr in pdrs {
+        builder = builder.add_pdr(pdr);
+    }
+
+    builder.marshal()
 }
-
-// Add grouped IEs
-for pdr in pdrs {
-    builder = builder.add_create_pdr(pdr.to_ie());
-}
-
-let request = builder.build()?;
 ```
 
 ### Pattern 2: Fluent Chaining
@@ -273,13 +363,24 @@ let request = builder.build()?;
 Chain method calls for concise code:
 
 ```rust
-let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(node_id)
-    .fseid_ie((seid, ip).into_ie())
-    .create_pdrs(pdrs.iter().map(|p| p.to_ie()).collect())
-    .create_fars(fars.iter().map(|f| f.to_ie()).collect())
-    .create_qers(qers.iter().map(|q| q.to_ie()).collect())
-    .build()?;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use std::net::Ipv4Addr;
+
+fn build(
+    seid: u64,
+    sequence: u32,
+    ip: Ipv4Addr,
+    pdrs: Vec<rs_pfcp::ie::create_pdr::CreatePdr>,
+    fars: Vec<rs_pfcp::ie::create_far::CreateFar>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    SessionEstablishmentRequestBuilder::new(seid, sequence)
+        .node_id(ip)
+        .fseid(seid, ip)
+        .create_pdrs(pdrs.iter().map(|p| p.to_ie()).collect())
+        .create_fars(fars.iter().map(|f| f.to_ie()).collect())
+        .marshal()
+        .map_err(Into::into)
+}
 ```
 
 ### Pattern 3: Helper Functions
@@ -287,39 +388,43 @@ let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
 Extract common patterns:
 
 ```rust
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::create_pdr::{CreatePdr, CreatePdrBuilder};
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+use rs_pfcp::ie::ue_ip_address::UeIpAddress;
+use std::net::Ipv4Addr;
+
 fn build_uplink_pdr(id: u16, precedence: u32, ue_ip: Ipv4Addr) -> Result<CreatePdr, PfcpError> {
-    let pdi = PdiBuilder::new(SourceInterface::access())
-        .ue_ip_address(UeIpAddress::ipv4(ue_ip))
+    let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+        .ue_ip_address(UeIpAddress::new(Some(ue_ip), None))
         .build()?;
 
     CreatePdrBuilder::new(PdrId::new(id))
         .precedence(Precedence::new(precedence))
         .pdi(pdi)
-        .far_id(FarId::new(id))
+        .far_id(FarId::new(id as u32))
         .build()
 }
 ```
 
-### Pattern 4: Default Initialization (v0.2.1+)
+### Pattern 4: Default for Test Fixtures
 
-Use `Default` trait for builders:
-
-```rust
-use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
-
-// Instead of CreatePdrBuilder::new(pdr_id)
-let pdr = CreatePdrBuilder::default()
-    .pdr_id(PdrId::new(1))     // Set via method instead
-    .precedence(Precedence::new(100))
-    .pdi(pdi)
-    .build()?;
-```
+Several IE builders derive `Default`, which is mainly useful in tests where you only care
+about a subset of fields. Note that the *mandatory* identifying field (e.g. `pdr_id`,
+`far_id`) is usually only settable through the constructor (`::new(id)`), not through a
+setter method, so `::default()` is most useful for builders whose fields are all optional or
+where you immediately overwrite the identifying field via a domain-specific constructor —
+check each builder's own `.build()` requirements before relying on this pattern.
 
 ---
 
 ## Advanced Features
 
-### Feature 1: Tuple Conversions with IntoIe (v0.2.1+)
+### Feature 1: Tuple Conversions with IntoIe
 
 Ergonomic F-SEID construction using tuples:
 
@@ -327,83 +432,111 @@ Ergonomic F-SEID construction using tuples:
 use rs_pfcp::ie::IntoIe;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-// IPv4 F-SEID
-let seid = 0x123456789ABCDEFu64;
-let ipv4 = Ipv4Addr::new(10, 0, 0, 1);
-let fseid_ie = (seid, ipv4).into_ie();
+fn build() {
+    // IPv4 F-SEID
+    let seid = 0x123456789ABCDEFu64;
+    let ipv4 = Ipv4Addr::new(10, 0, 0, 1);
+    let fseid_ie = (seid, ipv4).into_ie();
 
-// IPv6 F-SEID
-let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
-let fseid_ie = (seid, ipv6).into_ie();
+    // IPv6 F-SEID
+    let ipv6 = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+    let fseid_ie2 = (seid, ipv6).into_ie();
 
-// Generic IpAddr (dispatches to IPv4 or IPv6)
-let ip: IpAddr = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
-let fseid_ie = (seid, ip).into_ie();
+    // Generic IpAddr (dispatches to IPv4 or IPv6)
+    let ip: IpAddr = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1));
+    let fseid_ie3 = (seid, ip).into_ie();
 
-// Use directly in builders
-let response = SessionEstablishmentResponseBuilder::new(seid, sequence)
-    .fseid_ie((upf_seid, upf_ip).into_ie())  // ✨ Concise!
-    .build()?;
+    let _ = (fseid_ie, fseid_ie2, fseid_ie3);
+}
 ```
 
-**Before v0.2.1:**
 ```rust
-let fseid = Fseid::new(seid, Some(ipv4), None);
-let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
-```
+use rs_pfcp::ie::{Ie, IeType, IntoIe};
+use rs_pfcp::ie::fseid::Fseid;
+use std::net::Ipv4Addr;
 
-**After v0.2.1:**
-```rust
-let fseid_ie = (seid, ipv4).into_ie();  // Much cleaner!
+fn compare(seid: u64, ipv4: Ipv4Addr) {
+    // The manual way:
+    let fseid = Fseid::new(seid, Some(ipv4), None);
+    let fseid_ie = Ie::new(IeType::Fseid, fseid.marshal());
+
+    // The concise, equivalent way:
+    let fseid_ie2 = (seid, ipv4).into_ie();
+
+    assert_eq!(fseid_ie, fseid_ie2);
+}
 ```
 
 ### Feature 2: Builder Validation
 
-Builders validate before construction:
+IE builders validate before construction and return `PfcpError::MissingMandatoryIe` (or
+`PfcpError::ValidationError`) for missing required fields:
 
 ```rust
-let result = CreatePdrBuilder::new(PdrId::new(1))
-    .build();  // Missing required precedence and PDI
+use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+
+let result = CreatePdrBuilder::new(PdrId::new(1)).build(); // Missing required precedence and PDI
 
 assert!(result.is_err());
-assert_eq!(
-    result.unwrap_err().to_string(),
-    "Precedence is required"
-);
+assert!(matches!(result.unwrap_err(), PfcpError::MissingMandatoryIe { .. }));
 ```
 
 ### Feature 3: Convenience Constructors
 
-Many builders have domain-specific constructors:
+Many IE builders have domain-specific static constructors:
 
 ```rust
-// CreatePdr
-let pdr = CreatePdr::uplink_access(pdr_id, precedence);
-let pdr = CreatePdr::downlink_core(pdr_id, precedence);
+use rs_pfcp::ie::create_far::{CreateFar, CreateFarBuilder};
+use rs_pfcp::ie::create_pdr::{CreatePdr, CreatePdrBuilder};
+use rs_pfcp::ie::create_qer::{CreateQer, CreateQerBuilder};
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+use rs_pfcp::ie::qer_id::QerId;
 
-// CreateFar
-let far = CreateFar::forward_uplink(far_id);
-let far = CreateFar::forward_downlink(far_id, outer_header_creation);
+fn examples() -> Result<(), Box<dyn std::error::Error>> {
+    // CreatePdr (direct constructors, no .build() needed)
+    let _pdr: CreatePdr = CreatePdr::uplink_access(PdrId::new(1), Precedence::new(100));
+    let _pdr2: CreatePdr = CreatePdr::downlink_core(PdrId::new(2), Precedence::new(100));
 
-// CreateQer
-let qer = CreateQer::open_gate(qer_id);
-let qer = CreateQer::closed_gate(qer_id);
+    // CreateFar
+    let _far: CreateFar = CreateFarBuilder::uplink_to_core(FarId::new(1)).build()?;
+    let _far2: CreateFar = CreateFarBuilder::downlink_to_access(FarId::new(2)).build()?;
+
+    // CreateQer
+    let _qer: CreateQer = CreateQerBuilder::open_gate(QerId::new(1)).build()?;
+    let _qer2: CreateQer = CreateQerBuilder::closed_gate(QerId::new(2)).build()?;
+
+    Ok(())
+}
 ```
 
 ### Feature 4: Method Variants
 
-Some builders offer multiple ways to set values:
+Some message builders offer multiple ways to add the same IE:
 
 ```rust
-// Single item
-builder = builder.add_create_pdr(pdr.to_ie());
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use rs_pfcp::ie::node_id::NodeId;
+use std::net::Ipv4Addr;
 
-// Multiple items at once
-builder = builder.create_pdrs(vec![pdr1.to_ie(), pdr2.to_ie()]);
+fn examples(seid: u64, seq: u32, pdr1: rs_pfcp::ie::create_pdr::CreatePdr, pdr2: rs_pfcp::ie::create_pdr::CreatePdr) {
+    let mut builder = SessionEstablishmentRequestBuilder::new(seid, seq);
 
-// Typed vs IE
-builder = builder.node_id(node_id);           // Typed
-builder = builder.node_id_ie(node_id.to_ie()); // As IE
+    // Single item, typed
+    builder = builder.add_pdr(pdr1);
+
+    // Multiple items at once, as raw Ie
+    builder = builder.create_pdrs(vec![pdr2.to_ie()]);
+
+    // Node ID: typed IP vs pre-built Ie
+    builder = builder.node_id(Ipv4Addr::new(10, 0, 0, 1)); // Direct IP
+    builder = builder.node_id_ie(NodeId::new_ipv4(Ipv4Addr::new(10, 0, 0, 1)).to_ie()); // As Ie
+
+    let _ = builder;
+}
 ```
 
 ---
@@ -413,138 +546,180 @@ builder = builder.node_id_ie(node_id.to_ie()); // As IE
 ### ✅ DO: Use Builders for Complex Construction
 
 ```rust
-// Good: Clear, self-documenting
-let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(node_id)
-    .fseid_ie((seid, ip).into_ie())
-    .build()?;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use std::net::Ipv4Addr;
+
+fn build(seid: u64, sequence: u32, ip: Ipv4Addr) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // Good: Clear, self-documenting
+    SessionEstablishmentRequestBuilder::new(seid, sequence)
+        .node_id(ip)
+        .fseid(seid, ip)
+        .marshal()
+        .map_err(Into::into)
+}
 ```
 
 ### ✅ DO: Validate Early
 
 ```rust
-// Good: Validate before expensive operations
-let pdr = CreatePdrBuilder::new(pdr_id)
-    .precedence(precedence)
-    .pdi(pdi)
-    .build()?;  // Fails fast if invalid
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdi::Pdi;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
 
-// Now safe to use
-message.add_create_pdr(pdr.to_ie());
-```
+fn build(pdr_id: PdrId, precedence: Precedence, pdi: Pdi) -> Result<(), Box<dyn std::error::Error>> {
+    // Good: Validate before expensive operations — fails fast if invalid
+    let pdr = CreatePdrBuilder::new(pdr_id)
+        .precedence(precedence)
+        .pdi(pdi)
+        .build()?;
 
-### ✅ DO: Use Type Inference
-
-```rust
-// Good: Let Rust infer types where obvious
-let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(NodeId::new_ipv4(ip))  // Type clear from method name
-    .build()?;
+    // Now safe to use
+    let _ie = pdr.to_ie();
+    Ok(())
+}
 ```
 
 ### ✅ DO: Leverage IntoIe for Conciseness
 
 ```rust
-// Good: Use tuple conversions (v0.2.1+)
-.fseid_ie((seid, ip).into_ie())
+use rs_pfcp::ie::{Ie, IeType, IntoIe};
+use rs_pfcp::ie::fseid::Fseid;
+use std::net::Ipv4Addr;
 
-// Instead of verbose:
-.fseid_ie(Ie::new(IeType::Fseid, Fseid::new(seid, Some(ip), None).marshal()))
+fn compare(seid: u64, ip: Ipv4Addr) {
+    // Good: tuple conversion
+    let _fseid_ie = (seid, ip).into_ie();
+
+    // Instead of the verbose equivalent:
+    let _fseid_ie2 = Ie::new(IeType::Fseid, Fseid::new(seid, Some(ip), None).marshal());
+}
 ```
 
-### ❌ DON'T: Ignore Build Errors
+### ❌ DON'T: Ignore Errors
 
 ```rust
-// Bad: Unwrapping without error handling
-let request = builder.build().unwrap();
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdi::Pdi;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
 
-// Good: Propagate errors properly
-let request = builder.build()?;
-```
+fn examples(pdr_id: PdrId, precedence: Precedence, pdi: Pdi) {
+    // Bad: unwrapping without error handling
+    let _pdr1 = CreatePdrBuilder::new(pdr_id)
+        .precedence(precedence)
+        .pdi(pdi)
+        .build()
+        .unwrap();
+}
 
-### ❌ DON'T: Mix Builder and Direct Construction
-
-```rust
-// Bad: Inconsistent style
-let pdr = CreatePdrBuilder::new(pdr_id).build()?;
-let far = CreateFar::new(far_id, action, ...);  // Direct construction
-
-// Good: Use builders consistently
-let pdr = CreatePdrBuilder::new(pdr_id).build()?;
-let far = CreateFarBuilder::new(far_id).build()?;
+fn good_example(pdr_id: PdrId, precedence: Precedence, pdi: Pdi) -> Result<(), Box<dyn std::error::Error>> {
+    // Good: propagate errors with `?`
+    let _pdr = CreatePdrBuilder::new(pdr_id)
+        .precedence(precedence)
+        .pdi(pdi)
+        .build()?;
+    Ok(())
+}
 ```
 
 ### ❌ DON'T: Create Unnecessary Intermediate Variables
 
 ```rust
-// Bad: Too verbose
-let node_id = NodeId::new_ipv4(ip);
-let builder = SessionEstablishmentRequestBuilder::new(seid, sequence);
-let builder = builder.node_id(node_id);
-let request = builder.build()?;
+use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
+use std::net::Ipv4Addr;
 
-// Good: Chain directly
-let request = SessionEstablishmentRequestBuilder::new(seid, sequence)
-    .node_id(NodeId::new_ipv4(ip))
-    .build()?;
+fn verbose(seid: u64, sequence: u32, ip: Ipv4Addr) -> Result<Vec<u8>, rs_pfcp::error::PfcpError> {
+    // Bad: too verbose
+    let builder = SessionEstablishmentRequestBuilder::new(seid, sequence);
+    let builder = builder.node_id(ip);
+    builder.marshal()
+}
+
+fn concise(seid: u64, sequence: u32, ip: Ipv4Addr) -> Result<Vec<u8>, rs_pfcp::error::PfcpError> {
+    // Good: chain directly
+    SessionEstablishmentRequestBuilder::new(seid, sequence)
+        .node_id(ip)
+        .marshal()
+}
 ```
 
 ---
 
 ## Troubleshooting
 
-### Error: "Required field X is missing"
+### Error: `PfcpError::MissingMandatoryIe`
 
 **Problem:** Builder validation failed because a mandatory field wasn't set.
 
-**Solution:** Check the error message and add the required field:
+**Solution:** Check the error's `ie_type` field and add the required field:
 
 ```rust
-// Error: "Precedence is required"
-let pdr = CreatePdrBuilder::new(pdr_id)
-    .precedence(Precedence::new(100))  // ✅ Add this
-    .pdi(pdi)
-    .build()?;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdi::Pdi;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
+
+fn build(pdr_id: PdrId, pdi: Pdi) -> Result<(), Box<dyn std::error::Error>> {
+    let pdr = CreatePdrBuilder::new(pdr_id)
+        .precedence(Precedence::new(100)) // ✅ Add this
+        .pdi(pdi)
+        .build()?;
+    let _ = pdr;
+    Ok(())
+}
 ```
 
-### Error: "Cannot move out of borrowed content"
+### Error: "Cannot move out of borrowed content" / "value moved"
 
-**Problem:** Trying to reuse a builder after calling `.build()`.
+**Problem:** Trying to reuse a builder after calling its terminal method (`.build()` /
+`.marshal()`). Builders consume `self`.
 
-**Solution:** Builders consume `self`. Clone before building if needed:
+**Solution:** Construct fresh builders instead of reusing one:
 
 ```rust
-// Bad:
-let builder = CreatePdrBuilder::new(pdr_id);
-let pdr1 = builder.build()?;
-let pdr2 = builder.build()?;  // ❌ builder already moved
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::pdi::Pdi;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
 
-// Good:
-let pdr1 = CreatePdrBuilder::new(pdr_id).build()?;
-let pdr2 = CreatePdrBuilder::new(pdr_id).build()?;
+fn good(pdr_id1: PdrId, pdr_id2: PdrId, pdi1: Pdi, pdi2: Pdi) -> Result<(), Box<dyn std::error::Error>> {
+    // Good: a fresh builder per value
+    let pdr1 = CreatePdrBuilder::new(pdr_id1)
+        .precedence(Precedence::new(100))
+        .pdi(pdi1)
+        .build()?;
+    let pdr2 = CreatePdrBuilder::new(pdr_id2)
+        .precedence(Precedence::new(200))
+        .pdi(pdi2)
+        .build()?;
+    let _ = (pdr1, pdr2);
+    Ok(())
+}
 ```
 
 ### Compilation Error: "Method X not found"
 
-**Problem:** Trying to use a feature from a newer version.
+**Problem:** Using a message-level `.build()` where only `.marshal()` exists (message
+builders marshal directly — see [Two Builder Shapes](#two-builder-shapes) above), or using
+an IE-level `.marshal()` where `.build()` is needed.
 
-**Solution:** Check your rs-pfcp version:
-
-```toml
-[dependencies]
-rs-pfcp = "0.2.0"  # Ensure you have v0.2.0+ for IntoIe tuples
-```
+**Solution:** Check whether the type is a message builder (→ `.marshal()`) or an IE builder
+(→ `.build()?`), and consult [IE Support](../reference/ie-support.md) or
+`cargo doc --open` for the exact method set.
 
 ### Type Mismatch with IntoIe
 
 **Problem:** Tuple conversion not working as expected.
 
-**Solution:** Import `IntoIe` trait:
+**Solution:** Import the `IntoIe` trait:
 
 ```rust
-use rs_pfcp::ie::IntoIe;  // ✅ Required for .into_ie()
+use rs_pfcp::ie::IntoIe; // ✅ Required for .into_ie()
 
-let fseid_ie = (seid, ip).into_ie();
+fn build(seid: u64, ip: std::net::Ipv4Addr) {
+    let _fseid_ie = (seid, ip).into_ie();
+}
 ```
 
 ---
@@ -555,9 +730,13 @@ let fseid_ie = (seid, ip).into_ie();
 
 ```rust
 use rs_pfcp::error::PfcpError;
-use rs_pfcp::ie::{IntoIe, node_id::NodeId};
-use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::apply_action::ApplyAction;
 use rs_pfcp::ie::create_far::CreateFarBuilder;
+use rs_pfcp::ie::create_pdr::CreatePdrBuilder;
+use rs_pfcp::ie::far_id::FarId;
+use rs_pfcp::ie::pdi::PdiBuilder;
+use rs_pfcp::ie::pdr_id::PdrId;
+use rs_pfcp::ie::precedence::Precedence;
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequestBuilder;
 use std::net::Ipv4Addr;
 
@@ -565,10 +744,9 @@ fn create_session(
     cp_seid: u64,
     sequence: u32,
     smf_ip: Ipv4Addr,
-    ue_ip: Ipv4Addr,
 ) -> Result<Vec<u8>, PfcpError> {
     // Build PDR for uplink traffic
-    let pdi = /* ... build PDI ... */;
+    let pdi = PdiBuilder::uplink_access().build()?;
     let pdr = CreatePdrBuilder::new(PdrId::new(1))
         .precedence(Precedence::new(100))
         .pdi(pdi)
@@ -576,56 +754,54 @@ fn create_session(
         .build()?;
 
     // Build FAR to forward uplink traffic
-    let far = CreateFarBuilder::uplink_to_core(FarId::new(1))
+    let far = CreateFarBuilder::new(FarId::new(1))
+        .apply_action(ApplyAction::FORW)
         .build()?;
 
     // Build session establishment request
-    let request = SessionEstablishmentRequestBuilder::new(cp_seid, sequence)
-        .node_id(NodeId::new_ipv4(smf_ip))
-        .fseid_ie((cp_seid, smf_ip).into_ie())  // ✨ Tuple conversion
-        .create_pdrs(vec![pdr.to_ie()])
-        .create_fars(vec![far.to_ie()])
-        .build()?;
-
-    Ok(request.marshal())
+    SessionEstablishmentRequestBuilder::new(cp_seid, sequence)
+        .node_id(smf_ip)
+        .fseid(cp_seid, smf_ip)
+        .add_pdr(pdr)
+        .add_far(far)
+        .marshal()
 }
 ```
 
 ### Heartbeat with Recovery Time
 
 ```rust
-use rs_pfcp::error::PfcpError;
 use rs_pfcp::message::heartbeat_request::HeartbeatRequestBuilder;
 use std::time::SystemTime;
 
-fn send_heartbeat(sequence: u32) -> Result<Vec<u8>, PfcpError> {
-    let request = HeartbeatRequestBuilder::new(sequence)
+fn send_heartbeat(sequence: u32) -> Vec<u8> {
+    HeartbeatRequestBuilder::new(sequence)
         .recovery_time_stamp(SystemTime::now())
-        .build()?;
-
-    Ok(request.marshal())
+        .marshal()
 }
 ```
 
-### Ethernet PDU Session
+### Ethernet PDU Session Filter
 
 ```rust
 use rs_pfcp::error::PfcpError;
+use rs_pfcp::ie::c_tag::CTag;
+use rs_pfcp::ie::ethernet_filter_id::EthernetFilterId;
 use rs_pfcp::ie::ethernet_packet_filter::EthernetPacketFilterBuilder;
 use rs_pfcp::ie::ethernet_pdu_session_information::EthernetPduSessionInformation;
+use rs_pfcp::ie::mac_address::MacAddress;
 
-fn create_ethernet_session() -> Result<(), PfcpError> {
-    // Ethernet-specific information
-    let eth_pdu_info = EthernetPduSessionInformation::new();
+fn create_ethernet_session(mac: MacAddress) -> Result<(), PfcpError> {
+    // Ethernet-specific information: `untagged` indicates untagged Ethernet frames only
+    let _eth_pdu_info = EthernetPduSessionInformation::new(false);
 
-    // Ethernet packet filter with MAC address and VLAN
-    let filter = EthernetPacketFilterBuilder::new()
-        .filter_id(EthernetFilterId::new(1))
-        .mac_address(mac_address)
-        .c_tag(CTag::new(100, 0, 0)?)  // VLAN ID 100
+    // Ethernet packet filter with MAC address and VLAN (C-Tag)
+    let _filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+        .mac_address(mac)
+        .c_tag(CTag::new(0, false, 100)?) // VLAN ID 100
         .build()?;
 
-    // ... use in session establishment ...
+    // ... use in session establishment via CreatePdrBuilder/PdiBuilder ...
     Ok(())
 }
 ```
@@ -641,25 +817,7 @@ fn create_ethernet_session() -> Result<(), PfcpError> {
 
 ---
 
-## Version History
-
-- **v0.3.0** (2026-02-08):
-  - Migrated error handling from `io::Error` to `PfcpError`
-  - Builder `.build()` methods now return `Result<T, PfcpError>`
-  - Message trait returns `SequenceNumber` and `Option<Seid>` instead of raw primitives
-- **v0.2.1** (2025-12-03):
-  - Added IntoIe tuple conversions for F-SEID
-  - Added Default trait to builders
-  - Updated examples with new patterns
-- **v0.2.0** (2025-12-03):
-  - Field encapsulation with typed accessors
-  - Enhanced builder validation
-- **v0.1.x**: Initial builder implementations
-
----
-
 **Questions or Feedback?**
 
 - GitHub Issues: https://github.com/xandlom/rs-pfcp/issues
 - Documentation: https://docs.rs/rs-pfcp
-

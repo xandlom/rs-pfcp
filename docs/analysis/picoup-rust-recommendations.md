@@ -1,5 +1,9 @@
 # rs-pfcp Usage Recommendations for picoup-rust
 
+**Status**: Historical — this is a point-in-time review. Every item listed under "What's
+Coming" below has since shipped (see [CHANGELOG.md](../../CHANGELOG.md)). Preserved as a
+record of the ergonomics review that motivated that work, not maintained.
+
 We reviewed how picoup-rust uses rs-pfcp and found several patterns that can be simplified with APIs already available in the library. We also noticed a few genuine rough edges where the current API makes things harder than it should be — those are on our radar and we're actively working on them.
 
 ---

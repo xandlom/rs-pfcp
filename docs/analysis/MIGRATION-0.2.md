@@ -1,6 +1,7 @@
 # Migration Guide: v0.1.x to v0.2.0
 
-**Status**: DRAFT - This document will be finalized when v0.2.0 is released.
+**Status**: Historical — v0.2.0 shipped in 2025; the crate is now at v0.5.0. Preserved for
+reference, not maintained. See [CHANGELOG.md](../../CHANGELOG.md) for current upgrade notes.
 
 This guide helps you migrate your code from rs-pfcp v0.1.x to v0.2.0. Version 0.2.0 includes several breaking changes that improve API safety, error handling, and consistency.
 
@@ -230,6 +231,6 @@ We recommend upgrading to v0.2.0 as soon as practical to receive bug fixes and n
 
 ## See Also
 
-- [CHANGELOG.md](../CHANGELOG.md) - Complete list of changes
-- [API-STABILITY.md](API-STABILITY.md) - API stability guarantees
-- [API Guide](guides/api-guide.md) - Comprehensive API reference
+- [CHANGELOG.md](../../CHANGELOG.md) - Complete list of changes
+- [API-STABILITY.md](../API-STABILITY.md) - API stability guarantees
+- [API Guide](../guides/api-guide.md) - Comprehensive API reference
