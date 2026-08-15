@@ -51,7 +51,7 @@ Performance testing and optimization:
 Code coverage analysis and improvement:
 - Running coverage reports
 - Understanding coverage metrics
-- Current coverage status (67.64%)
+- Current coverage status (81%+)
 - Identifying coverage gaps
 - Improving test coverage
 - CI integration
@@ -69,6 +69,15 @@ Comprehensive guide to the rs-pfcp API including:
 - Best practices
 
 **When to read**: After quickstart, when building applications
+
+#### [Builder Guide](builder-guide.md)
+Deep dive into the builder pattern conventions used throughout the crate:
+- Message builders vs. IE builders (marshal() vs. build())
+- Common construction patterns
+- Advanced features (IntoIe tuple conversions, convenience constructors)
+- Troubleshooting builder errors
+
+**When to read**: When the builder API isn't behaving as expected
 
 #### [Deployment Guide](deployment-guide.md)
 Production deployment strategies:
