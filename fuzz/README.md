@@ -20,10 +20,41 @@ testing or structural assertions needed for these targets.
   the top-level dispatch. Exercises header parsing plus the per-message IE
   loop across all 25 message types through one entry point.
 
-Planned next (see #67): `unmarshal_ie` (direct `Ie::unmarshal()`, the
-TLV layer underneath all 354 IE types), and a structural round-trip target
-using `arbitrary`-generated `Message`/`Ie` values once `unmarshal_message`
-and `unmarshal_ie` have had a chance to shake out any easy bugs.
+- **`unmarshal_ie`** — feeds arbitrary bytes directly to `Ie::unmarshal()`,
+  the generic TLV-framing layer (type/length/enterprise-id parsing, the
+  zero-length-IE DoS allowlist check) underneath every IE, independent of
+  which message wraps it. Note: this does *not* reach the 354 per-IE-type
+  decoders (`PdrId::unmarshal`, `Fteid::unmarshal`, etc.) — those are
+  separate functions invoked on demand via `Ie::parse::<T>()` / `as_ies()`,
+  never called from inside `Ie::unmarshal()` itself.
+
+- **`describe_lossy`** — feeds arbitrary bytes to
+  `rs_pfcp::message::display::describe_lossy()`, the best-effort YAML/JSON
+  display path `pcap-reader` uses on real (possibly malformed) captured
+  traffic (see #69). Unlike the two targets above, this one *does* reach
+  deep into per-IE-type decode logic: its internal `rich_display()`
+  dispatches on every `IeType` and calls each type's own decoder,
+  recursing into grouped IEs — the closest thing in the crate today to a
+  single entry point covering most of the 354 IE types' decode paths,
+  without a hand-built dispatch table. **This target found a real bug on
+  its first run** — see "Found so far" below.
+
+Planned next (see #67): a structural round-trip target using
+`arbitrary`-generated `Message`/`Ie` values, once these three have had
+more fuzzing time to shake out further easy bugs.
+
+## Found so far
+
+- **`FqCsid::unmarshal` (`src/ie/fq_csid.rs`) — subtract-with-overflow
+  panic**, found by `describe_lossy` within the first ~90s of fuzzing.
+  An FQDN-type FQ-CSID computes `data.len() - num_csids * 2` to locate
+  where the trailing CSID list starts; `num_csids` (0..=15, from the
+  payload's high nibble) can claim more CSID bytes than the buffer
+  actually holds on malformed/truncated input, underflowing the `usize`
+  subtraction. Fixed with `checked_sub` + a proper `InvalidLength` error.
+  Regression input committed at
+  `fuzz/regressions/describe_lossy/fq_csid_fqdn_num_csids_underflow`;
+  matching test in `src/ie/fq_csid.rs::tests::test_fq_csid_unmarshal_errors`.
 
 ## Setup
 
@@ -65,34 +96,46 @@ regardless. Re-run `seed_corpus` any time the pcap fixtures change.
 
 ## Running
 
+Pick one of the three targets above (`unmarshal_message`, `unmarshal_ie`,
+`describe_lossy`):
+
 ```bash
-cargo +nightly fuzz run unmarshal_message                       # run until interrupted
-cargo +nightly fuzz run unmarshal_message -- -max_total_time=120  # time-boxed (used in CI)
+cargo +nightly fuzz run describe_lossy                       # run until interrupted
+cargo +nightly fuzz run describe_lossy -- -max_total_time=120  # time-boxed (used in CI)
+
+cargo +nightly fuzz build   # build all targets without running any of them
 ```
 
 ## Triaging a crash
 
 If `cargo fuzz run` finds a crash, it writes the failing input to
-`fuzz/artifacts/unmarshal_message/`. Minimize it, then close the loop back
-into the normal test suite rather than leaving the finding to live only in
-fuzz corpus history:
+`fuzz/artifacts/<target>/`. Minimize it, then close the loop back into the
+normal test suite rather than leaving the finding to live only in fuzz
+corpus history:
 
 ```bash
-cargo +nightly fuzz tmin unmarshal_message fuzz/artifacts/unmarshal_message/<crash-file>
+cargo +nightly fuzz tmin <target> fuzz/artifacts/<target>/<crash-file>
 ```
 
-1. Commit the minimized input under `fuzz/regressions/unmarshal_message/`.
-2. Add a matching `#[test]` in the normal suite (e.g. in
-   `src/message/mod.rs` or the specific message file the bytes decode as)
-   that feeds the same bytes through `rs_pfcp::message::parse()` and asserts
-   it returns `Err` rather than panicking — this is what the project's
-   round-trip test convention (`CLAUDE.md` → Testing Strategy) already
-   expects for error-case coverage, so a fuzz-found bug becomes a normal
-   regression test like any other.
+1. Commit the minimized input under `fuzz/regressions/<target>/`.
+2. Add a matching `#[test]` in the normal suite — for `unmarshal_message`
+   that means `rs_pfcp::message::parse()` in `src/message/mod.rs` or the
+   specific message file the bytes decode as; for `unmarshal_ie` and
+   `describe_lossy`, it's usually a specific IE's own `unmarshal()` (use
+   `Header::unmarshal` + `Ie::unmarshal` in a throwaway script to find which
+   IE the crashing bytes decode as, the way
+   `fuzz/regressions/describe_lossy/fq_csid_fqdn_num_csids_underflow` was
+   traced back to `FqCsid::unmarshal`). Assert the fixed function returns
+   `Err` rather than panicking — this is what the project's round-trip test
+   convention (`CLAUDE.md` → Testing Strategy) already expects for
+   error-case coverage, so a fuzz-found bug becomes a normal regression test
+   like any other.
 3. Fix the underlying `unmarshal()`/`marshal()` bug.
 
 ## Status
 
-Phase 1 (this target + corpus + local smoke run) is done. CI wiring
-(a scheduled, time-boxed job rather than continuous fuzzing) is tracked as
-a follow-up in #67, not yet set up.
+Phase 1 (all three targets above + corpus tool + local smoke runs) is done,
+and already found and fixed one real bug (see "Found so far"). CI wiring (a
+scheduled, time-boxed job rather than continuous fuzzing) and the
+`arbitrary`-based round-trip target are tracked as follow-ups in #67, not
+yet set up.

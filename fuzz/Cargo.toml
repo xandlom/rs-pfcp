@@ -22,6 +22,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "unmarshal_ie"
+path = "fuzz_targets/unmarshal_ie.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "describe_lossy"
+path = "fuzz_targets/describe_lossy.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "seed_corpus"
 path = "bin/seed_corpus.rs"
 test = false
