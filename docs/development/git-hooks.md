@@ -14,37 +14,38 @@ After cloning the repository, install the Git hooks:
 
 The pre-commit hook automatically runs quality checks before each commit to ensure code quality and consistency. The hook source is maintained in `scripts/pre-commit` and installed to `.git/hooks/pre-commit`.
 
-### What it does:
+### What it does (in this order — see `scripts/pre-commit`):
 
 1. **🎨 Code Formatting (`cargo fmt`)**
    - Automatically formats Rust code according to standard conventions
-   - Auto-fixes formatting issues and stages the changes
+   - Auto-fixes formatting issues and re-stages them (`git add -u`)
 
 2. **🔍 Linting (`cargo clippy`)**
    - Runs Clippy with all warnings treated as errors
    - Checks all targets and features: `--all-targets --all-features -- -D warnings`
    - Blocks commit if linting issues are found
 
-3. **🔧 Build Check (`cargo check`)**
-   - Ensures the project compiles successfully
-   - Runs on all targets to catch compilation errors
+3. **📝 TODO/FIXME and Secret Scanning**
+   - Reports new TODO/FIXME comments added in staged changes (warning only)
+   - Scans staged diffs for patterns like `password = "..."`, `secret = "..."`,
+     `key = "..."`, `token = "..."` (a quoted-string assignment, not just the bare word)
+   - Blocks the commit if a potential secret is detected
 
-4. **🧪 Quick Tests**
-   - Runs unit and integration tests with a 30-second timeout
-   - Skips if tests take too long (to avoid blocking commits)
+4. **🔧 Build Check (`cargo check --all-targets`)**
+   - Ensures the project compiles successfully across all targets
 
-5. **📦 Benchmark Project Check**
-   - Validates the benchmark project in `benchmarks/rust/` compiles
-   - Ensures benchmark changes don't break the build
+5. **🧪 Quick Tests** — only runs if `.rs` files are staged
+   - Runs `cargo test --lib --bins` with a 30-second timeout
+   - If no Rust source files are staged, this step is skipped entirely
+   - If tests exceed the timeout or fail, the hook warns and lets the commit through
+     (full `cargo test` is expected to be run manually before pushing)
 
-6. **🔒 Security Checks**
-   - Scans for potential secrets in staged changes
-   - Looks for patterns like `password=`, `secret=`, `key=`, `token=`
-   - Blocks commit if potential secrets are detected
+6. **📦 Large File Check**
+   - Detects staged files >1MB and suggests Git LFS (warning only)
 
-7. **📝 Code Quality Checks**
-   - Reports new TODO/FIXME comments (warning only)
-   - Detects large files (>1MB) and suggests Git LFS
+There is no separate benchmark-project check — an earlier version of this hook validated a
+standalone `benchmarks/rust/` crate, but that directory was removed from the repository (see
+`57acfe0`) along with the corresponding hook step.
 
 ### Output Example:
 
@@ -57,12 +58,12 @@ The pre-commit hook automatically runs quality checks before each commit to ensu
 [PRE-COMMIT] Running additional checks...
 [PRE-COMMIT] Running cargo check...
 ✅ Cargo check passed
-[PRE-COMMIT] Running quick tests...
-✅ Quick tests passed
-[PRE-COMMIT] Checking benchmark project...
-✅ Benchmark project check passed
+[PRE-COMMIT] No Rust source changes - skipping tests
 ✅ All pre-commit checks passed! 🚀
 ```
+
+(If `.rs` files are staged, you'll instead see `Running quick tests (N Rust file(s)
+staged)...` followed by either `✅ Quick tests passed` or a warning that they were skipped.)
 
 ### Bypassing the Hook (Not Recommended)
 
@@ -104,9 +105,9 @@ chmod +x .git/hooks/pre-commit
 - The hook runs quick tests only (30s timeout)
 - Run full test suite manually: `cargo test`
 
-**Benchmark compilation fails?**
-- Check `benchmarks/rust/Cargo.toml` for dependency issues
-- Ensure benchmark code compiles: `cd benchmarks/rust && cargo check`
+**In-crate benchmarks fail to compile?**
+- The hook's `cargo check --all-targets` covers the in-crate `benches/*.rs` files too
+- Check for errors with: `cargo bench --no-run`
 
 ## Additional Recommended Hooks
 

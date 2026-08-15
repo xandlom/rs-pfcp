@@ -1,7 +1,7 @@
 # PFCP Information Element Compliance Report - 3GPP TS 29.244 Release 18
 
 ## Executive Summary
-The rs-pfcp library provides comprehensive coverage of PFCP Information Elements as specified in 3GPP TS 29.244 Release 18. With **120+ core IEs implemented** across **136 implementation modules** and **274 type enum variants**, the library supports all essential PFCP functionality for 5G network deployments.
+The rs-pfcp library provides comprehensive coverage of PFCP Information Elements as specified in 3GPP TS 29.244 Release 18. With **354 core IEs implemented** across **357 implementation modules** and **354 type enum variants**, the library supports all essential PFCP functionality for 5G network deployments.
 
 **Overall Compliance Level: Production-Ready**
 
@@ -150,7 +150,7 @@ The library implements all critical Information Elements required for production
 ### **Code Quality**
 - Comprehensive marshaling/unmarshaling with proper error handling
 - Builder patterns for complex grouped IEs
-- Extensive test coverage (1,712 tests) with round-trip validation
+- Extensive test coverage (3,400+ tests) with round-trip validation
 - Clear separation of concerns with individual IE modules
 - Type-safe abstractions using Rust's type system
 
@@ -170,10 +170,10 @@ The library implements all critical Information Elements required for production
 
 | Metric | Count | Notes |
 |--------|-------|-------|
-| IE Modules | 136 | Individual implementation files |
-| IE Type Variants | 274 | Enum variants in `IeType` |
-| Core IEs | 120+ | Essential PFCP functionality |
-| Tests | 1,712 | Comprehensive test coverage |
+| IE Modules | 357 | Individual implementation files |
+| IE Type Variants | 354 | Enum variants in `IeType` |
+| Core IEs | 354 | Essential PFCP functionality |
+| Tests | 3,400+ | Comprehensive test coverage |
 | Message Types | 25 | All PFCP messages implemented |
 
 ## 🎯 **Release 18 Specific Features**
@@ -200,9 +200,13 @@ let f_teid = FteidBuilder::new()
     .choose_id(42)  // Correlation ID
     .build()?;
 
-// UPF responds with allocated values in Created PDR
-let created_pdr = response.find_created_pdr(pdr_id)?;
-let allocated_teid = created_pdr.local_f_teid()?;
+// UPF responds with allocated values in Created PDR IEs
+for ie in response.ies(IeType::CreatedPdr) {
+    let created_pdr: CreatedPdr = ie.parse()?;
+    if let Some(allocated_teid) = &created_pdr.f_teid {
+        println!("Allocated: {:?}", allocated_teid);
+    }
+}
 ```
 
 #### **Context-Specific IEs**
@@ -215,8 +219,8 @@ UpdateBarWithinSessionReportResponse::new(bar_id, ...);  // In session report
 #### **Grouped IE Builders**
 ```rust
 let pdr = CreatePdrBuilder::new(pdr_id)
-    .precedence(100)
-    .pdi(pdi_ie)
+    .precedence(Precedence::new(100))
+    .pdi(pdi)
     .far_id(far_id)
     .qer_id(qer_id)
     .urr_id(urr_id)
@@ -234,7 +238,7 @@ let pdr = CreatePdrBuilder::new(pdr_id)
 
 ### **Validation Results**
 ```
-Test Results: 1,712 passed; 0 failed
+Test Results: 3,400+ passed; 0 failed
 Test Duration: ~0.10s
 Coverage: Comprehensive (all IEs and messages)
 ```
@@ -244,13 +248,13 @@ Coverage: Comprehensive (all IEs and messages)
 The rs-pfcp library provides **production-ready 3GPP TS 29.244 Release 18 compliance** with:
 
 **✅ Complete IE Coverage**
-- 120+ core IEs implemented
-- 274 IE type enum variants
-- 136 implementation modules
+- 354 core IEs implemented
+- 354 IE type enum variants
+- 357 implementation modules
 - All essential PFCP functionality
 
 **✅ High Code Quality**
-- 1,712 comprehensive tests passing
+- 3,400+ comprehensive tests passing
 - Robust error handling
 - Efficient implementation
 - Clean architecture
@@ -273,5 +277,5 @@ The library is suitable for production deployment in 5G networks requiring compl
 
 *Specification: 3GPP TS 29.244 Release 18*
 *Library: rs-pfcp*
-*Test Suite: 1,712 passing tests*
+*Test Suite: 3,400+ passing tests*
 *Compliance: Production-Ready*
