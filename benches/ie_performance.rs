@@ -1,8 +1,9 @@
 //! Performance Benchmarks for Extended PFCP IEs
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rs_pfcp::ie::*;
 use rs_pfcp::message::{session_modification_request::SessionModificationRequestBuilder, Message};
+use std::hint::black_box;
 use std::net::Ipv4Addr;
 
 // Benchmark IE marshaling

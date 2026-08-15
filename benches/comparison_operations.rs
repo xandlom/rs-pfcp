@@ -1,7 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rs_pfcp::comparison::MessageComparator;
 use rs_pfcp::ie::*;
 use rs_pfcp::message::*;
+use std::hint::black_box;
 use std::net::Ipv4Addr;
 use std::time::SystemTime;
 
