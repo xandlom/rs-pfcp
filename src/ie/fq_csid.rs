@@ -202,8 +202,21 @@ impl FqCsid {
                 (NodeId::Ipv6(Ipv6Addr::from(octets)), 16)
             }
             NodeIdType::Fqdn => {
-                // Calculate FQDN length by finding where CSIDs start
-                let csids_start_offset = data.len() - (num_csids * 2);
+                // Calculate FQDN length by finding where CSIDs start. num_csids
+                // (0..=15, from the high nibble of first_byte) can claim more
+                // trailing CSID bytes than the buffer actually has, so this
+                // must be a checked subtraction -- data.len() - num_csids * 2
+                // underflows on malformed/truncated input otherwise (found by
+                // fuzzing, see fuzz/regressions/describe_lossy/).
+                let csids_bytes = num_csids * 2;
+                let csids_start_offset = data.len().checked_sub(csids_bytes).ok_or_else(|| {
+                    PfcpError::invalid_length(
+                        "FQ-CSID FQDN",
+                        IeType::FqCsid,
+                        offset + csids_bytes,
+                        data.len(),
+                    )
+                })?;
                 if csids_start_offset <= offset {
                     return Err(PfcpError::invalid_length(
                         "FQ-CSID FQDN",
@@ -394,6 +407,17 @@ mod tests {
         // CSIDs but insufficient data
         let result = FqCsid::unmarshal(&[0x10, 192, 168, 1, 1, 0]); // 1 CSID but only 1 byte
         assert!(result.is_err());
+
+        // Regression (found by fuzzing describe_lossy, see
+        // fuzz/regressions/describe_lossy/fq_csid_fqdn_num_csids_underflow):
+        // FQDN node ID type claiming 8 CSIDs (16 trailing bytes) in a
+        // 14-byte payload used to panic with "attempt to subtract with
+        // overflow" in the `data.len() - num_csids * 2` FQDN-length
+        // calculation, instead of returning an error.
+        let result = FqCsid::unmarshal(&[
+            0x82, 0x0d, 0x7e, 0x05, 0x01, 0x01, 0x01, 0x01, 0x05, 0x00, 0xfc, 0x01, 0x01, 0x01,
+        ]);
+        assert!(matches!(result, Err(PfcpError::InvalidLength { .. })));
     }
 
     #[test]
