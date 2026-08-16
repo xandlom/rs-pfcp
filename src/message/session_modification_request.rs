@@ -54,7 +54,7 @@ pub struct SessionModificationRequest {
     pub mbs_session_n4_control_information: Vec<Ie>, // C - IE Type 310 - Multiple instances, Grouped IE (N4 only)
     pub dscp_to_ppi_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 316 - Grouped IE (N4 only) - Replaces previous value
     pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
-    // TODO: [IE Type 309] TraceCollectionEntityUri not in enum yet (309=MbsUnicastParametersId - check spec)
+    pub trace_collection_entity_uri: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 352 (generic URI) - Trace Reporting Consumer URI for streaming-based reporting (see #70)
     pub ue_level_measurements_configuration: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 353 - UE Level Measurements Configuration (N4 only) [TODO said 330]
     pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
     pub user_id: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
@@ -258,6 +258,9 @@ impl Message for SessionModificationRequest {
         for ie in &self.tl_containers {
             ie.marshal_into(buf);
         }
+        if let Some(ref ie) = self.trace_collection_entity_uri {
+            ie.marshal_into(buf);
+        }
         if let Some(ref ie) = self.ue_level_measurements_configuration {
             ie.marshal_into(buf);
         }
@@ -453,6 +456,9 @@ impl Message for SessionModificationRequest {
         for ie in &self.tl_containers {
             size += ie.len() as usize;
         }
+        if let Some(ref ie) = self.trace_collection_entity_uri {
+            size += ie.len() as usize;
+        }
         if let Some(ref ie) = self.ue_level_measurements_configuration {
             size += ie.len() as usize;
         }
@@ -513,6 +519,7 @@ impl Message for SessionModificationRequest {
         let mut mbs_session_n4_control_information = Vec::new();
         let mut dscp_to_ppi_control_information = None;
         let mut tl_containers = Vec::new();
+        let mut trace_collection_entity_uri = None;
         let mut ue_level_measurements_configuration = None;
         let mut ies = Vec::new();
 
@@ -584,6 +591,7 @@ impl Message for SessionModificationRequest {
                 }
                 IeType::DscpToPpiControlInformation => dscp_to_ppi_control_information = Some(ie),
                 IeType::TlContainer => tl_containers.push(ie),
+                IeType::Uri => trace_collection_entity_uri = Some(ie),
                 IeType::UeLevelMeasurementsConfiguration => {
                     ue_level_measurements_configuration = Some(ie)
                 }
@@ -643,6 +651,7 @@ impl Message for SessionModificationRequest {
             mbs_session_n4_control_information,
             dscp_to_ppi_control_information,
             tl_containers,
+            trace_collection_entity_uri,
             ue_level_measurements_configuration,
             ies,
         })
@@ -780,6 +789,7 @@ impl Message for SessionModificationRequest {
                 IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
             }
             IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
+            IeType::Uri => IeIter::single(self.trace_collection_entity_uri.as_ref(), ie_type),
             IeType::UeLevelMeasurementsConfiguration => {
                 IeIter::single(self.ue_level_measurements_configuration.as_ref(), ie_type)
             }
@@ -912,6 +922,9 @@ impl Message for SessionModificationRequest {
             result.push(ie);
         }
         result.extend(self.tl_containers.iter());
+        if let Some(ref ie) = self.trace_collection_entity_uri {
+            result.push(ie);
+        }
         if let Some(ref ie) = self.ue_level_measurements_configuration {
             result.push(ie);
         }
@@ -973,6 +986,7 @@ pub struct SessionModificationRequestBuilder {
     mbs_session_n4_control_information: Vec<Ie>,
     dscp_to_ppi_control_information: Option<Ie>,
     tl_containers: Vec<Ie>,
+    trace_collection_entity_uri: Option<Ie>,
     ue_level_measurements_configuration: Option<Ie>,
     ies: Vec<Ie>,
 }
@@ -1031,6 +1045,7 @@ impl SessionModificationRequestBuilder {
             mbs_session_n4_control_information: Vec::new(),
             dscp_to_ppi_control_information: None,
             tl_containers: Vec::new(),
+            trace_collection_entity_uri: None,
             ue_level_measurements_configuration: None,
             ies: Vec::new(),
         }
@@ -1491,6 +1506,13 @@ impl SessionModificationRequestBuilder {
         self
     }
 
+    /// Trace Reporting Consumer URI for streaming-based reporting, per
+    /// 3GPP TS 32.422 (reuses the generic URI IE type; see #70).
+    pub fn trace_collection_entity_uri(mut self, ie: Ie) -> Self {
+        self.trace_collection_entity_uri = Some(ie);
+        self
+    }
+
     pub fn ue_level_measurements_configuration(mut self, ie: Ie) -> Self {
         self.ue_level_measurements_configuration = Some(ie);
         self
@@ -1688,6 +1710,9 @@ impl SessionModificationRequestBuilder {
         for ie in &self.tl_containers {
             payload_len += ie.len();
         }
+        if let Some(ie) = &self.trace_collection_entity_uri {
+            payload_len += ie.len();
+        }
         if let Some(ie) = &self.ue_level_measurements_configuration {
             payload_len += ie.len();
         }
@@ -1752,6 +1777,7 @@ impl SessionModificationRequestBuilder {
             mbs_session_n4_control_information: self.mbs_session_n4_control_information,
             dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
             tl_containers: self.tl_containers,
+            trace_collection_entity_uri: self.trace_collection_entity_uri,
             ue_level_measurements_configuration: self.ue_level_measurements_configuration,
             ies: self.ies,
         }
@@ -2656,5 +2682,59 @@ mod tests {
             msg.ue_level_measurements_configuration,
             parsed.ue_level_measurements_configuration
         );
+    }
+
+    // Regression for #70: the TODO comment claimed "TraceCollectionEntityUri
+    // not in enum yet" citing IE 309 (which is actually
+    // MbsUnicastParametersId, unrelated). 3GPP TS 29.244 Rel-18
+    // Table 7.5.4.1-1 confirms "Trace Collection Entity URI" is real, but
+    // its IE Type column just says "URI" -- it reuses the generic URI IE
+    // (type 352, already implemented as `ie::uri::Uri`), the same way CP
+    // F-SEID reuses the generic F-SEID type elsewhere in this crate. No new
+    // IeType variant was needed, just wiring the existing one in.
+    #[test]
+    fn test_trace_collection_entity_uri_roundtrip() {
+        let uri_ie = crate::ie::uri::Uri::new("https://tce.example.com/trace").to_ie();
+
+        let msg = SessionModificationRequestBuilder::new(0xABCDEF, 43)
+            .trace_collection_entity_uri(uri_ie.clone())
+            .build();
+
+        assert_eq!(msg.trace_collection_entity_uri, Some(uri_ie.clone()));
+        assert_eq!(
+            msg.ies(IeType::Uri).next(),
+            Some(&uri_ie),
+            "IeType::Uri must be the generic type 352, not a dedicated one"
+        );
+
+        let bytes = msg.marshal();
+        let parsed = SessionModificationRequest::unmarshal(&bytes).unwrap();
+        assert_eq!(parsed.trace_collection_entity_uri, Some(uri_ie));
+        assert_eq!(parsed.marshal(), bytes);
+    }
+
+    // Before this field existed, a URI IE (type 352) passed via the
+    // generic `.ies()` builder method landed in the `ies` bucket and
+    // `msg.ies(IeType::Uri)` found it there via `IeIter::generic`. Wiring
+    // in the typed field reroutes that IE type on unmarshal(), so this
+    // confirms the reroute doesn't drop data: the IE now round-trips into
+    // `trace_collection_entity_uri` instead, not into `ies`.
+    #[test]
+    fn test_uri_ie_reroutes_from_generic_ies_to_typed_field() {
+        let uri_ie = crate::ie::uri::Uri::new("https://legacy.example.com/trace").to_ie();
+
+        let msg = SessionModificationRequestBuilder::new(0xABCDEF, 43)
+            .ies(vec![uri_ie.clone()])
+            .build();
+
+        let bytes = msg.marshal();
+        let parsed = SessionModificationRequest::unmarshal(&bytes).unwrap();
+
+        assert_eq!(parsed.trace_collection_entity_uri, Some(uri_ie));
+        assert!(
+            !parsed.ies.iter().any(|ie| ie.ie_type == IeType::Uri),
+            "URI IE must not remain in the generic ies bucket after unmarshal"
+        );
+        assert_eq!(parsed.marshal(), bytes);
     }
 }
