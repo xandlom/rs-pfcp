@@ -13,6 +13,20 @@ use crate::types::{Seid, SequenceNumber};
 /// `Vec<Ie>` with no `IeType` to route it back on `unmarshal()`, and has
 /// been removed rather than wired up, since there's no standardized wire
 /// format for it to round-trip through.
+///
+/// It also has no `cp_function_features`, `usage_reports`, `failed_rules_id`,
+/// or `additional_usage_reports_information` fields (see #78): none of
+/// these appear in Table 7.5.9.1-1 either — `usage_reports` and
+/// `additional_usage_reports_information` belong to PFCP Session Report
+/// *Request* (see [`super::session_report_request::SessionReportRequest`]),
+/// and `failed_rules_id` only appears nested inside the "Partial Failure
+/// Information" grouped IE used by PFCP Session Establishment Response, not
+/// as a top-level field here.
+///
+/// The six fields below (CP F-SEID through Node ID) are the ones Table
+/// 7.5.9.1-1 actually defines beyond Cause/Offending IE/Update BAR/
+/// PFCPSRRsp-Flags — all tied to the PFCP-session-successively-controlled-
+/// by-different-SMFs restoration flow described in clause 5.22.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionReportResponse {
     pub header: Header,
@@ -22,10 +36,12 @@ pub struct SessionReportResponse {
     pub offending_ie: Option<Ie>,
     pub update_bar_within_session_report_response: Option<Ie>,
     pub pfcpsrrsp_flags: Option<Ie>,
-    pub cp_function_features: Option<Ie>,
-    pub usage_reports: Vec<Ie>,
-    pub failed_rules_id: Option<Ie>,
-    pub additional_usage_reports_information: Option<Ie>,
+    pub cp_fseid: Option<Ie>,
+    pub n4u_fteid: Option<Ie>,
+    pub alternative_smf_ip_address: Option<Ie>,
+    pub fq_csid: Option<Ie>,
+    pub group_id: Option<Ie>,
+    pub node_id: Option<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -49,16 +65,22 @@ impl Message for SessionReportResponse {
         if let Some(ref ie) = self.pfcpsrrsp_flags {
             ie.marshal_into(buf);
         }
-        if let Some(ref ie) = self.cp_function_features {
+        if let Some(ref ie) = self.cp_fseid {
             ie.marshal_into(buf);
         }
-        for ie in &self.usage_reports {
+        if let Some(ref ie) = self.n4u_fteid {
             ie.marshal_into(buf);
         }
-        if let Some(ref ie) = self.failed_rules_id {
+        if let Some(ref ie) = self.alternative_smf_ip_address {
             ie.marshal_into(buf);
         }
-        if let Some(ref ie) = self.additional_usage_reports_information {
+        if let Some(ref ie) = self.fq_csid {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.group_id {
+            ie.marshal_into(buf);
+        }
+        if let Some(ref ie) = self.node_id {
             ie.marshal_into(buf);
         }
         for ie in &self.ies {
@@ -78,16 +100,22 @@ impl Message for SessionReportResponse {
         if let Some(ref ie) = self.pfcpsrrsp_flags {
             size += ie.len() as usize;
         }
-        if let Some(ref ie) = self.cp_function_features {
+        if let Some(ref ie) = self.cp_fseid {
             size += ie.len() as usize;
         }
-        for ie in &self.usage_reports {
+        if let Some(ref ie) = self.n4u_fteid {
             size += ie.len() as usize;
         }
-        if let Some(ref ie) = self.failed_rules_id {
+        if let Some(ref ie) = self.alternative_smf_ip_address {
             size += ie.len() as usize;
         }
-        if let Some(ref ie) = self.additional_usage_reports_information {
+        if let Some(ref ie) = self.fq_csid {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.group_id {
+            size += ie.len() as usize;
+        }
+        if let Some(ref ie) = self.node_id {
             size += ie.len() as usize;
         }
         for ie in &self.ies {
@@ -102,10 +130,12 @@ impl Message for SessionReportResponse {
         let mut offending_ie = None;
         let mut update_bar_within_session_report_response = None;
         let mut pfcpsrrsp_flags = None;
-        let mut cp_function_features = None;
-        let mut usage_reports = Vec::new();
-        let mut failed_rules_id = None;
-        let mut additional_usage_reports_information = None;
+        let mut cp_fseid = None;
+        let mut n4u_fteid = None;
+        let mut alternative_smf_ip_address = None;
+        let mut fq_csid = None;
+        let mut group_id = None;
+        let mut node_id = None;
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -119,12 +149,12 @@ impl Message for SessionReportResponse {
                     update_bar_within_session_report_response = Some(ie)
                 }
                 IeType::PfcpsrrspFlags => pfcpsrrsp_flags = Some(ie),
-                IeType::CpFunctionFeatures => cp_function_features = Some(ie),
-                IeType::UsageReportWithinSessionReportRequest => usage_reports.push(ie),
-                IeType::FailedRuleId => failed_rules_id = Some(ie),
-                IeType::AdditionalUsageReportsInformation => {
-                    additional_usage_reports_information = Some(ie)
-                }
+                IeType::Fseid => cp_fseid = Some(ie),
+                IeType::Fteid => n4u_fteid = Some(ie),
+                IeType::AlternativeSmfIpAddress => alternative_smf_ip_address = Some(ie),
+                IeType::FqCsid => fq_csid = Some(ie),
+                IeType::GroupId => group_id = Some(ie),
+                IeType::NodeId => node_id = Some(ie),
                 _ => ies.push(ie),
             }
             offset += ie_len;
@@ -140,10 +170,12 @@ impl Message for SessionReportResponse {
             offending_ie,
             update_bar_within_session_report_response,
             pfcpsrrsp_flags,
-            cp_function_features,
-            usage_reports,
-            failed_rules_id,
-            additional_usage_reports_information,
+            cp_fseid,
+            n4u_fteid,
+            alternative_smf_ip_address,
+            fq_csid,
+            group_id,
+            node_id,
             ies,
         })
     }
@@ -179,16 +211,14 @@ impl Message for SessionReportResponse {
                 ie_type,
             ),
             IeType::PfcpsrrspFlags => IeIter::single(self.pfcpsrrsp_flags.as_ref(), ie_type),
-            IeType::CpFunctionFeatures => {
-                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+            IeType::Fseid => IeIter::single(self.cp_fseid.as_ref(), ie_type),
+            IeType::Fteid => IeIter::single(self.n4u_fteid.as_ref(), ie_type),
+            IeType::AlternativeSmfIpAddress => {
+                IeIter::single(self.alternative_smf_ip_address.as_ref(), ie_type)
             }
-            IeType::UsageReportWithinSessionReportRequest => {
-                IeIter::multiple(&self.usage_reports, ie_type)
-            }
-            IeType::FailedRuleId => IeIter::single(self.failed_rules_id.as_ref(), ie_type),
-            IeType::AdditionalUsageReportsInformation => {
-                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
-            }
+            IeType::FqCsid => IeIter::single(self.fq_csid.as_ref(), ie_type),
+            IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
+            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -204,14 +234,22 @@ impl Message for SessionReportResponse {
         if let Some(ref ie) = self.pfcpsrrsp_flags {
             result.push(ie);
         }
-        if let Some(ref ie) = self.cp_function_features {
+        if let Some(ref ie) = self.cp_fseid {
             result.push(ie);
         }
-        result.extend(self.usage_reports.iter());
-        if let Some(ref ie) = self.failed_rules_id {
+        if let Some(ref ie) = self.n4u_fteid {
             result.push(ie);
         }
-        if let Some(ref ie) = self.additional_usage_reports_information {
+        if let Some(ref ie) = self.alternative_smf_ip_address {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.fq_csid {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.group_id {
+            result.push(ie);
+        }
+        if let Some(ref ie) = self.node_id {
             result.push(ie);
         }
         result.extend(self.ies.iter());
@@ -226,14 +264,10 @@ impl SessionReportResponse {
         sequence: impl Into<SequenceNumber>,
         cause: Ie,
         offending_ie: Option<Ie>,
-        usage_reports: Vec<Ie>,
         ies: Vec<Ie>,
     ) -> Self {
         let mut payload_len = cause.len();
         if let Some(ie) = &offending_ie {
-            payload_len += ie.len();
-        }
-        for ie in &usage_reports {
             payload_len += ie.len();
         }
         for ie in &ies {
@@ -249,10 +283,12 @@ impl SessionReportResponse {
             offending_ie,
             update_bar_within_session_report_response: None,
             pfcpsrrsp_flags: None,
-            cp_function_features: None,
-            usage_reports,
-            failed_rules_id: None,
-            additional_usage_reports_information: None,
+            cp_fseid: None,
+            n4u_fteid: None,
+            alternative_smf_ip_address: None,
+            fq_csid: None,
+            group_id: None,
+            node_id: None,
             ies,
         }
     }
@@ -266,10 +302,12 @@ pub struct SessionReportResponseBuilder {
     offending_ie: Option<Ie>,
     update_bar_within_session_report_response: Option<Ie>,
     pfcpsrrsp_flags: Option<Ie>,
-    cp_function_features: Option<Ie>,
-    usage_reports: Vec<Ie>,
-    failed_rules_id: Option<Ie>,
-    additional_usage_reports_information: Option<Ie>,
+    cp_fseid: Option<Ie>,
+    n4u_fteid: Option<Ie>,
+    alternative_smf_ip_address: Option<Ie>,
+    fq_csid: Option<Ie>,
+    group_id: Option<Ie>,
+    node_id: Option<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -297,10 +335,12 @@ impl SessionReportResponseBuilder {
             offending_ie: None,
             update_bar_within_session_report_response: None,
             pfcpsrrsp_flags: None,
-            cp_function_features: None,
-            usage_reports: Vec::new(),
-            failed_rules_id: None,
-            additional_usage_reports_information: None,
+            cp_fseid: None,
+            n4u_fteid: None,
+            alternative_smf_ip_address: None,
+            fq_csid: None,
+            group_id: None,
+            node_id: None,
             ies: Vec::new(),
         }
     }
@@ -342,10 +382,12 @@ impl SessionReportResponseBuilder {
             offending_ie: None,
             update_bar_within_session_report_response: None,
             pfcpsrrsp_flags: None,
-            cp_function_features: None,
-            usage_reports: Vec::new(),
-            failed_rules_id: None,
-            additional_usage_reports_information: None,
+            cp_fseid: None,
+            n4u_fteid: None,
+            alternative_smf_ip_address: None,
+            fq_csid: None,
+            group_id: None,
+            node_id: None,
             ies: Vec::new(),
         }
     }
@@ -369,26 +411,46 @@ impl SessionReportResponseBuilder {
         self
     }
 
-    pub fn cp_function_features(mut self, cp_function_features: Ie) -> Self {
-        self.cp_function_features = Some(cp_function_features);
+    /// New F-SEID the UPF shall use for subsequent PFCP session related
+    /// messages, per clause 5.22 (PFCP sessions successively controlled by
+    /// different SMFs of a same SMF Set).
+    pub fn cp_fseid(mut self, cp_fseid: Ie) -> Self {
+        self.cp_fseid = Some(cp_fseid);
         self
     }
 
-    pub fn usage_reports(mut self, usage_reports: Vec<Ie>) -> Self {
-        self.usage_reports = usage_reports;
+    /// New N4-u F-TEID the UPF shall use for data forwarding towards the
+    /// SMF, per clause 5.22.
+    pub fn n4u_fteid(mut self, n4u_fteid: Ie) -> Self {
+        self.n4u_fteid = Some(n4u_fteid);
         self
     }
 
-    pub fn failed_rules_id(mut self, failed_rules_id: Ie) -> Self {
-        self.failed_rules_id = Some(failed_rules_id);
+    /// IP address of the new SMF to contact, set when Cause indicates
+    /// "Redirection Requested" (clause 5.22).
+    pub fn alternative_smf_ip_address(mut self, alternative_smf_ip_address: Ie) -> Self {
+        self.alternative_smf_ip_address = Some(alternative_smf_ip_address);
         self
     }
 
-    pub fn additional_usage_reports_information(
-        mut self,
-        additional_usage_reports_information: Ie,
-    ) -> Self {
-        self.additional_usage_reports_information = Some(additional_usage_reports_information);
+    /// New PGW-C/SMF FQ-CSID allocated during PFCP session restoration
+    /// (clause 5.22.4).
+    pub fn fq_csid(mut self, fq_csid: Ie) -> Self {
+        self.fq_csid = Some(fq_csid);
+        self
+    }
+
+    /// New Group Id allocated during PFCP session restoration (clause
+    /// 5.22.4).
+    pub fn group_id(mut self, group_id: Ie) -> Self {
+        self.group_id = Some(group_id);
+        self
+    }
+
+    /// Node ID of the SMF or MB-SMF that has taken over control of the
+    /// PFCP session; should be present if `cp_fseid` is present.
+    pub fn node_id(mut self, node_id: Ie) -> Self {
+        self.node_id = Some(node_id);
         self
     }
 
@@ -414,16 +476,22 @@ impl SessionReportResponseBuilder {
         if let Some(ie) = &self.pfcpsrrsp_flags {
             payload_len += ie.len();
         }
-        if let Some(ie) = &self.cp_function_features {
+        if let Some(ie) = &self.cp_fseid {
             payload_len += ie.len();
         }
-        for ie in &self.usage_reports {
+        if let Some(ie) = &self.n4u_fteid {
             payload_len += ie.len();
         }
-        if let Some(ie) = &self.failed_rules_id {
+        if let Some(ie) = &self.alternative_smf_ip_address {
             payload_len += ie.len();
         }
-        if let Some(ie) = &self.additional_usage_reports_information {
+        if let Some(ie) = &self.fq_csid {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.group_id {
+            payload_len += ie.len();
+        }
+        if let Some(ie) = &self.node_id {
             payload_len += ie.len();
         }
         for ie in &self.ies {
@@ -440,10 +508,12 @@ impl SessionReportResponseBuilder {
             update_bar_within_session_report_response: self
                 .update_bar_within_session_report_response,
             pfcpsrrsp_flags: self.pfcpsrrsp_flags,
-            cp_function_features: self.cp_function_features,
-            usage_reports: self.usage_reports,
-            failed_rules_id: self.failed_rules_id,
-            additional_usage_reports_information: self.additional_usage_reports_information,
+            cp_fseid: self.cp_fseid,
+            n4u_fteid: self.n4u_fteid,
+            alternative_smf_ip_address: self.alternative_smf_ip_address,
+            fq_csid: self.fq_csid,
+            group_id: self.group_id,
+            node_id: self.node_id,
             ies: self.ies,
         })
     }
@@ -475,7 +545,7 @@ mod tests {
         let sequence = 0x112233u32;
         let cause_ie = accepted_cause_ie();
 
-        let original = SessionReportResponse::new(seid, sequence, cause_ie, None, vec![], vec![]);
+        let original = SessionReportResponse::new(seid, sequence, cause_ie, None, vec![]);
 
         let marshaled = original.marshal();
         let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
@@ -499,7 +569,6 @@ mod tests {
             cause_ie,
             Some(offending_ie.clone()),
             vec![],
-            vec![],
         );
 
         let marshaled = original.marshal();
@@ -514,52 +583,14 @@ mod tests {
     }
 
     #[test]
-    fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
-        let seid = 0x1122334455667788u64;
-        let sequence = 0x112233u32;
-        let cause_ie = accepted_cause_ie();
-        let usage_report_ie = Ie::new(
-            IeType::UsageReportWithinSessionReportRequest,
-            vec![0x01, 0x02, 0x03, 0x04],
-        );
-
-        let original = SessionReportResponse::new(
-            seid,
-            sequence,
-            cause_ie,
-            None,
-            vec![usage_report_ie.clone()],
-            vec![],
-        );
-
-        let marshaled = original.marshal();
-        let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
-
-        assert_eq!(unmarshaled, original);
-        assert_eq!(unmarshaled.usage_reports, vec![usage_report_ie.clone()]);
-        assert_eq!(
-            unmarshaled
-                .ies(IeType::UsageReportWithinSessionReportRequest)
-                .next(),
-            Some(&usage_report_ie)
-        );
-    }
-
-    #[test]
     fn test_session_report_response_marshal_unmarshal_with_generic_ies() {
         let seid = 0x1122334455667788u64;
         let sequence = 0x112233u32;
         let cause_ie = accepted_cause_ie();
         let extra_ie = Ie::new(IeType::Unknown, vec![0xAB, 0xCD]);
 
-        let original = SessionReportResponse::new(
-            seid,
-            sequence,
-            cause_ie,
-            None,
-            vec![],
-            vec![extra_ie.clone()],
-        );
+        let original =
+            SessionReportResponse::new(seid, sequence, cause_ie, None, vec![extra_ie.clone()]);
 
         let marshaled = original.marshal();
         let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
@@ -574,10 +605,6 @@ mod tests {
         let sequence = 0x112233u32;
         let cause_ie = accepted_cause_ie();
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x4C]);
-        let usage_report_ie = Ie::new(
-            IeType::UsageReportWithinSessionReportRequest,
-            vec![0x01, 0x02],
-        );
         let extra_ie = Ie::new(IeType::Unknown, vec![0xAA]);
 
         let original = SessionReportResponse::new(
@@ -585,15 +612,11 @@ mod tests {
             sequence,
             cause_ie.clone(),
             Some(offending_ie.clone()),
-            vec![usage_report_ie.clone()],
             vec![extra_ie.clone()],
         );
 
         let all = original.all_ies();
-        assert_eq!(
-            all,
-            vec![&cause_ie, &offending_ie, &usage_report_ie, &extra_ie]
-        );
+        assert_eq!(all, vec![&cause_ie, &offending_ie, &extra_ie]);
     }
 
     #[test]
@@ -656,39 +679,43 @@ mod tests {
         let sequence = 0x112233u32;
 
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x4C]);
-        let usage_report_ie = Ie::new(
-            IeType::UsageReportWithinSessionReportRequest,
-            vec![0x01, 0x02, 0x03],
-        );
-        let failed_rules_id_ie = Ie::new(IeType::FailedRuleId, vec![0x00, 0x01]);
-        let additional_usage_reports_information_ie =
-            Ie::new(IeType::AdditionalUsageReportsInformation, vec![0x00, 0x01]);
-        let cp_function_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x01]);
+        let cp_fseid_ie = Ie::new(IeType::Fseid, vec![0x02, 0, 0, 0, 1, 10, 0, 0, 1]);
+        let n4u_fteid_ie = Ie::new(IeType::Fteid, vec![0x01, 0, 0, 0, 1, 10, 0, 0, 2]);
+        let alternative_smf_ip_address_ie =
+            Ie::new(IeType::AlternativeSmfIpAddress, vec![0x02, 10, 0, 0, 3]);
+        let fq_csid_ie = Ie::new(IeType::FqCsid, vec![0x11, 10, 0, 0, 4, 0, 1]);
+        let group_id_ie = Ie::new(IeType::GroupId, vec![0x01, 0x02]);
+        let node_id_ie = Ie::new(IeType::NodeId, vec![0x00, 10, 0, 0, 5]);
         let extra_ie = Ie::new(IeType::Unknown, vec![0xFF]);
 
         let response = SessionReportResponseBuilder::accepted(seid, sequence)
             .offending_ie(offending_ie.clone())
-            .cp_function_features(cp_function_features_ie.clone())
-            .usage_reports(vec![usage_report_ie.clone()])
-            .failed_rules_id(failed_rules_id_ie.clone())
-            .additional_usage_reports_information(additional_usage_reports_information_ie.clone())
+            .cp_fseid(cp_fseid_ie.clone())
+            .n4u_fteid(n4u_fteid_ie.clone())
+            .alternative_smf_ip_address(alternative_smf_ip_address_ie.clone())
+            .fq_csid(fq_csid_ie.clone())
+            .group_id(group_id_ie.clone())
+            .node_id(node_id_ie.clone())
             .ies(vec![extra_ie.clone()])
             .build()
             .unwrap();
 
         assert_eq!(response.offending_ie, Some(offending_ie));
-        assert_eq!(response.cp_function_features, Some(cp_function_features_ie));
-        assert_eq!(response.usage_reports, vec![usage_report_ie]);
-        assert_eq!(response.failed_rules_id, Some(failed_rules_id_ie));
+        assert_eq!(response.cp_fseid, Some(cp_fseid_ie));
+        assert_eq!(response.n4u_fteid, Some(n4u_fteid_ie));
         assert_eq!(
-            response.additional_usage_reports_information,
-            Some(additional_usage_reports_information_ie)
+            response.alternative_smf_ip_address,
+            Some(alternative_smf_ip_address_ie)
         );
+        assert_eq!(response.fq_csid, Some(fq_csid_ie));
+        assert_eq!(response.group_id, Some(group_id_ie));
+        assert_eq!(response.node_id, Some(node_id_ie));
         assert_eq!(response.ies, vec![extra_ie]);
 
         let marshaled = response.marshal();
         let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(unmarshaled, response);
+        assert_eq!(unmarshaled.marshal(), marshaled);
     }
 
     #[test]
@@ -731,30 +758,37 @@ mod tests {
     // up, since 3GPP TS 29.244 Rel-18 doesn't define such an IE for this
     // message. This test exercises every remaining optional field together
     // to confirm the message still round-trips losslessly without it.
+    //
+    // Also covers #78: this message has no `cp_function_features`,
+    // `usage_reports`, `failed_rules_id`, or
+    // `additional_usage_reports_information` fields any more — those
+    // belonged elsewhere per Table 7.5.9.1-1 — and instead carries the six
+    // real IEs (CP F-SEID through Node ID) that table actually defines.
     #[test]
-    fn test_session_report_response_full_round_trip_no_created_updated_usage_reports() {
+    fn test_session_report_response_full_round_trip() {
         let seid = 0x1122334455667788u64;
         let sequence = 0x112233u32;
 
         let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x4C]);
-        let usage_report_ie = Ie::new(
-            IeType::UsageReportWithinSessionReportRequest,
-            vec![0x01, 0x02, 0x03],
-        );
-        let failed_rules_id_ie = Ie::new(IeType::FailedRuleId, vec![0x00, 0x01]);
-        let additional_usage_reports_information_ie =
-            Ie::new(IeType::AdditionalUsageReportsInformation, vec![0x00, 0x01]);
-        let cp_function_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x01]);
         let pfcpsrrsp_flags_ie = Ie::new(IeType::PfcpsrrspFlags, vec![0x01]);
+        let cp_fseid_ie = Ie::new(IeType::Fseid, vec![0x02, 0, 0, 0, 1, 10, 0, 0, 1]);
+        let n4u_fteid_ie = Ie::new(IeType::Fteid, vec![0x01, 0, 0, 0, 1, 10, 0, 0, 2]);
+        let alternative_smf_ip_address_ie =
+            Ie::new(IeType::AlternativeSmfIpAddress, vec![0x02, 10, 0, 0, 3]);
+        let fq_csid_ie = Ie::new(IeType::FqCsid, vec![0x11, 10, 0, 0, 4, 0, 1]);
+        let group_id_ie = Ie::new(IeType::GroupId, vec![0x01, 0x02]);
+        let node_id_ie = Ie::new(IeType::NodeId, vec![0x00, 10, 0, 0, 5]);
         let extra_ie = Ie::new(IeType::Unknown, vec![0xFF]);
 
         let original = SessionReportResponseBuilder::accepted(seid, sequence)
             .offending_ie(offending_ie)
             .pfcpsrrsp_flags(pfcpsrrsp_flags_ie)
-            .cp_function_features(cp_function_features_ie)
-            .usage_reports(vec![usage_report_ie])
-            .failed_rules_id(failed_rules_id_ie)
-            .additional_usage_reports_information(additional_usage_reports_information_ie)
+            .cp_fseid(cp_fseid_ie)
+            .n4u_fteid(n4u_fteid_ie)
+            .alternative_smf_ip_address(alternative_smf_ip_address_ie)
+            .fq_csid(fq_csid_ie)
+            .group_id(group_id_ie)
+            .node_id(node_id_ie)
             .ies(vec![extra_ie])
             .build()
             .unwrap();
@@ -766,6 +800,41 @@ mod tests {
         // Re-marshaling the parsed message must reproduce the exact same
         // bytes -- the fixed-point property that a write-only field would
         // have silently broken.
+        assert_eq!(unmarshaled.marshal(), marshaled);
+    }
+
+    // #78 removed the `usage_reports` field (that IeType belongs to Session
+    // Report *Request*, not Response, per Table 7.5.9.1-1). Removing the
+    // typed field must not drop wire data: an IE of that type passed
+    // through the generic `ies` bucket has to survive a round trip and
+    // stay retrievable via `ies(IeType::UsageReportWithinSessionReportRequest)`,
+    // exactly as any other unrecognized-for-this-message IE would.
+    #[test]
+    fn test_session_report_response_usage_report_ie_survives_via_generic_ies() {
+        let seid = 0x1122334455667788u64;
+        let sequence = 0x112233u32;
+
+        let usage_report_ie = Ie::new(
+            IeType::UsageReportWithinSessionReportRequest,
+            vec![0x01, 0x02, 0x03],
+        );
+
+        let original = SessionReportResponseBuilder::accepted(seid, sequence)
+            .ies(vec![usage_report_ie.clone()])
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled, original);
+        assert_eq!(unmarshaled.ies, vec![usage_report_ie.clone()]);
+        assert_eq!(
+            unmarshaled
+                .ies(IeType::UsageReportWithinSessionReportRequest)
+                .next(),
+            Some(&usage_report_ie)
+        );
         assert_eq!(unmarshaled.marshal(), marshaled);
     }
 }

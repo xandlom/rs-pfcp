@@ -99,8 +99,8 @@ impl Message for SessionReportRequest {
         let mut usage_reports = Vec::new();
         let mut load_control_information = None;
         let mut overload_control_information = None;
-        let additional_usage_reports_information = None;
-        let pfcpsrreq_flags = None;
+        let mut additional_usage_reports_information = None;
+        let mut pfcpsrreq_flags = None;
         let mut tsc_management_informations = Vec::new();
         let mut ies = Vec::new();
 
@@ -114,6 +114,10 @@ impl Message for SessionReportRequest {
                 IeType::UsageReportWithinSessionReportRequest => usage_reports.push(ie),
                 IeType::LoadControlInformation => load_control_information = Some(ie),
                 IeType::OverloadControlInformation => overload_control_information = Some(ie),
+                IeType::AdditionalUsageReportsInformation => {
+                    additional_usage_reports_information = Some(ie)
+                }
+                IeType::PfcpsrReqFlags => pfcpsrreq_flags = Some(ie),
                 IeType::TscManagementInformationWithinSessionReportRequest => {
                     tsc_management_informations.push(ie);
                 }
@@ -176,6 +180,7 @@ impl Message for SessionReportRequest {
             IeType::AdditionalUsageReportsInformation => {
                 IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
             }
+            IeType::PfcpsrReqFlags => IeIter::single(self.pfcpsrreq_flags.as_ref(), ie_type),
             IeType::TscManagementInformationWithinSessionReportRequest => {
                 IeIter::multiple(&self.tsc_management_informations, ie_type)
             }
@@ -634,5 +639,53 @@ mod tests {
         assert!(unmarshaled.downlink_data_report.is_none());
         assert!(unmarshaled.usage_reports.is_empty());
         assert!(unmarshaled.ies.is_empty());
+    }
+
+    // Regression for #78: `additional_usage_reports_information` and
+    // `pfcpsrreq_flags` were declared with `let` (not `let mut`) in
+    // unmarshal() and had no match arm at all, so a message built with
+    // either field set would marshal them onto the wire but silently drop
+    // them on the way back — the exact write-only pattern #74 fixed for
+    // `SessionReportResponse.created_updated_usage_reports`.
+    #[test]
+    fn test_session_report_request_round_trip_additional_usage_reports_information_and_pfcpsrreq_flags(
+    ) {
+        let seid = 0x1122334455667788u64;
+        let sequence = 0x112233u32;
+
+        let additional_usage_reports_information_ie =
+            Ie::new(IeType::AdditionalUsageReportsInformation, vec![0x00, 0x01]);
+        let pfcpsrreq_flags_ie = Ie::new(IeType::PfcpsrReqFlags, vec![0x01]);
+
+        let req = SessionReportRequestBuilder::new(seid, sequence)
+            .additional_usage_reports_information(additional_usage_reports_information_ie.clone())
+            .pfcpsrreq_flags(pfcpsrreq_flags_ie.clone())
+            .build();
+
+        let serialized = req.marshal();
+        let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
+
+        assert_eq!(
+            unmarshaled.additional_usage_reports_information,
+            Some(additional_usage_reports_information_ie.clone())
+        );
+        assert_eq!(
+            unmarshaled.pfcpsrreq_flags,
+            Some(pfcpsrreq_flags_ie.clone())
+        );
+        assert_eq!(
+            unmarshaled
+                .ies(IeType::AdditionalUsageReportsInformation)
+                .next(),
+            Some(&additional_usage_reports_information_ie)
+        );
+        assert_eq!(
+            unmarshaled.ies(IeType::PfcpsrReqFlags).next(),
+            Some(&pfcpsrreq_flags_ie)
+        );
+        assert_eq!(unmarshaled, req);
+        // Fixed-point: re-marshaling the parsed message must reproduce the
+        // exact same bytes.
+        assert_eq!(unmarshaled.marshal(), serialized);
     }
 }
