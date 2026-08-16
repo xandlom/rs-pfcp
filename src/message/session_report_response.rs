@@ -6,6 +6,13 @@ use crate::message::{header::Header, Message, MsgType};
 use crate::types::{Seid, SequenceNumber};
 
 /// Represents a Session Report Response message.
+///
+/// Note: this struct intentionally has no "Created/Updated Usage Report"
+/// field. 3GPP TS 29.244 Rel-18 Table 7.5.9.1-1 does not define such an IE
+/// for this message (see #74) — it was previously present as a write-only
+/// `Vec<Ie>` with no `IeType` to route it back on `unmarshal()`, and has
+/// been removed rather than wired up, since there's no standardized wire
+/// format for it to round-trip through.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionReportResponse {
     pub header: Header,
@@ -19,7 +26,6 @@ pub struct SessionReportResponse {
     pub usage_reports: Vec<Ie>,
     pub failed_rules_id: Option<Ie>,
     pub additional_usage_reports_information: Option<Ie>,
-    pub created_updated_usage_reports: Vec<Ie>,
     pub ies: Vec<Ie>,
 }
 
@@ -55,9 +61,6 @@ impl Message for SessionReportResponse {
         if let Some(ref ie) = self.additional_usage_reports_information {
             ie.marshal_into(buf);
         }
-        for ie in &self.created_updated_usage_reports {
-            ie.marshal_into(buf);
-        }
         for ie in &self.ies {
             ie.marshal_into(buf);
         }
@@ -87,9 +90,6 @@ impl Message for SessionReportResponse {
         if let Some(ref ie) = self.additional_usage_reports_information {
             size += ie.len() as usize;
         }
-        for ie in &self.created_updated_usage_reports {
-            size += ie.len() as usize;
-        }
         for ie in &self.ies {
             size += ie.len() as usize;
         }
@@ -106,7 +106,6 @@ impl Message for SessionReportResponse {
         let mut usage_reports = Vec::new();
         let mut failed_rules_id = None;
         let mut additional_usage_reports_information = None;
-        let created_updated_usage_reports = Vec::new();
         let mut ies = Vec::new();
 
         let mut offset = header.len() as usize;
@@ -145,7 +144,6 @@ impl Message for SessionReportResponse {
             usage_reports,
             failed_rules_id,
             additional_usage_reports_information,
-            created_updated_usage_reports,
             ies,
         })
     }
@@ -216,7 +214,6 @@ impl Message for SessionReportResponse {
         if let Some(ref ie) = self.additional_usage_reports_information {
             result.push(ie);
         }
-        result.extend(self.created_updated_usage_reports.iter());
         result.extend(self.ies.iter());
         result
     }
@@ -256,7 +253,6 @@ impl SessionReportResponse {
             usage_reports,
             failed_rules_id: None,
             additional_usage_reports_information: None,
-            created_updated_usage_reports: Vec::new(),
             ies,
         }
     }
@@ -274,7 +270,6 @@ pub struct SessionReportResponseBuilder {
     usage_reports: Vec<Ie>,
     failed_rules_id: Option<Ie>,
     additional_usage_reports_information: Option<Ie>,
-    created_updated_usage_reports: Vec<Ie>,
     ies: Vec<Ie>,
 }
 
@@ -306,7 +301,6 @@ impl SessionReportResponseBuilder {
             usage_reports: Vec::new(),
             failed_rules_id: None,
             additional_usage_reports_information: None,
-            created_updated_usage_reports: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -352,7 +346,6 @@ impl SessionReportResponseBuilder {
             usage_reports: Vec::new(),
             failed_rules_id: None,
             additional_usage_reports_information: None,
-            created_updated_usage_reports: Vec::new(),
             ies: Vec::new(),
         }
     }
@@ -399,11 +392,6 @@ impl SessionReportResponseBuilder {
         self
     }
 
-    pub fn created_updated_usage_reports(mut self, created_updated_usage_reports: Vec<Ie>) -> Self {
-        self.created_updated_usage_reports = created_updated_usage_reports;
-        self
-    }
-
     pub fn ies(mut self, ies: Vec<Ie>) -> Self {
         self.ies = ies;
         self
@@ -438,9 +426,6 @@ impl SessionReportResponseBuilder {
         if let Some(ie) = &self.additional_usage_reports_information {
             payload_len += ie.len();
         }
-        for ie in &self.created_updated_usage_reports {
-            payload_len += ie.len();
-        }
         for ie in &self.ies {
             payload_len += ie.len();
         }
@@ -459,7 +444,6 @@ impl SessionReportResponseBuilder {
             usage_reports: self.usage_reports,
             failed_rules_id: self.failed_rules_id,
             additional_usage_reports_information: self.additional_usage_reports_information,
-            created_updated_usage_reports: self.created_updated_usage_reports,
             ies: self.ies,
         })
     }
@@ -737,5 +721,51 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.cause, cause_ie);
+    }
+
+    // Regression for #74: `created_updated_usage_reports` used to be a
+    // write-only Vec<Ie> field with no IeType to route it back on
+    // unmarshal(), so a message built with it set would silently fail to
+    // round-trip (the IE landed in `ies` instead, and the field itself was
+    // always empty after unmarshal). It's been removed rather than wired
+    // up, since 3GPP TS 29.244 Rel-18 doesn't define such an IE for this
+    // message. This test exercises every remaining optional field together
+    // to confirm the message still round-trips losslessly without it.
+    #[test]
+    fn test_session_report_response_full_round_trip_no_created_updated_usage_reports() {
+        let seid = 0x1122334455667788u64;
+        let sequence = 0x112233u32;
+
+        let offending_ie = Ie::new(IeType::OffendingIe, vec![0x00, 0x4C]);
+        let usage_report_ie = Ie::new(
+            IeType::UsageReportWithinSessionReportRequest,
+            vec![0x01, 0x02, 0x03],
+        );
+        let failed_rules_id_ie = Ie::new(IeType::FailedRuleId, vec![0x00, 0x01]);
+        let additional_usage_reports_information_ie =
+            Ie::new(IeType::AdditionalUsageReportsInformation, vec![0x00, 0x01]);
+        let cp_function_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x01]);
+        let pfcpsrrsp_flags_ie = Ie::new(IeType::PfcpsrrspFlags, vec![0x01]);
+        let extra_ie = Ie::new(IeType::Unknown, vec![0xFF]);
+
+        let original = SessionReportResponseBuilder::accepted(seid, sequence)
+            .offending_ie(offending_ie)
+            .pfcpsrrsp_flags(pfcpsrrsp_flags_ie)
+            .cp_function_features(cp_function_features_ie)
+            .usage_reports(vec![usage_report_ie])
+            .failed_rules_id(failed_rules_id_ie)
+            .additional_usage_reports_information(additional_usage_reports_information_ie)
+            .ies(vec![extra_ie])
+            .build()
+            .unwrap();
+
+        let marshaled = original.marshal();
+        let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
+
+        assert_eq!(unmarshaled, original);
+        // Re-marshaling the parsed message must reproduce the exact same
+        // bytes -- the fixed-point property that a write-only field would
+        // have silently broken.
+        assert_eq!(unmarshaled.marshal(), marshaled);
     }
 }
