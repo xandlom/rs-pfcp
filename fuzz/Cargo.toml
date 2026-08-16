@@ -10,6 +10,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 pcap-file = "2.0"
+arbitrary = { version = "1", features = ["derive"] }
 
 [dependencies.rs-pfcp]
 path = ".."
@@ -31,6 +32,20 @@ bench = false
 [[bin]]
 name = "describe_lossy"
 path = "fuzz_targets/describe_lossy.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_ie"
+path = "fuzz_targets/roundtrip_ie.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip_message"
+path = "fuzz_targets/roundtrip_message.rs"
 test = false
 doc = false
 bench = false

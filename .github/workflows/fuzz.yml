@@ -1,0 +1,69 @@
+name: Fuzz
+
+# Scheduled, time-boxed fuzzing per fuzz/README.md — not continuous fuzzing
+# on every push. Each target gets its own time-boxed run so one flaky/slow
+# target can't starve the others, and a crash on one target still reports
+# individually with its own minimized artifact.
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      seconds_per_target:
+        description: 'Seconds to fuzz each target for'
+        required: false
+        default: '180'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - unmarshal_message
+          - unmarshal_ie
+          - describe_lossy
+          - roundtrip_ie
+          - roundtrip_message
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Install nightly Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Cache cargo-fuzz
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-fuzz
+          key: cargo-fuzz-${{ runner.os }}
+
+      - name: Install cargo-fuzz
+        run: command -v cargo-fuzz || cargo install cargo-fuzz
+
+      - name: Cache fuzz build artifacts
+        uses: actions/cache@v6
+        with:
+          path: fuzz/target
+          key: fuzz-target-${{ matrix.target }}-${{ hashFiles('fuzz/Cargo.lock') }}
+          restore-keys: fuzz-target-${{ matrix.target }}-
+
+      - name: Fuzz ${{ matrix.target }}
+        run: |
+          cargo +nightly fuzz run ${{ matrix.target }} -- \
+            -max_total_time=${{ github.event.inputs.seconds_per_target || '180' }}
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore

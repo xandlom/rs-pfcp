@@ -39,9 +39,27 @@ testing or structural assertions needed for these targets.
   without a hand-built dispatch table. **This target found a real bug on
   its first run** — see "Found so far" below.
 
-Planned next (see #67): a structural round-trip target using
-`arbitrary`-generated `Message`/`Ie` values, once these three have had
-more fuzzing time to shake out further easy bugs.
+- **`roundtrip_ie`** — Phase 3: uses [`arbitrary`](https://docs.rs/arbitrary)
+  to derive a structured `(raw_type, enterprise_id, payload)` input straight
+  from the fuzzer's byte buffer (not raw wire bytes — coverage-guided
+  mutation explores this struct's fields directly). Unlike `unmarshal_ie`,
+  this checks a stronger property than "doesn't panic": a freshly marshaled
+  `Ie` must always round-trip losslessly back through `Ie::unmarshal()`. A
+  mismatch here means the generic TLV container layer itself is lossy or
+  asymmetric, independent of any IE's own domain-level decoder.
+
+- **`roundtrip_message`** — Phase 3: the same idea one layer up. An
+  `arbitrary` header + bag of IEs is fed through `message::parse()`; most
+  combinations fail a mandatory-IE check and that's expected, not asserted.
+  What *is* asserted: once bytes parse into a message at all,
+  `marshal(parse(bytes))` must be a stable fixed point from then on — the
+  first parse is allowed to canonicalize IE order, but re-marshaling and
+  re-parsing after that must never change the bytes again or start failing.
+
+Both `arbitrary`-based targets take structured input rather than raw wire
+bytes, so the pcap-derived corpus in "Seeding the corpus" below doesn't
+apply to them — no seed corpus is provided; libFuzzer's coverage-guided
+mutation builds one from scratch.
 
 ## Found so far
 
@@ -96,15 +114,24 @@ regardless. Re-run `seed_corpus` any time the pcap fixtures change.
 
 ## Running
 
-Pick one of the three targets above (`unmarshal_message`, `unmarshal_ie`,
-`describe_lossy`):
+Pick one of the five targets above (`unmarshal_message`, `unmarshal_ie`,
+`describe_lossy`, `roundtrip_ie`, `roundtrip_message`):
 
 ```bash
-cargo +nightly fuzz run describe_lossy                       # run until interrupted
-cargo +nightly fuzz run describe_lossy -- -max_total_time=120  # time-boxed (used in CI)
+cargo +nightly fuzz run describe_lossy                         # run until interrupted
+cargo +nightly fuzz run describe_lossy -- -max_total_time=180  # time-boxed (used in CI)
 
 cargo +nightly fuzz build   # build all targets without running any of them
 ```
+
+## CI
+
+`.github/workflows/fuzz.yml` runs all five targets, 180s each, on a nightly
+schedule plus manual `workflow_dispatch` (with a `seconds_per_target`
+override) — deliberately not on every push or PR, per the "Status" note
+below on scope. Each target is its own matrix job so one crash or one slow
+target doesn't block the others; a failure uploads the minimized crash
+input as a build artifact for the "Triaging a crash" workflow below.
 
 ## Triaging a crash
 
@@ -134,8 +161,12 @@ cargo +nightly fuzz tmin <target> fuzz/artifacts/<target>/<crash-file>
 
 ## Status
 
-Phase 1 (all three targets above + corpus tool + local smoke runs) is done,
-and already found and fixed one real bug (see "Found so far"). CI wiring (a
-scheduled, time-boxed job rather than continuous fuzzing) and the
-`arbitrary`-based round-trip target are tracked as follow-ups in #67, not
-yet set up.
+Phase 1 (`unmarshal_message`, `unmarshal_ie`, `describe_lossy` + corpus
+tool) and Phase 3 (`roundtrip_ie`, `roundtrip_message`) are both done —
+five targets total, all with clean local smoke runs (tens of millions of
+executions with no new crashes beyond the one already fixed; see "Found so
+far"). CI wiring (`.github/workflows/fuzz.yml`, scheduled + manual, not
+continuous) is done too.
+
+Remaining, tracked in #67: nothing currently planned beyond letting these
+targets accumulate fuzzing time and triaging whatever CI turns up.
