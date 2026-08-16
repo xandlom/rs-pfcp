@@ -426,7 +426,7 @@ fn test_session_report_response_marshal_unmarshal_minimal() {
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-    let res = SessionReportResponse::new(seid, sequence, cause_ie.clone(), None, vec![], vec![]);
+    let res = SessionReportResponse::new(seid, sequence, cause_ie.clone(), None, vec![]);
 
     let serialized = res.marshal();
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
@@ -454,7 +454,6 @@ fn test_session_report_response_marshal_unmarshal_with_offending_ie() {
         cause_ie.clone(),
         Some(offending_ie.clone()),
         vec![],
-        vec![],
     );
 
     let serialized = res.marshal();
@@ -465,47 +464,36 @@ fn test_session_report_response_marshal_unmarshal_with_offending_ie() {
     assert_eq!(res.ies(IeType::OffendingIe).next(), Some(&offending_ie));
 }
 
+// Per #78, `usage_reports` belongs to Session Report *Request*
+// (IeType::UsageReportWithinSessionReportRequest is only defined there),
+// not the Response — this covers the Response-side IEs Table 7.5.9.1-1
+// actually defines instead (CP F-SEID / Node ID, from the PFCP-session-
+// restoration flow of clause 5.22).
 #[test]
-fn test_session_report_response_marshal_unmarshal_with_usage_reports() {
+fn test_session_report_response_marshal_unmarshal_with_cp_fseid_and_node_id() {
     use rs_pfcp::ie::cause::CauseValue;
-    use rs_pfcp::ie::ur_seqn::UrSeqn;
-    use rs_pfcp::ie::urr_id::UrrId;
-    use rs_pfcp::ie::usage_report::UsageReport;
-    use rs_pfcp::ie::usage_report_trigger::UsageReportTrigger;
-    use rs_pfcp::message::session_report_response::SessionReportResponse;
+    use rs_pfcp::message::session_report_response::SessionReportResponseBuilder;
 
     let seid = 0x1122334455667788;
     let sequence = 0x112233;
-    let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-    // Create usage report IE
-    let urr_id = UrrId::new(1);
-    let ur_seqn = UrSeqn::new(1);
-    let usage_report_trigger = UsageReportTrigger::new(1);
-    let usage_report = UsageReport::new(urr_id, ur_seqn, usage_report_trigger);
-    let usage_report_ie = usage_report.to_ie();
+    let cp_fseid_ie = Ie::new(IeType::Fseid, vec![0x02, 0, 0, 0, 1, 10, 0, 0, 1]);
+    let node_id_ie = Ie::new(IeType::NodeId, vec![0x00, 10, 0, 0, 5]);
 
-    let usage_reports = vec![usage_report_ie.clone()];
-
-    let res = SessionReportResponse::new(
-        seid,
-        sequence,
-        cause_ie.clone(),
-        None,
-        usage_reports.clone(),
-        vec![],
-    );
+    let res = SessionReportResponseBuilder::new(seid, sequence, CauseValue::RequestAccepted)
+        .cp_fseid(cp_fseid_ie.clone())
+        .node_id(node_id_ie.clone())
+        .build()
+        .unwrap();
 
     let serialized = res.marshal();
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
 
     assert_eq!(res, unmarshaled);
-    assert_eq!(res.usage_reports.len(), 1);
-    assert_eq!(
-        res.ies(IeType::UsageReportWithinSessionReportRequest)
-            .next(),
-        Some(&usage_report_ie)
-    );
+    assert_eq!(res.cp_fseid, Some(cp_fseid_ie.clone()));
+    assert_eq!(res.node_id, Some(node_id_ie.clone()));
+    assert_eq!(res.ies(IeType::Fseid).next(), Some(&cp_fseid_ie));
+    assert_eq!(res.ies(IeType::NodeId).next(), Some(&node_id_ie));
 }
 
 #[test]
@@ -516,15 +504,12 @@ fn test_session_report_response_builder() {
     let seid = 0x1122334455667788;
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-    let usage_report_ie = Ie::new(
-        IeType::UsageReportWithinSessionReportRequest,
-        vec![0x01, 0x02, 0x03, 0x04],
-    );
-    let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x05, 0x06]);
+    let cp_fseid_ie = Ie::new(IeType::Fseid, vec![0x02, 0, 0, 0, 1, 10, 0, 0, 1]);
+    let node_id_ie = Ie::new(IeType::NodeId, vec![0x00, 10, 0, 0, 5]);
 
     let res = SessionReportResponseBuilder::new_with_ie(seid, sequence, cause_ie.clone())
-        .usage_reports(vec![usage_report_ie.clone()])
-        .cp_function_features(cp_features_ie.clone())
+        .cp_fseid(cp_fseid_ie.clone())
+        .node_id(node_id_ie.clone())
         .build()
         .unwrap();
 
@@ -532,8 +517,8 @@ fn test_session_report_response_builder() {
     assert_eq!(res.seid().map(|s| *s), Some(seid));
     assert_eq!(*res.sequence(), sequence);
     assert_eq!(res.cause, cause_ie);
-    assert_eq!(res.usage_reports, vec![usage_report_ie]);
-    assert_eq!(res.cp_function_features, Some(cp_features_ie));
+    assert_eq!(res.cp_fseid, Some(cp_fseid_ie));
+    assert_eq!(res.node_id, Some(node_id_ie));
 
     let serialized = res.marshal();
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
@@ -554,18 +539,13 @@ fn test_session_report_response_builder_comprehensive() {
         vec![0x05, 0x06],
     );
     let pfcpsrrsp_flags_ie = Ie::new(IeType::PfcpsrrspFlags, vec![0x07]);
-    let cp_features_ie = Ie::new(IeType::CpFunctionFeatures, vec![0x08, 0x09]);
-
-    // Create multiple usage reports
-    let usage_report1 = Ie::new(
-        IeType::UsageReportWithinSessionReportRequest,
-        vec![0x0A, 0x0B, 0x0C],
-    );
-    let usage_report2 = Ie::new(
-        IeType::UsageReportWithinSessionReportRequest,
-        vec![0x0D, 0x0E, 0x0F],
-    );
-    let usage_reports = vec![usage_report1, usage_report2];
+    let cp_fseid_ie = Ie::new(IeType::Fseid, vec![0x02, 0, 0, 0, 1, 10, 0, 0, 1]);
+    let n4u_fteid_ie = Ie::new(IeType::Fteid, vec![0x01, 0, 0, 0, 1, 10, 0, 0, 2]);
+    let alternative_smf_ip_address_ie =
+        Ie::new(IeType::AlternativeSmfIpAddress, vec![0x02, 10, 0, 0, 3]);
+    let fq_csid_ie = Ie::new(IeType::FqCsid, vec![0x11, 10, 0, 0, 4, 0, 1]);
+    let group_id_ie = Ie::new(IeType::GroupId, vec![0x01, 0x02]);
+    let node_id_ie = Ie::new(IeType::NodeId, vec![0x00, 10, 0, 0, 5]);
 
     let additional_ie = Ie::new(IeType::Timer, vec![0x10, 0x11, 0x12, 0x13]);
 
@@ -573,8 +553,12 @@ fn test_session_report_response_builder_comprehensive() {
         .offending_ie(offending_ie.clone())
         .update_bar_within_session_report_response(update_bar_ie.clone())
         .pfcpsrrsp_flags(pfcpsrrsp_flags_ie.clone())
-        .cp_function_features(cp_features_ie.clone())
-        .usage_reports(usage_reports.clone())
+        .cp_fseid(cp_fseid_ie.clone())
+        .n4u_fteid(n4u_fteid_ie.clone())
+        .alternative_smf_ip_address(alternative_smf_ip_address_ie.clone())
+        .fq_csid(fq_csid_ie.clone())
+        .group_id(group_id_ie.clone())
+        .node_id(node_id_ie.clone())
         .ies(vec![additional_ie.clone()])
         .build()
         .unwrap();
@@ -586,8 +570,15 @@ fn test_session_report_response_builder_comprehensive() {
         Some(update_bar_ie)
     );
     assert_eq!(res.pfcpsrrsp_flags, Some(pfcpsrrsp_flags_ie));
-    assert_eq!(res.cp_function_features, Some(cp_features_ie));
-    assert_eq!(res.usage_reports, usage_reports);
+    assert_eq!(res.cp_fseid, Some(cp_fseid_ie));
+    assert_eq!(res.n4u_fteid, Some(n4u_fteid_ie));
+    assert_eq!(
+        res.alternative_smf_ip_address,
+        Some(alternative_smf_ip_address_ie)
+    );
+    assert_eq!(res.fq_csid, Some(fq_csid_ie));
+    assert_eq!(res.group_id, Some(group_id_ie));
+    assert_eq!(res.node_id, Some(node_id_ie));
     assert_eq!(res.ies, vec![additional_ie]);
 
     let serialized = res.marshal();
@@ -605,7 +596,7 @@ fn test_session_report_response_set_sequence() {
     let new_sequence = 0x445566;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
 
-    let mut res = SessionReportResponse::new(seid, sequence, cause_ie, None, vec![], vec![]);
+    let mut res = SessionReportResponse::new(seid, sequence, cause_ie, None, vec![]);
 
     assert_eq!(*res.sequence(), sequence);
     res.set_sequence(new_sequence.into());
@@ -620,26 +611,19 @@ fn test_session_report_response_ies() {
     let seid = 0x1122334455667788;
     let sequence = 0x112233;
     let cause_ie = Ie::new(IeType::Cause, vec![CauseValue::RequestAccepted as u8]);
-    let usage_report_ie = Ie::new(
-        IeType::UsageReportWithinSessionReportRequest,
-        vec![0x01, 0x02],
-    );
+    let node_id_ie = Ie::new(IeType::NodeId, vec![0x00, 10, 0, 0, 5]);
     let unknown_ie = Ie::new(IeType::Timer, vec![0x03, 0x04]);
 
     let res = SessionReportResponseBuilder::new_with_ie(seid, sequence, cause_ie.clone())
-        .usage_reports(vec![usage_report_ie.clone()])
+        .node_id(node_id_ie.clone())
         .ies(vec![unknown_ie.clone()])
         .build()
         .unwrap();
 
     assert_eq!(res.ies(IeType::Cause).next(), Some(&cause_ie));
-    assert_eq!(
-        res.ies(IeType::UsageReportWithinSessionReportRequest)
-            .next(),
-        Some(&usage_report_ie)
-    );
+    assert_eq!(res.ies(IeType::NodeId).next(), Some(&node_id_ie));
     assert_eq!(res.ies(IeType::Timer).next(), Some(&unknown_ie));
-    assert_eq!(res.ies(IeType::NodeId).next(), None);
+    assert_eq!(res.ies(IeType::GroupId).next(), None);
 }
 
 #[test]
@@ -664,7 +648,7 @@ fn test_session_report_response_empty_unmarshal() {
     assert_eq!(*unmarshaled.sequence(), sequence);
     assert_eq!(unmarshaled.cause, cause_ie);
     assert!(unmarshaled.offending_ie.is_none());
-    assert!(unmarshaled.usage_reports.is_empty());
+    assert!(unmarshaled.node_id.is_none());
     assert!(unmarshaled.ies.is_empty());
 }
 

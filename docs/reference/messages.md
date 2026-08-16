@@ -133,8 +133,8 @@ The rs-pfcp library implements PFCP as defined in 3GPP TS 29.244, providing Rust
 - **Purpose**: Acknowledge session reports and provide updates
 - **Implementation**: `SessionReportResponse`
 - **Builder**: `SessionReportResponseBuilder`
-- **Key IEs**: Cause, Update BAR, CP Function Features
-- **Usage**: Process usage reports and update session parameters
+- **Key IEs**: Cause, Update BAR, PFCPSRRsp-Flags, CP F-SEID, N4-u F-TEID, Alternative SMF IP Address, PGW-C/SMF FQ-CSID, Group Id, Node ID
+- **Usage**: Process usage reports and update session parameters (the last six IEs support the PFCP-session-successively-controlled-by-different-SMFs restoration flow, clause 5.22)
 
 ### 4. PFD Management Messages
 
