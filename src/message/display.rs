@@ -230,6 +230,7 @@ fn rich_display(ie: &Ie) -> Option<IeDisplayResult> {
         IeType::FqCsid => display_fq_csid(&ie.payload),
         IeType::EthernetPduSessionInformation => display_ethernet_pdu_info(&ie.payload),
         IeType::EthernetContextInformation => display_ethernet_context(&ie.payload),
+        IeType::Uri => display_uri(&ie.payload),
         _ => None,
     }
 }
@@ -668,6 +669,11 @@ fn display_offending_ie(payload: &[u8]) -> Option<IeDisplayResult> {
 fn display_timer(payload: &[u8]) -> Option<IeDisplayResult> {
     let timer = crate::ie::timer::Timer::unmarshal(payload).ok()?;
     Some(IeDisplayResult::Compact(json!(timer.value)))
+}
+
+fn display_uri(payload: &[u8]) -> Option<IeDisplayResult> {
+    let uri = crate::ie::uri::Uri::unmarshal(payload).ok()?;
+    Some(IeDisplayResult::Compact(json!(uri.value)))
 }
 
 fn display_pdn_type(payload: &[u8]) -> Option<IeDisplayResult> {

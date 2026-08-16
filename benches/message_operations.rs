@@ -98,6 +98,7 @@ fn create_session_request(
         mbs_session_n4_control_information: vec![],
         dscp_to_ppi_control_information: None,
         tl_containers: vec![],
+        trace_collection_entity_uri: None,
         ue_level_measurements_configuration: None,
         ies: vec![],
     }

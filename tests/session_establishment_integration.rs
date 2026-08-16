@@ -160,6 +160,7 @@ fn test_session_establishment_happy_path_with_all_mandatory_ies() {
         mbs_session_n4_control_information: vec![],
         dscp_to_ppi_control_information: None,
         tl_containers: vec![],
+        trace_collection_entity_uri: None,
         ue_level_measurements_configuration: None,
         ies: vec![],
     };
@@ -539,6 +540,7 @@ fn test_session_establishment_multiple_pdrs_fars() {
         mbs_session_n4_control_information: vec![],
         dscp_to_ppi_control_information: None,
         tl_containers: vec![],
+        trace_collection_entity_uri: None,
         ue_level_measurements_configuration: None,
         ies: vec![],
     };
