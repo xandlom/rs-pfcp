@@ -26,7 +26,6 @@ pub mod atsss_ll_information;
 pub mod atsss_ll_parameters;
 pub mod average_packet_delay;
 pub mod averaging_window;
-pub mod bar;
 pub mod bar_id;
 pub mod bridge_management_information_container;
 pub mod c_tag;

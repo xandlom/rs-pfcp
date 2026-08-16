@@ -91,4 +91,41 @@ mod tests {
 
         assert_eq!(create_bar, unmarshaled);
     }
+
+    #[test]
+    fn test_create_bar_to_ie() {
+        let create_bar = CreateBar::new(BarId::new(5), None);
+        let ie = create_bar.to_ie();
+        assert_eq!(ie.ie_type, IeType::CreateBar);
+        assert_eq!(ie.payload, create_bar.marshal());
+    }
+
+    #[test]
+    fn test_create_bar_unmarshal_missing_bar_id() {
+        // Empty payload: no BAR ID IE at all.
+        let result = CreateBar::unmarshal(&[]);
+        assert!(matches!(
+            result,
+            Err(PfcpError::MissingMandatoryIe {
+                ie_type: IeType::BarId,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn test_create_bar_unmarshal_propagates_child_ie_error() {
+        // A truncated BAR ID child IE (length says 1, but the payload is
+        // cut short) should surface as an error, not panic or silently
+        // succeed.
+        let malformed = [
+            (IeType::BarId as u16).to_be_bytes()[0],
+            (IeType::BarId as u16).to_be_bytes()[1],
+            0x00,
+            0x01, // length = 1
+                  // missing the 1 payload byte
+        ];
+        let result = CreateBar::unmarshal(&malformed);
+        assert!(result.is_err());
+    }
 }
