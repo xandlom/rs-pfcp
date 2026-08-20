@@ -355,11 +355,15 @@ fn test_security_dos_prevention() {
 
 ### Fuzzing Strategy
 
-Planned fuzzing with `cargo-fuzz`:
-- Random message generation
-- Mutated valid messages
-- Edge case exploration
-- Crash detection
+Implemented (tracked in [#67](https://github.com/xandlom/rs-pfcp/issues/67)) via
+`cargo-fuzz` — see [Testing Strategy → Fuzz Testing](testing-strategy.md#6-fuzz-testing)
+and [`fuzz/README.md`](../../fuzz/README.md) for the full setup and target list:
+- Random message and IE generation (`unmarshal_message`, `unmarshal_ie`)
+- Deep per-IE-type decode coverage via the display path (`describe_lossy`)
+- Round-trip/lossless-encoding properties, not just crash-freedom
+  (`roundtrip_ie`, `roundtrip_message`)
+- Crash detection, wired into CI on a nightly schedule with automatic
+  crash-artifact upload
 
 ## Security Audit Trail
 
@@ -372,6 +376,7 @@ Planned fuzzing with `cargo-fuzz`:
 | Issue | Version | Severity | Status |
 |-------|---------|----------|--------|
 | Zero-length IE DoS | v0.1.1 | HIGH | ✅ Fixed |
+| `FqCsid::unmarshal` subtract-with-overflow panic on truncated FQDN-type input | Unreleased (post-v0.5.0) | MEDIUM | ✅ Fixed (found by `describe_lossy` fuzz target, see `fuzz/README.md`) |
 
 ### Disclosure Policy
 
@@ -429,4 +434,4 @@ When adding new IEs or messages:
 **Security Version**: 0.3.0
 **Last Security Audit**: 2025-01-08
 **Next Planned Audit**: TBD
-**Fuzzing Status**: Planned
+**Fuzzing Status**: Implemented (5 `cargo-fuzz` targets, nightly CI — see [#67](https://github.com/xandlom/rs-pfcp/issues/67))

@@ -391,14 +391,38 @@ mod property_tests {
 
 ### 6. Fuzz Testing
 
-**Status: Not yet implemented.** No `fuzz/` directory or `cargo-fuzz` setup exists in the
-repository today — this section documents the pattern the project would use if/when it's
-added.
+**Status: Implemented.** A `fuzz/` directory with a `cargo-fuzz` (libFuzzer) setup exists
+in the repository, tracked under [#67](https://github.com/xandlom/rs-pfcp/issues/67). See
+[`fuzz/README.md`](../../fuzz/README.md) for the full workflow (setup, corpus seeding,
+running, CI, and crash-triage procedure) — this section gives the high-level shape.
 
-Discover vulnerabilities through randomized input:
+Five targets discover vulnerabilities through randomized input, split across two
+strategies:
+
+**Crash oracles** (input: raw wire bytes; the oracle is the project's own stated
+invariant from `CLAUDE.md` — *"NO panics on invalid input — always return
+`Result<T, PfcpError>`"* — so a returned `Err` is a pass, a panic or hang is a bug):
+
+- `unmarshal_message` — fuzzes `rs_pfcp::message::parse()`, the top-level dispatch
+  across all 25 message types.
+- `unmarshal_ie` — fuzzes `Ie::unmarshal()`, the generic TLV-framing layer underneath
+  every IE (does not reach the 354 per-IE-type decoders, which are separate functions).
+- `describe_lossy` — fuzzes `message::display::describe_lossy()`, the best-effort
+  YAML/JSON path `pcap-reader` uses on real captured traffic (see #69); its internal
+  dispatch reaches deep per-IE-type decode logic across nearly all `IeType` variants.
+  Found a real bug on its first run (subtract-with-overflow panic in
+  `FqCsid::unmarshal`, fixed — see `fuzz/README.md` → "Found so far").
+
+**Round-trip properties** (input: `arbitrary`-derived structured values, not raw wire
+bytes — checks a stronger property than crash-freedom):
+
+- `roundtrip_ie` — a freshly marshaled `Ie` must always round-trip losslessly back
+  through `Ie::unmarshal()`.
+- `roundtrip_message` — once arbitrary bytes parse into a message at all,
+  `marshal(parse(bytes))` must be a stable fixed point from then on.
 
 ```rust
-// fuzz/fuzz_targets/unmarshal.rs
+// fuzz/fuzz_targets/unmarshal_message.rs (crash-oracle style, simplified)
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 use rs_pfcp::message::parse;
@@ -408,13 +432,18 @@ fuzz_target!(|data: &[u8]| {
     let _ = parse(data);
 });
 
-// Run with: cargo fuzz run unmarshal
+// Run with: cargo +nightly fuzz run unmarshal_message
 ```
+
+**CI**: `.github/workflows/fuzz.yml` runs all five targets, 180s each, on a nightly
+schedule plus manual `workflow_dispatch` — matrixed per target so one crash or slow
+target doesn't block the others, with crash artifacts uploaded on failure.
 
 **Fuzz Testing Goals:**
 - Discover crashes, panics, infinite loops
 - Find buffer overflows, underflows
 - Verify memory safety
+- Verify lossless round-tripping of the TLV container and message layers
 - Test with millions of random inputs
 
 ## Test Organization
@@ -435,14 +464,15 @@ rs-pfcp/
 │   ├── session_establishment_integration.rs
 │   ├── fixture_semantic_check.rs
 │   └── ie_iteration_tests.rs
-└── benches/                     # Criterion.rs performance benchmarks
-    ├── message_operations.rs
-    ├── ie_operations.rs
-    ├── ie_performance.rs
-    └── comparison_operations.rs
+├── benches/                     # Criterion.rs performance benchmarks
+│   ├── message_operations.rs
+│   ├── ie_operations.rs
+│   ├── ie_performance.rs
+│   └── comparison_operations.rs
+└── fuzz/                         # cargo-fuzz targets (see Fuzz Testing above)
+    ├── fuzz_targets/
+    └── README.md
 ```
-
-(No `fuzz/` directory exists yet — see [Fuzz Testing](#6-fuzz-testing) above.)
 
 ### Naming Conventions
 

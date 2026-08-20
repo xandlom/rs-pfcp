@@ -325,8 +325,9 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 - Protocol-level rejection of attack vectors
 - Bounded parsing (no infinite loops)
 - Resource limits enforced
-- Comprehensive round-trip and edge-case testing (fuzzing is not yet part of the suite —
-  see [Testing Strategy](testing-strategy.md#6-fuzz-testing))
+- Comprehensive round-trip and edge-case testing, plus `cargo-fuzz` targets on the
+  marshal/unmarshal boundary — see
+  [Testing Strategy](testing-strategy.md#6-fuzz-testing)
 
 ### See Also
 
@@ -347,7 +348,9 @@ The library strictly follows 3GPP TS 29.244 Release 18:
 1. **Unit Tests**: Individual IE and message tests
 2. **Integration Tests**: Full message workflows
 3. **Compliance Tests**: 3GPP TS 29.244 verification
-4. **Property Tests / Fuzzing**: Not yet implemented — see
+4. **Fuzz Tests**: `cargo-fuzz` targets on the marshal/unmarshal boundary — see
+   [Testing Strategy](testing-strategy.md#6-fuzz-testing)
+5. **Property Tests**: Not yet implemented (`proptest`/`quickcheck`) — see
    [Testing Strategy](testing-strategy.md#5-property-based-tests)
 
 ## Extension Points
