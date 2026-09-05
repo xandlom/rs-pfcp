@@ -68,6 +68,12 @@ use std::error::Error;
 use std::net::{IpAddr, UdpSocket};
 use std::time::Duration;
 
+/// Name of the loopback interface, which differs between Linux and the BSDs.
+#[cfg(target_os = "linux")]
+const DEFAULT_INTERFACE: &str = "lo";
+#[cfg(not(target_os = "linux"))]
+const DEFAULT_INTERFACE: &str = "lo0";
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -75,8 +81,8 @@ struct Args {
     #[arg(short, long, default_value_t = 1)]
     sessions: u64,
 
-    /// The network interface name (e.g., eth0, lo) to bind to
-    #[arg(short, long, default_value = "lo")]
+    /// The network interface name (e.g., eth0, lo, lo0) to bind to
+    #[arg(short, long, default_value = DEFAULT_INTERFACE)]
     interface: String,
 
     /// The port to connect to the server
@@ -94,7 +100,7 @@ fn handle_session_report_request(
     msg: &dyn Message,
     src: std::net::SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("  Received Session Report Request");
+    println!("  Received Session Report Request from {src}");
 
     // Check what type of report
     if let Some(report_type_ie) = msg.ies(IeType::ReportType).next() {
@@ -115,10 +121,16 @@ fn handle_session_report_request(
     }
 
     // Send Session Report Response with RequestAccepted
-    let response_bytes =
-        SessionReportResponseBuilder::accepted(msg.seid().unwrap(), msg.sequence()).marshal()?;
+    // Degrade gracefully on a malformed request rather than panicking, matching how
+    // session-server's own handler treats a missing SEID.
+    let seid = msg.seid().map(|s| *s).unwrap_or(0);
+    let response_bytes = SessionReportResponseBuilder::accepted(seid, msg.sequence()).marshal()?;
 
-    socket.send_to(&response_bytes, src)?;
+    // `socket` is connected to the server (see `socket.connect()` in `main`), so the
+    // response goes out with `send()`. Handing an explicit destination to `send_to()` on a
+    // connected socket is tolerated by Linux but fails with EISCONN ("Socket is already
+    // connected") on FreeBSD and macOS, which broke the Session Report handshake there.
+    socket.send(&response_bytes)?;
     println!("  Sent Session Report Response (RequestAccepted)");
 
     Ok(())
@@ -134,7 +146,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let interface = network_interfaces
         .iter()
         .find(|iface| iface.name == args.interface)
-        .ok_or_else(|| format!("Interface '{}' not found", args.interface))?;
+        .ok_or_else(|| {
+            let available: Vec<_> = network_interfaces.iter().map(|i| &i.name).collect();
+            format!(
+                "Interface '{}' not found. Available interfaces: {:?}",
+                args.interface, available
+            )
+        })?;
 
     // Find the first IPv4 address of the interface
     let client_ip: IpAddr = interface

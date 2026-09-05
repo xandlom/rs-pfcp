@@ -22,6 +22,10 @@
 //! cargo run --example session-client -- --address 127.0.0.1 --sessions 3
 //! ```
 //!
+//! The interface names above are Linux ones. On macOS and FreeBSD the loopback
+//! interface is `lo0`, not `lo`; pass `--interface lo0` there. Both examples list
+//! the available interface names if the one you pass is not found.
+//!
 //! ## Key Features Demonstrated
 //!
 //! ### Server-Side F-TEID Allocation
