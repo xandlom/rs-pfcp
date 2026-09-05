@@ -72,6 +72,8 @@ cargo run --example heartbeat-client -- --address 127.0.0.1 --port 8805
 cargo run --example session-server -- --interface lo --port 8805
 cargo run --example session-client -- --address 127.0.0.1 --sessions 5
 
+# Note: `lo` is the Linux loopback name. On macOS/FreeBSD use `--interface lo0`.
+
 # Analyze PCAP files
 cargo run --example pcap-reader -- --pcap traffic.pcap --format yaml --pfcp-only
 ```
