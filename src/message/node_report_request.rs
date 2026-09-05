@@ -19,7 +19,7 @@ pub struct NodeReportRequest {
     node_report_type: NodeReportType,
     node_id_ie: Ie,
     node_report_type_ie: Ie,
-    pub user_plane_path_failure_report: Option<Ie>,
+    pub user_plane_path_failure_report: Option<Box<Ie>>,
     pub user_plane_path_recovery_reports: Vec<Ie>,
     pub clock_drift_reports: Vec<Ie>,
     pub gtpu_path_qos_reports: Vec<Ie>,
@@ -144,7 +144,7 @@ impl Message for NodeReportRequest {
             node_report_type,
             node_id_ie,
             node_report_type_ie,
-            user_plane_path_failure_report,
+            user_plane_path_failure_report: user_plane_path_failure_report.map(Box::new),
             user_plane_path_recovery_reports,
             clock_drift_reports,
             gtpu_path_qos_reports,
@@ -173,7 +173,7 @@ impl Message for NodeReportRequest {
             IeType::NodeId => IeIter::single(Some(&self.node_id_ie), ie_type),
             IeType::NodeReportType => IeIter::single(Some(&self.node_report_type_ie), ie_type),
             IeType::UserPlanePathFailureReport => {
-                IeIter::single(self.user_plane_path_failure_report.as_ref(), ie_type)
+                IeIter::single(self.user_plane_path_failure_report.as_deref(), ie_type)
             }
             IeType::UserPlanePathRecoveryReport => {
                 IeIter::multiple(&self.user_plane_path_recovery_reports, ie_type)
@@ -190,7 +190,7 @@ impl Message for NodeReportRequest {
 
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id_ie, &self.node_report_type_ie];
-        result.extend(self.user_plane_path_failure_report.iter());
+        result.extend(self.user_plane_path_failure_report.as_deref());
         result.extend(self.user_plane_path_recovery_reports.iter());
         result.extend(self.clock_drift_reports.iter());
         result.extend(self.gtpu_path_qos_reports.iter());
@@ -309,7 +309,7 @@ impl NodeReportRequestBuilder {
             node_report_type,
             node_id_ie,
             node_report_type_ie,
-            user_plane_path_failure_report: self.user_plane_path_failure_report,
+            user_plane_path_failure_report: self.user_plane_path_failure_report.map(Box::new),
             user_plane_path_recovery_reports: self.user_plane_path_recovery_reports,
             clock_drift_reports: self.clock_drift_reports,
             gtpu_path_qos_reports: self.gtpu_path_qos_reports,

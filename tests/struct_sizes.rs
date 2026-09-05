@@ -27,10 +27,28 @@
 //!   - `SessionModificationResponse`:    688 -> 352 bytes
 //!   - `SessionDeletionResponse`:        480 -> 240 bytes
 //!   - `SessionDeletionRequest`:         184 -> 88 bytes
+//!   - `AssociationUpdateRequest`:       616 -> 280 bytes
+//!   - `AssociationSetupRequest`:        648 -> 312 bytes
+//!   - `AssociationSetupResponse`:       592 -> 304 bytes
+//!   - `AssociationUpdateResponse`:      296 -> 200 bytes
+//!   - `PfdManagementResponse`:          216 -> 120 bytes
+//!   - `SessionSetModificationResponse`: 216 -> 168 bytes
+//!   - `SessionSetDeletionResponse`:     216 -> 168 bytes
+//!   - `SessionSetDeletionRequest`:      184 -> 136 bytes
+//!   - `NodeReportResponse`:             216 -> 168 bytes
+//!   - `NodeReportRequest`:              368 -> 320 bytes
 //!
-//! Remaining message types with un-boxed `Option<Ie>` fields are tracked as
-//! follow-up work, not yet covered by a budget here.
+//! That's the full plan's message-struct rollout — every message type with
+//! a singular optional `Ie` field has been converted. `Vec<Ie>`-only
+//! message types need no budget here since they had nothing to box.
 
+use rs_pfcp::message::association_setup_request::AssociationSetupRequest;
+use rs_pfcp::message::association_setup_response::AssociationSetupResponse;
+use rs_pfcp::message::association_update_request::AssociationUpdateRequest;
+use rs_pfcp::message::association_update_response::AssociationUpdateResponse;
+use rs_pfcp::message::node_report_request::NodeReportRequest;
+use rs_pfcp::message::node_report_response::NodeReportResponse;
+use rs_pfcp::message::pfd_management_response::PfdManagementResponse;
 use rs_pfcp::message::session_deletion_request::SessionDeletionRequest;
 use rs_pfcp::message::session_deletion_response::SessionDeletionResponse;
 use rs_pfcp::message::session_establishment_request::SessionEstablishmentRequest;
@@ -38,6 +56,9 @@ use rs_pfcp::message::session_modification_request::SessionModificationRequest;
 use rs_pfcp::message::session_modification_response::SessionModificationResponse;
 use rs_pfcp::message::session_report_request::SessionReportRequest;
 use rs_pfcp::message::session_report_response::SessionReportResponse;
+use rs_pfcp::message::session_set_deletion_request::SessionSetDeletionRequest;
+use rs_pfcp::message::session_set_deletion_response::SessionSetDeletionResponse;
+use rs_pfcp::message::session_set_modification_response::SessionSetModificationResponse;
 use std::mem::size_of;
 
 macro_rules! size_budget_test {
@@ -104,3 +125,58 @@ size_budget_test!(
     96,
     184
 );
+size_budget_test!(
+    association_update_request_size_budget,
+    AssociationUpdateRequest,
+    320,
+    616
+);
+size_budget_test!(
+    association_setup_request_size_budget,
+    AssociationSetupRequest,
+    320,
+    648
+);
+size_budget_test!(
+    association_setup_response_size_budget,
+    AssociationSetupResponse,
+    320,
+    592
+);
+size_budget_test!(
+    association_update_response_size_budget,
+    AssociationUpdateResponse,
+    224,
+    296
+);
+size_budget_test!(
+    pfd_management_response_size_budget,
+    PfdManagementResponse,
+    128,
+    216
+);
+size_budget_test!(
+    session_set_modification_response_size_budget,
+    SessionSetModificationResponse,
+    192,
+    216
+);
+size_budget_test!(
+    session_set_deletion_response_size_budget,
+    SessionSetDeletionResponse,
+    192,
+    216
+);
+size_budget_test!(
+    session_set_deletion_request_size_budget,
+    SessionSetDeletionRequest,
+    160,
+    184
+);
+size_budget_test!(
+    node_report_response_size_budget,
+    NodeReportResponse,
+    192,
+    216
+);
+size_budget_test!(node_report_request_size_budget, NodeReportRequest, 352, 368);

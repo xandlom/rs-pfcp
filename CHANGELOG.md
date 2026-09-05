@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
   - Affected fields now hold `Option<Box<Ie>>` instead of `Option<Ie>`. Method calls and field access on the contained `Ie` (`.ie_type`, `.payload`, etc.) deref transparently and need no changes. Code comparing a field against a bare `Ie`, e.g. `assert_eq!(msg.field, Some(ie))`, needs `Some(Box::new(ie))` instead. Builder methods are unaffected — they still accept `Ie` directly.
 - **message**: Same boxing applied to `SessionReportResponse`, `SessionReportRequest`, `SessionModificationResponse`, `SessionDeletionResponse`, and `SessionDeletionRequest` (608 -> 176, 432 -> 144, 688 -> 352, 480 -> 240, and 184 -> 88 bytes respectively) ⚠️ **BREAKING**
   - Same migration as above. These message types also have a positional `::new()` constructor alongside their builder; its public signature is unaffected (still takes `Option<Ie>`) — boxing happens only at the internal struct-literal construction inside `new()` and `unmarshal()`.
+- **message**: Same boxing applied to the remaining message types with singular optional `Ie` fields — `AssociationUpdateRequest` (616 -> 280), `AssociationSetupRequest` (648 -> 312), `AssociationSetupResponse` (592 -> 304), `AssociationUpdateResponse` (296 -> 200), `PfdManagementResponse` (216 -> 120), `SessionSetModificationResponse`/`SessionSetDeletionResponse`/`NodeReportResponse` (216 -> 168 each), `SessionSetDeletionRequest` (184 -> 136), and `NodeReportRequest` (368 -> 320) ⚠️ **BREAKING**
+  - Same migration as above. This completes the boxing rollout across all message types with an `Option<Ie>` field; `tests/struct_sizes.rs` now covers all 17 converted types.
 
 ## [0.5.0] - 2026-08-11
 

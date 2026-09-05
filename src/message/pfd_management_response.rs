@@ -10,8 +10,8 @@ use crate::types::{Seid, SequenceNumber};
 pub struct PfdManagementResponse {
     pub header: Header,
     pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 19 - Acceptance or rejection of request (Sxb/Sxc/N4 only)
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/Sxc/N4 only)
-    pub node_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 60 - Unique identifier of sending node (Sxb/Sxc/N4 only)
+    pub offending_ie: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/Sxc/N4 only)
+    pub node_id: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.3.2-1 - IE Type 60 - Unique identifier of sending node (Sxb/Sxc/N4 only)
     pub ies: Vec<Ie>,
 }
 
@@ -41,8 +41,8 @@ impl PfdManagementResponse {
         PfdManagementResponse {
             header,
             cause,
-            offending_ie,
-            node_id,
+            offending_ie: offending_ie.map(Box::new),
+            node_id: node_id.map(Box::new),
             ies,
         }
     }
@@ -112,8 +112,8 @@ impl Message for PfdManagementResponse {
                 message_type: Some(MsgType::PfdManagementResponse),
                 parent_ie: None,
             })?,
-            offending_ie,
-            node_id,
+            offending_ie: offending_ie.map(Box::new),
+            node_id: node_id.map(Box::new),
             ies,
         })
     }
@@ -142,9 +142,9 @@ impl Message for PfdManagementResponse {
         use crate::message::IeIter;
 
         match ie_type {
-            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
+            IeType::NodeId => IeIter::single(self.node_id.as_deref(), ie_type),
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -152,10 +152,10 @@ impl Message for PfdManagementResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.node_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -409,7 +409,7 @@ mod tests {
 
         assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert!(response.ies.is_empty());
     }
 
@@ -452,7 +452,7 @@ mod tests {
 
         assert_eq!(*response.sequence(), 55555);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }
@@ -525,7 +525,7 @@ mod tests {
 
         assert_eq!(*response.sequence(), 12345);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.node_id, Some(node_id_ie));
+        assert_eq!(response.node_id, Some(Box::new(node_id_ie)));
         assert!(response.offending_ie.is_none());
         assert!(response.ies.is_empty());
     }
@@ -632,7 +632,7 @@ mod tests {
 
         assert_eq!(*response.sequence(), 33333);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert!(response.node_id.is_some());
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
