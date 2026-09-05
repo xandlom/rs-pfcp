@@ -10,21 +10,21 @@ use crate::types::{Seid, SequenceNumber};
 pub struct SessionModificationResponse {
     pub header: Header,
     pub cause: Ie, // M - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 19 - Acceptance/partial acceptance/rejection
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
+    pub offending_ie: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 40 - When conditional/mandatory IE missing or faulty
     pub created_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 16 - Multiple instances, Grouped IE (not Sxc)
-    pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
-    pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 54 - Grouped IE (during overload condition)
+    pub load_control_information: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 51 - Grouped IE (if load control feature supported)
+    pub overload_control_information: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 54 - Grouped IE (during overload condition)
     pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 78 - Multiple instances, Grouped IE - When query requested or URR removed
-    pub failed_rule_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
+    pub failed_rule_id: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 114 - Failed Rule ID - When cause indicates rule creation/modification failure
     pub partial_failure_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 272 - Partial Failure Information - Multiple instances, Grouped IE - When cause indicates partial acceptance
-    pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 126 - Additional Usage Reports Information - When Query URR present/QAURR flag set and more reports to follow
+    pub additional_usage_reports_information: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 126 - Additional Usage Reports Information - When Query URR present/QAURR flag set and more reports to follow
     pub created_traffic_endpoints: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 128 - Created/Updated Traffic Endpoint - Multiple instances, Grouped IE (not Sxc) - When UP allocates F-TEID/UE IP
     pub tsc_management_information: Vec<Ie>, // C - Multiple - IE Type 200 - Grouped IE, TSC management info (N4 only)
-    pub atsss_control_parameters: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 221 - ATSSS Control Parameters - Grouped IE (N4 only, MA PDU sessions)
+    pub atsss_control_parameters: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 221 - ATSSS Control Parameters - Grouped IE (N4 only, MA PDU sessions)
     pub updated_pdrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.5.1-1 - IE Type 256 - Updated PDR - Multiple instances, Grouped IE (Sxb/N4 only, not Sxa/Sxc/N4mb) - When Update PDR requests new F-TEID/UE IP
     pub packet_rate_status_reports: Vec<Ie>, // C - Multiple - IE Type 264 - Grouped IE, packet rate status report (Sxb/N4 only)
     pub mbs_session_n4_information: Vec<Ie>, // C - IE Type 311 - Multiple instances (N4 only)
-    pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.5.1-1 - May be legacy/vendor-specific
+    pub pdn_type: Option<Box<Ie>>, // Note: Not in 3GPP TS 29.244 Table 7.5.5.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
 
@@ -202,18 +202,19 @@ impl Message for SessionModificationResponse {
                 message_type: Some(MsgType::SessionModificationResponse),
                 parent_ie: None,
             })?,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             created_pdrs,
-            load_control_information,
-            overload_control_information,
-            pdn_type,
+            load_control_information: load_control_information.map(Box::new),
+            overload_control_information: overload_control_information.map(Box::new),
+            pdn_type: pdn_type.map(Box::new),
             usage_reports,
-            failed_rule_id,
+            failed_rule_id: failed_rule_id.map(Box::new),
             partial_failure_information,
-            additional_usage_reports_information,
+            additional_usage_reports_information: additional_usage_reports_information
+                .map(Box::new),
             created_traffic_endpoints,
             tsc_management_information,
-            atsss_control_parameters,
+            atsss_control_parameters: atsss_control_parameters.map(Box::new),
             updated_pdrs,
             packet_rate_status_reports,
             mbs_session_n4_information,
@@ -246,25 +247,26 @@ impl Message for SessionModificationResponse {
 
         match ie_type {
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             IeType::CreatedPdr => IeIter::multiple(&self.created_pdrs, ie_type),
             IeType::LoadControlInformation => {
-                IeIter::single(self.load_control_information.as_ref(), ie_type)
+                IeIter::single(self.load_control_information.as_deref(), ie_type)
             }
             IeType::OverloadControlInformation => {
-                IeIter::single(self.overload_control_information.as_ref(), ie_type)
+                IeIter::single(self.overload_control_information.as_deref(), ie_type)
             }
-            IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
+            IeType::PdnType => IeIter::single(self.pdn_type.as_deref(), ie_type),
             IeType::UsageReportWithinSessionModificationResponse => {
                 IeIter::multiple(&self.usage_reports, ie_type)
             }
-            IeType::FailedRuleId => IeIter::single(self.failed_rule_id.as_ref(), ie_type),
+            IeType::FailedRuleId => IeIter::single(self.failed_rule_id.as_deref(), ie_type),
             IeType::PartialFailureInformation => {
                 IeIter::multiple(&self.partial_failure_information, ie_type)
             }
-            IeType::AdditionalUsageReportsInformation => {
-                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
-            }
+            IeType::AdditionalUsageReportsInformation => IeIter::single(
+                self.additional_usage_reports_information.as_deref(),
+                ie_type,
+            ),
             IeType::CreatedTrafficEndpoint => {
                 IeIter::multiple(&self.created_traffic_endpoints, ie_type)
             }
@@ -272,7 +274,7 @@ impl Message for SessionModificationResponse {
                 IeIter::multiple(&self.tsc_management_information, ie_type)
             }
             IeType::AtsssControlParameters => {
-                IeIter::single(self.atsss_control_parameters.as_ref(), ie_type)
+                IeIter::single(self.atsss_control_parameters.as_deref(), ie_type)
             }
             IeType::UpdatedPdr => IeIter::multiple(&self.updated_pdrs, ie_type),
             IeType::PacketRateStatusReportWithinSessionModificationResponse => {
@@ -288,30 +290,30 @@ impl Message for SessionModificationResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.created_pdrs.iter());
         if let Some(ref ie) = self.load_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.overload_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pdn_type {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.usage_reports.iter());
         if let Some(ref ie) = self.failed_rule_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.partial_failure_information.iter());
         if let Some(ref ie) = self.additional_usage_reports_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.created_traffic_endpoints.iter());
         result.extend(self.tsc_management_information.iter());
         if let Some(ref ie) = self.atsss_control_parameters {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.updated_pdrs.iter());
         result.extend(self.packet_rate_status_reports.iter());
@@ -382,15 +384,16 @@ impl SessionModificationResponse {
         SessionModificationResponse {
             header,
             cause: cause_ie,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             created_pdrs,
-            load_control_information,
-            overload_control_information,
-            pdn_type,
+            load_control_information: load_control_information.map(Box::new),
+            overload_control_information: overload_control_information.map(Box::new),
+            pdn_type: pdn_type.map(Box::new),
             usage_reports,
-            failed_rule_id,
+            failed_rule_id: failed_rule_id.map(Box::new),
             partial_failure_information,
-            additional_usage_reports_information,
+            additional_usage_reports_information: additional_usage_reports_information
+                .map(Box::new),
             created_traffic_endpoints,
             tsc_management_information: Vec::new(),
             atsss_control_parameters: None,
@@ -690,18 +693,20 @@ impl SessionModificationResponseBuilder {
         Ok(SessionModificationResponse {
             header,
             cause,
-            offending_ie: self.offending_ie,
+            offending_ie: self.offending_ie.map(Box::new),
             created_pdrs: self.created_pdrs,
-            load_control_information: self.load_control_information,
-            overload_control_information: self.overload_control_information,
-            pdn_type: self.pdn_type,
+            load_control_information: self.load_control_information.map(Box::new),
+            overload_control_information: self.overload_control_information.map(Box::new),
+            pdn_type: self.pdn_type.map(Box::new),
             usage_reports: self.usage_reports,
-            failed_rule_id: self.failed_rule_id,
+            failed_rule_id: self.failed_rule_id.map(Box::new),
             partial_failure_information: self.partial_failure_information,
-            additional_usage_reports_information: self.additional_usage_reports_information,
+            additional_usage_reports_information: self
+                .additional_usage_reports_information
+                .map(Box::new),
             created_traffic_endpoints: self.created_traffic_endpoints,
             tsc_management_information: self.tsc_management_information,
-            atsss_control_parameters: self.atsss_control_parameters,
+            atsss_control_parameters: self.atsss_control_parameters.map(Box::new),
             updated_pdrs: self.updated_pdrs,
             packet_rate_status_reports: self.packet_rate_status_reports,
             mbs_session_n4_information: self.mbs_session_n4_information,
@@ -758,7 +763,7 @@ mod tests {
         assert_eq!(*response.sequence(), 22222);
         assert_eq!(response.seid(), Some(Seid(11111)));
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert!(response.created_pdrs.is_empty());
         assert!(response.pdn_type.is_none());
     }
@@ -846,7 +851,7 @@ mod tests {
         assert_eq!(*response.sequence(), 66666);
         assert_eq!(response.seid(), Some(Seid(55555)));
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.pdn_type, Some(pdn_type_ie));
+        assert_eq!(response.pdn_type, Some(Box::new(pdn_type_ie)));
         assert!(response.offending_ie.is_none());
         assert!(response.created_pdrs.is_empty());
     }
@@ -895,7 +900,7 @@ mod tests {
         assert_eq!(response.seid(), Some(Seid(99999)));
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.created_pdrs, vec![created_pdr_ie]);
-        assert_eq!(response.pdn_type, Some(pdn_type_ie));
+        assert_eq!(response.pdn_type, Some(Box::new(pdn_type_ie)));
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }

@@ -11,14 +11,14 @@ use crate::types::{Seid, SequenceNumber};
 pub struct AssociationUpdateRequest {
     pub header: Header,
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 60
-    pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 43
-    pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 89
-    pub pfcp_association_release_request: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 111 - PFCP Association Release Request - When UP function requests CP to release association
-    pub graceful_release_period: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 112 - Graceful Release Period - When UP function requests graceful release
-    pub pfcpau_req_flags: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 162 - PFCPAUReq-Flags - PARPS flag for association release preparation
+    pub up_function_features: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 43
+    pub cp_function_features: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 89
+    pub pfcp_association_release_request: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 111 - PFCP Association Release Request - When UP function requests CP to release association
+    pub graceful_release_period: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 112 - Graceful Release Period - When UP function requests graceful release
+    pub pfcpau_req_flags: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 162 - PFCPAUReq-Flags - PARPS flag for association release preparation
     pub alternative_smf_ip_addresses: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 178 - Alternative SMF IP Address - Multiple instances (N4/N4mb only)
-    pub smf_set_id: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 180 - SMF Set ID - When MPAS feature supported and FQDN changes (N4/N4mb only)
-    pub requested_clock_drift_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 204 - Grouped IE (N4 only) - null length stops reporting [TODO said 203]
+    pub smf_set_id: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 180 - SMF Set ID - When MPAS feature supported and FQDN changes (N4/N4mb only)
+    pub requested_clock_drift_information: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 204 - Grouped IE (N4 only) - null length stops reporting [TODO said 203]
     pub clock_drift_control_information: Vec<Ie>, // O - Multiple - IE Type 203 - Grouped IE (N4 only)
     pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
     pub gtpu_path_qos_control_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.3-1 - IE Type 238 - GTP-U Path QoS Control Information - Multiple instances, null length stops monitoring (N4 only)
@@ -181,14 +181,14 @@ impl Message for AssociationUpdateRequest {
                 message_type: Some(MsgType::AssociationUpdateRequest),
                 parent_ie: None,
             })?,
-            up_function_features,
-            cp_function_features,
-            pfcp_association_release_request,
-            graceful_release_period,
-            pfcpau_req_flags,
+            up_function_features: up_function_features.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
+            pfcp_association_release_request: pfcp_association_release_request.map(Box::new),
+            graceful_release_period: graceful_release_period.map(Box::new),
+            pfcpau_req_flags: pfcpau_req_flags.map(Box::new),
             alternative_smf_ip_addresses,
-            smf_set_id,
-            requested_clock_drift_information,
+            smf_set_id: smf_set_id.map(Box::new),
+            requested_clock_drift_information: requested_clock_drift_information.map(Box::new),
             clock_drift_control_information,
             ue_ip_address_pool_information,
             gtpu_path_qos_control_information,
@@ -219,24 +219,24 @@ impl Message for AssociationUpdateRequest {
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::UpFunctionFeatures => {
-                IeIter::single(self.up_function_features.as_ref(), ie_type)
+                IeIter::single(self.up_function_features.as_deref(), ie_type)
             }
             IeType::CpFunctionFeatures => {
-                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+                IeIter::single(self.cp_function_features.as_deref(), ie_type)
             }
             IeType::PfcpAssociationReleaseRequest => {
-                IeIter::single(self.pfcp_association_release_request.as_ref(), ie_type)
+                IeIter::single(self.pfcp_association_release_request.as_deref(), ie_type)
             }
             IeType::GracefulReleasePeriod => {
-                IeIter::single(self.graceful_release_period.as_ref(), ie_type)
+                IeIter::single(self.graceful_release_period.as_deref(), ie_type)
             }
-            IeType::PfcpauReqFlags => IeIter::single(self.pfcpau_req_flags.as_ref(), ie_type),
+            IeType::PfcpauReqFlags => IeIter::single(self.pfcpau_req_flags.as_deref(), ie_type),
             IeType::AlternativeSmfIpAddress => {
                 IeIter::multiple(&self.alternative_smf_ip_addresses, ie_type)
             }
-            IeType::SmfSetId => IeIter::single(self.smf_set_id.as_ref(), ie_type),
+            IeType::SmfSetId => IeIter::single(self.smf_set_id.as_deref(), ie_type),
             IeType::RequestedClockDriftInformation => {
-                IeIter::single(self.requested_clock_drift_information.as_ref(), ie_type)
+                IeIter::single(self.requested_clock_drift_information.as_deref(), ie_type)
             }
             IeType::ClockDriftControlInformation => {
                 IeIter::multiple(&self.clock_drift_control_information, ie_type)
@@ -257,26 +257,26 @@ impl Message for AssociationUpdateRequest {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id];
         if let Some(ref ie) = self.up_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.cp_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pfcp_association_release_request {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.graceful_release_period {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pfcpau_req_flags {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.alternative_smf_ip_addresses.iter());
         if let Some(ref ie) = self.smf_set_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.requested_clock_drift_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.clock_drift_control_information.iter());
         result.extend(self.ue_ip_address_pool_information.iter());
@@ -354,14 +354,14 @@ impl AssociationUpdateRequest {
         AssociationUpdateRequest {
             header,
             node_id,
-            up_function_features,
-            cp_function_features,
-            pfcp_association_release_request,
-            graceful_release_period,
-            pfcpau_req_flags,
+            up_function_features: up_function_features.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
+            pfcp_association_release_request: pfcp_association_release_request.map(Box::new),
+            graceful_release_period: graceful_release_period.map(Box::new),
+            pfcpau_req_flags: pfcpau_req_flags.map(Box::new),
             alternative_smf_ip_addresses,
-            smf_set_id,
-            requested_clock_drift_information,
+            smf_set_id: smf_set_id.map(Box::new),
+            requested_clock_drift_information: requested_clock_drift_information.map(Box::new),
             clock_drift_control_information,
             ue_ip_address_pool_information,
             gtpu_path_qos_control_information,
@@ -597,7 +597,7 @@ mod tests {
 
         assert_eq!(*request.sequence(), 67890);
         assert_eq!(request.node_id, node_id_ie);
-        assert_eq!(request.up_function_features, Some(up_features_ie));
+        assert_eq!(request.up_function_features, Some(Box::new(up_features_ie)));
         assert!(request.cp_function_features.is_none());
     }
 
@@ -616,7 +616,7 @@ mod tests {
         assert_eq!(*request.sequence(), 11111);
         assert_eq!(request.node_id, node_id_ie);
         assert!(request.up_function_features.is_none());
-        assert_eq!(request.cp_function_features, Some(cp_features_ie));
+        assert_eq!(request.cp_function_features, Some(Box::new(cp_features_ie)));
     }
 
     #[test]
@@ -660,8 +660,8 @@ mod tests {
 
         assert_eq!(*request.sequence(), 33333);
         assert_eq!(request.node_id, node_id_ie);
-        assert_eq!(request.up_function_features, Some(up_features_ie));
-        assert_eq!(request.cp_function_features, Some(cp_features_ie));
+        assert_eq!(request.up_function_features, Some(Box::new(up_features_ie)));
+        assert_eq!(request.cp_function_features, Some(Box::new(cp_features_ie)));
         assert_eq!(request.ies.len(), 1);
         assert_eq!(request.ies[0], additional_ie);
     }
@@ -757,7 +757,10 @@ mod tests {
             .requested_clock_drift_information(rcdi_ie.clone())
             .build();
 
-        assert_eq!(original.requested_clock_drift_information, Some(rcdi_ie));
+        assert_eq!(
+            original.requested_clock_drift_information,
+            Some(Box::new(rcdi_ie))
+        );
 
         let marshaled = original.marshal();
         let unmarshaled = AssociationUpdateRequest::unmarshal(&marshaled).unwrap();

@@ -9,7 +9,7 @@ use crate::types::{Seid, SequenceNumber};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionModificationRequest {
     pub header: Header,
-    pub fseid: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 57 - CP F-SEID when CP changes its F-SEID
+    pub fseid: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 57 - CP F-SEID when CP changes its F-SEID
     pub remove_pdrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 15 - Multiple instances, Grouped IE
     pub remove_fars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 18 - Multiple instances, Grouped IE
     pub remove_urrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 20 - Multiple instances, Grouped IE
@@ -28,38 +28,38 @@ pub struct SessionModificationRequest {
     pub update_qers: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 14 - Multiple instances, Grouped IE (Sxb/Sxc/N4/N4mb only)
     pub update_bars: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 86 - Grouped IE (Sxa/N4 only, not Sxb/Sxc/N4mb)
     pub update_traffic_endpoints: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 132 - Multiple instances, Grouped IE
-    pub pfcpsm_req_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 139 - Flags: DROBU/QAURR/SUMPC/RUMUC/DETEID/HRSBOM
+    pub pfcpsm_req_flags: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 139 - Flags: DROBU/QAURR/SUMPC/RUMUC/DETEID/HRSBOM
     pub query_urrs: Option<Vec<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 77 - Multiple instances, Grouped IE - Request immediate usage reports
     pub fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 65 - Multiple instances - PGW-C/SGW-C/MME/ePDG/TWAN FQ-CSID (Sxa/Sxb/N4 only, per clause 23 of 3GPP TS 23.007)
-    pub user_plane_inactivity_timer: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 117 - When needs to be changed (Sxb/Sxc/N4/N4mb only)
-    pub query_urr_reference: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 125 - Reference identifying the query request, returned in usage reports
-    pub trace_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 152 - Trace instructions, null length to deactivate (not N4mb)
+    pub user_plane_inactivity_timer: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 117 - When needs to be changed (Sxb/Sxc/N4/N4mb only)
+    pub query_urr_reference: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 125 - Reference identifying the query request, returned in usage reports
+    pub trace_information: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 152 - Trace instructions, null length to deactivate (not N4mb)
     pub remove_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 168 - Multiple instances, Grouped IE (N4 only) - For MA PDU session
     pub update_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 169 - Multiple instances, Grouped IE (N4 only) - For MA PDU session
     pub create_mars: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 165 - Multiple instances, Grouped IE (N4 only) - For new MA PDR
-    pub node_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 60 - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
+    pub node_id: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 60 - (N4/N4mb only) - When new SMF/MB-SMF takes over PFCP session
     pub tsc_management_information: Vec<Ie>, // C - Multiple - IE Type 199 - Grouped IE, TSC management info (N4 only)
     pub remove_srrs: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 211 - Multiple instances, Grouped IE (N4 only) - Session-level reporting
     pub create_srrs: Vec<Ie>, // C - Multiple - IE Type 212 - Grouped IE, create session reporting rule (N4 only)
     pub update_srrs: Vec<Ie>, // C - Multiple - IE Type 213 - Grouped IE, update session reporting rule (N4 only)
-    pub provide_atsss_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 220 - Grouped IE (N4 only) - For MA PDU session
-    pub ethernet_context_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 254 - Grouped IE (N4 only) - MAC addresses during anchor relocation
+    pub provide_atsss_control_information: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 220 - Grouped IE (N4 only) - For MA PDU session
+    pub ethernet_context_information: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 254 - Grouped IE (N4 only) - MAC addresses during anchor relocation
     pub access_availability_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 219 - Multiple instances (N4 only) - Access transiently unavailable/available
     pub query_packet_rate_statuses: Vec<Ie>, // C - Multiple - IE Type 263 - Grouped IE, request packet rate status (Sxb/N4 only)
-    pub s_nssai: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
-    pub hplmn_s_nssai: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO if not sent during establishment (N4 only)
-    pub apn_dnn: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
-    pub rat_type: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 275 - RAT Type - New RAT type when RAT changes (not N4mb, not for MA PDU)
-    pub group_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 291 - Group identifier when changed (Sxb/N4 only)
+    pub s_nssai: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 25 - S-NSSAI of PDU/MBS session when changed (N4/N4mb only)
+    pub hplmn_s_nssai: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 338 - HPLMN S-NSSAI for HR-SBO if not sent during establishment (N4 only)
+    pub apn_dnn: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 22 - DNN for HR-SBO if not sent during establishment (N4 only)
+    pub rat_type: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 275 - RAT Type - New RAT type when RAT changes (not N4mb, not for MA PDU)
+    pub group_id: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 291 - Group identifier when changed (Sxb/N4 only)
     pub mbs_session_n4_control_information: Vec<Ie>, // C - IE Type 310 - Multiple instances, Grouped IE (N4 only)
-    pub dscp_to_ppi_control_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 316 - Grouped IE (N4 only) - Replaces previous value
+    pub dscp_to_ppi_control_information: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 316 - Grouped IE (N4 only) - Replaces previous value
     pub tl_containers: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 336 - Multiple instances (N4 only) - From SMF/CUC to UPF/CN-TL
-    pub trace_collection_entity_uri: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 352 (generic URI) - Trace Reporting Consumer URI for streaming-based reporting (see #70)
-    pub ue_level_measurements_configuration: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 353 - UE Level Measurements Configuration (N4 only) [TODO said 330]
-    pub pdn_type: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
-    pub user_id: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
-    pub recovery_time_stamp: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
-    pub cp_function_features: Option<Ie>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub trace_collection_entity_uri: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 352 (generic URI) - Trace Reporting Consumer URI for streaming-based reporting (see #70)
+    pub ue_level_measurements_configuration: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.4.1-1 - IE Type 353 - UE Level Measurements Configuration (N4 only) [TODO said 330]
+    pub pdn_type: Option<Box<Ie>>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub user_id: Option<Box<Ie>>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub recovery_time_stamp: Option<Box<Ie>>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
+    pub cp_function_features: Option<Box<Ie>>, // Note: Not in 3GPP TS 29.244 Table 7.5.4.1-1 - May be legacy/vendor-specific
     pub ies: Vec<Ie>,
 }
 
@@ -602,7 +602,7 @@ impl Message for SessionModificationRequest {
 
         Ok(SessionModificationRequest {
             header,
-            fseid,
+            fseid: fseid.map(Box::new),
             remove_pdrs,
             remove_fars,
             remove_urrs,
@@ -621,38 +621,38 @@ impl Message for SessionModificationRequest {
             update_qers,
             update_bars,
             update_traffic_endpoints,
-            pdn_type,
-            user_id,
-            s_nssai,
-            trace_information,
-            recovery_time_stamp,
-            cp_function_features,
-            apn_dnn,
-            user_plane_inactivity_timer,
-            query_urr_reference,
-            pfcpsm_req_flags,
+            pdn_type: pdn_type.map(Box::new),
+            user_id: user_id.map(Box::new),
+            s_nssai: s_nssai.map(Box::new),
+            trace_information: trace_information.map(Box::new),
+            recovery_time_stamp: recovery_time_stamp.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
+            apn_dnn: apn_dnn.map(Box::new),
+            user_plane_inactivity_timer: user_plane_inactivity_timer.map(Box::new),
+            query_urr_reference: query_urr_reference.map(Box::new),
+            pfcpsm_req_flags: pfcpsm_req_flags.map(Box::new),
             query_urrs,
             fq_csids,
             remove_mars,
             update_mars,
             create_mars,
-            node_id,
+            node_id: node_id.map(Box::new),
             tsc_management_information,
             remove_srrs,
             create_srrs,
             update_srrs,
-            provide_atsss_control_information,
-            ethernet_context_information,
+            provide_atsss_control_information: provide_atsss_control_information.map(Box::new),
+            ethernet_context_information: ethernet_context_information.map(Box::new),
             access_availability_information,
             query_packet_rate_statuses,
-            hplmn_s_nssai,
-            rat_type,
-            group_id,
+            hplmn_s_nssai: hplmn_s_nssai.map(Box::new),
+            rat_type: rat_type.map(Box::new),
+            group_id: group_id.map(Box::new),
             mbs_session_n4_control_information,
-            dscp_to_ppi_control_information,
+            dscp_to_ppi_control_information: dscp_to_ppi_control_information.map(Box::new),
             tl_containers,
-            trace_collection_entity_uri,
-            ue_level_measurements_configuration,
+            trace_collection_entity_uri: trace_collection_entity_uri.map(Box::new),
+            ue_level_measurements_configuration: ue_level_measurements_configuration.map(Box::new),
             ies,
         })
     }
@@ -681,7 +681,7 @@ impl Message for SessionModificationRequest {
         use crate::message::IeIter;
 
         match ie_type {
-            IeType::Fseid => IeIter::single(self.fseid.as_ref(), ie_type),
+            IeType::Fseid => IeIter::single(self.fseid.as_deref(), ie_type),
             IeType::RemovePdr => {
                 IeIter::multiple(self.remove_pdrs.as_deref().unwrap_or(&[]), ie_type)
             }
@@ -739,28 +739,32 @@ impl Message for SessionModificationRequest {
                 self.update_traffic_endpoints.as_deref().unwrap_or(&[]),
                 ie_type,
             ),
-            IeType::PfcpsmReqFlags => IeIter::single(self.pfcpsm_req_flags.as_ref(), ie_type),
+            IeType::PfcpsmReqFlags => IeIter::single(self.pfcpsm_req_flags.as_deref(), ie_type),
             IeType::QueryUrr => {
                 IeIter::multiple(self.query_urrs.as_deref().unwrap_or(&[]), ie_type)
             }
             IeType::FqCsid => IeIter::multiple(&self.fq_csids, ie_type),
             IeType::UserPlaneInactivityTimer => {
-                IeIter::single(self.user_plane_inactivity_timer.as_ref(), ie_type)
+                IeIter::single(self.user_plane_inactivity_timer.as_deref(), ie_type)
             }
-            IeType::QueryUrrReference => IeIter::single(self.query_urr_reference.as_ref(), ie_type),
-            IeType::TraceInformation => IeIter::single(self.trace_information.as_ref(), ie_type),
-            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
+            IeType::QueryUrrReference => {
+                IeIter::single(self.query_urr_reference.as_deref(), ie_type)
+            }
+            IeType::TraceInformation => IeIter::single(self.trace_information.as_deref(), ie_type),
+            IeType::NodeId => IeIter::single(self.node_id.as_deref(), ie_type),
             IeType::EthernetContextInformation => {
-                IeIter::single(self.ethernet_context_information.as_ref(), ie_type)
+                IeIter::single(self.ethernet_context_information.as_deref(), ie_type)
             }
-            IeType::RatType => IeIter::single(self.rat_type.as_ref(), ie_type),
-            IeType::Snssai => IeIter::single(self.s_nssai.as_ref(), ie_type),
-            IeType::ApnDnn => IeIter::single(self.apn_dnn.as_ref(), ie_type),
-            IeType::PdnType => IeIter::single(self.pdn_type.as_ref(), ie_type),
-            IeType::UserId => IeIter::single(self.user_id.as_ref(), ie_type),
-            IeType::RecoveryTimeStamp => IeIter::single(self.recovery_time_stamp.as_ref(), ie_type),
+            IeType::RatType => IeIter::single(self.rat_type.as_deref(), ie_type),
+            IeType::Snssai => IeIter::single(self.s_nssai.as_deref(), ie_type),
+            IeType::ApnDnn => IeIter::single(self.apn_dnn.as_deref(), ie_type),
+            IeType::PdnType => IeIter::single(self.pdn_type.as_deref(), ie_type),
+            IeType::UserId => IeIter::single(self.user_id.as_deref(), ie_type),
+            IeType::RecoveryTimeStamp => {
+                IeIter::single(self.recovery_time_stamp.as_deref(), ie_type)
+            }
             IeType::CpFunctionFeatures => {
-                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+                IeIter::single(self.cp_function_features.as_deref(), ie_type)
             }
             IeType::RemoveMar => IeIter::multiple(&self.remove_mars, ie_type),
             IeType::UpdateMar => IeIter::multiple(&self.update_mars, ie_type),
@@ -772,7 +776,7 @@ impl Message for SessionModificationRequest {
             IeType::CreateSrr => IeIter::multiple(&self.create_srrs, ie_type),
             IeType::UpdateSrr => IeIter::multiple(&self.update_srrs, ie_type),
             IeType::ProvideAtsssControlInformation => {
-                IeIter::single(self.provide_atsss_control_information.as_ref(), ie_type)
+                IeIter::single(self.provide_atsss_control_information.as_deref(), ie_type)
             }
             IeType::AccessAvailabilityInformation => {
                 IeIter::multiple(&self.access_availability_information, ie_type)
@@ -780,18 +784,18 @@ impl Message for SessionModificationRequest {
             IeType::QueryPacketRateStatusWithinSessionModificationRequest => {
                 IeIter::multiple(&self.query_packet_rate_statuses, ie_type)
             }
-            IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_ref(), ie_type),
-            IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
+            IeType::HplmnSNssai => IeIter::single(self.hplmn_s_nssai.as_deref(), ie_type),
+            IeType::GroupId => IeIter::single(self.group_id.as_deref(), ie_type),
             IeType::MbsSessionN4ControlInformation => {
                 IeIter::multiple(&self.mbs_session_n4_control_information, ie_type)
             }
             IeType::DscpToPpiControlInformation => {
-                IeIter::single(self.dscp_to_ppi_control_information.as_ref(), ie_type)
+                IeIter::single(self.dscp_to_ppi_control_information.as_deref(), ie_type)
             }
             IeType::TlContainer => IeIter::multiple(&self.tl_containers, ie_type),
-            IeType::Uri => IeIter::single(self.trace_collection_entity_uri.as_ref(), ie_type),
+            IeType::Uri => IeIter::single(self.trace_collection_entity_uri.as_deref(), ie_type),
             IeType::UeLevelMeasurementsConfiguration => {
-                IeIter::single(self.ue_level_measurements_configuration.as_ref(), ie_type)
+                IeIter::single(self.ue_level_measurements_configuration.as_deref(), ie_type)
             }
             _ => IeIter::generic(&self.ies, ie_type),
         }
@@ -800,7 +804,7 @@ impl Message for SessionModificationRequest {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
         if let Some(ref ie) = self.fseid {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref vec) = self.remove_pdrs {
             result.extend(vec.iter());
@@ -857,34 +861,34 @@ impl Message for SessionModificationRequest {
             result.extend(vec.iter());
         }
         if let Some(ref ie) = self.pdn_type {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.user_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.s_nssai {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.trace_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.recovery_time_stamp {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.cp_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.apn_dnn {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.user_plane_inactivity_timer {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.query_urr_reference {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pfcpsm_req_flags {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref vec) = self.query_urrs {
             result.extend(vec.iter());
@@ -894,39 +898,39 @@ impl Message for SessionModificationRequest {
         result.extend(self.update_mars.iter());
         result.extend(self.create_mars.iter());
         if let Some(ref ie) = self.node_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.tsc_management_information.iter());
         result.extend(self.remove_srrs.iter());
         result.extend(self.create_srrs.iter());
         result.extend(self.update_srrs.iter());
         if let Some(ref ie) = self.provide_atsss_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.ethernet_context_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.access_availability_information.iter());
         result.extend(self.query_packet_rate_statuses.iter());
         if let Some(ref ie) = self.hplmn_s_nssai {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.rat_type {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.group_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.mbs_session_n4_control_information.iter());
         if let Some(ref ie) = self.dscp_to_ppi_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.tl_containers.iter());
         if let Some(ref ie) = self.trace_collection_entity_uri {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.ue_level_measurements_configuration {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -1728,7 +1732,7 @@ impl SessionModificationRequestBuilder {
         header.length = payload_len + (header.len() - 4);
         SessionModificationRequest {
             header,
-            fseid: self.fseid,
+            fseid: self.fseid.map(Box::new),
             remove_pdrs: self.remove_pdrs,
             remove_fars: self.remove_fars,
             remove_urrs: self.remove_urrs,
@@ -1747,38 +1751,40 @@ impl SessionModificationRequestBuilder {
             update_qers: self.update_qers,
             update_bars: self.update_bars,
             update_traffic_endpoints: self.update_traffic_endpoints,
-            pdn_type: self.pdn_type,
-            user_id: self.user_id,
-            s_nssai: self.s_nssai,
-            trace_information: self.trace_information,
-            recovery_time_stamp: self.recovery_time_stamp,
-            cp_function_features: self.cp_function_features,
-            apn_dnn: self.apn_dnn,
-            user_plane_inactivity_timer: self.user_plane_inactivity_timer,
-            query_urr_reference: self.query_urr_reference,
-            pfcpsm_req_flags: self.pfcpsm_req_flags,
+            pdn_type: self.pdn_type.map(Box::new),
+            user_id: self.user_id.map(Box::new),
+            s_nssai: self.s_nssai.map(Box::new),
+            trace_information: self.trace_information.map(Box::new),
+            recovery_time_stamp: self.recovery_time_stamp.map(Box::new),
+            cp_function_features: self.cp_function_features.map(Box::new),
+            apn_dnn: self.apn_dnn.map(Box::new),
+            user_plane_inactivity_timer: self.user_plane_inactivity_timer.map(Box::new),
+            query_urr_reference: self.query_urr_reference.map(Box::new),
+            pfcpsm_req_flags: self.pfcpsm_req_flags.map(Box::new),
             query_urrs: self.query_urrs,
             fq_csids: self.fq_csids,
             remove_mars: self.remove_mars,
             update_mars: self.update_mars,
             create_mars: self.create_mars,
-            node_id: self.node_id,
+            node_id: self.node_id.map(Box::new),
             tsc_management_information: self.tsc_management_information,
             remove_srrs: self.remove_srrs,
             create_srrs: self.create_srrs,
             update_srrs: self.update_srrs,
-            provide_atsss_control_information: self.provide_atsss_control_information,
-            ethernet_context_information: self.ethernet_context_information,
+            provide_atsss_control_information: self.provide_atsss_control_information.map(Box::new),
+            ethernet_context_information: self.ethernet_context_information.map(Box::new),
             access_availability_information: self.access_availability_information,
             query_packet_rate_statuses: self.query_packet_rate_statuses,
-            hplmn_s_nssai: self.hplmn_s_nssai,
-            rat_type: self.rat_type,
-            group_id: self.group_id,
+            hplmn_s_nssai: self.hplmn_s_nssai.map(Box::new),
+            rat_type: self.rat_type.map(Box::new),
+            group_id: self.group_id.map(Box::new),
             mbs_session_n4_control_information: self.mbs_session_n4_control_information,
-            dscp_to_ppi_control_information: self.dscp_to_ppi_control_information,
+            dscp_to_ppi_control_information: self.dscp_to_ppi_control_information.map(Box::new),
             tl_containers: self.tl_containers,
-            trace_collection_entity_uri: self.trace_collection_entity_uri,
-            ue_level_measurements_configuration: self.ue_level_measurements_configuration,
+            trace_collection_entity_uri: self.trace_collection_entity_uri.map(Box::new),
+            ue_level_measurements_configuration: self
+                .ue_level_measurements_configuration
+                .map(Box::new),
             ies: self.ies,
         }
     }
@@ -2647,9 +2653,9 @@ mod tests {
         assert_eq!(msg.remove_srrs[0], remove_srr_ie);
         assert_eq!(msg.access_availability_information.len(), 1);
         assert_eq!(msg.access_availability_information[0], access_avail_ie);
-        assert_eq!(msg.hplmn_s_nssai, Some(hplmn_ie));
-        assert_eq!(msg.group_id, Some(group_id_ie));
-        assert_eq!(msg.dscp_to_ppi_control_information, Some(dscp_ie));
+        assert_eq!(msg.hplmn_s_nssai, Some(Box::new(hplmn_ie)));
+        assert_eq!(msg.group_id, Some(Box::new(group_id_ie)));
+        assert_eq!(msg.dscp_to_ppi_control_information, Some(Box::new(dscp_ie)));
         assert_eq!(msg.tl_containers.len(), 1);
         assert_eq!(msg.tl_containers[0], tl_container_ie);
 
@@ -2673,7 +2679,10 @@ mod tests {
             .ue_level_measurements_configuration(ulmc_ie.clone())
             .build();
 
-        assert_eq!(msg.ue_level_measurements_configuration, Some(ulmc_ie));
+        assert_eq!(
+            msg.ue_level_measurements_configuration,
+            Some(Box::new(ulmc_ie))
+        );
 
         let bytes = msg.marshal();
         let parsed = SessionModificationRequest::unmarshal(&bytes).unwrap();
@@ -2700,7 +2709,10 @@ mod tests {
             .trace_collection_entity_uri(uri_ie.clone())
             .build();
 
-        assert_eq!(msg.trace_collection_entity_uri, Some(uri_ie.clone()));
+        assert_eq!(
+            msg.trace_collection_entity_uri,
+            Some(Box::new(uri_ie.clone()))
+        );
         assert_eq!(
             msg.ies(IeType::Uri).next(),
             Some(&uri_ie),
@@ -2709,7 +2721,7 @@ mod tests {
 
         let bytes = msg.marshal();
         let parsed = SessionModificationRequest::unmarshal(&bytes).unwrap();
-        assert_eq!(parsed.trace_collection_entity_uri, Some(uri_ie));
+        assert_eq!(parsed.trace_collection_entity_uri, Some(Box::new(uri_ie)));
         assert_eq!(parsed.marshal(), bytes);
     }
 
@@ -2730,7 +2742,7 @@ mod tests {
         let bytes = msg.marshal();
         let parsed = SessionModificationRequest::unmarshal(&bytes).unwrap();
 
-        assert_eq!(parsed.trace_collection_entity_uri, Some(uri_ie));
+        assert_eq!(parsed.trace_collection_entity_uri, Some(Box::new(uri_ie)));
         assert!(
             !parsed.ies.iter().any(|ie| ie.ie_type == IeType::Uri),
             "URI IE must not remain in the generic ies bucket after unmarshal"

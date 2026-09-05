@@ -83,9 +83,9 @@ fn test_association_setup_response_marshal_unmarshal() {
         header,
         cause: cause_ie.clone(),
         node_id: node_id_ie.clone(),
-        up_function_features: Some(up_features_ie.clone()),
-        cp_function_features: Some(cp_features_ie.clone()),
-        recovery_time_stamp: Some(ts_ie.clone()),
+        up_function_features: Some(Box::new(up_features_ie.clone())),
+        cp_function_features: Some(Box::new(cp_features_ie.clone())),
+        recovery_time_stamp: Some(Box::new(ts_ie.clone())),
         alternative_smf_ip_addresses: vec![],
         smf_set_id: None,
         pfcpas_rsp_flags: None,
@@ -150,9 +150,21 @@ fn test_association_setup_response_from_request() {
         header,
         cause: cause_ie.clone(),
         node_id: req.ies(IeType::NodeId).next().unwrap().clone(),
-        up_function_features: req.ies(IeType::UpFunctionFeatures).next().cloned(),
-        cp_function_features: req.ies(IeType::CpFunctionFeatures).next().cloned(),
-        recovery_time_stamp: req.ies(IeType::RecoveryTimeStamp).next().cloned(),
+        up_function_features: req
+            .ies(IeType::UpFunctionFeatures)
+            .next()
+            .cloned()
+            .map(Box::new),
+        cp_function_features: req
+            .ies(IeType::CpFunctionFeatures)
+            .next()
+            .cloned()
+            .map(Box::new),
+        recovery_time_stamp: req
+            .ies(IeType::RecoveryTimeStamp)
+            .next()
+            .cloned()
+            .map(Box::new),
         alternative_smf_ip_addresses: vec![],
         smf_set_id: None,
         pfcpas_rsp_flags: None,
@@ -167,9 +179,9 @@ fn test_association_setup_response_from_request() {
     assert_eq!(res.sequence(), req.sequence());
     assert_eq!(res.cause, cause_ie);
     assert_eq!(res.node_id, node_id_ie);
-    assert_eq!(res.up_function_features, Some(up_features_ie));
-    assert_eq!(res.cp_function_features, Some(cp_features_ie));
-    assert_eq!(res.recovery_time_stamp, Some(ts_ie));
+    assert_eq!(res.up_function_features, Some(Box::new(up_features_ie)));
+    assert_eq!(res.cp_function_features, Some(Box::new(cp_features_ie)));
+    assert_eq!(res.recovery_time_stamp, Some(Box::new(ts_ie)));
 }
 
 #[test]
@@ -189,8 +201,8 @@ fn test_association_update_request_marshal_unmarshal() {
     let req = AssociationUpdateRequest {
         header,
         node_id: node_id_ie.clone(),
-        up_function_features: Some(up_features_ie.clone()),
-        cp_function_features: Some(cp_features_ie.clone()),
+        up_function_features: Some(Box::new(up_features_ie.clone())),
+        cp_function_features: Some(Box::new(cp_features_ie.clone())),
         pfcp_association_release_request: None,
         graceful_release_period: None,
         pfcpau_req_flags: None,
@@ -490,8 +502,8 @@ fn test_session_report_response_marshal_unmarshal_with_cp_fseid_and_node_id() {
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
 
     assert_eq!(res, unmarshaled);
-    assert_eq!(res.cp_fseid, Some(cp_fseid_ie.clone()));
-    assert_eq!(res.node_id, Some(node_id_ie.clone()));
+    assert_eq!(res.cp_fseid, Some(Box::new(cp_fseid_ie.clone())));
+    assert_eq!(res.node_id, Some(Box::new(node_id_ie.clone())));
     assert_eq!(res.ies(IeType::Fseid).next(), Some(&cp_fseid_ie));
     assert_eq!(res.ies(IeType::NodeId).next(), Some(&node_id_ie));
 }
@@ -517,8 +529,8 @@ fn test_session_report_response_builder() {
     assert_eq!(res.seid().map(|s| *s), Some(seid));
     assert_eq!(*res.sequence(), sequence);
     assert_eq!(res.cause, cause_ie);
-    assert_eq!(res.cp_fseid, Some(cp_fseid_ie));
-    assert_eq!(res.node_id, Some(node_id_ie));
+    assert_eq!(res.cp_fseid, Some(Box::new(cp_fseid_ie)));
+    assert_eq!(res.node_id, Some(Box::new(node_id_ie)));
 
     let serialized = res.marshal();
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
@@ -564,21 +576,21 @@ fn test_session_report_response_builder_comprehensive() {
         .unwrap();
 
     assert_eq!(res.cause, cause_ie);
-    assert_eq!(res.offending_ie, Some(offending_ie));
+    assert_eq!(res.offending_ie, Some(Box::new(offending_ie)));
     assert_eq!(
         res.update_bar_within_session_report_response,
-        Some(update_bar_ie)
+        Some(Box::new(update_bar_ie))
     );
-    assert_eq!(res.pfcpsrrsp_flags, Some(pfcpsrrsp_flags_ie));
-    assert_eq!(res.cp_fseid, Some(cp_fseid_ie));
-    assert_eq!(res.n4u_fteid, Some(n4u_fteid_ie));
+    assert_eq!(res.pfcpsrrsp_flags, Some(Box::new(pfcpsrrsp_flags_ie)));
+    assert_eq!(res.cp_fseid, Some(Box::new(cp_fseid_ie)));
+    assert_eq!(res.n4u_fteid, Some(Box::new(n4u_fteid_ie)));
     assert_eq!(
         res.alternative_smf_ip_address,
-        Some(alternative_smf_ip_address_ie)
+        Some(Box::new(alternative_smf_ip_address_ie))
     );
-    assert_eq!(res.fq_csid, Some(fq_csid_ie));
-    assert_eq!(res.group_id, Some(group_id_ie));
-    assert_eq!(res.node_id, Some(node_id_ie));
+    assert_eq!(res.fq_csid, Some(Box::new(fq_csid_ie)));
+    assert_eq!(res.group_id, Some(Box::new(group_id_ie)));
+    assert_eq!(res.node_id, Some(Box::new(node_id_ie)));
     assert_eq!(res.ies, vec![additional_ie]);
 
     let serialized = res.marshal();

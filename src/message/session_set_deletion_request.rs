@@ -13,7 +13,7 @@ use crate::types::{Seid, SequenceNumber};
 pub struct SessionSetDeletionRequest {
     pub header: Header,
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.6.1-1 - IE Type 60 - Node identity of originating node (Sxa/Sxb/N4 only, not Sxc/N4mb)
-    pub fseid_set: Option<Ie>, // Note: F-SEID (Type 57) for backward compat; spec defines FQ-CSID (Type 65) for session sets via fq_csids field
+    pub fseid_set: Option<Box<Ie>>, // Note: F-SEID (Type 57) for backward compat; spec defines FQ-CSID (Type 65) for session sets via fq_csids field
     pub fq_csids: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.4.6.1-1 - IE Type 65 - Multiple instances - SGW-C/PGW-C/PGW-U/TWAN/ePDG/MME FQ-CSID (Sxa/Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
@@ -44,7 +44,7 @@ impl SessionSetDeletionRequest {
         SessionSetDeletionRequest {
             header,
             node_id,
-            fseid_set,
+            fseid_set: fseid_set.map(Box::new),
             fq_csids,
             ies,
         }
@@ -209,7 +209,7 @@ impl Message for SessionSetDeletionRequest {
         Ok(SessionSetDeletionRequest {
             header,
             node_id,
-            fseid_set,
+            fseid_set: fseid_set.map(Box::new),
             fq_csids,
             ies,
         })
@@ -236,7 +236,7 @@ impl Message for SessionSetDeletionRequest {
 
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
-            IeType::Fseid => IeIter::single(self.fseid_set.as_ref(), ie_type),
+            IeType::Fseid => IeIter::single(self.fseid_set.as_deref(), ie_type),
             IeType::FqCsid => IeIter::multiple(&self.fq_csids, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
@@ -245,7 +245,7 @@ impl Message for SessionSetDeletionRequest {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id];
         if let Some(ref ie) = self.fseid_set {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.fq_csids.iter());
         result.extend(self.ies.iter());
@@ -430,7 +430,7 @@ mod tests {
 
         assert_eq!(*message.sequence(), 456);
         assert_eq!(message.node_id, node_id_ie);
-        assert_eq!(message.fseid_set, Some(fseid_ie));
+        assert_eq!(message.fseid_set, Some(Box::new(fseid_ie)));
     }
 
     #[test]
@@ -504,7 +504,7 @@ mod tests {
 
         assert_eq!(*message.sequence(), 777);
         assert_eq!(message.node_id, node_id_ie);
-        assert_eq!(message.fseid_set, Some(fseid_ie));
+        assert_eq!(message.fseid_set, Some(Box::new(fseid_ie)));
         assert_eq!(message.ies.len(), 1);
         assert_eq!(message.ies[0], timer_ie);
     }

@@ -14,7 +14,7 @@ pub struct SessionSetDeletionResponse {
     pub header: Header,
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 60 - Unique identifier of sending node (Sxa/Sxb/N4 only, not Sxc/N4mb)
     pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 19 - Acceptance or rejection of request (Sxa/Sxb/N4 only, not Sxc/N4mb)
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxa/Sxb/N4 only, not Sxc/N4mb)
+    pub offending_ie: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.6.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxa/Sxb/N4 only, not Sxc/N4mb)
     pub ies: Vec<Ie>,
 }
 
@@ -42,7 +42,7 @@ impl SessionSetDeletionResponse {
             header,
             node_id,
             cause,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             ies,
         }
     }
@@ -267,7 +267,7 @@ impl Message for SessionSetDeletionResponse {
             header,
             node_id,
             cause,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             ies,
         })
     }
@@ -294,7 +294,7 @@ impl Message for SessionSetDeletionResponse {
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -302,7 +302,7 @@ impl Message for SessionSetDeletionResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -565,7 +565,7 @@ mod tests {
         assert_eq!(*message.sequence(), 456);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
-        assert_eq!(message.offending_ie, Some(offending_ie));
+        assert_eq!(message.offending_ie, Some(Box::new(offending_ie)));
     }
 
     #[test]
@@ -652,7 +652,7 @@ mod tests {
         assert_eq!(*message.sequence(), 777);
         assert_eq!(message.node_id, node_id_ie);
         assert_eq!(message.cause, cause_ie);
-        assert_eq!(message.offending_ie, Some(offending_ie));
+        assert_eq!(message.offending_ie, Some(Box::new(offending_ie)));
         assert_eq!(message.ies.len(), 1);
         assert_eq!(message.ies[0], timer_ie);
     }

@@ -21,7 +21,7 @@ pub struct SessionSetModificationResponse {
     pub header: Header,
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.7.2-1 - IE Type 60 - Unique identifier of sending node (Sxb/N4 only, not Sxa/Sxc/N4mb)
     pub cause: Ie, // M - 3GPP TS 29.244 Table 7.4.7.2-1 - IE Type 19 - Acceptance or rejection of request (Sxb/N4 only)
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.7.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/N4 only)
+    pub offending_ie: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.7.2-1 - IE Type 40 - When rejection due to conditional/mandatory IE missing or faulty (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
 
@@ -111,7 +111,7 @@ impl Message for SessionSetModificationResponse {
             header,
             node_id,
             cause,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             ies,
         })
     }
@@ -138,7 +138,7 @@ impl Message for SessionSetModificationResponse {
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -146,7 +146,7 @@ impl Message for SessionSetModificationResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -266,7 +266,7 @@ impl SessionSetModificationResponseBuilder {
             header,
             node_id,
             cause,
-            offending_ie: self.offending_ie,
+            offending_ie: self.offending_ie.map(Box::new),
             ies: self.ies,
         })
     }
