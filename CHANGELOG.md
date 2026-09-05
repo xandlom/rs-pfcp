@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Performance
 - **message**: Box singular optional `Ie` fields (`Option<Ie>` -> `Option<Box<Ie>>`) on `SessionEstablishmentRequest` and `SessionModificationRequest` to shrink fixed struct size (1,624 -> 616 bytes and 1,912 -> 952 bytes respectively); `Vec<Ie>` fields and always-present mandatory fields are left unboxed ⚠️ **BREAKING**
   - Affected fields now hold `Option<Box<Ie>>` instead of `Option<Ie>`. Method calls and field access on the contained `Ie` (`.ie_type`, `.payload`, etc.) deref transparently and need no changes. Code comparing a field against a bare `Ie`, e.g. `assert_eq!(msg.field, Some(ie))`, needs `Some(Box::new(ie))` instead. Builder methods are unaffected — they still accept `Ie` directly.
+- **message**: Same boxing applied to `SessionReportResponse`, `SessionReportRequest`, `SessionModificationResponse`, `SessionDeletionResponse`, and `SessionDeletionRequest` (608 -> 176, 432 -> 144, 688 -> 352, 480 -> 240, and 184 -> 88 bytes respectively) ⚠️ **BREAKING**
+  - Same migration as above. These message types also have a positional `::new()` constructor alongside their builder; its public signature is unaffected (still takes `Option<Ie>`) — boxing happens only at the internal struct-literal construction inside `new()` and `unmarshal()`.
 
 ## [0.5.0] - 2026-08-11
 

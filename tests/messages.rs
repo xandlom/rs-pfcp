@@ -490,8 +490,8 @@ fn test_session_report_response_marshal_unmarshal_with_cp_fseid_and_node_id() {
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
 
     assert_eq!(res, unmarshaled);
-    assert_eq!(res.cp_fseid, Some(cp_fseid_ie.clone()));
-    assert_eq!(res.node_id, Some(node_id_ie.clone()));
+    assert_eq!(res.cp_fseid, Some(Box::new(cp_fseid_ie.clone())));
+    assert_eq!(res.node_id, Some(Box::new(node_id_ie.clone())));
     assert_eq!(res.ies(IeType::Fseid).next(), Some(&cp_fseid_ie));
     assert_eq!(res.ies(IeType::NodeId).next(), Some(&node_id_ie));
 }
@@ -517,8 +517,8 @@ fn test_session_report_response_builder() {
     assert_eq!(res.seid().map(|s| *s), Some(seid));
     assert_eq!(*res.sequence(), sequence);
     assert_eq!(res.cause, cause_ie);
-    assert_eq!(res.cp_fseid, Some(cp_fseid_ie));
-    assert_eq!(res.node_id, Some(node_id_ie));
+    assert_eq!(res.cp_fseid, Some(Box::new(cp_fseid_ie)));
+    assert_eq!(res.node_id, Some(Box::new(node_id_ie)));
 
     let serialized = res.marshal();
     let unmarshaled = SessionReportResponse::unmarshal(&serialized).unwrap();
@@ -564,21 +564,21 @@ fn test_session_report_response_builder_comprehensive() {
         .unwrap();
 
     assert_eq!(res.cause, cause_ie);
-    assert_eq!(res.offending_ie, Some(offending_ie));
+    assert_eq!(res.offending_ie, Some(Box::new(offending_ie)));
     assert_eq!(
         res.update_bar_within_session_report_response,
-        Some(update_bar_ie)
+        Some(Box::new(update_bar_ie))
     );
-    assert_eq!(res.pfcpsrrsp_flags, Some(pfcpsrrsp_flags_ie));
-    assert_eq!(res.cp_fseid, Some(cp_fseid_ie));
-    assert_eq!(res.n4u_fteid, Some(n4u_fteid_ie));
+    assert_eq!(res.pfcpsrrsp_flags, Some(Box::new(pfcpsrrsp_flags_ie)));
+    assert_eq!(res.cp_fseid, Some(Box::new(cp_fseid_ie)));
+    assert_eq!(res.n4u_fteid, Some(Box::new(n4u_fteid_ie)));
     assert_eq!(
         res.alternative_smf_ip_address,
-        Some(alternative_smf_ip_address_ie)
+        Some(Box::new(alternative_smf_ip_address_ie))
     );
-    assert_eq!(res.fq_csid, Some(fq_csid_ie));
-    assert_eq!(res.group_id, Some(group_id_ie));
-    assert_eq!(res.node_id, Some(node_id_ie));
+    assert_eq!(res.fq_csid, Some(Box::new(fq_csid_ie)));
+    assert_eq!(res.group_id, Some(Box::new(group_id_ie)));
+    assert_eq!(res.node_id, Some(Box::new(node_id_ie)));
     assert_eq!(res.ies, vec![additional_ie]);
 
     let serialized = res.marshal();

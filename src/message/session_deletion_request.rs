@@ -16,8 +16,8 @@ use crate::types::{Seid, SequenceNumber};
 pub struct SessionDeletionRequest {
     pub header: Header,
     pub tl_container: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.6-1 - IE Type 336 - Multiple instances, when SMF/CUC sends to UPF/CN-TL (N4 only)
-    pub node_id: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.6-1 - IE Type 60 - When new SMF in SMF Set takes over (N4/N4mb only)
-    pub cp_fseid: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.6-1 - IE Type 57 - When Node ID present and SMF changes CP F-SEID (N4/N4mb only)
+    pub node_id: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.6-1 - IE Type 60 - When new SMF in SMF Set takes over (N4/N4mb only)
+    pub cp_fseid: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.6-1 - IE Type 57 - When Node ID present and SMF changes CP F-SEID (N4/N4mb only)
     // ✅ 100% compliant with 3GPP TS 29.244 v18.10.0 - No missing IEs
     pub ies: Vec<Ie>, // Additional/unknown IEs
 }
@@ -87,8 +87,8 @@ impl Message for SessionDeletionRequest {
         Ok(SessionDeletionRequest {
             header,
             tl_container,
-            node_id,
-            cp_fseid,
+            node_id: node_id.map(Box::new),
+            cp_fseid: cp_fseid.map(Box::new),
             ies,
         })
     }
@@ -117,8 +117,8 @@ impl Message for SessionDeletionRequest {
         use crate::message::IeIter;
 
         match ie_type {
-            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
-            IeType::Fseid => IeIter::single(self.cp_fseid.as_ref(), ie_type),
+            IeType::NodeId => IeIter::single(self.node_id.as_deref(), ie_type),
+            IeType::Fseid => IeIter::single(self.cp_fseid.as_deref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -127,10 +127,10 @@ impl Message for SessionDeletionRequest {
         let mut result = Vec::new();
         result.extend(self.tl_container.iter());
         if let Some(ref ie) = self.node_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.cp_fseid {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -174,8 +174,8 @@ impl SessionDeletionRequest {
         SessionDeletionRequest {
             header,
             tl_container,
-            node_id,
-            cp_fseid,
+            node_id: node_id.map(Box::new),
+            cp_fseid: cp_fseid.map(Box::new),
             ies,
         }
     }
@@ -404,7 +404,7 @@ mod tests {
 
         assert_eq!(*request.sequence(), 22222);
         assert_eq!(request.seid(), Some(Seid(11111)));
-        assert_eq!(request.node_id, Some(node_id_ie));
+        assert_eq!(request.node_id, Some(Box::new(node_id_ie)));
         assert!(request.cp_fseid.is_none());
         assert!(request.tl_container.is_empty());
     }
@@ -420,7 +420,7 @@ mod tests {
 
         assert_eq!(*request.sequence(), 44444);
         assert_eq!(request.seid(), Some(Seid(33333)));
-        assert_eq!(request.cp_fseid, Some(cp_fseid_ie));
+        assert_eq!(request.cp_fseid, Some(Box::new(cp_fseid_ie)));
         assert!(request.node_id.is_none());
         assert!(request.tl_container.is_empty());
     }
@@ -486,8 +486,8 @@ mod tests {
         assert_eq!(request.seid(), Some(Seid(0xABCD)));
         assert_eq!(request.tl_container.len(), 1);
         assert_eq!(request.tl_container[0], tl_container);
-        assert_eq!(request.node_id, Some(node_id_ie));
-        assert_eq!(request.cp_fseid, Some(cp_fseid_ie));
+        assert_eq!(request.node_id, Some(Box::new(node_id_ie)));
+        assert_eq!(request.cp_fseid, Some(Box::new(cp_fseid_ie)));
         assert_eq!(request.ies.len(), 1);
         assert_eq!(request.ies[0], additional_ie);
     }
