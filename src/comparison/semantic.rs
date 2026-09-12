@@ -385,6 +385,64 @@ mod tests {
     }
 
     #[test]
+    fn test_fteid_semantic_mismatch_different_ipv6() {
+        let fteid1 = Fteid::new(
+            false,
+            true,
+            0x1,
+            None,
+            Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+            0,
+        );
+        let fteid2 = Fteid::new(
+            false,
+            true,
+            0x1,
+            None,
+            Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 2)), // Different IPv6
+            0,
+        );
+
+        let result = compare_fteid(&fteid1, &fteid2);
+        assert!(!result.is_match());
+        assert!(result.details().unwrap().contains("IPv6 address differs"));
+    }
+
+    #[test]
+    fn test_fteid_semantic_mismatch_different_chid_flag() {
+        let addr = Some(Ipv4Addr::new(192, 168, 1, 1));
+        let fteid1 = Fteid::new_with_choose(true, false, true, true, 0x1, addr, None, 5);
+        let fteid2 = Fteid::new_with_choose(true, false, true, false, 0x1, addr, None, 5);
+
+        let result = compare_fteid(&fteid1, &fteid2);
+        assert!(!result.is_match());
+        assert!(result.details().unwrap().contains("CHOOSE ID flag differs"));
+    }
+
+    #[test]
+    fn test_fteid_semantic_mismatch_different_choose_id() {
+        let addr = Some(Ipv4Addr::new(192, 168, 1, 1));
+        let fteid1 = Fteid::new_with_choose(true, false, true, true, 0x1, addr, None, 5);
+        let fteid2 = Fteid::new_with_choose(true, false, true, true, 0x1, addr, None, 7);
+
+        let result = compare_fteid(&fteid1, &fteid2);
+        assert!(!result.is_match());
+        assert!(result.details().unwrap().contains("Choose ID differs"));
+    }
+
+    #[test]
+    fn test_semantic_match_details_accessor() {
+        assert_eq!(SemanticMatch::Match.details(), None);
+        assert_eq!(
+            SemanticMatch::Mismatch {
+                details: "x".to_string()
+            }
+            .details(),
+            Some("x")
+        );
+    }
+
+    #[test]
     fn test_ue_ip_address_semantic_match_identical() {
         let ue1 = UeIpAddress::new(Some(Ipv4Addr::new(10, 0, 0, 1)), None);
         let ue2 = UeIpAddress::new(Some(Ipv4Addr::new(10, 0, 0, 1)), None);

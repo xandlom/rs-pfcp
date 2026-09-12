@@ -532,6 +532,8 @@ impl<'a> MessageComparator<'a> {
 mod tests {
     use super::*;
     use crate::message::heartbeat_request::HeartbeatRequestBuilder;
+    use crate::message::session_deletion_request::SessionDeletionRequestBuilder;
+    use std::net::Ipv4Addr;
     use std::time::SystemTime;
 
     #[test]
@@ -602,5 +604,292 @@ mod tests {
         assert!(!comparator.options.ignore_sequence);
         assert!(comparator.options.strict_ie_order);
         assert_eq!(comparator.options.optional_ie_mode, OptionalIeMode::Strict);
+    }
+
+    #[test]
+    fn test_new_unchecked_allows_different_message_types() {
+        let hb = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let del = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+
+        // Should not panic even though message types differ.
+        let result = MessageComparator::new_unchecked(&hb, &del)
+            .compare()
+            .unwrap();
+        assert!(!result.header_match.message_type_match);
+        assert!(!result.is_match);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot compare different message types")]
+    fn test_new_panics_on_mismatched_message_types() {
+        let hb = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let del = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+
+        let _ = MessageComparator::new(&hb, &del);
+    }
+
+    #[test]
+    fn test_ignore_seid_end_to_end() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(200u64, 1u32).build();
+
+        let result = MessageComparator::new(&msg1, &msg2)
+            .ignore_seid()
+            .compare()
+            .unwrap();
+
+        assert_eq!(result.header_match.seid_match, None);
+        assert!(result.is_match);
+    }
+
+    #[test]
+    fn test_ignore_all_header_fields() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(200u64, 2u32).build();
+
+        let comparator = MessageComparator::new(&msg1, &msg2).ignore_all_header_fields();
+        assert!(comparator.options.ignore_sequence);
+        assert!(comparator.options.ignore_seid);
+        assert!(comparator.options.ignore_priority);
+
+        let result = comparator.compare().unwrap();
+        assert!(result.header_match.is_complete_match());
+    }
+
+    #[test]
+    fn test_ignore_recovery_timestamp_end_to_end() {
+        let ts1 = SystemTime::now();
+        let ts2 = ts1 + std::time::Duration::from_secs(1_000);
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts1)
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts2)
+            .build();
+
+        let comparator = MessageComparator::new(&msg1, &msg2).ignore_recovery_timestamp();
+        assert!(comparator
+            .options
+            .ignored_ie_types
+            .contains(&IeType::RecoveryTimeStamp));
+
+        let result = comparator.compare().unwrap();
+        assert!(result.is_match);
+    }
+
+    #[test]
+    fn test_timestamp_tolerance_secs_setter() {
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let comparator = MessageComparator::new(&msg1, &msg2).timestamp_tolerance_secs(5);
+        assert_eq!(comparator.options.timestamp_tolerance_secs, Some(5));
+    }
+
+    #[test]
+    fn test_ignore_ie_types_end_to_end() {
+        let ts = SystemTime::now();
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .source_ip_address(Ipv4Addr::new(1, 2, 3, 4))
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .source_ip_address(Ipv4Addr::new(5, 6, 7, 8))
+            .build();
+
+        let comparator =
+            MessageComparator::new(&msg1, &msg2).ignore_ie_types(&[IeType::SourceIpAddress]);
+        assert!(comparator
+            .options
+            .ignored_ie_types
+            .contains(&IeType::SourceIpAddress));
+
+        assert!(comparator.matches().unwrap());
+    }
+
+    #[test]
+    fn test_focus_on_ie_types_and_clear_focus() {
+        let ts = SystemTime::now();
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .source_ip_address(Ipv4Addr::new(1, 2, 3, 4))
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .source_ip_address(Ipv4Addr::new(5, 6, 7, 8))
+            .build();
+
+        // Focus only on RecoveryTimeStamp - source IP mismatch should be ignored.
+        let comparator =
+            MessageComparator::new(&msg1, &msg2).focus_on_ie_types(&[IeType::RecoveryTimeStamp]);
+        assert!(comparator.options.focus_ie_types.is_some());
+        assert!(comparator.matches().unwrap());
+
+        // Clearing focus should bring back the source IP mismatch.
+        let comparator = MessageComparator::new(&msg1, &msg2)
+            .focus_on_ie_types(&[IeType::RecoveryTimeStamp])
+            .clear_focus();
+        assert!(comparator.options.focus_ie_types.is_none());
+        assert!(!comparator.matches().unwrap());
+    }
+
+    #[test]
+    fn test_ie_multiplicity_mode_setter() {
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let comparator =
+            MessageComparator::new(&msg1, &msg2).ie_multiplicity_mode(IeMultiplicityMode::Lenient);
+        assert_eq!(
+            comparator.options.ie_multiplicity_mode,
+            IeMultiplicityMode::Lenient
+        );
+    }
+
+    #[test]
+    fn test_optional_ie_mode_and_ignore_missing_ies() {
+        let ts = SystemTime::now();
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .source_ip_address(Ipv4Addr::new(1, 2, 3, 4))
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .build();
+
+        // Default (Strict) mode: extra IE on the left is a mismatch.
+        let result = MessageComparator::new(&msg1, &msg2).compare().unwrap();
+        assert!(!result.is_match);
+
+        // ignore_missing_ies() should tolerate the extra IE.
+        let result = MessageComparator::new(&msg1, &msg2)
+            .ignore_missing_ies()
+            .compare()
+            .unwrap();
+        assert!(result.is_match);
+
+        // RequireLeft: left may have extra IEs the right doesn't.
+        let comparator =
+            MessageComparator::new(&msg1, &msg2).optional_ie_mode(OptionalIeMode::RequireLeft);
+        assert_eq!(
+            comparator.options.optional_ie_mode,
+            OptionalIeMode::RequireLeft
+        );
+        assert!(comparator.matches().unwrap());
+    }
+
+    #[test]
+    fn test_deep_and_shallow_compare_grouped_ies_setters() {
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let comparator = MessageComparator::new(&msg1, &msg2).deep_compare_grouped_ies();
+        assert!(comparator.options.deep_compare_grouped);
+
+        let comparator = MessageComparator::new(&msg1, &msg2).shallow_compare_grouped_ies();
+        assert!(!comparator.options.deep_compare_grouped);
+    }
+
+    #[test]
+    fn test_semantic_comparison_for_and_semantic_mode_setters() {
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let comparator =
+            MessageComparator::new(&msg1, &msg2).semantic_comparison_for(IeType::Fteid);
+        assert!(comparator
+            .options
+            .semantic_ie_types
+            .contains(&IeType::Fteid));
+
+        let comparator = MessageComparator::new(&msg1, &msg2).semantic_mode();
+        assert!(comparator.options.use_semantic_comparison);
+    }
+
+    #[test]
+    fn test_max_differences_and_include_payload_in_diff_setters() {
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let comparator = MessageComparator::new(&msg1, &msg2)
+            .max_differences(3)
+            .include_payload_in_diff();
+        assert_eq!(comparator.options.max_reported_differences, Some(3));
+        assert!(comparator.options.include_payload_in_diff);
+    }
+
+    #[test]
+    fn test_semantic_preset_and_audit_mode_presets() {
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(2)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let comparator = MessageComparator::new(&msg1, &msg2).semantic_preset();
+        assert!(comparator.options.ignore_sequence);
+        assert!(comparator.options.use_semantic_comparison);
+        assert_eq!(
+            comparator.options.optional_ie_mode,
+            OptionalIeMode::IgnoreMissing
+        );
+        assert!(!comparator.options.strict_ie_order);
+
+        let comparator = MessageComparator::new(&msg1, &msg2).audit_mode();
+        assert!(comparator
+            .options
+            .ignored_ie_types
+            .contains(&IeType::RecoveryTimeStamp));
+        assert_eq!(comparator.options.timestamp_tolerance_secs, Some(5));
+        assert!(!comparator.options.strict_ie_order);
+    }
+
+    #[test]
+    fn test_compare_diff_and_matches_execution_methods() {
+        let ts = SystemTime::now();
+        let msg1 = HeartbeatRequestBuilder::new(1)
+            .recovery_time_stamp(ts)
+            .build();
+        let msg2 = HeartbeatRequestBuilder::new(2)
+            .recovery_time_stamp(ts)
+            .build();
+
+        let result = MessageComparator::new(&msg1, &msg2).compare().unwrap();
+        assert!(!result.is_match);
+
+        let is_match = MessageComparator::new(&msg1, &msg2)
+            .ignore_sequence()
+            .matches()
+            .unwrap();
+        assert!(is_match);
+
+        let diff = MessageComparator::new(&msg1, &msg2).diff().unwrap();
+        assert!(!diff.is_empty());
     }
 }
