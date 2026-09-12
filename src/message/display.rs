@@ -1485,4 +1485,642 @@ mod tests {
             );
         }
     }
+
+    // ========================================================================
+    // Additional per-IE rich-display coverage
+    //
+    // Each test round-trips a real, correctly-encoded IE through
+    // `ie_to_value()` (not the private `display_*` helper directly) so both
+    // the `rich_display()` dispatch arm and the helper's field-mapping logic
+    // get exercised.
+    // ========================================================================
+
+    #[test]
+    fn test_display_report_type() {
+        use crate::ie::report_type::ReportType;
+
+        let report = ReportType::DLDR | ReportType::USAR;
+        let ie = Ie::new(IeType::ReportType, report.marshal());
+        let value = ie_to_value(&ie);
+
+        let names = value["ReportType"].as_array().unwrap();
+        let names: Vec<&str> = names.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(names.contains(&"DLDR"));
+        assert!(names.contains(&"USAR"));
+        assert!(!names.contains(&"ERIR"));
+    }
+
+    #[test]
+    fn test_display_usage_report() {
+        use crate::ie::ur_seqn::UrSeqn;
+        use crate::ie::urr_id::UrrId;
+        use crate::ie::usage_report::UsageReportBuilder;
+        use crate::ie::usage_report_trigger::UsageReportTrigger;
+
+        let ur = UsageReportBuilder::new(UrrId::new(5))
+            .sequence_number(UrSeqn::new(7))
+            .trigger(UsageReportTrigger::PERIO | UsageReportTrigger::VOLTH)
+            .build()
+            .unwrap();
+        let ie = Ie::new(IeType::UsageReportWithinSessionReportRequest, ur.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "UsageReportWithinSessionReportRequest");
+        assert_eq!(value["urr_id"], 5);
+        assert_eq!(value["ur_seqn"], 7);
+        let triggers = value["usage_report_trigger"].as_array().unwrap();
+        let triggers: Vec<&str> = triggers.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(triggers.contains(&"PERIO"));
+        assert!(triggers.contains(&"VOLTH"));
+    }
+
+    #[test]
+    fn test_display_create_pdr_fully_populated() {
+        use crate::ie::application_id::ApplicationId;
+        use crate::ie::c_tag::CTag;
+        use crate::ie::create_pdr::CreatePdrBuilder;
+        use crate::ie::ethernet_filter_id::EthernetFilterId;
+        use crate::ie::ethernet_packet_filter::EthernetPacketFilterBuilder;
+        use crate::ie::ethertype::Ethertype;
+        use crate::ie::f_teid::Fteid;
+        use crate::ie::far_id::FarId;
+        use crate::ie::mac_address::MacAddress;
+        use crate::ie::network_instance::NetworkInstance;
+        use crate::ie::pdi::PdiBuilder;
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::precedence::Precedence;
+        use crate::ie::qfi::Qfi;
+        use crate::ie::s_tag::STag;
+        use crate::ie::sdf_filter::SdfFilter;
+        use crate::ie::source_interface::{SourceInterface, SourceInterfaceValue};
+        use crate::ie::ue_ip_address::UeIpAddress;
+
+        let fteid = Fteid::new(
+            true,
+            true,
+            0x1234,
+            Some(Ipv4Addr::new(10, 0, 0, 1)),
+            Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+            0,
+        );
+        let ue_ip = UeIpAddress::new(
+            Some(Ipv4Addr::new(10, 0, 0, 2)),
+            Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 2)),
+        );
+        let eth_filter = EthernetPacketFilterBuilder::new(EthernetFilterId::new(1))
+            .bidirectional()
+            .mac_addresses(vec![MacAddress::source([
+                0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
+            ])])
+            .ethertype(Ethertype::new(0x0800))
+            .c_tag(CTag::new(1, false, 100).unwrap())
+            .s_tag(STag::new(2, true, 200).unwrap())
+            .build()
+            .unwrap();
+
+        let pdi = PdiBuilder::new(SourceInterface::new(SourceInterfaceValue::Access))
+            .f_teid(fteid)
+            .network_instance(NetworkInstance::new("internet"))
+            .ue_ip_address(ue_ip)
+            .sdf_filter(SdfFilter::new("permit out ip from any to assigned"))
+            .application_id(ApplicationId::new("app1"))
+            .ethernet_packet_filter(eth_filter)
+            .qfi(Qfi::new(5).unwrap())
+            .build()
+            .unwrap();
+
+        let pdr = CreatePdrBuilder::new(PdrId::new(1))
+            .precedence(Precedence::new(100))
+            .pdi(pdi)
+            .far_id(FarId::new(2))
+            .build()
+            .unwrap();
+
+        let ie = Ie::new(IeType::CreatePdr, pdr.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "CreatePdr");
+        assert_eq!(value["pdr_id"], 1);
+        assert_eq!(value["precedence"], 100);
+        assert_eq!(value["far_id"], 2);
+
+        let pdi_value = &value["pdi"];
+        assert_eq!(pdi_value["source_interface"], "Access");
+        assert_eq!(pdi_value["f_teid"]["teid"], "0x00001234");
+        assert_eq!(pdi_value["f_teid"]["ipv4"], "10.0.0.1");
+        assert!(pdi_value["f_teid"]["ipv6"].as_str().is_some());
+        assert_eq!(pdi_value["network_instance"], "internet");
+        assert_eq!(pdi_value["application_id"], "app1");
+
+        let ue_ips = pdi_value["ue_ip_addresses"].as_array().unwrap();
+        assert_eq!(ue_ips.len(), 1);
+        assert_eq!(ue_ips[0]["ipv4"], "10.0.0.2");
+        assert!(ue_ips[0]["ipv6"].as_str().is_some());
+
+        let sdf_filters = pdi_value["sdf_filters"].as_array().unwrap();
+        assert_eq!(sdf_filters.len(), 1);
+
+        let qfis = pdi_value["qfis"].as_array().unwrap();
+        assert_eq!(qfis, &vec![Value::from(5)]);
+
+        let eth_filters = pdi_value["ethernet_packet_filters"].as_array().unwrap();
+        assert_eq!(eth_filters.len(), 1);
+        assert_eq!(eth_filters[0]["filter_id"], 1);
+        assert_eq!(eth_filters[0]["bidirectional"], true);
+        let macs = eth_filters[0]["mac_addresses"].as_array().unwrap();
+        assert_eq!(macs.len(), 1);
+        assert_eq!(eth_filters[0]["ethertype"], "0x0800");
+        assert_eq!(eth_filters[0]["c_tag"]["vid"], 100);
+        assert_eq!(eth_filters[0]["s_tag"]["vid"], 200);
+    }
+
+    #[test]
+    fn test_display_created_pdr_fully_populated() {
+        use crate::ie::created_pdr::CreatedPdr;
+        use crate::ie::f_teid::Fteid;
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::ue_ip_address::UeIpAddress;
+
+        let fteid = Fteid::new(
+            true,
+            true,
+            0x1234,
+            Some(Ipv4Addr::new(10, 0, 0, 1)),
+            Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+            0,
+        );
+        let created_pdr =
+            CreatedPdr::new(PdrId::new(1))
+                .f_teid(fteid)
+                .ue_ip_address(UeIpAddress::new(
+                    Some(Ipv4Addr::new(10, 0, 0, 2)),
+                    Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 2)),
+                ));
+
+        let ie = Ie::new(IeType::CreatedPdr, created_pdr.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "CreatedPdr");
+        assert_eq!(value["pdr_id"], 1);
+        let fteid_value = &value["f_teid"];
+        assert_eq!(fteid_value["ipv4_address"], "10.0.0.1");
+        assert!(fteid_value["ipv6_address"].as_str().is_some());
+        let flags = fteid_value["flags"].as_array().unwrap();
+        let flags: Vec<&str> = flags.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(flags.contains(&"IPv4"));
+        assert!(flags.contains(&"IPv6"));
+
+        let ue_ips = value["ue_ip_addresses"].as_array().unwrap();
+        assert_eq!(ue_ips.len(), 1);
+        assert_eq!(ue_ips[0]["ipv4_address"], "10.0.0.2");
+        assert!(ue_ips[0]["ipv6_address"].as_str().is_some());
+    }
+
+    #[test]
+    fn test_display_created_pdr_choose_flags() {
+        use crate::ie::created_pdr::CreatedPdr;
+        use crate::ie::f_teid::Fteid;
+        use crate::ie::pdr_id::PdrId;
+
+        // CHOOSE mode: no concrete addresses, but the CHOOSE/CHOOSE_ID flags
+        // must still render.
+        let fteid = Fteid::new_with_choose(false, false, true, true, 0u32, None, None, 9);
+        let created_pdr = CreatedPdr::new(PdrId::new(1)).f_teid(fteid);
+
+        let ie = Ie::new(IeType::CreatedPdr, created_pdr.marshal());
+        let value = ie_to_value(&ie);
+
+        let flags = value["f_teid"]["flags"].as_array().unwrap();
+        let flags: Vec<&str> = flags.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(flags.contains(&"CHOOSE"));
+        assert!(flags.contains(&"CHOOSE_ID"));
+        assert!(value["f_teid"].get("ipv4_address").is_none());
+    }
+
+    #[test]
+    fn test_display_create_far_fully_populated() {
+        use crate::ie::apply_action::ApplyAction;
+        use crate::ie::bar_id::BarId;
+        use crate::ie::create_far::CreateFarBuilder;
+        use crate::ie::destination_interface::{DestinationInterface, Interface};
+        use crate::ie::far_id::FarId;
+        use crate::ie::forwarding_parameters::ForwardingParameters;
+        use crate::ie::network_instance::NetworkInstance;
+
+        let fp = ForwardingParameters::new(DestinationInterface::new(Interface::Core))
+            .with_network_instance(NetworkInstance::new("internet"));
+
+        let far = CreateFarBuilder::new(FarId::new(2))
+            .apply_action(ApplyAction::FORW | ApplyAction::DUPL)
+            .forwarding_parameters(fp)
+            .bar_id(BarId::new(9))
+            .build()
+            .unwrap();
+
+        let ie = Ie::new(IeType::CreateFar, far.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "CreateFar");
+        assert_eq!(value["far_id"], 2);
+        let actions = value["apply_action"].as_array().unwrap();
+        let actions: Vec<&str> = actions.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(actions.contains(&"FORW"));
+        assert!(actions.contains(&"DUPL"));
+        assert_eq!(
+            value["forwarding_parameters"]["destination_interface"],
+            "Core"
+        );
+        assert_eq!(
+            value["forwarding_parameters"]["network_instance"],
+            "internet"
+        );
+        assert_eq!(value["bar_id"], 9);
+    }
+
+    #[test]
+    fn test_display_offending_ie() {
+        use crate::ie::offending_ie::OffendingIe;
+
+        let oi = OffendingIe::new(IeType::PdrId as u16);
+        let ie = Ie::new(IeType::OffendingIe, oi.marshal().to_vec());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["OffendingIe"], "PdrId");
+    }
+
+    #[test]
+    fn test_display_timer() {
+        use crate::ie::timer::Timer;
+
+        let timer = Timer::new(42);
+        let ie = Ie::new(IeType::Timer, timer.marshal().to_vec());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["Timer"], 42);
+    }
+
+    #[test]
+    fn test_display_uri() {
+        use crate::ie::uri::Uri;
+
+        let uri = Uri::new("https://example.com/report");
+        let ie = Ie::new(IeType::Uri, uri.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["Uri"], "https://example.com/report");
+    }
+
+    #[test]
+    fn test_display_pdn_type() {
+        use crate::ie::pdn_type::{PdnType, PdnTypeValue};
+
+        let pdn = PdnType::new(PdnTypeValue::Ipv4v6);
+        let ie = Ie::new(IeType::PdnType, pdn.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["PdnType"], "Ipv4v6");
+    }
+
+    #[test]
+    fn test_display_cp_function_features() {
+        use crate::ie::cp_function_features::CPFunctionFeatures;
+
+        let features = CPFunctionFeatures::LOAD | CPFunctionFeatures::OVRL;
+        let ie = Ie::new(IeType::CpFunctionFeatures, features.marshal());
+        let value = ie_to_value(&ie);
+
+        let flags = value["CpFunctionFeatures"].as_array().unwrap();
+        let flags: Vec<&str> = flags.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(flags.contains(&"LOAD"));
+        assert!(flags.contains(&"OVRL"));
+    }
+
+    #[test]
+    fn test_display_up_function_features() {
+        use crate::ie::up_function_features::UPFunctionFeatures;
+
+        let mut features = UPFunctionFeatures::new();
+        features.insert(UPFunctionFeatures::FTUP);
+        features.insert(UPFunctionFeatures::EPFAR);
+        let ie = Ie::new(IeType::UpFunctionFeatures, features.marshal());
+        let value = ie_to_value(&ie);
+
+        let flags = value["UpFunctionFeatures"].as_array().unwrap();
+        let flags: Vec<&str> = flags.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(flags.contains(&"FTUP"));
+        assert!(flags.contains(&"EPFAR"));
+    }
+
+    #[test]
+    fn test_display_pfcpsm_req_flags() {
+        use crate::ie::pfcpsm_req_flags::PfcpsmReqFlags;
+
+        let flags = PfcpsmReqFlags::DROBU | PfcpsmReqFlags::QAURR;
+        let ie = Ie::new(IeType::PfcpsmReqFlags, flags.marshal().to_vec());
+        let value = ie_to_value(&ie);
+
+        let names = value["PfcpsmReqFlags"].as_array().unwrap();
+        let names: Vec<&str> = names.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(names.contains(&"DROBU"));
+        assert!(names.contains(&"QAURR"));
+    }
+
+    #[test]
+    fn test_display_pfcpse_req_flags() {
+        use crate::ie::pfcpse_req_flags::PfcpseReqFlags;
+
+        let flags = PfcpseReqFlags::RESTI | PfcpseReqFlags::HRSBOM;
+        let ie = Ie::new(IeType::PfcpseReqFlags, flags.marshal().to_vec());
+        let value = ie_to_value(&ie);
+
+        let names = value["PfcpseReqFlags"].as_array().unwrap();
+        let names: Vec<&str> = names.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(names.contains(&"RESTI"));
+        assert!(names.contains(&"HRSBOM"));
+    }
+
+    #[test]
+    fn test_display_source_ip_address() {
+        use crate::ie::source_ip_address::SourceIpAddress;
+
+        let src =
+            SourceIpAddress::new_dual(Ipv4Addr::new(1, 2, 3, 4), Ipv6Addr::LOCALHOST).with_mask(24);
+        let ie = Ie::new(IeType::SourceIpAddress, src.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "SourceIpAddress");
+        assert_eq!(value["ipv4"], "1.2.3.4");
+        assert!(value["ipv6"].as_str().is_some());
+        assert_eq!(value["mask_prefix_length"], 24);
+    }
+
+    #[test]
+    fn test_display_apn_dnn() {
+        use crate::ie::apn_dnn::ApnDnn;
+
+        let apn = ApnDnn::new("internet.mnc001.mcc001.gprs".to_string());
+        let ie = Ie::new(IeType::ApnDnn, apn.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["ApnDnn"], "internet.mnc001.mcc001.gprs");
+    }
+
+    #[test]
+    fn test_display_user_plane_inactivity_timer() {
+        use crate::ie::user_plane_inactivity_timer::UserPlaneInactivityTimer;
+        use std::time::Duration;
+
+        let timer = UserPlaneInactivityTimer::new(Duration::from_secs(60));
+        let ie = Ie::new(IeType::UserPlaneInactivityTimer, timer.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["UserPlaneInactivityTimer"], 60);
+    }
+
+    #[test]
+    fn test_display_snssai_with_sd() {
+        use crate::ie::snssai::Snssai;
+
+        let snssai = Snssai::with_sd(1, [0x01, 0x02, 0x03]);
+        let ie = Ie::new(IeType::Snssai, snssai.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "Snssai");
+        assert_eq!(value["sst"], 1);
+        assert_eq!(value["sd"], "0x010203");
+    }
+
+    #[test]
+    fn test_display_snssai_without_sd() {
+        use crate::ie::snssai::Snssai;
+
+        let snssai = Snssai::new(1);
+        let ie = Ie::new(IeType::Snssai, snssai.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["sst"], 1);
+        assert!(value.get("sd").is_none());
+    }
+
+    #[test]
+    fn test_display_user_id_string_value() {
+        use crate::ie::user_id::{UserId, UserIdType};
+
+        let uid = UserId::new(UserIdType::Nai, b"user@example.com".to_vec());
+        let ie = Ie::new(IeType::UserId, uid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["id_type"], "Nai");
+        assert_eq!(value["value"], "user@example.com");
+        assert!(value.get("value_hex").is_none());
+    }
+
+    #[test]
+    fn test_display_user_id_hex_fallback() {
+        use crate::ie::user_id::{UserId, UserIdType};
+
+        let uid = UserId::new(UserIdType::Imsi, vec![0x12, 0x34]);
+        let ie = Ie::new(IeType::UserId, uid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["id_type"], "Imsi");
+        assert_eq!(value["value_hex"], "12 34");
+        assert!(value.get("value").is_none());
+    }
+
+    #[test]
+    fn test_display_group_id_uuid() {
+        use crate::ie::group_id::GroupId;
+
+        let gid = GroupId::new_uuid([0x01; 16]);
+        let ie = Ie::new(IeType::GroupId, gid.marshal());
+        let value = ie_to_value(&ie);
+
+        let s = value["GroupId"].as_str().unwrap();
+        assert_eq!(s.len(), 36); // canonical UUID string length
+        assert!(s.contains('-'));
+    }
+
+    #[test]
+    fn test_display_group_id_hex_fallback() {
+        use crate::ie::group_id::GroupId;
+
+        let gid = GroupId::new(vec![0xab, 0xcd]);
+        let ie = Ie::new(IeType::GroupId, gid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["GroupId"], "abcd");
+    }
+
+    #[test]
+    fn test_display_alternative_smf_ip_address() {
+        use crate::ie::alternative_smf_ip_address::AlternativeSmfIpAddress;
+
+        let addr =
+            AlternativeSmfIpAddress::new_dual_stack(Ipv4Addr::new(1, 2, 3, 4), Ipv6Addr::LOCALHOST)
+                .with_preferred_pfcp_entity(true);
+        let ie = Ie::new(IeType::AlternativeSmfIpAddress, addr.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["ipv4_address"], "1.2.3.4");
+        assert!(value["ipv6_address"].as_str().is_some());
+        assert_eq!(value["preferred_pfcp_entity"], true);
+    }
+
+    #[test]
+    fn test_display_fq_csid_ipv4() {
+        use crate::ie::fq_csid::FqCsid;
+
+        let csid = FqCsid::new_ipv4(Ipv4Addr::new(1, 2, 3, 4), vec![1, 2]);
+        let ie = Ie::new(IeType::FqCsid, csid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["node_id_type"], "Ipv4");
+        assert_eq!(value["node_address"], "1.2.3.4");
+        assert_eq!(value["csids"], json!([1, 2]));
+    }
+
+    #[test]
+    fn test_display_fq_csid_ipv6() {
+        use crate::ie::fq_csid::FqCsid;
+
+        let csid = FqCsid::new_ipv6(Ipv6Addr::LOCALHOST, vec![3]);
+        let ie = Ie::new(IeType::FqCsid, csid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["node_id_type"], "Ipv6");
+        assert!(value["node_address"].as_str().is_some());
+    }
+
+    #[test]
+    fn test_display_fq_csid_fqdn() {
+        use crate::ie::fq_csid::FqCsid;
+
+        let csid = FqCsid::new_fqdn("smf.example.com".to_string(), vec![4]);
+        let ie = Ie::new(IeType::FqCsid, csid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["node_id_type"], "Fqdn");
+        assert_eq!(value["node_address"], "smf.example.com");
+    }
+
+    #[test]
+    fn test_display_ethernet_pdu_session_information() {
+        use crate::ie::ethernet_pdu_session_information::EthernetPduSessionInformation;
+
+        let info = EthernetPduSessionInformation::new(true);
+        let ie = Ie::new(
+            IeType::EthernetPduSessionInformation,
+            info.marshal().to_vec(),
+        );
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["untagged"], true);
+    }
+
+    #[test]
+    fn test_display_ethernet_context_information_with_macs() {
+        use crate::ie::ethernet_context_information::EthernetContextInformation;
+        use crate::ie::mac_addresses_detected::MacAddressesDetected;
+
+        let detected =
+            MacAddressesDetected::new(vec![[0x00, 0x11, 0x22, 0x33, 0x44, 0x55]]).unwrap();
+        let ctx = EthernetContextInformation::new(vec![detected]);
+        let ie = Ie::new(IeType::EthernetContextInformation, ctx.marshal());
+        let value = ie_to_value(&ie);
+
+        let macs = value["mac_addresses_detected"].as_array().unwrap();
+        assert_eq!(macs.len(), 1);
+        assert_eq!(macs[0], "00:11:22:33:44:55");
+    }
+
+    #[test]
+    fn test_display_ethernet_context_information_empty() {
+        use crate::ie::ethernet_context_information::EthernetContextInformation;
+        use crate::ie::mac_addresses_detected::MacAddressesDetected;
+
+        // A present-but-empty MacAddressesDetected: the mandatory-IE check in
+        // EthernetContextInformation::unmarshal is satisfied (the IE itself
+        // is present), but there are no actual addresses to report.
+        let detected = MacAddressesDetected::new(vec![]).unwrap();
+        let ctx = EthernetContextInformation::new(vec![detected]);
+        let ie = Ie::new(IeType::EthernetContextInformation, ctx.marshal());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["type"], "EthernetContextInformation");
+        assert!(value.get("mac_addresses_detected").is_none());
+    }
+
+    #[test]
+    fn test_display_node_id_fqdn() {
+        let node_id = NodeId::new_fqdn("smf.example.com");
+        let ie = Ie::new(IeType::NodeId, node_id.marshal().to_vec());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["node_type"], "FQDN");
+        assert_eq!(value["address"], "smf.example.com");
+    }
+
+    #[test]
+    fn test_display_fseid_dual_stack() {
+        use crate::ie::fseid::Fseid;
+
+        let fseid = Fseid::new(
+            0x1234u64,
+            Some(Ipv4Addr::new(10, 0, 0, 1)),
+            Some(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)),
+        );
+        let ie = Ie::new(IeType::Fseid, fseid.marshal());
+        let value = ie_to_value(&ie);
+
+        assert!(value["ipv4_address"].as_str().is_some());
+        assert!(value["ipv6_address"].as_str().is_some());
+        let flags = value["address_flags"].as_array().unwrap();
+        let flags: Vec<&str> = flags.iter().map(|v| v.as_str().unwrap()).collect();
+        assert!(flags.contains(&"IPv4"));
+        assert!(flags.contains(&"IPv6"));
+    }
+
+    #[test]
+    fn test_to_json_pretty_on_concrete_message_type() {
+        // Exercises `impl<T: Message> MessageDisplay for T` (as opposed to
+        // the `impl MessageDisplay for Box<dyn Message>` used elsewhere in
+        // this test module) for all three format methods.
+        let request = HeartbeatRequestBuilder::new(99999)
+            .recovery_time_stamp(SystemTime::now())
+            .build();
+
+        let pretty = request
+            .to_json_pretty()
+            .expect("Failed to convert to pretty JSON");
+        assert!(pretty.contains('\n'));
+        let parsed: serde_json::Value = serde_json::from_str(&pretty).unwrap();
+        assert_eq!(parsed["sequence"], 99999);
+    }
+
+    #[test]
+    fn test_describe_lossy_reports_seid_when_present() {
+        let data = Header::new(
+            MsgType::SessionDeletionRequest,
+            true,
+            0x1122334455667788u64,
+            1u32,
+        )
+        .marshal();
+
+        let value = describe_lossy(&data);
+        assert_eq!(value["seid"], "0x1122334455667788");
+    }
+
+    #[test]
+    fn test_display_ethernet_inactivity_timer() {
+        use crate::ie::ethernet_inactivity_timer::EthernetInactivityTimer;
+        use std::time::Duration;
+
+        let timer = EthernetInactivityTimer::new(Duration::from_secs(30));
+        let ie = Ie::new(IeType::EthernetInactivityTimer, timer.marshal().to_vec());
+        let value = ie_to_value(&ie);
+
+        assert_eq!(value["EthernetInactivityTimer"], 30);
+    }
 }
