@@ -4,6 +4,52 @@ use crate::error::PfcpError;
 use crate::message::MsgType;
 use crate::types::{Seid, SequenceNumber};
 
+/// PFCP protocol version.
+///
+/// Per 3GPP TS 29.244 Section 5.1, the version field is a 3-bit value in the
+/// header's first octet. Only version 1 has ever been defined.
+pub const PFCP_VERSION: u8 = 1;
+
+/// Length in bytes of the base PFCP header (flags, message type, length,
+/// sequence number, and spare/message-priority octet) when the optional
+/// SEID field is absent. Per 3GPP TS 29.244 Figure 5.1-1.
+const BASE_HEADER_LEN: u16 = 8;
+
+/// Length in bytes of the fixed header prefix (flags octet, message type
+/// octet, and 2-byte length field) that precedes the optional SEID field
+/// and the sequence number.
+const HEADER_PREFIX_LEN: usize = 4;
+
+/// Length in bytes of the SEID field (Session Endpoint Identifier is a
+/// 64-bit value), present only when the S flag is set.
+const SEID_FIELD_LEN: u16 = 8;
+
+/// Length in bytes of the on-wire Sequence Number field.
+///
+/// Per 3GPP TS 29.244 Section 5.1, the sequence number is a 24-bit value
+/// even though it is stored in-memory as a `u32` (see [`SequenceNumber`]).
+const SEQUENCE_NUMBER_FIELD_LEN: usize = 3;
+
+/// Length in bytes of the message-priority / spare octet that follows the
+/// sequence number.
+const MESSAGE_PRIORITY_FIELD_LEN: usize = 1;
+
+/// Bit position of the 3-bit Version field within the header's first octet.
+const VERSION_SHIFT: u8 = 5;
+/// Bit position of the FO (Follow-On) flag within the header's first octet.
+const FO_FLAG_SHIFT: u8 = 2;
+/// Bit position of the MP (Message Priority) flag within the header's first octet.
+const MP_FLAG_SHIFT: u8 = 1;
+/// Bit position of the S (SEID present) flag within the header's first octet.
+const SEID_FLAG_SHIFT: u8 = 0;
+
+/// Bitmask isolating the FO flag in the header's first octet.
+const FO_FLAG_MASK: u8 = 1 << FO_FLAG_SHIFT;
+/// Bitmask isolating the MP flag in the header's first octet.
+const MP_FLAG_MASK: u8 = 1 << MP_FLAG_SHIFT;
+/// Bitmask isolating the S flag in the header's first octet.
+const SEID_FLAG_MASK: u8 = 1 << SEID_FLAG_SHIFT;
+
 /// Represents a PFCP message header.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
@@ -28,7 +74,7 @@ impl Header {
         sequence_number: impl Into<SequenceNumber>,
     ) -> Self {
         Header {
-            version: 1,
+            version: PFCP_VERSION,
             has_fo: false,
             has_mp: false,
             has_seid,
@@ -74,9 +120,9 @@ impl Header {
 
     /// Returns the length of the header in bytes.
     pub fn len(&self) -> u16 {
-        let mut length = 8;
+        let mut length = BASE_HEADER_LEN;
         if self.has_seid {
-            length += 8;
+            length += SEID_FIELD_LEN;
         }
         length
     }
@@ -119,81 +165,82 @@ impl Header {
 
     /// Serializes the Header into a byte slice.
     pub fn marshal_to(&self, b: &mut [u8]) {
-        let flags = (self.version << 5)
-            | ((self.has_fo as u8) << 2)
-            | ((self.has_mp as u8) << 1)
-            | (self.has_seid as u8);
+        let flags = (self.version << VERSION_SHIFT)
+            | ((self.has_fo as u8) << FO_FLAG_SHIFT)
+            | ((self.has_mp as u8) << MP_FLAG_SHIFT)
+            | ((self.has_seid as u8) << SEID_FLAG_SHIFT);
         b[0] = flags;
         b[1] = self.message_type_code();
 
-        b[2..4].copy_from_slice(&self.length.to_be_bytes());
+        b[2..HEADER_PREFIX_LEN].copy_from_slice(&self.length.to_be_bytes());
 
-        let mut offset = 4;
+        let mut offset = HEADER_PREFIX_LEN;
         if self.has_seid {
-            b[offset..offset + 8].copy_from_slice(&self.seid.0.to_be_bytes());
-            offset += 8;
+            let seid_end = offset + SEID_FIELD_LEN as usize;
+            b[offset..seid_end].copy_from_slice(&self.seid.0.to_be_bytes());
+            offset = seid_end;
         }
 
         let seq_bytes = self.sequence_number.0.to_be_bytes();
-        b[offset..offset + 3].copy_from_slice(&seq_bytes[1..]);
-        b[offset + 3] = self.message_priority;
+        let seq_end = offset + SEQUENCE_NUMBER_FIELD_LEN;
+        b[offset..seq_end]
+            .copy_from_slice(&seq_bytes[seq_bytes.len() - SEQUENCE_NUMBER_FIELD_LEN..]);
+        b[seq_end] = self.message_priority;
     }
 
     /// Deserializes a byte slice into a Header.
     pub fn unmarshal(b: &[u8]) -> Result<Self, PfcpError> {
-        if b.len() < 8 {
+        if b.len() < BASE_HEADER_LEN as usize {
             return Err(PfcpError::MessageParseError {
                 message_type: None,
                 reason: format!(
-                    "Header too short (expected at least 8 bytes, got {})",
+                    "Header too short (expected at least {} bytes, got {})",
+                    BASE_HEADER_LEN,
                     b.len()
                 ),
             });
         }
 
         let flags = b[0];
-        let version = flags >> 5;
-        let has_fo = (flags & 0x04) >> 2 == 1;
-        let has_mp = (flags & 0x02) >> 1 == 1;
-        let has_seid = (flags & 0x01) == 1;
+        let version = flags >> VERSION_SHIFT;
+        let has_fo = (flags & FO_FLAG_MASK) >> FO_FLAG_SHIFT == 1;
+        let has_mp = (flags & MP_FLAG_MASK) >> MP_FLAG_SHIFT == 1;
+        let has_seid = (flags & SEID_FLAG_MASK) >> SEID_FLAG_SHIFT == 1;
 
         let raw_message_type = b[1];
         let message_type = MsgType::from(raw_message_type);
         let length = u16::from_be_bytes([b[2], b[3]]);
 
-        let mut offset = 4;
+        let mut offset = HEADER_PREFIX_LEN;
+        let seid_field_len = SEID_FIELD_LEN as usize;
         let seid = if has_seid {
-            if b.len() < offset + 8 {
+            if b.len() < offset + seid_field_len {
                 return Err(PfcpError::MessageParseError {
                     message_type: Some(message_type),
                     reason: format!(
                         "Header with SEID flag set but too short (expected at least {} bytes, got {})",
-                        offset + 8,
+                        offset + seid_field_len,
                         b.len()
                     ),
                 });
             }
-            offset += 8;
-            u64::from_be_bytes([
-                b[offset - 8],
-                b[offset - 7],
-                b[offset - 6],
-                b[offset - 5],
-                b[offset - 4],
-                b[offset - 3],
-                b[offset - 2],
-                b[offset - 1],
-            ])
+            offset += seid_field_len;
+            u64::from_be_bytes(
+                b[offset - seid_field_len..offset]
+                    .try_into()
+                    .expect("slice has exactly SEID_FIELD_LEN bytes"),
+            )
         } else {
             0
         };
 
-        if b.len() < offset + 4 {
+        let trailer_len = SEQUENCE_NUMBER_FIELD_LEN + MESSAGE_PRIORITY_FIELD_LEN;
+        if b.len() < offset + trailer_len {
             return Err(PfcpError::MessageParseError {
                 message_type: Some(message_type),
                 reason: format!(
                     "Header sequence number part too short (expected at least {} bytes, got {})",
-                    offset + 4,
+                    offset + trailer_len,
                     b.len()
                 ),
             });
@@ -204,7 +251,7 @@ impl Header {
             b[offset + 1],
             b[offset + 2],
         ]));
-        let message_priority = b[offset + 3];
+        let message_priority = b[offset + SEQUENCE_NUMBER_FIELD_LEN];
 
         Ok(Header {
             version,

@@ -232,7 +232,7 @@ pub trait Message: Send + Sync {
         format!("{:?}", self.msg_type())
     }
     fn version(&self) -> u8 {
-        1
+        header::PFCP_VERSION
     }
     fn seid(&self) -> Option<Seid>;
     fn sequence(&self) -> SequenceNumber;

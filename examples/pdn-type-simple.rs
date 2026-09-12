@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✅ Builder pattern — no positional None arguments needed
     let response = SessionModificationResponseBuilder::accepted(0x123456789ABCDEF0u64, 1001u32)
-        .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type IE
+        .pdn_type(ipv4v6_pdn) // ✅ PDN Type IE
         .build();
 
     println!("   📤 SessionModificationResponse created successfully");

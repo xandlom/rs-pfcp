@@ -166,7 +166,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .fseid(cp_seid, smf_ip)
         .add_pdr(pdr)
         .add_far(far)
-        .ethernet_pdu_session_information(eth_pdu_info_ie.clone())
+        .ethernet_pdu_session_information(eth_pdu_info_ie)
         .ies(vec![inactivity_timer_ie])
         .build()?;
 
