@@ -463,6 +463,246 @@ mod tests {
     }
 
     #[test]
+    fn test_mismatch_reason_missing_in_left_display() {
+        assert_eq!(
+            MismatchReason::MissingInLeft.to_string(),
+            "missing in left message"
+        );
+    }
+
+    #[test]
+    fn test_mismatch_reason_semantic_display() {
+        assert_eq!(
+            MismatchReason::SemanticMismatch {
+                details: "foo".to_string()
+            }
+            .to_string(),
+            "semantic mismatch: foo"
+        );
+    }
+
+    #[test]
+    fn test_mismatch_reason_grouped_ie_display_variants() {
+        // Only child mismatches.
+        assert_eq!(
+            MismatchReason::GroupedIeMismatch {
+                child_mismatches: 2,
+                missing_in_right: 0,
+                missing_in_left: 0,
+            }
+            .to_string(),
+            "grouped IE: 2 child mismatch(es)"
+        );
+
+        // Missing in right only.
+        assert_eq!(
+            MismatchReason::GroupedIeMismatch {
+                child_mismatches: 0,
+                missing_in_right: 1,
+                missing_in_left: 0,
+            }
+            .to_string(),
+            "grouped IE: 0 child mismatch(es), 1 missing in right"
+        );
+
+        // Missing in left only.
+        assert_eq!(
+            MismatchReason::GroupedIeMismatch {
+                child_mismatches: 0,
+                missing_in_right: 0,
+                missing_in_left: 1,
+            }
+            .to_string(),
+            "grouped IE: 0 child mismatch(es), 1 missing in left"
+        );
+
+        // Both missing in right and left.
+        assert_eq!(
+            MismatchReason::GroupedIeMismatch {
+                child_mismatches: 1,
+                missing_in_right: 1,
+                missing_in_left: 2,
+            }
+            .to_string(),
+            "grouped IE: 1 child mismatch(es), 1 missing in right, 2 missing in left"
+        );
+    }
+
+    #[test]
+    fn test_header_match_type_mismatch_summary() {
+        let header = HeaderMatch {
+            message_type_match: false,
+            sequence_match: Some(true),
+            seid_match: Some(true),
+            priority_match: Some(true),
+        };
+        assert!(!header.is_complete_match());
+        assert_eq!(header.summary(), "Mismatch in: type");
+    }
+
+    #[test]
+    fn test_header_match_seid_mismatch_summary() {
+        let header = HeaderMatch {
+            message_type_match: true,
+            sequence_match: Some(true),
+            seid_match: Some(false),
+            priority_match: Some(true),
+        };
+        assert_eq!(header.summary(), "Mismatch in: seid");
+    }
+
+    #[test]
+    fn test_header_match_priority_mismatch_summary() {
+        let header = HeaderMatch {
+            message_type_match: true,
+            sequence_match: Some(true),
+            seid_match: Some(true),
+            priority_match: Some(false),
+        };
+        assert_eq!(header.summary(), "Mismatch in: priority");
+    }
+
+    #[test]
+    fn test_into_diff_generates_when_absent() {
+        let result = ComparisonResult {
+            left_type: MsgType::HeartbeatRequest,
+            right_type: MsgType::HeartbeatRequest,
+            is_match: false,
+            header_match: HeaderMatch {
+                message_type_match: true,
+                sequence_match: Some(false),
+                seid_match: None,
+                priority_match: None,
+            },
+            ie_matches: vec![],
+            ie_mismatches: vec![],
+            left_only_ies: vec![],
+            right_only_ies: vec![],
+            diff: None,
+            stats: ComparisonStats::default(),
+        };
+
+        let diff = result.into_diff();
+        assert_eq!(diff.left_type, MsgType::HeartbeatRequest);
+        assert!(!diff.is_empty());
+    }
+
+    #[test]
+    fn test_into_diff_returns_existing() {
+        let existing = MessageDiff::new(MsgType::HeartbeatRequest, MsgType::HeartbeatRequest);
+        let result = ComparisonResult {
+            left_type: MsgType::HeartbeatRequest,
+            right_type: MsgType::HeartbeatRequest,
+            is_match: true,
+            header_match: HeaderMatch {
+                message_type_match: true,
+                sequence_match: Some(true),
+                seid_match: None,
+                priority_match: None,
+            },
+            ie_matches: vec![],
+            ie_mismatches: vec![],
+            left_only_ies: vec![],
+            right_only_ies: vec![],
+            diff: Some(existing),
+            stats: ComparisonStats::default(),
+        };
+
+        // Should return the pre-generated (empty) diff rather than regenerating.
+        let diff = result.into_diff();
+        assert!(diff.is_empty());
+    }
+
+    #[test]
+    fn test_report_match() {
+        let stats = ComparisonStats {
+            total_ies_compared: 3,
+            exact_matches: 2,
+            semantic_matches: 1,
+            mismatches: 0,
+            ignored_ies: 1,
+            ..Default::default()
+        };
+        let result = ComparisonResult {
+            left_type: MsgType::HeartbeatRequest,
+            right_type: MsgType::HeartbeatRequest,
+            is_match: true,
+            header_match: HeaderMatch {
+                message_type_match: true,
+                sequence_match: Some(true),
+                seid_match: None,
+                priority_match: None,
+            },
+            ie_matches: vec![],
+            ie_mismatches: vec![],
+            left_only_ies: vec![],
+            right_only_ies: vec![],
+            diff: None,
+            stats,
+        };
+
+        let report = result.report();
+        assert!(report.contains("Comparison Result: MATCH"));
+        assert!(report.contains("Header: Match"));
+        assert!(report.contains("IEs compared: 3"));
+        assert!(report.contains("Exact matches: 2"));
+        assert!(report.contains("Semantic matches: 1"));
+        assert!(report.contains("Mismatches: 0"));
+        assert!(report.contains("Ignored IEs: 1"));
+        assert!(!report.contains("IEs only in left"));
+        assert!(!report.contains("Mismatches:\n"));
+    }
+
+    #[test]
+    fn test_report_mismatch_with_left_right_only_and_context() {
+        let result = ComparisonResult {
+            left_type: MsgType::HeartbeatRequest,
+            right_type: MsgType::HeartbeatRequest,
+            is_match: false,
+            header_match: HeaderMatch {
+                message_type_match: true,
+                sequence_match: Some(false),
+                seid_match: None,
+                priority_match: None,
+            },
+            ie_matches: vec![],
+            ie_mismatches: vec![
+                IeMismatch {
+                    ie_type: IeType::Cause,
+                    reason: MismatchReason::GroupedIeMismatch {
+                        child_mismatches: 1,
+                        missing_in_right: 1,
+                        missing_in_left: 0,
+                    },
+                    left_payload: None,
+                    right_payload: None,
+                    context: Some("CreatePdr > Pdi".to_string()),
+                },
+                IeMismatch {
+                    ie_type: IeType::PdrId,
+                    reason: MismatchReason::ValueMismatch,
+                    left_payload: None,
+                    right_payload: None,
+                    context: None,
+                },
+            ],
+            left_only_ies: vec![IeType::NodeId],
+            right_only_ies: vec![IeType::RecoveryTimeStamp],
+            diff: None,
+            stats: ComparisonStats::default(),
+        };
+
+        let report = result.report();
+        assert!(report.contains("Comparison Result: MISMATCH"));
+        assert!(report.contains("Mismatch in: sequence"));
+        assert!(report.contains("IEs only in left:\n  - NodeId"));
+        assert!(report.contains("IEs only in right:\n  - RecoveryTimeStamp"));
+        assert!(report.contains("Cause: grouped IE: 1 child mismatch(es), 1 missing in right"));
+        assert!(report.contains("Context: CreatePdr > Pdi"));
+        assert!(report.contains("PdrId: values differ"));
+    }
+
+    #[test]
     fn test_comparison_stats_default() {
         let stats = ComparisonStats::default();
         assert_eq!(stats.total_ies_compared, 0);

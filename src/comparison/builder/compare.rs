@@ -425,6 +425,7 @@ fn compare_single_ie(
 mod tests {
     use super::*;
     use crate::message::heartbeat_request::HeartbeatRequestBuilder;
+    use crate::message::session_deletion_request::SessionDeletionRequestBuilder;
     use crate::message::MsgType;
     use std::time::SystemTime;
 
@@ -759,5 +760,698 @@ mod tests {
             }
             _ => panic!("Expected deep match with unordered IEs"),
         }
+    }
+
+    // ========================================================================
+    // SEID Header Comparison Tests
+    // ========================================================================
+
+    #[test]
+    fn test_compare_headers_seid_match() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+
+        let options = ComparisonOptions::default();
+        let header_match = compare_headers(&msg1, &msg2, &options);
+
+        assert_eq!(header_match.seid_match, Some(true));
+    }
+
+    #[test]
+    fn test_compare_headers_seid_mismatch() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(200u64, 1u32).build();
+
+        let options = ComparisonOptions::default();
+        let header_match = compare_headers(&msg1, &msg2, &options);
+
+        assert_eq!(header_match.seid_match, Some(false));
+    }
+
+    #[test]
+    fn test_compare_headers_ignore_seid() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(200u64, 1u32).build();
+
+        let options = ComparisonOptions {
+            ignore_seid: true,
+            ..Default::default()
+        };
+        let header_match = compare_headers(&msg1, &msg2, &options);
+
+        assert_eq!(header_match.seid_match, None);
+    }
+
+    // ========================================================================
+    // execute_comparison: optional IE mode and diff generation
+    // ========================================================================
+
+    #[test]
+    fn test_execute_comparison_generates_diff_when_requested() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32)
+            .node_id(std::net::Ipv4Addr::new(1, 1, 1, 1))
+            .build();
+        let msg2 = SessionDeletionRequestBuilder::new(100u64, 1u32)
+            .node_id(std::net::Ipv4Addr::new(2, 2, 2, 2))
+            .build();
+
+        let options = ComparisonOptions {
+            generate_diff: true,
+            ..Default::default()
+        };
+        let result = execute_comparison(&msg1, &msg2, &options).unwrap();
+
+        assert!(result.diff.is_some());
+        assert!(!result.diff.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_execute_comparison_no_diff_by_default() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+
+        let options = ComparisonOptions::default();
+        let result = execute_comparison(&msg1, &msg2, &options).unwrap();
+
+        assert!(result.diff.is_none());
+    }
+
+    #[test]
+    fn test_execute_comparison_optional_ie_mode_ignore_missing() {
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32)
+            .node_id(std::net::Ipv4Addr::new(1, 1, 1, 1))
+            .build();
+        let msg2 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+
+        let options = ComparisonOptions {
+            optional_ie_mode: OptionalIeMode::IgnoreMissing,
+            ..Default::default()
+        };
+        let result = execute_comparison(&msg1, &msg2, &options).unwrap();
+
+        assert!(result.is_match);
+    }
+
+    #[test]
+    fn test_execute_comparison_optional_ie_mode_require_left() {
+        // Left has an extra IE the right doesn't - RequireLeft only cares
+        // that the right has nothing extra.
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32)
+            .node_id(std::net::Ipv4Addr::new(1, 1, 1, 1))
+            .build();
+        let msg2 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+
+        let options = ComparisonOptions {
+            optional_ie_mode: OptionalIeMode::RequireLeft,
+            ..Default::default()
+        };
+        let result = execute_comparison(&msg1, &msg2, &options).unwrap();
+
+        assert!(result.is_match);
+    }
+
+    #[test]
+    fn test_execute_comparison_optional_ie_mode_require_right() {
+        // Right has an extra IE the left doesn't - RequireRight only cares
+        // that the left has nothing extra.
+        let msg1 = SessionDeletionRequestBuilder::new(100u64, 1u32).build();
+        let msg2 = SessionDeletionRequestBuilder::new(100u64, 1u32)
+            .node_id(std::net::Ipv4Addr::new(1, 1, 1, 1))
+            .build();
+
+        let options = ComparisonOptions {
+            optional_ie_mode: OptionalIeMode::RequireRight,
+            ..Default::default()
+        };
+        let result = execute_comparison(&msg1, &msg2, &options).unwrap();
+
+        assert!(result.is_match);
+    }
+
+    // ========================================================================
+    // compare_ies: ignored types, right-only IEs, max_reported_differences
+    // ========================================================================
+
+    #[test]
+    fn test_compare_ies_ignored_ie_type() {
+        use crate::ie::pdr_id::PdrId;
+        use std::collections::HashMap;
+
+        let left_ie = PdrId::new(1).to_ie();
+        let right_ie = PdrId::new(1).to_ie();
+        let mut left_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        left_ies.insert(IeType::PdrId, vec![&left_ie]);
+        let mut right_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        right_ies.insert(IeType::PdrId, vec![&right_ie]);
+
+        let mut options = ComparisonOptions::default();
+        options.ignored_ie_types.insert(IeType::PdrId);
+        let mut stats = ComparisonStats::new();
+
+        let (matches, mismatches, left_only, right_only) =
+            compare_ies(&left_ies, &right_ies, &options, &mut stats).unwrap();
+
+        assert!(matches.is_empty());
+        assert!(mismatches.is_empty());
+        assert!(left_only.is_empty());
+        assert!(right_only.is_empty());
+        assert_eq!(stats.ignored_ies, 1);
+    }
+
+    #[test]
+    fn test_compare_ies_right_only() {
+        use crate::ie::pdr_id::PdrId;
+        use std::collections::HashMap;
+
+        let left_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        let right_ie = PdrId::new(1).to_ie();
+        let mut right_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        right_ies.insert(IeType::PdrId, vec![&right_ie]);
+
+        let options = ComparisonOptions::default();
+        let mut stats = ComparisonStats::new();
+
+        let (_, _, left_only, right_only) =
+            compare_ies(&left_ies, &right_ies, &options, &mut stats).unwrap();
+
+        assert!(left_only.is_empty());
+        assert_eq!(right_only, vec![IeType::PdrId]);
+    }
+
+    #[test]
+    fn test_compare_ies_max_reported_differences_stops_early() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::pdr_id::PdrId;
+        use std::collections::HashMap;
+
+        let pdr_l = PdrId::new(1).to_ie();
+        let pdr_r = PdrId::new(2).to_ie();
+        let far_l = FarId::new(1).to_ie();
+        let far_r = FarId::new(2).to_ie();
+
+        let mut left_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        left_ies.insert(IeType::PdrId, vec![&pdr_l]);
+        left_ies.insert(IeType::FarId, vec![&far_l]);
+        let mut right_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        right_ies.insert(IeType::PdrId, vec![&pdr_r]);
+        right_ies.insert(IeType::FarId, vec![&far_r]);
+
+        let options = ComparisonOptions {
+            max_reported_differences: Some(1),
+            ..Default::default()
+        };
+        let mut stats = ComparisonStats::new();
+
+        let (_, mismatches, left_only, right_only) =
+            compare_ies(&left_ies, &right_ies, &options, &mut stats).unwrap();
+
+        // Both IE types mismatch, but iteration should stop after the first.
+        assert_eq!(mismatches.len() + left_only.len() + right_only.len(), 1);
+    }
+
+    // ========================================================================
+    // compare_ie_instances: multiplicity modes and count mismatch
+    // ========================================================================
+
+    #[test]
+    fn test_compare_ie_instances_count_mismatch() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let b1 = PdrId::new(1).to_ie();
+        let b2 = PdrId::new(2).to_ie();
+
+        let options = ComparisonOptions::default();
+        let result = compare_ie_instances(&[&a1], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        match result {
+            IeComparisonResult::Mismatch(
+                MismatchReason::CountMismatch {
+                    left_count,
+                    right_count,
+                },
+                None,
+                None,
+            ) => {
+                assert_eq!(left_count, 1);
+                assert_eq!(right_count, 2);
+            }
+            _ => panic!("Expected count mismatch"),
+        }
+    }
+
+    #[test]
+    fn test_compare_ie_instances_exact_match_success() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let a2 = PdrId::new(2).to_ie();
+        let b1 = PdrId::new(2).to_ie();
+        let b2 = PdrId::new(1).to_ie();
+
+        let options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::ExactMatch,
+            ..Default::default()
+        };
+        let result =
+            compare_ie_instances(&[&a1, &a2], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::MultipleMatched)
+        ));
+    }
+
+    #[test]
+    fn test_compare_ie_instances_exact_match_failure() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let a2 = PdrId::new(2).to_ie();
+        let b1 = PdrId::new(1).to_ie();
+        let b2 = PdrId::new(3).to_ie(); // No match for a2
+
+        let options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::ExactMatch,
+            ..Default::default()
+        };
+        let result =
+            compare_ie_instances(&[&a1, &a2], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Mismatch(MismatchReason::ValueMismatch, Some(_), None)
+        ));
+    }
+
+    #[test]
+    fn test_compare_ie_instances_set_equality_success() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let a2 = PdrId::new(2).to_ie();
+        let b1 = PdrId::new(1).to_ie();
+        let b2 = PdrId::new(2).to_ie();
+
+        let options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::SetEquality,
+            ..Default::default()
+        };
+        let result =
+            compare_ie_instances(&[&a1, &a2], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::MultipleMatched)
+        ));
+    }
+
+    #[test]
+    fn test_compare_ie_instances_set_equality_failure_order_matters() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let a2 = PdrId::new(2).to_ie();
+        let b1 = PdrId::new(2).to_ie(); // swapped relative to left
+        let b2 = PdrId::new(1).to_ie();
+
+        let options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::SetEquality,
+            ..Default::default()
+        };
+        let result =
+            compare_ie_instances(&[&a1, &a2], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        assert!(matches!(result, IeComparisonResult::Mismatch(..)));
+    }
+
+    #[test]
+    fn test_compare_ie_instances_lenient_success() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let a2 = PdrId::new(99).to_ie();
+        let b1 = PdrId::new(5).to_ie();
+        let b2 = PdrId::new(99).to_ie(); // one match exists
+
+        let options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::Lenient,
+            ..Default::default()
+        };
+        let result =
+            compare_ie_instances(&[&a1, &a2], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::MultipleMatched)
+        ));
+    }
+
+    #[test]
+    fn test_compare_ie_instances_lenient_failure() {
+        use crate::ie::pdr_id::PdrId;
+
+        let a1 = PdrId::new(1).to_ie();
+        let a2 = PdrId::new(2).to_ie();
+        let b1 = PdrId::new(3).to_ie();
+        let b2 = PdrId::new(4).to_ie();
+
+        let options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::Lenient,
+            ..Default::default()
+        };
+        let result =
+            compare_ie_instances(&[&a1, &a2], &[&b1, &b2], IeType::PdrId, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Mismatch(MismatchReason::ValueMismatch, None, None)
+        ));
+    }
+
+    // ========================================================================
+    // compare_single_ie: grouped dispatch and semantic comparison
+    // ========================================================================
+
+    #[test]
+    fn test_compare_single_ie_dispatches_to_deep_grouped() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::pdr_id::PdrId;
+
+        let grouped1 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+        let grouped2 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+
+        let options = ComparisonOptions {
+            deep_compare_grouped: true,
+            ..Default::default()
+        };
+        let result = compare_single_ie(&grouped1, &grouped2, IeType::CreatePdr, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::DeepGrouped)
+        ));
+    }
+
+    #[test]
+    fn test_compare_single_ie_semantic_match() {
+        use crate::ie::f_teid::Fteid;
+        use std::net::Ipv4Addr;
+
+        let fteid = Fteid::new(
+            true,
+            false,
+            0x1234,
+            Some(Ipv4Addr::new(1, 2, 3, 4)),
+            None,
+            0,
+        );
+        let ie1 = Ie::new(IeType::Fteid, fteid.marshal());
+        let ie2 = Ie::new(IeType::Fteid, fteid.marshal());
+
+        let mut options = ComparisonOptions::default();
+        options.semantic_ie_types.insert(IeType::Fteid);
+
+        let result = compare_single_ie(&ie1, &ie2, IeType::Fteid, &options).unwrap();
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::Semantic)
+        ));
+    }
+
+    #[test]
+    fn test_compare_single_ie_semantic_mismatch() {
+        use crate::ie::f_teid::Fteid;
+        use std::net::Ipv4Addr;
+
+        let fteid1 = Fteid::new(
+            true,
+            false,
+            0x1234,
+            Some(Ipv4Addr::new(1, 2, 3, 4)),
+            None,
+            0,
+        );
+        let fteid2 = Fteid::new(
+            true,
+            false,
+            0x5678,
+            Some(Ipv4Addr::new(1, 2, 3, 4)),
+            None,
+            0,
+        );
+        let ie1 = Ie::new(IeType::Fteid, fteid1.marshal());
+        let ie2 = Ie::new(IeType::Fteid, fteid2.marshal());
+
+        let mut options = ComparisonOptions::default();
+        options.semantic_ie_types.insert(IeType::Fteid);
+
+        let result = compare_single_ie(&ie1, &ie2, IeType::Fteid, &options).unwrap();
+        match result {
+            IeComparisonResult::Mismatch(
+                MismatchReason::SemanticMismatch { details },
+                Some(_),
+                Some(_),
+            ) => {
+                assert!(details.contains("TEID differs"));
+            }
+            _ => panic!("Expected semantic mismatch"),
+        }
+    }
+
+    // ========================================================================
+    // compare_ies: match-type stats and payload inclusion
+    // ========================================================================
+
+    #[test]
+    fn test_compare_ies_records_semantic_multiple_and_deep_grouped_stats() {
+        use crate::ie::f_teid::Fteid;
+        use crate::ie::far_id::FarId;
+        use crate::ie::pdr_id::PdrId;
+        use std::collections::HashMap;
+        use std::net::Ipv4Addr;
+
+        // Semantic match on an F-TEID IE.
+        let fteid = Fteid::new(
+            true,
+            false,
+            0x1234,
+            Some(Ipv4Addr::new(1, 2, 3, 4)),
+            None,
+            0,
+        );
+        let left_fteid = Ie::new(IeType::Fteid, fteid.marshal());
+        let right_fteid = Ie::new(IeType::Fteid, fteid.marshal());
+
+        // Deep-grouped match on a CreatePdr IE.
+        let left_grouped = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+        let right_grouped = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+
+        // Multiple-instance match (Lenient) on two PdrId IEs.
+        let left_pdr_a = PdrId::new(10).to_ie();
+        let left_pdr_b = PdrId::new(20).to_ie();
+        let right_pdr_a = PdrId::new(20).to_ie();
+        let right_pdr_b = PdrId::new(30).to_ie();
+
+        let mut left_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        left_ies.insert(IeType::Fteid, vec![&left_fteid]);
+        left_ies.insert(IeType::CreatePdr, vec![&left_grouped]);
+        left_ies.insert(IeType::PdrId, vec![&left_pdr_a, &left_pdr_b]);
+
+        let mut right_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        right_ies.insert(IeType::Fteid, vec![&right_fteid]);
+        right_ies.insert(IeType::CreatePdr, vec![&right_grouped]);
+        right_ies.insert(IeType::PdrId, vec![&right_pdr_a, &right_pdr_b]);
+
+        let mut options = ComparisonOptions {
+            ie_multiplicity_mode: crate::comparison::IeMultiplicityMode::Lenient,
+            ..Default::default()
+        };
+        options.semantic_ie_types.insert(IeType::Fteid);
+        let mut stats = ComparisonStats::new();
+
+        let (matches, mismatches, left_only, right_only) =
+            compare_ies(&left_ies, &right_ies, &options, &mut stats).unwrap();
+
+        assert!(mismatches.is_empty());
+        assert!(left_only.is_empty());
+        assert!(right_only.is_empty());
+        assert_eq!(matches.len(), 3);
+        assert!(matches
+            .iter()
+            .any(|m| m.match_type == IeMatchType::Semantic));
+        assert!(matches
+            .iter()
+            .any(|m| m.match_type == IeMatchType::DeepGrouped));
+        assert!(matches
+            .iter()
+            .any(|m| m.match_type == IeMatchType::MultipleMatched));
+        assert_eq!(stats.semantic_matches, 1);
+        // MultipleMatched and DeepGrouped both count toward exact_matches.
+        assert_eq!(stats.exact_matches, 2);
+    }
+
+    #[test]
+    fn test_compare_ies_includes_payload_when_requested() {
+        use crate::ie::pdr_id::PdrId;
+        use std::collections::HashMap;
+
+        let left_ie = PdrId::new(1).to_ie();
+        let right_ie = PdrId::new(2).to_ie();
+        let mut left_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        left_ies.insert(IeType::PdrId, vec![&left_ie]);
+        let mut right_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        right_ies.insert(IeType::PdrId, vec![&right_ie]);
+
+        let options = ComparisonOptions {
+            include_payload_in_diff: true,
+            ..Default::default()
+        };
+        let mut stats = ComparisonStats::new();
+        let (_, mismatches, _, _) =
+            compare_ies(&left_ies, &right_ies, &options, &mut stats).unwrap();
+
+        assert_eq!(mismatches.len(), 1);
+        assert!(mismatches[0].left_payload.is_some());
+        assert!(mismatches[0].right_payload.is_some());
+    }
+
+    #[test]
+    fn test_compare_ies_excludes_payload_by_default() {
+        use crate::ie::pdr_id::PdrId;
+        use std::collections::HashMap;
+
+        let left_ie = PdrId::new(1).to_ie();
+        let right_ie = PdrId::new(2).to_ie();
+        let mut left_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        left_ies.insert(IeType::PdrId, vec![&left_ie]);
+        let mut right_ies: HashMap<IeType, Vec<&Ie>> = HashMap::new();
+        right_ies.insert(IeType::PdrId, vec![&right_ie]);
+
+        let options = ComparisonOptions::default();
+        let mut stats = ComparisonStats::new();
+        let (_, mismatches, _, _) =
+            compare_ies(&left_ies, &right_ies, &options, &mut stats).unwrap();
+
+        assert_eq!(mismatches.len(), 1);
+        assert!(mismatches[0].left_payload.is_none());
+        assert!(mismatches[0].right_payload.is_none());
+    }
+
+    // ========================================================================
+    // compare_grouped_ie_deep: optional IE mode on missing children
+    // ========================================================================
+
+    #[test]
+    fn test_deep_compare_grouped_ie_missing_child_ignore_missing_mode() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::qer_id::QerId;
+
+        let grouped1 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![
+                PdrId::new(1).to_ie(),
+                FarId::new(2).to_ie(),
+                QerId::new(3).to_ie(),
+            ],
+        );
+        let grouped2 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+
+        let options = ComparisonOptions {
+            deep_compare_grouped: true,
+            optional_ie_mode: OptionalIeMode::IgnoreMissing,
+            ..Default::default()
+        };
+        let result =
+            compare_grouped_ie_deep(&grouped1, &grouped2, IeType::CreatePdr, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::DeepGrouped)
+        ));
+    }
+
+    #[test]
+    fn test_deep_compare_grouped_ie_missing_child_require_left_mode() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::qer_id::QerId;
+
+        // Left has an extra child (QerId) the right doesn't - RequireLeft tolerates that.
+        let grouped1 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![
+                PdrId::new(1).to_ie(),
+                FarId::new(2).to_ie(),
+                QerId::new(3).to_ie(),
+            ],
+        );
+        let grouped2 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+
+        let options = ComparisonOptions {
+            deep_compare_grouped: true,
+            optional_ie_mode: OptionalIeMode::RequireLeft,
+            ..Default::default()
+        };
+        let result =
+            compare_grouped_ie_deep(&grouped1, &grouped2, IeType::CreatePdr, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::DeepGrouped)
+        ));
+    }
+
+    #[test]
+    fn test_deep_compare_grouped_ie_missing_child_require_right_mode() {
+        use crate::ie::far_id::FarId;
+        use crate::ie::pdr_id::PdrId;
+        use crate::ie::qer_id::QerId;
+
+        // Right has an extra child (QerId) the left doesn't - RequireRight tolerates that.
+        let grouped1 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![PdrId::new(1).to_ie(), FarId::new(2).to_ie()],
+        );
+        let grouped2 = Ie::new_grouped(
+            IeType::CreatePdr,
+            vec![
+                PdrId::new(1).to_ie(),
+                FarId::new(2).to_ie(),
+                QerId::new(3).to_ie(),
+            ],
+        );
+
+        let options = ComparisonOptions {
+            deep_compare_grouped: true,
+            optional_ie_mode: OptionalIeMode::RequireRight,
+            ..Default::default()
+        };
+        let result =
+            compare_grouped_ie_deep(&grouped1, &grouped2, IeType::CreatePdr, &options).unwrap();
+
+        assert!(matches!(
+            result,
+            IeComparisonResult::Match(IeMatchType::DeepGrouped)
+        ));
     }
 }

@@ -504,4 +504,318 @@ mod tests {
         assert!(yaml.contains("differences: 1"));
         assert!(yaml.contains("type: left_only"));
     }
+
+    #[test]
+    fn test_message_diff_to_yaml_empty() {
+        let diff = MessageDiff::new(MsgType::HeartbeatRequest, MsgType::HeartbeatRequest);
+        let yaml = diff.to_yaml();
+        assert!(yaml.contains("differences: 0"));
+        assert!(yaml.contains("# No differences found"));
+    }
+
+    // ========================================================================
+    // from_parts / from_result
+    // ========================================================================
+
+    fn complete_header_match() -> super::super::result::HeaderMatch {
+        super::super::result::HeaderMatch {
+            message_type_match: true,
+            sequence_match: Some(true),
+            seid_match: Some(true),
+            priority_match: Some(true),
+        }
+    }
+
+    #[test]
+    fn test_from_parts_header_field_mismatches() {
+        let header_match = super::super::result::HeaderMatch {
+            message_type_match: false,
+            sequence_match: Some(false),
+            seid_match: Some(false),
+            priority_match: Some(false),
+        };
+
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatResponse,
+            header_match,
+            &[],
+            &[],
+            &[],
+        );
+
+        assert_eq!(diff.differences.len(), 4);
+        let yaml = diff.to_yaml();
+        assert!(yaml.contains("field: MessageType"));
+        assert!(yaml.contains("field: Sequence"));
+        assert!(yaml.contains("field: Seid"));
+        assert!(yaml.contains("field: Priority"));
+    }
+
+    #[test]
+    fn test_from_parts_value_mismatch_with_and_without_payload() {
+        use super::super::result::{IeMismatch, MismatchReason};
+
+        let mismatches = vec![
+            IeMismatch {
+                ie_type: IeType::Cause,
+                reason: MismatchReason::ValueMismatch,
+                left_payload: Some(vec![0x01, 0x02]),
+                right_payload: Some(vec![0x03, 0x04]),
+                context: None,
+            },
+            IeMismatch {
+                ie_type: IeType::PdrId,
+                reason: MismatchReason::ValueMismatch,
+                left_payload: None,
+                right_payload: None,
+                context: None,
+            },
+        ];
+
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatRequest,
+            complete_header_match(),
+            &mismatches,
+            &[],
+            &[],
+        );
+
+        assert_eq!(diff.differences.len(), 2);
+        let yaml = diff.to_yaml();
+        assert!(yaml.contains("01 02"));
+        assert!(yaml.contains("03 04"));
+        assert!(yaml.contains("N/A"));
+    }
+
+    #[test]
+    fn test_from_parts_count_mismatch() {
+        use super::super::result::{IeMismatch, MismatchReason};
+
+        let mismatches = vec![IeMismatch {
+            ie_type: IeType::CreatePdr,
+            reason: MismatchReason::CountMismatch {
+                left_count: 2,
+                right_count: 3,
+            },
+            left_payload: None,
+            right_payload: None,
+            context: None,
+        }];
+
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatRequest,
+            complete_header_match(),
+            &mismatches,
+            &[],
+            &[],
+        );
+
+        match &diff.differences[0] {
+            Difference::IeCount {
+                ie_type,
+                left_count,
+                right_count,
+            } => {
+                assert_eq!(*ie_type, IeType::CreatePdr);
+                assert_eq!(*left_count, 2);
+                assert_eq!(*right_count, 3);
+            }
+            other => panic!("Expected IeCount, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_from_parts_grouped_ie_mismatch() {
+        use super::super::result::{IeMismatch, MismatchReason};
+
+        let reason = MismatchReason::GroupedIeMismatch {
+            child_mismatches: 1,
+            missing_in_right: 0,
+            missing_in_left: 0,
+        };
+        let mismatches = vec![IeMismatch {
+            ie_type: IeType::CreatePdr,
+            reason: reason.clone(),
+            left_payload: None,
+            right_payload: None,
+            context: None,
+        }];
+
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatRequest,
+            complete_header_match(),
+            &mismatches,
+            &[],
+            &[],
+        );
+
+        match &diff.differences[0] {
+            Difference::GroupedIeStructure { ie_type, details } => {
+                assert_eq!(*ie_type, IeType::CreatePdr);
+                assert_eq!(*details, reason.to_string());
+            }
+            other => panic!("Expected GroupedIeStructure, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_from_parts_semantic_mismatch() {
+        use super::super::result::{IeMismatch, MismatchReason};
+
+        let mismatches = vec![IeMismatch {
+            ie_type: IeType::Fteid,
+            reason: MismatchReason::SemanticMismatch {
+                details: "TEID differs".to_string(),
+            },
+            left_payload: None,
+            right_payload: None,
+            context: None,
+        }];
+
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatRequest,
+            complete_header_match(),
+            &mismatches,
+            &[],
+            &[],
+        );
+
+        match &diff.differences[0] {
+            Difference::IeValue {
+                left_hex,
+                right_hex,
+                ..
+            } => {
+                assert!(left_hex.contains("semantic: TEID differs"));
+                assert_eq!(right_hex, "differs");
+            }
+            other => panic!("Expected IeValue, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_from_parts_ignores_unmapped_mismatch_reasons() {
+        use super::super::result::{IeMismatch, MismatchReason};
+
+        // MissingInRight/MissingInLeft aren't produced by the comparator today,
+        // but from_parts must still handle them gracefully (no difference pushed).
+        let mismatches = vec![IeMismatch {
+            ie_type: IeType::Cause,
+            reason: MismatchReason::MissingInRight,
+            left_payload: None,
+            right_payload: None,
+            context: None,
+        }];
+
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatRequest,
+            complete_header_match(),
+            &mismatches,
+            &[],
+            &[],
+        );
+
+        assert!(diff.is_empty());
+    }
+
+    #[test]
+    fn test_from_parts_left_and_right_only_ies() {
+        let diff = MessageDiff::from_parts(
+            MsgType::HeartbeatRequest,
+            MsgType::HeartbeatRequest,
+            complete_header_match(),
+            &[],
+            &[IeType::NodeId],
+            &[IeType::Cause],
+        );
+
+        assert_eq!(diff.differences.len(), 2);
+        let yaml = diff.to_yaml();
+        assert!(yaml.contains("type: left_only"));
+        assert!(yaml.contains("type: right_only"));
+    }
+
+    #[test]
+    fn test_from_result() {
+        use super::super::result::{ComparisonResult, ComparisonStats};
+
+        let result = ComparisonResult {
+            left_type: MsgType::HeartbeatRequest,
+            right_type: MsgType::HeartbeatResponse,
+            is_match: false,
+            header_match: super::super::result::HeaderMatch {
+                message_type_match: false,
+                sequence_match: Some(true),
+                seid_match: Some(true),
+                priority_match: Some(true),
+            },
+            ie_matches: vec![],
+            ie_mismatches: vec![],
+            left_only_ies: vec![IeType::NodeId],
+            right_only_ies: vec![],
+            diff: None,
+            stats: ComparisonStats::default(),
+        };
+
+        let diff = MessageDiff::from_result(&result);
+        assert_eq!(diff.left_type, MsgType::HeartbeatRequest);
+        assert_eq!(diff.right_type, MsgType::HeartbeatResponse);
+        assert_eq!(diff.differences.len(), 2); // header type mismatch + left-only IE
+    }
+
+    // ========================================================================
+    // Difference::to_yaml_entry with non-empty context
+    // ========================================================================
+
+    #[test]
+    fn test_difference_yaml_ie_value_with_context() {
+        let diff = Difference::IeValue {
+            ie_type: IeType::SourceInterface,
+            context: vec![IeType::CreatePdr, IeType::Pdi],
+            left_hex: "01".to_string(),
+            right_hex: "02".to_string(),
+        };
+        let yaml = diff.to_yaml_entry();
+        assert!(yaml.contains("ie: CreatePdr > Pdi > SourceInterface"));
+    }
+
+    #[test]
+    fn test_difference_yaml_left_only_with_context() {
+        let diff = Difference::LeftOnly {
+            ie_type: IeType::FarId,
+            context: vec![IeType::CreatePdr],
+        };
+        let yaml = diff.to_yaml_entry();
+        assert!(yaml.contains("type: left_only"));
+        assert!(yaml.contains("ie: CreatePdr > FarId"));
+    }
+
+    #[test]
+    fn test_difference_yaml_right_only_with_context() {
+        let diff = Difference::RightOnly {
+            ie_type: IeType::FarId,
+            context: vec![IeType::CreatePdr],
+        };
+        let yaml = diff.to_yaml_entry();
+        assert!(yaml.contains("type: right_only"));
+        assert!(yaml.contains("ie: CreatePdr > FarId"));
+    }
+
+    #[test]
+    fn test_difference_yaml_grouped_ie_structure() {
+        let diff = Difference::GroupedIeStructure {
+            ie_type: IeType::CreatePdr,
+            details: "grouped IE: 1 child mismatch(es)".to_string(),
+        };
+        let yaml = diff.to_yaml_entry();
+        assert!(yaml.contains("type: grouped_ie_structure"));
+        assert!(yaml.contains("ie: CreatePdr"));
+        assert!(yaml.contains("details: grouped IE: 1 child mismatch(es)"));
+    }
 }
