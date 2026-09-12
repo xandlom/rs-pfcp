@@ -569,8 +569,8 @@ async fn handle_message(
     let (msg_type, seid, sequence) = match message::parse(&data) {
         Ok(msg) => {
             let msg_type = msg.msg_type();
-            let seid = msg.seid();
-            let sequence = msg.sequence();
+            let seid = msg.seid().map(|s| *s);
+            let sequence = *msg.sequence();
             (msg_type, seid, sequence)
         }
         Err(e) => {
