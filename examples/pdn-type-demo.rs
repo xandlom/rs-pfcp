@@ -80,8 +80,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session_resp =
         SessionEstablishmentResponseBuilder::new_with_ie(0x987654321, 1001, cause_ie)
             .node_id(Ipv4Addr::new(10, 0, 0, 1))
-            .fseid_ie(fseid_ie.clone())
-            .pdn_type(ipv4v6_pdn.clone()) // ✅ PDN Type included in response for confirmation
+            .fseid_ie(fseid_ie)
+            .pdn_type(ipv4v6_pdn) // ✅ PDN Type included in response for confirmation
             .build()?;
 
     println!("   📥 Session Establishment Response created with PDN Type: IPv4v6");
@@ -106,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n5. 📨 Session Modification Response with PDN Type confirmation:");
 
     let mod_resp = SessionModificationResponseBuilder::accepted(0x987654321u64, 1002u32)
-        .pdn_type(ipv4_pdn.clone()) // ✅ PDN Type included in response to confirm change
+        .pdn_type(ipv4_pdn) // ✅ PDN Type included in response to confirm change
         .build();
 
     println!("   📥 Session Modification Response created with PDN Type confirmation: IPv4");
