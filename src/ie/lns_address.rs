@@ -3,6 +3,7 @@
 //! Per 3GPP TS 29.244 Section 8.2.188, contains the IP address of the L2TP
 //! Network Server (LNS). IPv4 encodes as 4 bytes; IPv6 as 16 bytes.
 
+use crate::ie::wire::read_array;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use crate::error::PfcpError;
@@ -30,7 +31,7 @@ impl LnsAddress {
     pub fn unmarshal(data: &[u8]) -> Result<Self, PfcpError> {
         let address = match data.len() {
             4 => IpAddr::V4(Ipv4Addr::new(data[0], data[1], data[2], data[3])),
-            16 => IpAddr::V6(Ipv6Addr::from(<[u8; 16]>::try_from(data).unwrap())),
+            16 => IpAddr::V6(Ipv6Addr::from(read_array::<16>(data, 0)?)),
             n => {
                 return Err(PfcpError::invalid_length(
                     "LNS Address",

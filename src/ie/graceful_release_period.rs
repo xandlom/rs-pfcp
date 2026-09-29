@@ -4,6 +4,7 @@
 //! Per 3GPP TS 29.244 Section 8.2.78.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 /// Graceful Release Period
@@ -104,7 +105,7 @@ impl GracefulReleasePeriod {
             ));
         }
 
-        let bytes: [u8; 2] = data[0..2].try_into().unwrap();
+        let bytes: [u8; 2] = read_array::<2>(data, 0)?;
         let period = u16::from_be_bytes(bytes);
 
         Ok(GracefulReleasePeriod { period })

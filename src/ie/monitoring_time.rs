@@ -3,6 +3,7 @@
 //! Monitoring Time Information Element.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::IeType;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -42,11 +43,7 @@ impl MonitoringTime {
                 data.len(),
             ));
         }
-        let ntp_timestamp = u32::from_be_bytes(
-            data[..NTP_SECONDS_LEN]
-                .try_into()
-                .expect("length checked above"),
-        );
+        let ntp_timestamp = read_u32(data, 0)?;
         let timestamp = if ntp_timestamp >= NTP_EPOCH_OFFSET {
             UNIX_EPOCH + Duration::from_secs(u64::from(ntp_timestamp - NTP_EPOCH_OFFSET))
         } else {

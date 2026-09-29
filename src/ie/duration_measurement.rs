@@ -1,4 +1,5 @@
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +36,7 @@ impl DurationMeasurement {
             ));
         }
 
-        let bytes: [u8; 4] = data[0..4].try_into().unwrap();
+        let bytes: [u8; 4] = read_array::<4>(data, 0)?;
         let duration_seconds = u32::from_be_bytes(bytes);
 
         Ok(Self { duration_seconds })

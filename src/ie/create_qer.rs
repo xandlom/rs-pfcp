@@ -292,6 +292,7 @@ impl CreateQer {
     }
 
     /// Creates a simple QER with open gates.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn open_gate(qer_id: QerId) -> Self {
         CreateQerBuilder::open_gate(qer_id)
             .build()
@@ -299,6 +300,7 @@ impl CreateQer {
     }
 
     /// Creates a simple QER with closed gates.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn closed_gate(qer_id: QerId) -> Self {
         CreateQerBuilder::closed_gate(qer_id)
             .build()
@@ -306,6 +308,7 @@ impl CreateQer {
     }
 
     /// Creates a QER with rate limiting in kbit/s.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn with_rate_limit(qer_id: QerId, uplink_kbps: u64, downlink_kbps: u64) -> Self {
         CreateQerBuilder::with_rate_limit(qer_id, uplink_kbps, downlink_kbps)
             .build()
@@ -313,6 +316,7 @@ impl CreateQer {
     }
 
     /// Creates a downlink-only QER.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn downlink_only(qer_id: QerId) -> Self {
         CreateQerBuilder::downlink_only(qer_id)
             .build()
@@ -320,6 +324,7 @@ impl CreateQer {
     }
 
     /// Creates an uplink-only QER.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn uplink_only(qer_id: QerId) -> Self {
         CreateQerBuilder::uplink_only(qer_id)
             .build()

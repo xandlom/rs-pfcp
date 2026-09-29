@@ -4,6 +4,7 @@
 //! endpoint for an RTP or MPQUIC session.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u16;
 use crate::ie::{Ie, IeType};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -127,7 +128,7 @@ impl LocalIngressTunnel {
             ));
         }
 
-        let port = u16::from_be_bytes(data[1..3].try_into().unwrap());
+        let port = read_u16(data, 1)?;
         let mut offset = 3;
 
         let ipv4 = if v4 {

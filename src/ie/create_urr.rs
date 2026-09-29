@@ -72,6 +72,12 @@ impl CreateUrr {
     }
 
     /// Marshals the Create URR into a byte vector.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `volume_quota` is inconsistent (a flag is set whose value is
+    /// `None`); construct it with [`VolumeQuota::new`] from consistent inputs.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn marshal(&self) -> Vec<u8> {
         let mut ies = vec![
             self.urr_id.to_ie(),
@@ -472,37 +478,37 @@ impl CreateUrrBuilder {
     ///   - Time threshold set but duration measurement disabled
     pub fn build(self) -> Result<CreateUrr, PfcpError> {
         // Validate required fields first (without consuming)
-        self.urr_id.as_ref().ok_or(PfcpError::MissingMandatoryIe {
+        let urr_id = self.urr_id.clone().ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::UrrId,
             message_type: None,
             parent_ie: Some(IeType::CreateUrr),
         })?;
 
-        let measurement_method =
-            self.measurement_method
-                .as_ref()
-                .ok_or(PfcpError::MissingMandatoryIe {
-                    ie_type: IeType::MeasurementMethod,
-                    message_type: None,
-                    parent_ie: Some(IeType::CreateUrr),
-                })?;
-
-        self.reporting_triggers
-            .as_ref()
+        let measurement_method = self
+            .measurement_method
             .ok_or(PfcpError::MissingMandatoryIe {
-                ie_type: IeType::ReportingTriggers,
+                ie_type: IeType::MeasurementMethod,
                 message_type: None,
                 parent_ie: Some(IeType::CreateUrr),
             })?;
 
+        let reporting_triggers =
+            self.reporting_triggers
+                .clone()
+                .ok_or(PfcpError::MissingMandatoryIe {
+                    ie_type: IeType::ReportingTriggers,
+                    message_type: None,
+                    parent_ie: Some(IeType::CreateUrr),
+                })?;
+
         // Validate measurement method and threshold consistency
-        self.validate_measurement_thresholds(measurement_method)?;
+        self.validate_measurement_thresholds(&measurement_method)?;
 
         // Now consume the values after validation
         Ok(CreateUrr {
-            urr_id: self.urr_id.unwrap(),
-            measurement_method: self.measurement_method.unwrap(),
-            reporting_triggers: self.reporting_triggers.unwrap(),
+            urr_id,
+            measurement_method,
+            reporting_triggers,
             monitoring_time: self.monitoring_time,
             volume_threshold: self.volume_threshold,
             time_threshold: self.time_threshold,

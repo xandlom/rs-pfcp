@@ -69,6 +69,7 @@ impl<'a> MessageComparator<'a> {
     /// let comparator = MessageComparator::new(msg1, msg2);
     /// # }
     /// ```
+    #[allow(clippy::panic)] // documented panic, see `# Panics`; `new_unchecked` is the fallible path
     pub fn new(left: &'a dyn Message, right: &'a dyn Message) -> Self {
         // Type check
         if left.msg_type() != right.msg_type() {

@@ -1,3 +1,4 @@
+use crate::ie::wire::read_array;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use crate::error::PfcpError;
@@ -170,7 +171,7 @@ impl UEIPAddressUsageInformation {
                     data.len(),
                 ));
             }
-            let octets: [u8; 4] = data[cursor..cursor + 4].try_into().unwrap();
+            let octets: [u8; 4] = read_array::<4>(data, cursor)?;
             ipv4_address = Some(Ipv4Addr::from(octets));
             cursor += 4;
         }
@@ -185,7 +186,7 @@ impl UEIPAddressUsageInformation {
                     data.len(),
                 ));
             }
-            let octets: [u8; 16] = data[cursor..cursor + 16].try_into().unwrap();
+            let octets: [u8; 16] = read_array::<16>(data, cursor)?;
             ipv6_address = Some(Ipv6Addr::from(octets));
             cursor += 16;
         }
@@ -200,7 +201,7 @@ impl UEIPAddressUsageInformation {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 4] = data[cursor..cursor + 4].try_into().unwrap();
+            let bytes: [u8; 4] = read_array::<4>(data, cursor)?;
             number_of_ue_ip_addresses = Some(u32::from_be_bytes(bytes));
             cursor += 4;
         }
@@ -215,7 +216,7 @@ impl UEIPAddressUsageInformation {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 4] = data[cursor..cursor + 4].try_into().unwrap();
+            let bytes: [u8; 4] = read_array::<4>(data, cursor)?;
             validity_timer = Some(u32::from_be_bytes(bytes));
         }
 

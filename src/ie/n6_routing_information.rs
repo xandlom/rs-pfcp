@@ -4,6 +4,7 @@
 //! IP address and port information for N6 routing.
 
 use crate::error::PfcpError;
+use crate::ie::wire::{read_array, read_u16};
 use crate::ie::{Ie, IeType};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -125,7 +126,7 @@ impl N6RoutingInformation {
             None
         };
         let src_port = if spo {
-            let v = u16::from_be_bytes(data[offset..offset + 2].try_into().unwrap());
+            let v = read_u16(data, offset)?;
             offset += 2;
             Some(v)
         } else {
@@ -148,9 +149,7 @@ impl N6RoutingInformation {
             None
         };
         let dst_port = if dpo {
-            Some(u16::from_be_bytes(
-                data[offset..offset + 2].try_into().unwrap(),
-            ))
+            Some(u16::from_be_bytes(read_array::<2>(data, offset)?))
         } else {
             None
         };

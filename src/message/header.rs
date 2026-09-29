@@ -1,6 +1,7 @@
 //! PFCP message header.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::message::MsgType;
 use crate::types::{Seid, SequenceNumber};
 
@@ -225,11 +226,7 @@ impl Header {
                 });
             }
             offset += seid_field_len;
-            u64::from_be_bytes(
-                b[offset - seid_field_len..offset]
-                    .try_into()
-                    .expect("slice has exactly SEID_FIELD_LEN bytes"),
-            )
+            u64::from_be_bytes(read_array(b, offset - seid_field_len)?)
         } else {
             0
         };
