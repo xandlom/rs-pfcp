@@ -29,13 +29,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 bitflags = "2"
-bitvec = "1"
-clap = { version = "4", features = ["derive"] }
-network-interface = "2"
-pcap-file = "2.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["preserve_order"] }
-serde_yaml_ng = "0.10"
+serde_json = { version = "1.0", features = ["preserve_order"], optional = true }
+serde_yaml_ng = { version = "0.10", optional = true }
+
+[features]
+default = ["display"]
+# YAML/JSON rendering of messages (`message::display`).
+display = ["dep:serde_json", "dep:serde_yaml_ng"]
 
 [[example]]
 name = "heartbeat-client"
@@ -52,10 +52,12 @@ path = "examples/session-client/main.rs"
 [[example]]
 name = "session-server"
 path = "examples/session-server/main.rs"
+required-features = ["display"]
 
 [[example]]
 name = "pcap-reader"
 path = "examples/pcap-reader/main.rs"
+required-features = ["display"]
 
 [[example]]
 name = "interop-echo-msg"
@@ -66,6 +68,9 @@ name = "ethernet-session-demo"
 path = "examples/ethernet-session-demo.rs"
 
 [dev-dependencies]
+clap = { version = "4", features = ["derive"] }
+network-interface = "2"
+pcap-file = "2.0"
 criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
