@@ -3,6 +3,7 @@
 //! Inactivity Detection Time Information Element.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +30,7 @@ impl InactivityDetectionTime {
             ));
         }
         Ok(InactivityDetectionTime {
-            value: u32::from_be_bytes(data[0..4].try_into().unwrap()),
+            value: read_u32(data, 0)?,
         })
     }
 }

@@ -231,6 +231,7 @@ impl HeartbeatResponseBuilder {
     ///
     /// Panics if the mandatory recovery_time_stamp is not set.
     /// Per 3GPP TS 29.244 Table 7.4.2.2-1, Recovery Time Stamp is mandatory.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn build(self) -> HeartbeatResponse {
         let recovery_time_stamp = self.recovery_time_stamp.expect(
             "HeartbeatResponse requires recovery_time_stamp (mandatory per 3GPP TS 29.244 Table 7.4.2.2-1)"

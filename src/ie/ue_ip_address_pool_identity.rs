@@ -4,6 +4,7 @@
 //! Encoded as u16 length + UTF-8 string.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u16;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +36,7 @@ impl UeIpAddressPoolIdentity {
                 data.len(),
             ));
         }
-        let len = u16::from_be_bytes(data[0..2].try_into().unwrap()) as usize;
+        let len = read_u16(data, 0)? as usize;
         if data.len() < 2 + len {
             return Err(PfcpError::invalid_length(
                 "UE IP Address Pool Identity",

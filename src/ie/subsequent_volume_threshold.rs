@@ -3,6 +3,7 @@
 //! Subsequent Volume Threshold Information Element.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u64;
 use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -83,7 +84,7 @@ impl SubsequentVolumeThreshold {
                     data.len(),
                 ));
             }
-            let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
+            let vol = read_u64(data, offset)?;
             offset += 8;
             Some(vol)
         } else {
@@ -99,7 +100,7 @@ impl SubsequentVolumeThreshold {
                     data.len(),
                 ));
             }
-            let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
+            let vol = read_u64(data, offset)?;
             offset += 8;
             Some(vol)
         } else {
@@ -115,7 +116,7 @@ impl SubsequentVolumeThreshold {
                     data.len(),
                 ));
             }
-            let vol = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
+            let vol = read_u64(data, offset)?;
             Some(vol)
         } else {
             None

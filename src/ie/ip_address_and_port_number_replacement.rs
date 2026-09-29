@@ -3,6 +3,7 @@
 //! Per 3GPP TS 29.244 Clause 8.2.200, contains instructions to modify the
 //! (inner) packet's destination/source IP addresses and port numbers.
 
+use crate::ie::wire::read_array;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use crate::error::PfcpError;
@@ -114,7 +115,7 @@ impl IpAddressAndPortNumberReplacement {
         }
         if flags & 0x02 != 0 {
             let b = read_bytes!(16);
-            let arr: [u8; 16] = b.try_into().unwrap();
+            let arr: [u8; 16] = read_array(b, 0)?;
             dest_ipv6 = Some(Ipv6Addr::from(arr));
         }
         if flags & 0x04 != 0 {
@@ -127,7 +128,7 @@ impl IpAddressAndPortNumberReplacement {
         }
         if flags & 0x10 != 0 {
             let b = read_bytes!(16);
-            let arr: [u8; 16] = b.try_into().unwrap();
+            let arr: [u8; 16] = read_array(b, 0)?;
             src_ipv6 = Some(Ipv6Addr::from(arr));
         }
         if flags & 0x20 != 0 {

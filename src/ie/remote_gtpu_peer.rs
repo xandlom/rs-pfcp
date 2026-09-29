@@ -5,6 +5,7 @@
 //! remote tunnel state.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -186,9 +187,7 @@ impl RemoteGtpuPeer {
                     data.len(),
                 ));
             }
-            Some(u32::from_be_bytes(
-                data[offset..offset + 4].try_into().unwrap(),
-            ))
+            Some(u32::from_be_bytes(read_array::<4>(data, offset)?))
         } else {
             None
         };

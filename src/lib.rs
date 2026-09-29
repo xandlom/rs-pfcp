@@ -121,6 +121,19 @@
 //! - [`message`] - PFCP message types for session and association management
 //! - [`comparison`] - Message comparison tools for testing, debugging, and validation
 
+// Parsers must return `Err` on malformed input, never panic. Sites that
+// deliberately panic (documented `# Panics` builders, infallible constructors
+// over constant input) opt out individually with `#[allow(..)]`.
+#![cfg_attr(
+    not(test),
+    deny(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::unreachable
+    )
+)]
+
 pub mod comparison;
 pub mod error;
 pub mod ie;

@@ -4,6 +4,7 @@
 //! in microseconds for QoS monitoring.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +31,7 @@ impl MinimumPacketDelay {
             ));
         }
         Ok(Self {
-            delay_us: u32::from_be_bytes(data[0..4].try_into().unwrap()),
+            delay_us: read_u32(data, 0)?,
         })
     }
 

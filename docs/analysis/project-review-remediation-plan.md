@@ -80,6 +80,22 @@ crates); all existing tests, doctests and examples still pass.
 **Done when:** the clippy lints pass with zero `allow`s in non-test code and
 the prefix-truncation harness passes for every IE type.
 
+**Phase 2 outcome (implemented):**
+
+- Triage of the 147 sites: 100 slice `try_into().unwrap()` reads in parsers, ~25 documented-panic builder `build()` methods, ~20 constant-input convenience constructors, and a handful of invariants.
+- `tests/ie_truncation.rs` feeds every one of the 355 IE `unmarshal` entry points 256 first-byte values x 3 fills x lengths 0..=40. **No parser panicked**, so the 100 slice reads were all correctly guarded; they are still converted to the checked helpers in `ie/wire.rs` so this no longer depends on a comment. `tests/message_truncation.rs` does the same for whole messages (every prefix plus single-byte corruption).
+- Lints `unwrap_used`, `expect_used`, `panic`, `unreachable` are denied for non-test code in `lib.rs`; remaining opt-outs are individual `#[allow]`s with a reason.
+- Found while doing this: `src/ie/alternate_smf_ip_address.rs` is not declared in `ie/mod.rs` (dead, never compiled; a near-duplicate of `alternative_smf_ip_address.rs`).
+  - History: added 2025-08-17 in the bulk commit `56b6323` ("Merge from local repo"), never declared in `ie/mod.rs` at any point. Its only user was a stale draft of `session_report_response.rs`, rewritten the next day in `2ba8e97`. "Alternate" looks like an early misspelling of "Alternative".
+  - **TODO (spec review before deleting):** compare the file against TS 29.244 (IE 178 "Alternative SMF IP Address", clause 8.2.1xx, and where it is used, e.g. Association Setup Request) and against `alternative_smf_ip_address.rs`. Confirm it holds no field or encoding that the compiled IE lacks, then delete it.
+
+**Deferred (needs a breaking API change, candidates for the Phase 5 release):**
+
+- `CreateUrr::marshal` / `UpdateUrr::marshal` panic if a public-field `VolumeQuota` is inconsistent (flag set, value `None`).
+- `SdfFilter::marshal` panics if the flow description exceeds `u16::MAX` bytes.
+- The `build() -> Message` builders that panic on missing mandatory fields (documented under `# Panics`); a `try_build() -> Result` companion could be added non-breakingly.
+- `MessageComparator::new` panics on mismatched message types (`new_unchecked` is the alternative).
+
 ### Phase 3 - Documentation truth (non-breaking, ~0.5 day)
 
 1. Generate the authoritative counts by script (`scripts/stats.sh`): `IeType`
@@ -119,6 +135,14 @@ Round-trip tests prove self-consistency, not conformance.
 least two independent-implementation captures parse cleanly.
 
 ### Phase 5 - Zero-copy decision (potentially breaking; needs a design review)
+
+**Input from Phase 2:** this phase is also the natural release for the breaking changes Phase 2 deferred (see "Phase 2 outcome" above). Treat the release as one semver-major bundle and decide each item with the zero-copy question:
+
+- Make `VolumeQuota` consistent by construction (private fields or a validated constructor) so `CreateUrr::marshal` / `UpdateUrr::marshal` cannot panic, or make those `marshal` methods return `Result`.
+- Make `SdfFilter::marshal` fallible (or reject over-long descriptions in the constructor).
+- Add `try_build() -> Result` to the message builders whose `build()` panics on missing mandatory fields (non-breaking); decide whether to deprecate the panicking `build()`.
+- Decide the fate of `MessageComparator::new` (panic on mismatched message types) versus `new_unchecked`.
+- If 5b/5c changes `Ie` internals, do it in the same release and reuse `ie/wire.rs` and `tests/ie_truncation.rs` as the safety net: both must still pass unchanged, and removing the remaining `#[allow(clippy::...)]` opt-outs is the exit criterion for the panic-free goal.
 
 Options, in increasing cost:
 

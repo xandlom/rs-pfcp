@@ -216,7 +216,8 @@ fn compare_ies(
                 // IE only in right
                 right_only_ies.push(ie_type);
             }
-            (None, None) => unreachable!(),
+            // Cannot occur: `ie_type` comes from the union of both messages.
+            (None, None) => {}
         }
 
         // Limit differences if requested

@@ -3,6 +3,7 @@
 //! Per 3GPP TS 29.244 Section 8.2.137, identifies a MAR (Multi-Access Rule).
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u16;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +30,7 @@ impl MarId {
             ));
         }
         Ok(Self {
-            value: u16::from_be_bytes(data[0..2].try_into().unwrap()),
+            value: read_u16(data, 0)?,
         })
     }
 

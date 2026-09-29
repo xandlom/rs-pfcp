@@ -139,6 +139,7 @@ impl SessionSetDeletionResponseBuilder {
 
     /// Builds the Session Set Deletion Response message.
     /// Panics if required fields are missing.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn build(self) -> SessionSetDeletionResponse {
         let node_id = self.node_id.expect("Node ID is required");
         let cause = self.cause.expect("Cause is required");

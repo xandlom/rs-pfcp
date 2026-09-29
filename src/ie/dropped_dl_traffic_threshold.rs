@@ -5,6 +5,7 @@
 //! which volume fields are present.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,9 +81,7 @@ impl DroppedDlTrafficThreshold {
                     data.len(),
                 ));
             }
-            result.downlink_packets = Some(u64::from_be_bytes(
-                data[offset..offset + 8].try_into().unwrap(),
-            ));
+            result.downlink_packets = Some(u64::from_be_bytes(read_array::<8>(data, offset)?));
             offset += 8;
         }
 
@@ -95,9 +94,8 @@ impl DroppedDlTrafficThreshold {
                     data.len(),
                 ));
             }
-            result.number_of_bytes_of_downlink_data = Some(u64::from_be_bytes(
-                data[offset..offset + 8].try_into().unwrap(),
-            ));
+            result.number_of_bytes_of_downlink_data =
+                Some(u64::from_be_bytes(read_array::<8>(data, offset)?));
         }
 
         Ok(result)

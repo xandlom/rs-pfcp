@@ -3,6 +3,7 @@
 //! Offending IE Information Element.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u16;
 use crate::ie::IeType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -29,7 +30,7 @@ impl OffendingIe {
             ));
         }
         Ok(OffendingIe {
-            ie_type: u16::from_be_bytes(data[0..2].try_into().unwrap()),
+            ie_type: read_u16(data, 0)?,
         })
     }
 }

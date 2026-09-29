@@ -4,6 +4,7 @@
 //! Structure: flags byte + conditional DL periodicity (u32 ms) + lower jitter (i32 ms) + higher jitter (i32 ms).
 
 use crate::error::PfcpError;
+use crate::ie::wire::{read_i32, read_u32};
 use crate::ie::{Ie, IeType};
 
 /// N6 Jitter Measurement per 3GPP TS 29.244 Section 8.2.222.
@@ -79,9 +80,9 @@ impl N6JitterMeasurement {
                     data.len(),
                 ));
             }
-            let dl_periodicity = u32::from_be_bytes(data[1..5].try_into().unwrap());
-            let lower_dl_jitter = i32::from_be_bytes(data[5..9].try_into().unwrap());
-            let higher_dl_jitter = i32::from_be_bytes(data[9..13].try_into().unwrap());
+            let dl_periodicity = read_u32(data, 1)?;
+            let lower_dl_jitter = read_i32(data, 5)?;
+            let higher_dl_jitter = read_i32(data, 9)?;
             Ok(Self {
                 dl_periodicity: Some(dl_periodicity),
                 lower_dl_jitter: Some(lower_dl_jitter),

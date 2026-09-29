@@ -4,6 +4,7 @@
 //! TSN Translator) port number for TSN bridge management.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u16;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +31,7 @@ impl DsttPortNumber {
             ));
         }
         Ok(Self {
-            value: u16::from_be_bytes(data[0..2].try_into().unwrap()),
+            value: read_u16(data, 0)?,
         })
     }
 
