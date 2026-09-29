@@ -54,6 +54,9 @@ jobs:
     - name: Run integration tests
       run: cargo test --test messages --verbose
 
+    - name: Test without default features
+      run: cargo test --lib --no-default-features
+
     - name: Build examples
       run: |
         cargo build --example heartbeat-client

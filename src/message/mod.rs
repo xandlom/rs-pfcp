@@ -6,6 +6,7 @@ pub mod association_setup_request;
 pub mod association_setup_response;
 pub mod association_update_request;
 pub mod association_update_response;
+#[cfg(feature = "display")]
 pub mod display;
 pub mod header;
 pub mod heartbeat_request;
