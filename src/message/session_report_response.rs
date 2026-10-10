@@ -33,15 +33,15 @@ pub struct SessionReportResponse {
     // Mandatory IEs
     pub cause: Ie,
     // Optional IEs
-    pub offending_ie: Option<Ie>,
-    pub update_bar_within_session_report_response: Option<Ie>,
-    pub pfcpsrrsp_flags: Option<Ie>,
-    pub cp_fseid: Option<Ie>,
-    pub n4u_fteid: Option<Ie>,
-    pub alternative_smf_ip_address: Option<Ie>,
-    pub fq_csid: Option<Ie>,
-    pub group_id: Option<Ie>,
-    pub node_id: Option<Ie>,
+    pub offending_ie: Option<Box<Ie>>,
+    pub update_bar_within_session_report_response: Option<Box<Ie>>,
+    pub pfcpsrrsp_flags: Option<Box<Ie>>,
+    pub cp_fseid: Option<Box<Ie>>,
+    pub n4u_fteid: Option<Box<Ie>>,
+    pub alternative_smf_ip_address: Option<Box<Ie>>,
+    pub fq_csid: Option<Box<Ie>>,
+    pub group_id: Option<Box<Ie>>,
+    pub node_id: Option<Box<Ie>>,
     pub ies: Vec<Ie>,
 }
 
@@ -167,15 +167,16 @@ impl Message for SessionReportResponse {
                 message_type: Some(MsgType::SessionReportResponse),
                 parent_ie: None,
             })?,
-            offending_ie,
-            update_bar_within_session_report_response,
-            pfcpsrrsp_flags,
-            cp_fseid,
-            n4u_fteid,
-            alternative_smf_ip_address,
-            fq_csid,
-            group_id,
-            node_id,
+            offending_ie: offending_ie.map(Box::new),
+            update_bar_within_session_report_response: update_bar_within_session_report_response
+                .map(Box::new),
+            pfcpsrrsp_flags: pfcpsrrsp_flags.map(Box::new),
+            cp_fseid: cp_fseid.map(Box::new),
+            n4u_fteid: n4u_fteid.map(Box::new),
+            alternative_smf_ip_address: alternative_smf_ip_address.map(Box::new),
+            fq_csid: fq_csid.map(Box::new),
+            group_id: group_id.map(Box::new),
+            node_id: node_id.map(Box::new),
             ies,
         })
     }
@@ -205,20 +206,20 @@ impl Message for SessionReportResponse {
 
         match ie_type {
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             IeType::UpdateBarWithinSessionReportResponse => IeIter::single(
-                self.update_bar_within_session_report_response.as_ref(),
+                self.update_bar_within_session_report_response.as_deref(),
                 ie_type,
             ),
-            IeType::PfcpsrrspFlags => IeIter::single(self.pfcpsrrsp_flags.as_ref(), ie_type),
-            IeType::Fseid => IeIter::single(self.cp_fseid.as_ref(), ie_type),
-            IeType::Fteid => IeIter::single(self.n4u_fteid.as_ref(), ie_type),
+            IeType::PfcpsrrspFlags => IeIter::single(self.pfcpsrrsp_flags.as_deref(), ie_type),
+            IeType::Fseid => IeIter::single(self.cp_fseid.as_deref(), ie_type),
+            IeType::Fteid => IeIter::single(self.n4u_fteid.as_deref(), ie_type),
             IeType::AlternativeSmfIpAddress => {
-                IeIter::single(self.alternative_smf_ip_address.as_ref(), ie_type)
+                IeIter::single(self.alternative_smf_ip_address.as_deref(), ie_type)
             }
-            IeType::FqCsid => IeIter::single(self.fq_csid.as_ref(), ie_type),
-            IeType::GroupId => IeIter::single(self.group_id.as_ref(), ie_type),
-            IeType::NodeId => IeIter::single(self.node_id.as_ref(), ie_type),
+            IeType::FqCsid => IeIter::single(self.fq_csid.as_deref(), ie_type),
+            IeType::GroupId => IeIter::single(self.group_id.as_deref(), ie_type),
+            IeType::NodeId => IeIter::single(self.node_id.as_deref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -226,31 +227,31 @@ impl Message for SessionReportResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.update_bar_within_session_report_response {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pfcpsrrsp_flags {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.cp_fseid {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.n4u_fteid {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.alternative_smf_ip_address {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.fq_csid {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.group_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.node_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -280,7 +281,7 @@ impl SessionReportResponse {
         SessionReportResponse {
             header,
             cause,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             update_bar_within_session_report_response: None,
             pfcpsrrsp_flags: None,
             cp_fseid: None,
@@ -504,16 +505,17 @@ impl SessionReportResponseBuilder {
         Ok(SessionReportResponse {
             header,
             cause,
-            offending_ie: self.offending_ie,
+            offending_ie: self.offending_ie.map(Box::new),
             update_bar_within_session_report_response: self
-                .update_bar_within_session_report_response,
-            pfcpsrrsp_flags: self.pfcpsrrsp_flags,
-            cp_fseid: self.cp_fseid,
-            n4u_fteid: self.n4u_fteid,
-            alternative_smf_ip_address: self.alternative_smf_ip_address,
-            fq_csid: self.fq_csid,
-            group_id: self.group_id,
-            node_id: self.node_id,
+                .update_bar_within_session_report_response
+                .map(Box::new),
+            pfcpsrrsp_flags: self.pfcpsrrsp_flags.map(Box::new),
+            cp_fseid: self.cp_fseid.map(Box::new),
+            n4u_fteid: self.n4u_fteid.map(Box::new),
+            alternative_smf_ip_address: self.alternative_smf_ip_address.map(Box::new),
+            fq_csid: self.fq_csid.map(Box::new),
+            group_id: self.group_id.map(Box::new),
+            node_id: self.node_id.map(Box::new),
             ies: self.ies,
         })
     }
@@ -575,7 +577,10 @@ mod tests {
         let unmarshaled = SessionReportResponse::unmarshal(&marshaled).unwrap();
 
         assert_eq!(unmarshaled, original);
-        assert_eq!(unmarshaled.offending_ie, Some(offending_ie.clone()));
+        assert_eq!(
+            unmarshaled.offending_ie,
+            Some(Box::new(offending_ie.clone()))
+        );
         assert_eq!(
             unmarshaled.ies(IeType::OffendingIe).next(),
             Some(&offending_ie)
@@ -700,16 +705,16 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(response.offending_ie, Some(offending_ie));
-        assert_eq!(response.cp_fseid, Some(cp_fseid_ie));
-        assert_eq!(response.n4u_fteid, Some(n4u_fteid_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
+        assert_eq!(response.cp_fseid, Some(Box::new(cp_fseid_ie)));
+        assert_eq!(response.n4u_fteid, Some(Box::new(n4u_fteid_ie)));
         assert_eq!(
             response.alternative_smf_ip_address,
-            Some(alternative_smf_ip_address_ie)
+            Some(Box::new(alternative_smf_ip_address_ie))
         );
-        assert_eq!(response.fq_csid, Some(fq_csid_ie));
-        assert_eq!(response.group_id, Some(group_id_ie));
-        assert_eq!(response.node_id, Some(node_id_ie));
+        assert_eq!(response.fq_csid, Some(Box::new(fq_csid_ie)));
+        assert_eq!(response.group_id, Some(Box::new(group_id_ie)));
+        assert_eq!(response.node_id, Some(Box::new(node_id_ie)));
         assert_eq!(response.ies, vec![extra_ie]);
 
         let marshaled = response.marshal();
