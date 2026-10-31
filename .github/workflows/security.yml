@@ -82,7 +82,7 @@ jobs:
         restore-keys: cargo-deny-
 
     - name: Install cargo-deny
-      run: command -v cargo-deny || cargo install cargo-deny
+      run: cargo install cargo-deny --locked --force
 
     - name: Run cargo deny
       run: cargo deny check

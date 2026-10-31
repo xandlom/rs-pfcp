@@ -15,7 +15,7 @@ use serde_json::{json, Map, Value};
 /// Trait for displaying PFCP messages in various formats.
 pub trait MessageDisplay {
     /// Converts the message to YAML format.
-    fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error>;
+    fn to_yaml(&self) -> Result<String, serde_saphyr::SerializeError>;
 
     /// Converts the message to compact JSON format.
     fn to_json(&self) -> Result<String, serde_json::Error>;
@@ -25,8 +25,8 @@ pub trait MessageDisplay {
 }
 
 impl<T: Message> MessageDisplay for T {
-    fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error> {
-        serde_yaml_ng::to_string(&message_to_value(self))
+    fn to_yaml(&self) -> Result<String, serde_saphyr::SerializeError> {
+        serde_saphyr::to_string(&message_to_value(self))
     }
 
     fn to_json(&self) -> Result<String, serde_json::Error> {
@@ -39,8 +39,8 @@ impl<T: Message> MessageDisplay for T {
 }
 
 impl MessageDisplay for Box<dyn Message> {
-    fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error> {
-        serde_yaml_ng::to_string(&message_to_value(self.as_ref()))
+    fn to_yaml(&self) -> Result<String, serde_saphyr::SerializeError> {
+        serde_saphyr::to_string(&message_to_value(self.as_ref()))
     }
 
     fn to_json(&self) -> Result<String, serde_json::Error> {
@@ -1096,7 +1096,7 @@ mod tests {
 
         assert!(yaml.contains("SessionEstablishmentRequest"));
         assert!(yaml.contains("sequence: 54321"));
-        assert!(yaml.contains("seid: '0x0000000000000000'"));
+        assert!(yaml.contains("seid: \"0x0000000000000000\""));
         assert!(yaml.contains("type: NodeId"));
         assert!(yaml.contains("type: Fseid"));
     }
@@ -1137,7 +1137,7 @@ mod tests {
     fn test_yaml_is_valid() {
         let request = create_heartbeat_request();
         let yaml = request.to_yaml().expect("Failed to convert to YAML");
-        let parsed: Result<serde_yaml_ng::Value, _> = serde_yaml_ng::from_str(&yaml);
+        let parsed: Result<serde_json::Value, _> = serde_saphyr::from_str(&yaml);
         assert!(parsed.is_ok(), "Generated YAML should be valid");
     }
 
@@ -1375,8 +1375,8 @@ mod tests {
         let yaml_str = request.to_yaml().expect("Failed to convert to YAML");
         let json_str = request.to_json().expect("Failed to convert to JSON");
 
-        let yaml_parsed: serde_yaml_ng::Value =
-            serde_yaml_ng::from_str(&yaml_str).expect("Failed to parse YAML");
+        let yaml_parsed: serde_json::Value =
+            serde_saphyr::from_str(&yaml_str).expect("Failed to parse YAML");
         let json_parsed: serde_json::Value =
             serde_json::from_str(&json_str).expect("Failed to parse JSON");
 

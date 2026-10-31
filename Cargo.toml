@@ -11,7 +11,7 @@ homepage = "https://github.com/xandlom/rs-pfcp"
 readme = "README.md"
 keywords = ["pfcp", "5g", "telecom", "protocol", "networking"]
 categories = ["network-programming", "parser-implementations"]
-rust-version = "1.87.0"
+rust-version = "1.89.0"
 exclude = [
     "tests/",
     "benches/",
@@ -30,12 +30,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 bitflags = "2"
 serde_json = { version = "1.0", features = ["preserve_order"], optional = true }
-serde_yaml_ng = { version = "0.10", optional = true }
+serde-saphyr = { version = "2", default-features = false, features = ["serialize", "deserialize"], optional = true }
 
 [features]
 default = ["display"]
 # YAML/JSON rendering of messages (`message::display`).
-display = ["dep:serde_json", "dep:serde_yaml_ng"]
+display = ["dep:serde_json", "dep:serde-saphyr"]
 
 [[example]]
 name = "heartbeat-client"

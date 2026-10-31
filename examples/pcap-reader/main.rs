@@ -303,7 +303,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 Ok(json) => println!("{json}"),
                                 Err(e) => println!("  Error serializing lossy decode: {e}"),
                             },
-                            _ => match serde_yaml_ng::to_string(&lossy) {
+                            _ => match serde_saphyr::to_string(&lossy) {
                                 Ok(yaml) => println!("{yaml}"),
                                 Err(e) => println!("  Error serializing lossy decode: {e}"),
                             },
