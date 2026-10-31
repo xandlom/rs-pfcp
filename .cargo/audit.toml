@@ -1,5 +1,0 @@
-[advisories]
-# unsafe-libyaml is unmaintained but is only pulled in by serde_yaml_ng, the
-# optional YAML renderer behind the `display` feature. No maintained,
-# drop-in replacement is wired in yet; revisit when serde_yaml_ng migrates.
-ignore = ["RUSTSEC-2024-0449"]

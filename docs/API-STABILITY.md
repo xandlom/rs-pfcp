@@ -134,7 +134,7 @@ Currently, rs-pfcp has no feature flags. If added in the future:
 
 ## Minimum Supported Rust Version (MSRV)
 
-**Current MSRV: 1.87.0**
+**Current MSRV: 1.89.0**
 
 ### MSRV Policy
 

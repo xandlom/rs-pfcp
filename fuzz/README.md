@@ -4,7 +4,7 @@ Phase 1 of the fuzzing effort tracked in
 [#67](https://github.com/xandlom/rs-pfcp/issues/67). Uses
 [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz) (libFuzzer). Requires
 a nightly toolchain — that requirement is scoped entirely to this `fuzz/`
-crate and does not affect the main crate's MSRV (1.87.0 stable).
+crate and does not affect the main crate's MSRV (1.89.0 stable).
 
 ## Why this crate, and what counts as a bug
 
