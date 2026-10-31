@@ -5,6 +5,7 @@
 //! Follows the same format as Volume Quota.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,9 +95,7 @@ impl SubsequentVolumeQuota {
                     data.len(),
                 ));
             }
-            result.total_volume = Some(u64::from_be_bytes(
-                data[offset..offset + 8].try_into().unwrap(),
-            ));
+            result.total_volume = Some(u64::from_be_bytes(read_array::<8>(data, offset)?));
             offset += 8;
         }
 
@@ -109,9 +108,7 @@ impl SubsequentVolumeQuota {
                     data.len(),
                 ));
             }
-            result.uplink_volume = Some(u64::from_be_bytes(
-                data[offset..offset + 8].try_into().unwrap(),
-            ));
+            result.uplink_volume = Some(u64::from_be_bytes(read_array::<8>(data, offset)?));
             offset += 8;
         }
 
@@ -124,9 +121,7 @@ impl SubsequentVolumeQuota {
                     data.len(),
                 ));
             }
-            result.downlink_volume = Some(u64::from_be_bytes(
-                data[offset..offset + 8].try_into().unwrap(),
-            ));
+            result.downlink_volume = Some(u64::from_be_bytes(read_array::<8>(data, offset)?));
         }
 
         Ok(result)

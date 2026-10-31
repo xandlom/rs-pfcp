@@ -3,6 +3,7 @@
 //! F-SEID Information Element.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u64;
 use crate::ie::IeType;
 use crate::types::Seid;
 use std::net::{Ipv4Addr, Ipv6Addr};
@@ -66,7 +67,7 @@ impl Fseid {
         let flags = data[0];
         let v6 = (flags & 0b1) == 0b1;
         let v4 = (flags & 0b10) == 0b10;
-        let seid = u64::from_be_bytes(data[1..9].try_into().unwrap());
+        let seid = read_u64(data, 1)?;
 
         let mut offset = 9;
         let ipv4_address = if v4 {

@@ -518,6 +518,7 @@ impl SessionDeletionResponseBuilder {
     ///
     /// # Panics
     /// Panics if the required cause IE is not set.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn build(self) -> SessionDeletionResponse {
         let cause = self
             .cause

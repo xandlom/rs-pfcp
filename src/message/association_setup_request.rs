@@ -591,6 +591,7 @@ impl AssociationSetupRequestBuilder {
     ///
     /// # Panics
     /// Panics if required node_id or recovery_time_stamp IEs are not set.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn build(self) -> AssociationSetupRequest {
         let node_id = self
             .node_id

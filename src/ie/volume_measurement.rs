@@ -1,4 +1,5 @@
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,7 +223,7 @@ impl VolumeMeasurement {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
+            let bytes: [u8; 8] = read_array::<8>(data, offset)?;
             volume_measurement.total_volume = Some(u64::from_be_bytes(bytes));
             offset += 8;
         }
@@ -236,7 +237,7 @@ impl VolumeMeasurement {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
+            let bytes: [u8; 8] = read_array::<8>(data, offset)?;
             volume_measurement.uplink_volume = Some(u64::from_be_bytes(bytes));
             offset += 8;
         }
@@ -250,7 +251,7 @@ impl VolumeMeasurement {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
+            let bytes: [u8; 8] = read_array::<8>(data, offset)?;
             volume_measurement.downlink_volume = Some(u64::from_be_bytes(bytes));
             offset += 8;
         }
@@ -264,7 +265,7 @@ impl VolumeMeasurement {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
+            let bytes: [u8; 8] = read_array::<8>(data, offset)?;
             volume_measurement.total_packets = Some(u64::from_be_bytes(bytes));
             offset += 8;
         }
@@ -278,7 +279,7 @@ impl VolumeMeasurement {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
+            let bytes: [u8; 8] = read_array::<8>(data, offset)?;
             volume_measurement.uplink_packets = Some(u64::from_be_bytes(bytes));
             offset += 8;
         }
@@ -292,7 +293,7 @@ impl VolumeMeasurement {
                     data.len(),
                 ));
             }
-            let bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
+            let bytes: [u8; 8] = read_array::<8>(data, offset)?;
             volume_measurement.downlink_packets = Some(u64::from_be_bytes(bytes));
         }
 

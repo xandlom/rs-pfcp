@@ -3,6 +3,7 @@
 //! Per 3GPP TS 29.244 Section 8.2.90, contains the time quota type and base time interval.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 /// Base Time Interval Type values.
@@ -54,7 +55,7 @@ impl TimeQuotaMechanism {
                 ))
             }
         };
-        let base_time_interval = u32::from_be_bytes(data[1..5].try_into().unwrap());
+        let base_time_interval = read_u32(data, 1)?;
         Ok(Self {
             bti_type,
             base_time_interval,

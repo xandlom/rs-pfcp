@@ -4,6 +4,7 @@
 //! Per 3GPP TS 29.244 Section 8.2.71.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 /// UR-SEQN (Usage Report Sequence Number)
@@ -104,7 +105,7 @@ impl UrSeqn {
             ));
         }
 
-        let bytes: [u8; 4] = data[0..4].try_into().unwrap();
+        let bytes: [u8; 4] = read_array::<4>(data, 0)?;
         let sequence_number = u32::from_be_bytes(bytes);
 
         Ok(UrSeqn { sequence_number })

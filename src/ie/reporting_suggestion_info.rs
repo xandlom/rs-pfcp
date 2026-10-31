@@ -4,6 +4,7 @@
 //! reporting time information for a reporting suggestion.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 /// Reporting Suggestion Information per 3GPP TS 29.244 §8.2.229.
@@ -46,7 +47,7 @@ impl ReportingSuggestionInfo {
         }
         let urgency = data[0] & 0x0F;
         let reporting_time_info = if data.len() >= 5 {
-            Some(u32::from_be_bytes(data[1..5].try_into().unwrap()))
+            Some(read_u32(data, 1)?)
         } else {
             None
         };

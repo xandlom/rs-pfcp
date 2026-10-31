@@ -4,6 +4,7 @@
 //! as a 3GPP NTP timestamp (seconds since 1900-01-01).
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,7 +31,7 @@ impl EventTimeStamp {
             ));
         }
         Ok(Self {
-            timestamp: u32::from_be_bytes(data[0..4].try_into().unwrap()),
+            timestamp: read_u32(data, 0)?,
         })
     }
 

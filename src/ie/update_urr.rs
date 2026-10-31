@@ -67,6 +67,12 @@ impl UpdateUrr {
     }
 
     /// Marshals the Update URR into a byte vector.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `volume_quota` is inconsistent (a flag is set whose value is
+    /// `None`); construct it with [`VolumeQuota::new`] from consistent inputs.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn marshal(&self) -> Vec<u8> {
         let mut ies = vec![self.urr_id.to_ie()];
 
@@ -422,7 +428,7 @@ impl UpdateUrrBuilder {
     /// as you may want to update only specific fields of an existing URR.
     pub fn build(self) -> Result<UpdateUrr, PfcpError> {
         // Validate required field first (without consuming)
-        self.urr_id.as_ref().ok_or(PfcpError::MissingMandatoryIe {
+        let urr_id = self.urr_id.clone().ok_or(PfcpError::MissingMandatoryIe {
             ie_type: IeType::UrrId,
             message_type: None,
             parent_ie: Some(IeType::UpdateUrr),
@@ -435,7 +441,7 @@ impl UpdateUrrBuilder {
 
         // Now consume the values after validation
         Ok(UpdateUrr {
-            urr_id: self.urr_id.unwrap(), // Safe because we validated above
+            urr_id,
             measurement_method: self.measurement_method,
             reporting_triggers: self.reporting_triggers,
             monitoring_time: self.monitoring_time,

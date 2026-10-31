@@ -374,6 +374,7 @@ impl Pdi {
     }
 
     /// Creates a simple uplink access PDI.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn uplink_access() -> Self {
         PdiBuilder::uplink_access()
             .build()
@@ -381,6 +382,7 @@ impl Pdi {
     }
 
     /// Creates a simple downlink core PDI.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn downlink_core() -> Self {
         PdiBuilder::downlink_core()
             .build()
@@ -388,6 +390,7 @@ impl Pdi {
     }
 
     /// Creates a simple SGi-LAN PDI.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn sgi_lan() -> Self {
         PdiBuilder::sgi_lan()
             .build()
@@ -395,6 +398,7 @@ impl Pdi {
     }
 
     /// Creates a simple CP function PDI.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn cp_function() -> Self {
         PdiBuilder::cp_function()
             .build()
@@ -402,6 +406,7 @@ impl Pdi {
     }
 
     /// Creates an uplink access PDI with F-TEID.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn uplink_access_with_teid(f_teid: Fteid) -> Self {
         PdiBuilder::uplink_access()
             .f_teid(f_teid)
@@ -410,6 +415,7 @@ impl Pdi {
     }
 
     /// Creates a downlink core PDI with UE IP address.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn downlink_core_with_ue_ip(ue_ip: UeIpAddress) -> Self {
         PdiBuilder::downlink_core()
             .ue_ip_address(ue_ip)

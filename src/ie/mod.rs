@@ -356,6 +356,7 @@ pub mod vendor_specific_node_report_type;
 pub mod volume_measurement;
 pub mod volume_quota;
 pub mod weight;
+pub(crate) mod wire;
 
 pub mod volume_threshold;
 
@@ -1317,6 +1318,7 @@ impl Ie {
     /// buf.clear();
     /// ie.marshal_into(&mut buf);
     /// ```
+    #[allow(clippy::expect_used)] // invariant: vendor-specific IEs always carry an Enterprise ID
     pub fn marshal_into(&self, buf: &mut Vec<u8>) {
         buf.extend_from_slice(&self.raw_type().to_be_bytes());
 

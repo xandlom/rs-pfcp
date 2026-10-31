@@ -4,6 +4,7 @@
 //! rate thresholds for DL and UL reporting triggers.
 
 use crate::error::PfcpError;
+use crate::ie::wire::{read_array, read_u16, read_u64};
 use crate::ie::{Ie, IeType};
 
 /// Reporting Thresholds per 3GPP TS 29.244 §8.2.240.
@@ -100,30 +101,28 @@ impl ReportingThresholds {
         }
         let mut offset = 1;
         let dl_congestion = if dlci {
-            let v = u16::from_be_bytes(data[offset..offset + 2].try_into().unwrap());
+            let v = read_u16(data, offset)?;
             offset += 2;
             Some(v)
         } else {
             None
         };
         let ul_congestion = if ulci {
-            let v = u16::from_be_bytes(data[offset..offset + 2].try_into().unwrap());
+            let v = read_u16(data, offset)?;
             offset += 2;
             Some(v)
         } else {
             None
         };
         let dl_data_rate = if dldr {
-            let v = u64::from_be_bytes(data[offset..offset + 8].try_into().unwrap());
+            let v = read_u64(data, offset)?;
             offset += 8;
             Some(v)
         } else {
             None
         };
         let ul_data_rate = if uldr {
-            Some(u64::from_be_bytes(
-                data[offset..offset + 8].try_into().unwrap(),
-            ))
+            Some(u64::from_be_bytes(read_array::<8>(data, offset)?))
         } else {
             None
         };

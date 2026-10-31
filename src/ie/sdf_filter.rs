@@ -21,6 +21,11 @@ impl SdfFilter {
     }
 
     /// Marshals the SDF Filter into a byte vector.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the flow description is longer than `u16::MAX` bytes.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn marshal(&self) -> Vec<u8> {
         let description = self.flow_description.as_bytes();
         let length = u16::try_from(description.len())

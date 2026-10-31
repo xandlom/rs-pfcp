@@ -403,6 +403,7 @@ impl Fteid {
     }
 
     /// Creates a simple IPv4 F-TEID.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn ipv4(teid: impl Into<Teid>, addr: Ipv4Addr) -> Self {
         FteidBuilder::new()
             .teid(teid)
@@ -412,6 +413,7 @@ impl Fteid {
     }
 
     /// Creates a simple IPv6 F-TEID.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn ipv6(teid: impl Into<Teid>, addr: Ipv6Addr) -> Self {
         FteidBuilder::new()
             .teid(teid)
@@ -421,6 +423,7 @@ impl Fteid {
     }
 
     /// Creates a dual-stack F-TEID with both IPv4 and IPv6 addresses.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn dual_stack(teid: impl Into<Teid>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> Self {
         FteidBuilder::new()
             .teid(teid)
@@ -433,6 +436,7 @@ impl Fteid {
     ///
     /// The TEID argument is retained for API compatibility but is not encoded: CHOOSE requests
     /// require the UP function to allocate the TEID.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn choose_ipv4(_teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
             .choose_ipv4()
@@ -443,6 +447,7 @@ impl Fteid {
     /// Creates an F-TEID with CHOOSE IPv6 flag.
     ///
     /// The TEID argument is retained for API compatibility but is not encoded.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn choose_ipv6(_teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
             .choose_ipv6()
@@ -453,6 +458,7 @@ impl Fteid {
     /// Creates an F-TEID with CHOOSE flags for both IPv4 and IPv6.
     ///
     /// The TEID argument is retained for API compatibility but is not encoded.
+    #[allow(clippy::expect_used)] // constant input: construction cannot fail
     pub fn choose_dual_stack(_teid: impl Into<Teid>) -> Self {
         FteidBuilder::new()
             .choose_dual_stack()

@@ -3,6 +3,7 @@
 //! Per 3GPP TS 29.244, contains counts of IPv4 and/or IPv6 UE IP addresses.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,7 +75,7 @@ impl NumberOfUeIpAddresses {
                     data.len(),
                 ));
             }
-            let count = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let count = read_u32(data, offset)?;
             offset += 4;
             Some(count)
         } else {
@@ -90,7 +91,7 @@ impl NumberOfUeIpAddresses {
                     data.len(),
                 ));
             }
-            let count = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let count = read_u32(data, offset)?;
             Some(count)
         } else {
             None

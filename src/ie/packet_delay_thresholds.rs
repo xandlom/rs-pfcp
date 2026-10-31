@@ -4,6 +4,7 @@
 //! delay measurements in downlink, uplink, and round-trip directions.
 
 use crate::error::PfcpError;
+use crate::ie::wire::{read_array, read_u32};
 use crate::ie::{Ie, IeType};
 
 /// Packet Delay Thresholds per 3GPP TS 29.244 §8.2.169.
@@ -80,23 +81,21 @@ impl PacketDelayThresholds {
         }
         let mut offset = 1;
         let dl_threshold = if dl_flag {
-            let v = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let v = read_u32(data, offset)?;
             offset += 4;
             Some(v)
         } else {
             None
         };
         let ul_threshold = if ul_flag {
-            let v = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let v = read_u32(data, offset)?;
             offset += 4;
             Some(v)
         } else {
             None
         };
         let rp_threshold = if rp_flag {
-            Some(u32::from_be_bytes(
-                data[offset..offset + 4].try_into().unwrap(),
-            ))
+            Some(u32::from_be_bytes(read_array::<4>(data, offset)?))
         } else {
             None
         };

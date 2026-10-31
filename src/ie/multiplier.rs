@@ -5,6 +5,7 @@
 //! Per 3GPP TS 29.244 Section 8.2.84.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_array;
 use crate::ie::{Ie, IeType};
 
 /// Multiplier
@@ -106,7 +107,7 @@ impl Multiplier {
             ));
         }
 
-        let bytes: [u8; 4] = data[0..4].try_into().unwrap();
+        let bytes: [u8; 4] = read_array::<4>(data, 0)?;
         let value = u32::from_be_bytes(bytes);
 
         Ok(Multiplier { value })

@@ -3,6 +3,7 @@
 //! FAR ID Information Element.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,7 +33,7 @@ impl FarId {
             ));
         }
         Ok(FarId {
-            value: u32::from_be_bytes(data[0..4].try_into().unwrap()),
+            value: read_u32(data, 0)?,
         })
     }
 

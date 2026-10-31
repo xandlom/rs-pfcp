@@ -582,6 +582,7 @@ impl AssociationSetupResponseBuilder {
     ///
     /// # Panics
     /// Panics if required cause or node_id IEs are not set.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn build(self) -> AssociationSetupResponse {
         let cause = self
             .cause

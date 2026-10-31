@@ -4,6 +4,7 @@
 //! for traffic parameter monitoring.
 
 use crate::error::PfcpError;
+use crate::ie::wire::read_u32;
 use crate::ie::{Ie, IeType};
 
 /// Traffic Parameter Threshold per 3GPP TS 29.244 §8.2.220.
@@ -55,7 +56,7 @@ impl TrafficParameterThreshold {
                     data.len(),
                 ));
             }
-            let v = u32::from_be_bytes(data[1..5].try_into().unwrap());
+            let v = read_u32(data, 1)?;
             Ok(Self {
                 dl_threshold: Some(v),
             })

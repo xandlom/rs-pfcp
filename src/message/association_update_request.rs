@@ -506,6 +506,7 @@ impl AssociationUpdateRequestBuilder {
     ///
     /// # Panics
     /// Panics if required node_id IE is not set.
+    #[allow(clippy::expect_used)] // documented/invariant panic, see `# Panics`
     pub fn build(self) -> AssociationUpdateRequest {
         let node_id = self
             .node_id

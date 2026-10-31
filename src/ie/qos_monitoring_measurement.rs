@@ -4,6 +4,7 @@
 //! measurements including packet delay, congestion, and data rate metrics.
 
 use crate::error::PfcpError;
+use crate::ie::wire::{read_array, read_u16, read_u32};
 use crate::ie::{Ie, IeType};
 
 /// QoS Monitoring Measurement per 3GPP TS 29.244 §8.2.171.
@@ -133,51 +134,49 @@ impl QosMonitoringMeasurement {
         }
         let mut offset = 1;
         let dl_packet_delay = if dlpd {
-            let v = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let v = read_u32(data, offset)?;
             offset += 4;
             Some(v)
         } else {
             None
         };
         let ul_packet_delay = if ulpd {
-            let v = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let v = read_u32(data, offset)?;
             offset += 4;
             Some(v)
         } else {
             None
         };
         let rp_packet_delay = if rppd {
-            let v = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let v = read_u32(data, offset)?;
             offset += 4;
             Some(v)
         } else {
             None
         };
         let dl_congestion = if dlci {
-            let v = u16::from_be_bytes(data[offset..offset + 2].try_into().unwrap());
+            let v = read_u16(data, offset)?;
             offset += 2;
             Some(v)
         } else {
             None
         };
         let ul_congestion = if ulci {
-            let v = u16::from_be_bytes(data[offset..offset + 2].try_into().unwrap());
+            let v = read_u16(data, offset)?;
             offset += 2;
             Some(v)
         } else {
             None
         };
         let dl_data_rate = if dldr {
-            let v = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap());
+            let v = read_u32(data, offset)?;
             offset += 4;
             Some(v)
         } else {
             None
         };
         let ul_data_rate = if uldr {
-            Some(u32::from_be_bytes(
-                data[offset..offset + 4].try_into().unwrap(),
-            ))
+            Some(u32::from_be_bytes(read_array::<4>(data, offset)?))
         } else {
             None
         };
