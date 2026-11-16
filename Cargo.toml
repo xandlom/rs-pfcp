@@ -70,7 +70,7 @@ path = "examples/ethernet-session-demo.rs"
 [dev-dependencies]
 clap = { version = "4", features = ["derive"] }
 network-interface = "2"
-pcap-file = "2.0"
+pcap-file = "3.0"
 criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
