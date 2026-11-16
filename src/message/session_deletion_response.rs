@@ -12,15 +12,15 @@ use crate::types::{Seid, SequenceNumber};
 #[derive(Debug, PartialEq)]
 pub struct SessionDeletionResponse {
     pub header: Header,
-    pub cause: Ie,                // M - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 19
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 40
-    pub load_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 51 - Grouped IE
-    pub overload_control_information: Option<Ie>, // O - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 54 - Grouped IE
+    pub cause: Ie, // M - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 19
+    pub offending_ie: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 40
+    pub load_control_information: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 51 - Grouped IE
+    pub overload_control_information: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 54 - Grouped IE
     pub usage_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 79 - Grouped IE, Multiple instances
-    pub additional_usage_reports_information: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 189
+    pub additional_usage_reports_information: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 189
     pub packet_rate_status_reports: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 252 - Grouped IE, Multiple instances (Sxb/N4, CIOT)
     pub mbs_session_n4_information: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 311 - Grouped IE, Multiple instances (N4 only)
-    pub pfcpsdrsp_flags: Option<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 318 - PURU flag
+    pub pfcpsdrsp_flags: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 318 - PURU flag
     pub tl_container: Vec<Ie>, // C - 3GPP TS 29.244 Table 7.5.7.1-1 - IE Type 336 - Multiple instances (N4 only)
     pub ies: Vec<Ie>,          // Additional/unknown IEs
 }
@@ -147,14 +147,15 @@ impl Message for SessionDeletionResponse {
                 message_type: Some(MsgType::SessionDeletionResponse),
                 parent_ie: None,
             })?,
-            offending_ie,
-            load_control_information,
-            overload_control_information,
+            offending_ie: offending_ie.map(Box::new),
+            load_control_information: load_control_information.map(Box::new),
+            overload_control_information: overload_control_information.map(Box::new),
             usage_reports,
-            additional_usage_reports_information,
+            additional_usage_reports_information: additional_usage_reports_information
+                .map(Box::new),
             packet_rate_status_reports,
             mbs_session_n4_information,
-            pfcpsdrsp_flags,
+            pfcpsdrsp_flags: pfcpsdrsp_flags.map(Box::new),
             tl_container,
             ies,
         })
@@ -185,26 +186,27 @@ impl Message for SessionDeletionResponse {
 
         match ie_type {
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             IeType::LoadControlInformation => {
-                IeIter::single(self.load_control_information.as_ref(), ie_type)
+                IeIter::single(self.load_control_information.as_deref(), ie_type)
             }
             IeType::OverloadControlInformation => {
-                IeIter::single(self.overload_control_information.as_ref(), ie_type)
+                IeIter::single(self.overload_control_information.as_deref(), ie_type)
             }
             IeType::UsageReportWithinSessionDeletionResponse => {
                 IeIter::multiple(&self.usage_reports, ie_type)
             }
-            IeType::AdditionalUsageReportsInformation => {
-                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
-            }
+            IeType::AdditionalUsageReportsInformation => IeIter::single(
+                self.additional_usage_reports_information.as_deref(),
+                ie_type,
+            ),
             IeType::PacketRateStatusReport => {
                 IeIter::multiple(&self.packet_rate_status_reports, ie_type)
             }
             IeType::MbsSessionN4Information => {
                 IeIter::multiple(&self.mbs_session_n4_information, ie_type)
             }
-            IeType::PfcpsdrspFlags => IeIter::single(self.pfcpsdrsp_flags.as_ref(), ie_type),
+            IeType::PfcpsdrspFlags => IeIter::single(self.pfcpsdrsp_flags.as_deref(), ie_type),
             IeType::TlContainer => IeIter::multiple(&self.tl_container, ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
@@ -213,22 +215,22 @@ impl Message for SessionDeletionResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.load_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.overload_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.usage_reports.iter());
         if let Some(ref ie) = self.additional_usage_reports_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.packet_rate_status_reports.iter());
         result.extend(self.mbs_session_n4_information.iter());
         if let Some(ref ie) = self.pfcpsdrsp_flags {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.tl_container.iter());
         result.extend(self.ies.iter());
@@ -306,14 +308,15 @@ impl SessionDeletionResponse {
         SessionDeletionResponse {
             header,
             cause: cause_ie,
-            offending_ie,
-            load_control_information,
-            overload_control_information,
+            offending_ie: offending_ie.map(Box::new),
+            load_control_information: load_control_information.map(Box::new),
+            overload_control_information: overload_control_information.map(Box::new),
             usage_reports,
-            additional_usage_reports_information,
+            additional_usage_reports_information: additional_usage_reports_information
+                .map(Box::new),
             packet_rate_status_reports,
             mbs_session_n4_information,
-            pfcpsdrsp_flags,
+            pfcpsdrsp_flags: pfcpsdrsp_flags.map(Box::new),
             tl_container,
             ies,
         }
@@ -613,7 +616,7 @@ mod tests {
         assert_eq!(*response.sequence(), 22222);
         assert_eq!(response.seid(), Some(Seid(11111)));
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert!(response.ies.is_empty());
     }
 
@@ -658,7 +661,7 @@ mod tests {
         assert_eq!(*response.sequence(), 66666);
         assert_eq!(response.seid(), Some(Seid(55555)));
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }
@@ -770,7 +773,7 @@ mod tests {
 
         assert_eq!(
             response.additional_usage_reports_information,
-            Some(auri_ie.clone())
+            Some(Box::new(auri_ie.clone()))
         );
         assert_eq!(
             response
@@ -785,7 +788,7 @@ mod tests {
         assert_eq!(response, unmarshaled);
         assert_eq!(
             unmarshaled.additional_usage_reports_information,
-            Some(auri_ie)
+            Some(Box::new(auri_ie))
         );
     }
 
@@ -851,13 +854,13 @@ mod tests {
             .pfcpsdrsp_flags(flags_ie.clone())
             .build();
 
-        assert_eq!(response.pfcpsdrsp_flags, Some(flags_ie.clone()));
+        assert_eq!(response.pfcpsdrsp_flags, Some(Box::new(flags_ie.clone())));
 
         // Test marshal/unmarshal round trip now that proper enum variant exists
         let marshaled = response.marshal();
         let unmarshaled = SessionDeletionResponse::unmarshal(&marshaled).unwrap();
         assert_eq!(response, unmarshaled);
-        assert_eq!(unmarshaled.pfcpsdrsp_flags, Some(flags_ie));
+        assert_eq!(unmarshaled.pfcpsdrsp_flags, Some(Box::new(flags_ie)));
     }
 
     #[test]
@@ -911,11 +914,11 @@ mod tests {
         // Verify all IEs are present
         assert_eq!(
             response.additional_usage_reports_information,
-            Some(auri_ie.clone())
+            Some(Box::new(auri_ie.clone()))
         );
         assert_eq!(response.packet_rate_status_reports.len(), 1);
         assert_eq!(response.mbs_session_n4_information.len(), 1);
-        assert_eq!(response.pfcpsdrsp_flags, Some(flags_ie.clone()));
+        assert_eq!(response.pfcpsdrsp_flags, Some(Box::new(flags_ie.clone())));
         assert_eq!(response.tl_container.len(), 1);
 
         // Test all_ies includes all new IEs

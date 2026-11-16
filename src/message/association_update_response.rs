@@ -12,8 +12,8 @@ pub struct AssociationUpdateResponse {
     pub header: Header,
     pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 60
     pub cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 19
-    pub up_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 43
-    pub cp_function_features: Option<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 89
+    pub up_function_features: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 43
+    pub cp_function_features: Option<Box<Ie>>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 89
     pub ue_ip_address_usage_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.4-1 - IE Type 267 - Multiple instances, Grouped IE (Sxb/N4 only)
     pub ies: Vec<Ie>,
 }
@@ -50,8 +50,8 @@ impl AssociationUpdateResponse {
             header,
             node_id,
             cause,
-            up_function_features,
-            cp_function_features,
+            up_function_features: up_function_features.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
             ue_ip_address_usage_information,
             ies,
         }
@@ -149,8 +149,8 @@ impl Message for AssociationUpdateResponse {
             header,
             node_id,
             cause,
-            up_function_features,
-            cp_function_features,
+            up_function_features: up_function_features.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
             ue_ip_address_usage_information,
             ies,
         })
@@ -179,10 +179,10 @@ impl Message for AssociationUpdateResponse {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
             IeType::UpFunctionFeatures => {
-                IeIter::single(self.up_function_features.as_ref(), ie_type)
+                IeIter::single(self.up_function_features.as_deref(), ie_type)
             }
             IeType::CpFunctionFeatures => {
-                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+                IeIter::single(self.cp_function_features.as_deref(), ie_type)
             }
             IeType::UeIpAddressUsageInformation => {
                 IeIter::multiple(&self.ue_ip_address_usage_information, ie_type)
@@ -194,10 +194,10 @@ impl Message for AssociationUpdateResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause];
         if let Some(ref ie) = self.up_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.cp_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ue_ip_address_usage_information.iter());
         result.extend(self.ies.iter());
@@ -562,7 +562,10 @@ mod builder_tests {
         assert_eq!(*response.sequence(), 67890);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.up_function_features, Some(up_features_ie));
+        assert_eq!(
+            response.up_function_features,
+            Some(Box::new(up_features_ie))
+        );
         assert!(response.cp_function_features.is_none());
     }
 
@@ -586,7 +589,10 @@ mod builder_tests {
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
         assert!(response.up_function_features.is_none());
-        assert_eq!(response.cp_function_features, Some(cp_features_ie));
+        assert_eq!(
+            response.cp_function_features,
+            Some(Box::new(cp_features_ie))
+        );
     }
 
     #[test]
@@ -640,8 +646,14 @@ mod builder_tests {
         assert_eq!(*response.sequence(), 33333);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.up_function_features, Some(up_features_ie));
-        assert_eq!(response.cp_function_features, Some(cp_features_ie));
+        assert_eq!(
+            response.up_function_features,
+            Some(Box::new(up_features_ie))
+        );
+        assert_eq!(
+            response.cp_function_features,
+            Some(Box::new(cp_features_ie))
+        );
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }

@@ -12,14 +12,14 @@ pub struct AssociationSetupResponse {
     pub header: Header,
     pub node_id: Ie,                           // M - 3GPP TS 29.244 Table 7.4.4.2-1
     pub cause: Ie,                             // M - 3GPP TS 29.244 Table 7.4.4.2-1
-    pub recovery_time_stamp: Option<Ie>, // M - 3GPP TS 29.244 Table 7.4.4.2-1 (TODO: Should be mandatory, not Optional)
-    pub up_function_features: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.2-1
-    pub cp_function_features: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.4.2-1
+    pub recovery_time_stamp: Option<Box<Ie>>, // M - 3GPP TS 29.244 Table 7.4.4.2-1 (TODO: Should be mandatory, not Optional)
+    pub up_function_features: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.4.2-1
+    pub cp_function_features: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.4.2-1
     pub alternative_smf_ip_addresses: Vec<Ie>, // O - Multiple - IE Type 178 (N4/N4mb only)
-    pub smf_set_id: Option<Ie>, // C - IE Type 180 - When MPAS feature is advertised (N4/N4mb only)
-    pub pfcpas_rsp_flags: Option<Ie>, // O - IE Type 184 - PSREI and UUPSI flags
+    pub smf_set_id: Option<Box<Ie>>, // C - IE Type 180 - When MPAS feature is advertised (N4/N4mb only)
+    pub pfcpas_rsp_flags: Option<Box<Ie>>, // O - IE Type 184 - PSREI and UUPSI flags
     pub gtpu_path_qos_control_information: Vec<Ie>, // C - Multiple - IE Type 238 (N4 only)
-    pub nf_instance_id: Option<Ie>, // O - IE Type 253 - When sent by 5G UP function (N4/N4mb only)
+    pub nf_instance_id: Option<Box<Ie>>, // O - IE Type 253 - When sent by 5G UP function (N4/N4mb only)
     pub ue_ip_address_pool_information: Vec<Ie>, // O - 3GPP TS 29.244 Table 7.4.4.2-1 - IE Type 233 - UE IP Address Pool Information - Multiple instances (Sxb/N4 only)
     pub clock_drift_report: Vec<Ie>, // C - Multiple - IE Type 205 - Grouped IE (N4 only)
     pub ies: Vec<Ie>,
@@ -169,14 +169,14 @@ impl Message for AssociationSetupResponse {
                 message_type: Some(MsgType::AssociationSetupResponse),
                 parent_ie: None,
             })?,
-            up_function_features,
-            cp_function_features,
-            recovery_time_stamp,
+            up_function_features: up_function_features.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
+            recovery_time_stamp: recovery_time_stamp.map(Box::new),
             alternative_smf_ip_addresses,
-            smf_set_id,
-            pfcpas_rsp_flags,
+            smf_set_id: smf_set_id.map(Box::new),
+            pfcpas_rsp_flags: pfcpas_rsp_flags.map(Box::new),
             gtpu_path_qos_control_information,
-            nf_instance_id,
+            nf_instance_id: nf_instance_id.map(Box::new),
             ue_ip_address_pool_information,
             clock_drift_report,
             ies,
@@ -205,22 +205,24 @@ impl Message for AssociationSetupResponse {
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::RecoveryTimeStamp => IeIter::single(self.recovery_time_stamp.as_ref(), ie_type),
+            IeType::RecoveryTimeStamp => {
+                IeIter::single(self.recovery_time_stamp.as_deref(), ie_type)
+            }
             IeType::UpFunctionFeatures => {
-                IeIter::single(self.up_function_features.as_ref(), ie_type)
+                IeIter::single(self.up_function_features.as_deref(), ie_type)
             }
             IeType::CpFunctionFeatures => {
-                IeIter::single(self.cp_function_features.as_ref(), ie_type)
+                IeIter::single(self.cp_function_features.as_deref(), ie_type)
             }
             IeType::AlternativeSmfIpAddress => {
                 IeIter::multiple(&self.alternative_smf_ip_addresses, ie_type)
             }
-            IeType::SmfSetId => IeIter::single(self.smf_set_id.as_ref(), ie_type),
-            IeType::PfcpasRspFlags => IeIter::single(self.pfcpas_rsp_flags.as_ref(), ie_type),
+            IeType::SmfSetId => IeIter::single(self.smf_set_id.as_deref(), ie_type),
+            IeType::PfcpasRspFlags => IeIter::single(self.pfcpas_rsp_flags.as_deref(), ie_type),
             IeType::GtpuPathQosControlInformation => {
                 IeIter::multiple(&self.gtpu_path_qos_control_information, ie_type)
             }
-            IeType::NfInstanceId => IeIter::single(self.nf_instance_id.as_ref(), ie_type),
+            IeType::NfInstanceId => IeIter::single(self.nf_instance_id.as_deref(), ie_type),
             IeType::UeIpAddressPoolInformation => {
                 IeIter::multiple(&self.ue_ip_address_pool_information, ie_type)
             }
@@ -232,24 +234,24 @@ impl Message for AssociationSetupResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.cause, &self.node_id];
         if let Some(ref ie) = self.up_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.cp_function_features {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.recovery_time_stamp {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.alternative_smf_ip_addresses.iter());
         if let Some(ref ie) = self.smf_set_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pfcpas_rsp_flags {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.gtpu_path_qos_control_information.iter());
         if let Some(ref ie) = self.nf_instance_id {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ue_ip_address_pool_information.iter());
         result.extend(self.clock_drift_report.iter());
@@ -316,14 +318,14 @@ impl AssociationSetupResponse {
             header,
             cause,
             node_id,
-            up_function_features,
-            cp_function_features,
-            recovery_time_stamp,
+            up_function_features: up_function_features.map(Box::new),
+            cp_function_features: cp_function_features.map(Box::new),
+            recovery_time_stamp: recovery_time_stamp.map(Box::new),
             alternative_smf_ip_addresses,
-            smf_set_id,
-            pfcpas_rsp_flags,
+            smf_set_id: smf_set_id.map(Box::new),
+            pfcpas_rsp_flags: pfcpas_rsp_flags.map(Box::new),
             gtpu_path_qos_control_information,
-            nf_instance_id,
+            nf_instance_id: nf_instance_id.map(Box::new),
             ue_ip_address_pool_information,
             clock_drift_report,
             ies,
@@ -701,7 +703,10 @@ mod tests {
         assert_eq!(*response.sequence(), 67890);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
-        assert_eq!(response.up_function_features, Some(up_features_ie));
+        assert_eq!(
+            response.up_function_features,
+            Some(Box::new(up_features_ie))
+        );
         assert!(response.cp_function_features.is_none());
         assert!(response.recovery_time_stamp.is_none());
     }
@@ -726,7 +731,10 @@ mod tests {
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
         assert!(response.up_function_features.is_none());
-        assert_eq!(response.cp_function_features, Some(cp_features_ie));
+        assert_eq!(
+            response.cp_function_features,
+            Some(Box::new(cp_features_ie))
+        );
         assert!(response.recovery_time_stamp.is_none());
     }
 
@@ -752,7 +760,10 @@ mod tests {
         assert_eq!(response.node_id, node_id_ie);
         assert!(response.up_function_features.is_none());
         assert!(response.cp_function_features.is_none());
-        assert_eq!(response.recovery_time_stamp, Some(recovery_time_ie));
+        assert_eq!(
+            response.recovery_time_stamp,
+            Some(Box::new(recovery_time_ie))
+        );
     }
 
     #[test]
@@ -811,9 +822,18 @@ mod tests {
         assert_eq!(*response.sequence(), 44444);
         assert_eq!(response.cause, cause_ie);
         assert_eq!(response.node_id, node_id_ie);
-        assert_eq!(response.up_function_features, Some(up_features_ie));
-        assert_eq!(response.cp_function_features, Some(cp_features_ie));
-        assert_eq!(response.recovery_time_stamp, Some(recovery_time_ie));
+        assert_eq!(
+            response.up_function_features,
+            Some(Box::new(up_features_ie))
+        );
+        assert_eq!(
+            response.cp_function_features,
+            Some(Box::new(cp_features_ie))
+        );
+        assert_eq!(
+            response.recovery_time_stamp,
+            Some(Box::new(recovery_time_ie))
+        );
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }
@@ -1174,8 +1194,8 @@ mod tests {
             .build();
 
         assert_eq!(*response.sequence(), 20000);
-        assert_eq!(response.up_function_features, Some(up_features));
-        assert_eq!(response.cp_function_features, Some(cp_features));
+        assert_eq!(response.up_function_features, Some(Box::new(up_features)));
+        assert_eq!(response.cp_function_features, Some(Box::new(cp_features)));
         assert!(response.recovery_time_stamp.is_some());
         assert_eq!(response.ies.len(), 2);
     }
@@ -1281,7 +1301,7 @@ mod tests {
             .smf_set_id(ie.clone())
             .build();
 
-        assert_eq!(original.smf_set_id, Some(ie));
+        assert_eq!(original.smf_set_id, Some(Box::new(ie)));
 
         let marshaled = original.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
@@ -1299,7 +1319,7 @@ mod tests {
             .pfcpas_rsp_flags(ie.clone())
             .build();
 
-        assert_eq!(original.pfcpas_rsp_flags, Some(ie));
+        assert_eq!(original.pfcpas_rsp_flags, Some(Box::new(ie)));
 
         let marshaled = original.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();
@@ -1347,7 +1367,7 @@ mod tests {
             .nf_instance_id(ie.clone())
             .build();
 
-        assert_eq!(original.nf_instance_id, Some(ie));
+        assert_eq!(original.nf_instance_id, Some(Box::new(ie)));
 
         let marshaled = original.marshal();
         let unmarshaled = AssociationSetupResponse::unmarshal(&marshaled).unwrap();

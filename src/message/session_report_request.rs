@@ -10,13 +10,13 @@ use crate::types::{Seid, SequenceNumber};
 pub struct SessionReportRequest {
     pub header: Header,
     // Optional IEs
-    pub report_type: Option<Ie>,
-    pub downlink_data_report: Option<Ie>,
+    pub report_type: Option<Box<Ie>>,
+    pub downlink_data_report: Option<Box<Ie>>,
     pub usage_reports: Vec<Ie>,
-    pub load_control_information: Option<Ie>,
-    pub overload_control_information: Option<Ie>,
-    pub additional_usage_reports_information: Option<Ie>,
-    pub pfcpsrreq_flags: Option<Ie>,
+    pub load_control_information: Option<Box<Ie>>,
+    pub overload_control_information: Option<Box<Ie>>,
+    pub additional_usage_reports_information: Option<Box<Ie>>,
+    pub pfcpsrreq_flags: Option<Box<Ie>>,
     pub tsc_management_informations: Vec<Ie>,
     pub ies: Vec<Ie>,
 }
@@ -128,13 +128,14 @@ impl Message for SessionReportRequest {
 
         Ok(SessionReportRequest {
             header,
-            report_type,
-            downlink_data_report,
+            report_type: report_type.map(Box::new),
+            downlink_data_report: downlink_data_report.map(Box::new),
             usage_reports,
-            load_control_information,
-            overload_control_information,
-            additional_usage_reports_information,
-            pfcpsrreq_flags,
+            load_control_information: load_control_information.map(Box::new),
+            overload_control_information: overload_control_information.map(Box::new),
+            additional_usage_reports_information: additional_usage_reports_information
+                .map(Box::new),
+            pfcpsrreq_flags: pfcpsrreq_flags.map(Box::new),
             tsc_management_informations,
             ies,
         })
@@ -164,23 +165,24 @@ impl Message for SessionReportRequest {
         use crate::message::IeIter;
 
         match ie_type {
-            IeType::ReportType => IeIter::single(self.report_type.as_ref(), ie_type),
+            IeType::ReportType => IeIter::single(self.report_type.as_deref(), ie_type),
             IeType::DownlinkDataServiceInformation => {
-                IeIter::single(self.downlink_data_report.as_ref(), ie_type)
+                IeIter::single(self.downlink_data_report.as_deref(), ie_type)
             }
             IeType::UsageReportWithinSessionReportRequest => {
                 IeIter::multiple(&self.usage_reports, ie_type)
             }
             IeType::LoadControlInformation => {
-                IeIter::single(self.load_control_information.as_ref(), ie_type)
+                IeIter::single(self.load_control_information.as_deref(), ie_type)
             }
             IeType::OverloadControlInformation => {
-                IeIter::single(self.overload_control_information.as_ref(), ie_type)
+                IeIter::single(self.overload_control_information.as_deref(), ie_type)
             }
-            IeType::AdditionalUsageReportsInformation => {
-                IeIter::single(self.additional_usage_reports_information.as_ref(), ie_type)
-            }
-            IeType::PfcpsrReqFlags => IeIter::single(self.pfcpsrreq_flags.as_ref(), ie_type),
+            IeType::AdditionalUsageReportsInformation => IeIter::single(
+                self.additional_usage_reports_information.as_deref(),
+                ie_type,
+            ),
+            IeType::PfcpsrReqFlags => IeIter::single(self.pfcpsrreq_flags.as_deref(), ie_type),
             IeType::TscManagementInformationWithinSessionReportRequest => {
                 IeIter::multiple(&self.tsc_management_informations, ie_type)
             }
@@ -191,23 +193,23 @@ impl Message for SessionReportRequest {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = Vec::new();
         if let Some(ref ie) = self.report_type {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.downlink_data_report {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.usage_reports.iter());
         if let Some(ref ie) = self.load_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.overload_control_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.additional_usage_reports_information {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         if let Some(ref ie) = self.pfcpsrreq_flags {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.tsc_management_informations.iter());
         result.extend(self.ies.iter());
@@ -244,8 +246,8 @@ impl SessionReportRequest {
 
         SessionReportRequest {
             header,
-            report_type,
-            downlink_data_report,
+            report_type: report_type.map(Box::new),
+            downlink_data_report: downlink_data_report.map(Box::new),
             usage_reports,
             load_control_information: None,
             overload_control_information: None,
@@ -377,13 +379,15 @@ impl SessionReportRequestBuilder {
 
         SessionReportRequest {
             header,
-            report_type: self.report_type,
-            downlink_data_report: self.downlink_data_report,
+            report_type: self.report_type.map(Box::new),
+            downlink_data_report: self.downlink_data_report.map(Box::new),
             usage_reports: self.usage_reports,
-            load_control_information: self.load_control_information,
-            overload_control_information: self.overload_control_information,
-            additional_usage_reports_information: self.additional_usage_reports_information,
-            pfcpsrreq_flags: self.pfcpsrreq_flags,
+            load_control_information: self.load_control_information.map(Box::new),
+            overload_control_information: self.overload_control_information.map(Box::new),
+            additional_usage_reports_information: self
+                .additional_usage_reports_information
+                .map(Box::new),
+            pfcpsrreq_flags: self.pfcpsrreq_flags.map(Box::new),
             tsc_management_informations: self.tsc_management_informations,
             ies: self.ies,
         }
@@ -486,7 +490,7 @@ mod tests {
         let load_control_ie = Ie::new(IeType::LoadControlInformation, vec![0x01, 0x02, 0x03]);
 
         let mut req = SessionReportRequest::new(seid, sequence, None, None, vec![], vec![]);
-        req.load_control_information = Some(load_control_ie.clone());
+        req.load_control_information = Some(Box::new(load_control_ie.clone()));
         // Recalculate header length
         let mut payload_len = 0;
         if let Some(ie) = &req.load_control_information {
@@ -525,9 +529,12 @@ mod tests {
         assert_eq!(req.msg_type(), MsgType::SessionReportRequest);
         assert_eq!(req.seid().map(|s| *s), Some(seid));
         assert_eq!(*req.sequence(), sequence);
-        assert_eq!(req.report_type, Some(report_type_ie));
+        assert_eq!(req.report_type, Some(Box::new(report_type_ie)));
         assert_eq!(req.usage_reports, vec![usage_report_ie]);
-        assert_eq!(req.load_control_information, Some(load_control_ie));
+        assert_eq!(
+            req.load_control_information,
+            Some(Box::new(load_control_ie))
+        );
 
         let serialized = req.marshal();
         let unmarshaled = SessionReportRequest::unmarshal(&serialized).unwrap();
@@ -569,11 +576,20 @@ mod tests {
             .ies(vec![additional_ie.clone()])
             .build();
 
-        assert_eq!(req.report_type, Some(report_type_ie));
-        assert_eq!(req.downlink_data_report, Some(downlink_data_report_ie));
+        assert_eq!(req.report_type, Some(Box::new(report_type_ie)));
+        assert_eq!(
+            req.downlink_data_report,
+            Some(Box::new(downlink_data_report_ie))
+        );
         assert_eq!(req.usage_reports, usage_reports);
-        assert_eq!(req.load_control_information, Some(load_control_ie));
-        assert_eq!(req.overload_control_information, Some(overload_control_ie));
+        assert_eq!(
+            req.load_control_information,
+            Some(Box::new(load_control_ie))
+        );
+        assert_eq!(
+            req.overload_control_information,
+            Some(Box::new(overload_control_ie))
+        );
         assert_eq!(req.ies, vec![additional_ie]);
 
         let serialized = req.marshal();
@@ -667,11 +683,11 @@ mod tests {
 
         assert_eq!(
             unmarshaled.additional_usage_reports_information,
-            Some(additional_usage_reports_information_ie.clone())
+            Some(Box::new(additional_usage_reports_information_ie.clone()))
         );
         assert_eq!(
             unmarshaled.pfcpsrreq_flags,
-            Some(pfcpsrreq_flags_ie.clone())
+            Some(Box::new(pfcpsrreq_flags_ie.clone()))
         );
         assert_eq!(
             unmarshaled

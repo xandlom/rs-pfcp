@@ -12,9 +12,9 @@ use crate::types::{Seid, SequenceNumber};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeReportResponse {
     pub header: Header,
-    pub node_id: Ie,              // M - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 60
-    pub cause: Ie,                // M - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 19
-    pub offending_ie: Option<Ie>, // C - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 40 - When Cause indicates error with specific IE
+    pub node_id: Ie, // M - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 60
+    pub cause: Ie,   // M - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 19
+    pub offending_ie: Option<Box<Ie>>, // C - 3GPP TS 29.244 Table 7.4.5.2.1-1 - IE Type 40 - When Cause indicates error with specific IE
     pub ies: Vec<Ie>,
 }
 
@@ -42,7 +42,7 @@ impl NodeReportResponse {
             header,
             node_id,
             cause,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             ies,
         }
     }
@@ -123,7 +123,7 @@ impl Message for NodeReportResponse {
             header,
             node_id,
             cause,
-            offending_ie,
+            offending_ie: offending_ie.map(Box::new),
             ies,
         })
     }
@@ -150,7 +150,7 @@ impl Message for NodeReportResponse {
         match ie_type {
             IeType::NodeId => IeIter::single(Some(&self.node_id), ie_type),
             IeType::Cause => IeIter::single(Some(&self.cause), ie_type),
-            IeType::OffendingIe => IeIter::single(self.offending_ie.as_ref(), ie_type),
+            IeType::OffendingIe => IeIter::single(self.offending_ie.as_deref(), ie_type),
             _ => IeIter::generic(&self.ies, ie_type),
         }
     }
@@ -158,7 +158,7 @@ impl Message for NodeReportResponse {
     fn all_ies(&self) -> Vec<&Ie> {
         let mut result = vec![&self.node_id, &self.cause];
         if let Some(ref ie) = self.offending_ie {
-            result.push(ie);
+            result.push(ie.as_ref());
         }
         result.extend(self.ies.iter());
         result
@@ -524,7 +524,7 @@ mod builder_tests {
         assert_eq!(*response.sequence(), 67890);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
     }
 
     #[test]
@@ -576,7 +576,7 @@ mod builder_tests {
         assert_eq!(*response.sequence(), 22222);
         assert_eq!(response.node_id, node_id_ie);
         assert_eq!(response.cause, cause_ie);
-        assert_eq!(response.offending_ie, Some(offending_ie));
+        assert_eq!(response.offending_ie, Some(Box::new(offending_ie)));
         assert_eq!(response.ies.len(), 1);
         assert_eq!(response.ies[0], additional_ie);
     }
